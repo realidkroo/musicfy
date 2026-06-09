@@ -1,0 +1,7 @@
+Updated to v3.0.6
+
+    Added monochrome app icon
+
+    Updated Musicfy Updater (only for musicfy.apk builds)
+
+    Improved performance and stability
