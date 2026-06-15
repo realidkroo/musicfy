@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// BotDetectionMitigator.kt
+// this thing is for bot detection mitigator
 
 package com.example.musicfy.utils
 

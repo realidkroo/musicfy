@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// LyricsProviderRegistry.kt
+// this thing is part of lyrics provider registry
 
 package com.example.musicfy.lyrics
 

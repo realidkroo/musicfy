@@ -1,3 +1,6 @@
+// SearchLyricsResponse.kt
+// this thing is part of search lyrics response
+
 package com.music.kugou.models
 
 import kotlinx.serialization.SerialName

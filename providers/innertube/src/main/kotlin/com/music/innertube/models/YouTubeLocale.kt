@@ -1,3 +1,6 @@
+// YouTubeLocale.kt
+// the file functioned as you tube locale
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

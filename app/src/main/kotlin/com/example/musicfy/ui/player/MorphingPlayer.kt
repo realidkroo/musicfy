@@ -1,3 +1,6 @@
+// MorphingPlayer.kt
+// this thing is for morphing player
+
 package com.example.musicfy.ui.player
 
 import androidx.compose.foundation.background
@@ -32,12 +35,15 @@ import com.example.musicfy.constants.ThumbnailCornerRadius
 import com.example.musicfy.models.MediaMetadata
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.extensions.togglePlayPause
+import com.example.musicfy.ui.utils.resize
 import androidx.media3.common.Player
+import androidx.compose.foundation.basicMarquee
 
 @Composable
 fun MorphingSharedElements(
     progressProvider: () -> Float,
     mediaMetadata: MediaMetadata?,
+    canvasArtwork: com.example.musicfy.canvas.CanvasArtwork? = null,
     isPlaying: Boolean,
     playbackState: @Player.State Int,
     maxWidth: androidx.compose.ui.unit.Dp, // Static screenWidth
@@ -96,8 +102,14 @@ fun MorphingSharedElements(
         val playY = lerp(miniTop + miniPlayY, fullPlayY, progress)
         val skipX = lerp(miniSkipX, fullPlayX + 80.dp, progress)
         val skipY = lerp(miniTop + miniSkipY, fullPlayY, progress)
+        
+        val miniTextWidth = miniPlayX - miniTextX - 16.dp
+        val fullTextWidth = maxWidth - (PlayerHorizontalPadding * 2)
+        val textWidth = lerp(miniTextWidth, fullTextWidth, progress)
         val horizontalOffset = with(density) { horizontalOffsetProvider().toDp() }
         val miniTextAlpha = (1f - (progress / 0.22f)).coerceIn(0f, 1f)
+        val fullArtworkAlpha = ((progress - 0.58f) / 0.32f).coerceIn(0f, 1f)
+        val canvasAlpha = ((progress - 0.72f) / 0.22f).coerceIn(0f, 1f)
 
         Box(Modifier.fillMaxSize()) {
             // 1. Album Art
@@ -115,34 +127,41 @@ fun MorphingSharedElements(
                             clip = true
                             shape = RoundedCornerShape(artCornerRadius)
                         }
-                        .drawWithContent {
-                            drawContent()
-                            val progress = progressProvider()
-                            if (isAppleMusic && !useNewPlayerDesign && progress > 0f) {
-                                drawRect(
-                                    brush = Brush.verticalGradient(
-                                        colorStops = arrayOf(
-                                            0.00f to Color.Black,
-                                            0.75f to Color.Black,
-                                            0.92f to Color.Black.copy(alpha = 1f - progress * 0.6f),
-                                            1.00f to Color.Black.copy(alpha = 1f - progress)
-                                        )
-                                    ),
-                                    blendMode = BlendMode.DstIn
-                                )
-                            }
-                        }
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(mediaMetadata.thumbnailUrl)
-                            .size(1200, 1200)
+                            .data(mediaMetadata.thumbnailUrl.resize(256, 256))
+                            .size(256, 256)
                             .allowHardware(true)
                             .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
+
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(mediaMetadata.thumbnailUrl.resize(1200, 1200))
+                            .size(1200, 1200)
+                            .allowHardware(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = fullArtworkAlpha }
+                    )
+
+                    if (canvasArtwork?.preferredAnimationUrl != null && progress > 0.7f) {
+                        CanvasArtworkPlayer(
+                            primaryUrl = canvasArtwork.preferredAnimationUrl,
+                            fallbackUrl = canvasArtwork.videoUrl,
+                            isPlaying = isPlaying,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { alpha = canvasAlpha }
+                        )
+                    }
                 }
             }
 
@@ -151,25 +170,11 @@ fun MorphingSharedElements(
                 Column(
                     modifier = Modifier
                         .offset(x = textX, y = textY)
-                        .width(maxWidth - miniTextX - 112.dp)
+                        .width(textWidth)
                         .graphicsLayer {
                             compositingStrategy = CompositingStrategy.Offscreen
                             transformOrigin = TransformOrigin(0f, 0f) // Scale from top-left
                             alpha = miniTextAlpha
-                        }
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    colorStops = arrayOf(
-                                        0.00f to Color.Transparent,
-                                        0.08f to Color.Black,
-                                        0.88f to Color.Black,
-                                        1.00f to Color.Transparent
-                                    )
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
                         }
                 ) {
                     Text(
@@ -179,17 +184,28 @@ fun MorphingSharedElements(
                         lineHeight = 17.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = TextOverflow.Clip
+                        overflow = TextOverflow.Ellipsis
                     )
                     
-                    if (mediaMetadata.artists.isNotEmpty()) {
+                    val artistText = if (mediaMetadata.artists.isNotEmpty()) {
+                        val artistsStr = mediaMetadata.artists.joinToString { it.name }
+                        if (mediaMetadata.album != null) {
+                            "$artistsStr - ${mediaMetadata.album.title}"
+                        } else {
+                            artistsStr
+                        }
+                    } else {
+                        mediaMetadata.album?.title
+                    }
+                    
+                    if (artistText != null) {
                         Text(
-                            text = mediaMetadata.artists.joinToString { it.name },
+                            text = artistText,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             fontSize = 12.sp,
                             lineHeight = 13.sp,
                             maxLines = 1,
-                            overflow = TextOverflow.Clip
+                            modifier = Modifier.basicMarquee()
                         )
                     }
                 }
@@ -213,8 +229,8 @@ fun MorphingSharedElements(
                 Icon(
                     painter = painterResource(
                         if (playbackState == Player.STATE_ENDED) R.drawable.replay
-                        else if (isPlaying) R.drawable.pause 
-                        else R.drawable.play
+                        else if (isPlaying) R.drawable.ic_untitled_pause 
+                        else R.drawable.ic_untitled_play
                     ),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurface,
@@ -238,7 +254,7 @@ fun MorphingSharedElements(
                     .clickable { playerConnection?.player?.seekToNext() }
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.skip_next),
+                    painter = painterResource(R.drawable.ic_untitled_skip_next),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(20.dp).align(Alignment.Center)

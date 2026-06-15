@@ -1,3 +1,6 @@
+// NetworkConfig.kt
+// what is this for you ask its for network config ofc
+
 package com.music.innertube
 
 import io.ktor.client.HttpClient

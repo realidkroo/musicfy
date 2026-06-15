@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// CachePlaylistScreen.kt
+// the file functioned as cache playlist screen
 
 package com.example.musicfy.ui.screens.playlist
 

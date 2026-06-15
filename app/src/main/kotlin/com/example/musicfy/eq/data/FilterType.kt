@@ -1,3 +1,6 @@
+// FilterType.kt
+// this thing is for filter type
+
 package com.example.musicfy.eq.data
 
 import kotlinx.serialization.Serializable

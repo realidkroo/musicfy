@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// ArtistAlbumsScreen.kt
+// this thing is for artist albums screen
 
 package com.example.musicfy.ui.screens.artist
 

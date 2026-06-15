@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// SimilarRecommendation.kt
+// this thing is for similar recommendation
 
 package com.example.musicfy.models
 

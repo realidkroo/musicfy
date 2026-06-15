@@ -1,3 +1,6 @@
+// LrcLib.kt
+// the file functioned as lrc lib
+
 package com.music.lrclib
 
 import com.music.lrclib.models.Track

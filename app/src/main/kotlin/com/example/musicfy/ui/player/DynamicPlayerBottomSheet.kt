@@ -1,3 +1,6 @@
+// DynamicPlayerBottomSheet.kt
+// the file functioned as dynamic player bottom sheet
+
 package com.example.musicfy.ui.player
 
 import androidx.activity.compose.BackHandler

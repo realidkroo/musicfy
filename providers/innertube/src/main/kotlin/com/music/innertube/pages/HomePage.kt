@@ -1,3 +1,6 @@
+// HomePage.kt
+// this thing is part of home page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

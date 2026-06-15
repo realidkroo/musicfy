@@ -1,3 +1,6 @@
+// ReturnYouTubeDislikeResponse.kt
+// this thing is part of return you tube dislike response
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

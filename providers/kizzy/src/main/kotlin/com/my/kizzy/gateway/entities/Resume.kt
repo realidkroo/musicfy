@@ -1,3 +1,6 @@
+// Resume.kt
+// this thing is for resume
+
 package com.my.kizzy.gateway.entities
 
 import kotlinx.serialization.SerialName

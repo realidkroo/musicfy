@@ -1,3 +1,6 @@
+// Font.kt
+// what is this for you ask its for font ofc
+
 package com.example.musicfy.ui.theme
 
 import androidx.compose.ui.text.font.Font

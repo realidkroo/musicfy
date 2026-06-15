@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// Player.kt
+// this thing is part of player
 
 package com.example.musicfy.ui.player
 
@@ -1121,6 +1119,38 @@ fun BottomSheetPlayer(
                         }
                     }
                     PlayerBackgroundStyle.APPLE_MUSIC -> {
+                        val infiniteTransition = rememberInfiniteTransition(label = "appleMusicMeshRotation")
+                        
+                        val anchorRotation by infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = -360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(25000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "anchorRotation"
+                        )
+                        
+                        val fastRotation by infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(15000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "fastRotation"
+                        )
+                        
+                        val slowRotation by infiniteTransition.animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(20000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "slowRotation"
+                        )
+
                         AnimatedContent(
                             targetState = mediaMetadata?.thumbnailUrl,
                             transitionSpec = {
@@ -1134,19 +1164,75 @@ fun BottomSheetPlayer(
                                         .fillMaxSize()
                                         .alpha(backgroundAlpha)
                                 ) {
-                                    // Layer 1: Full-Screen Blurred Background
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(context)
-                                            .data(thumbnailUrl)
-                                            .size(128, 128) // Downsample significantly for performance
-                                            .allowHardware(false)
-                                            .build(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
+                                    // Base Warping Background
+                                    Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .blur(150.dp)
-                                    )
+                                            .graphicsLayer {
+                                                scaleX = 1.5f
+                                                scaleY = 1.5f
+                                            }
+                                    ) {
+                                        val matrix = remember { 
+                                            val m = ColorMatrix()
+                                            m.setToSaturation(2f)
+                                            m
+                                        }
+                                        val colorFilter = ColorFilter.colorMatrix(matrix)
+
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(thumbnailUrl)
+                                                .size(128, 128)
+                                                .allowHardware(false)
+                                                .build(),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            colorFilter = colorFilter,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .blur(150.dp)
+                                                .graphicsLayer { rotationZ = anchorRotation }
+                                        )
+
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(thumbnailUrl)
+                                                .size(128, 128)
+                                                .allowHardware(false)
+                                                .build(),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            colorFilter = colorFilter,
+                                            alignment = Alignment.TopStart,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .blur(150.dp)
+                                                .graphicsLayer { 
+                                                    rotationZ = fastRotation
+                                                    alpha = 0.6f
+                                                }
+                                        )
+
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(thumbnailUrl)
+                                                .size(128, 128)
+                                                .allowHardware(false)
+                                                .build(),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            colorFilter = colorFilter,
+                                            alignment = Alignment.BottomEnd,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .blur(150.dp)
+                                                .graphicsLayer { 
+                                                    rotationZ = slowRotation
+                                                    alpha = 0.5f
+                                                }
+                                        )
+                                    }
 
                                     // Layer 2 has been extracted to sharedContent to allow dynamic morphing transition
                                     
@@ -1316,6 +1402,7 @@ fun BottomSheetPlayer(
             MorphingSharedElements(
                 progressProvider = progressProvider,
                 mediaMetadata = mediaMetadata,
+                canvasArtwork = canvasArtwork,
                 isPlaying = isPlaying,
                 playbackState = playbackState,
                 maxWidth = screenWidth,
@@ -1389,7 +1476,7 @@ fun BottomSheetPlayer(
                                     AsyncImage(
                                         model = mediaMetadata.thumbnailUrl,
                                         contentDescription = null,
-                                        contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
+                                        contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
                                     )
 
@@ -1408,7 +1495,7 @@ fun BottomSheetPlayer(
                                             Icon(
                                                 painter = painterResource(
                                                     if (playbackState == Player.STATE_ENDED) R.drawable.replay
-                                                    else R.drawable.play
+                                                    else R.drawable.ic_untitled_play
                                                 ),
                                                 contentDescription = null,
                                                 tint = Color.White,
@@ -1716,8 +1803,8 @@ fun BottomSheetPlayer(
                                     Icon(
                                         painter = painterResource(
                                             if (currentSong?.song?.liked == true)
-                                                R.drawable.favorite
-                                            else R.drawable.favorite_border
+                                                R.drawable.ic_untitled_heart
+                                            else R.drawable.ic_untitled_heart_unfill
                                         ),
                                         contentDescription = null,
                                         modifier = Modifier.size(24.dp)
@@ -1829,8 +1916,8 @@ fun BottomSheetPlayer(
                                 Icon(
                                     painter = painterResource(
                                         if (currentSong?.song?.liked == true)
-                                            R.drawable.favorite
-                                        else R.drawable.favorite_border
+                                            R.drawable.ic_untitled_heart
+                                        else R.drawable.ic_untitled_heart_unfill
                                     ),
                                     contentDescription = null,
                                     tint = textButtonColor,
@@ -2210,7 +2297,7 @@ fun BottomSheetPlayer(
                                     .weight(backButtonWeight)
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.before),
+                                    painter = painterResource(R.drawable.ic_untitled_skip_previous),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp)
                                 )
@@ -2249,7 +2336,7 @@ fun BottomSheetPlayer(
                                 ) {
                                     Icon(
                                         painter = painterResource(
-                                            if (effectiveIsPlaying) R.drawable.pause else R.drawable.play
+                                            if (effectiveIsPlaying) R.drawable.ic_untitled_pause else R.drawable.ic_untitled_play
                                         ),
                                         contentDescription = if (effectiveIsPlaying) stringResource(R.string.pause) else stringResource(R.string.play),
                                         modifier = Modifier.size(32.dp)
@@ -2279,7 +2366,7 @@ fun BottomSheetPlayer(
                                     )
                             ) {
                                 Icon(
-                                    painter = painterResource(R.drawable.forward),
+                                    painter = painterResource(R.drawable.ic_untitled_skip_next),
                                     contentDescription = null,
                                     modifier = Modifier.size(32.dp)
                                 )
@@ -2352,15 +2439,14 @@ fun BottomSheetPlayer(
                                 Image(
                                     painter =
                                     painterResource(
-                                        if (playbackState ==
-                                            STATE_ENDED
-                                        ) {
-                                            R.drawable.replay
-                                        } else if (effectiveIsPlaying) {
-                                            R.drawable.pause_applemusic
-                                        } else {
-                                            R.drawable.play_applemusic
-                                        },
+                                        when {
+                                            playbackState == Player.STATE_ENDED ->
+                                                R.drawable.replay
+                                            effectiveIsPlaying ->
+                                                R.drawable.ic_untitled_pause
+                                            else ->
+                                                R.drawable.ic_untitled_play
+                                        }
                                     ),
                                     contentDescription = null,
                                     colorFilter = ColorFilter.tint(TextBackgroundColor),

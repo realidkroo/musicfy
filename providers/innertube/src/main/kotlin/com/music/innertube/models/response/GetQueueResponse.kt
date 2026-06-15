@@ -1,3 +1,6 @@
+// GetQueueResponse.kt
+// what is this for you ask its for get queue response ofc
+
 package com.music.innertube.models.response
 
 import com.music.innertube.models.PlaylistPanelRenderer

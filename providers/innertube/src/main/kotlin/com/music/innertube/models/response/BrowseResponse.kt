@@ -1,3 +1,6 @@
+// BrowseResponse.kt
+// the file functioned as browse response
+
 package com.music.innertube.models.response
 
 import com.music.innertube.models.Button

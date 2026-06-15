@@ -1,3 +1,6 @@
+// MusicNavigationButtonRenderer.kt
+// this thing is for music navigation button renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

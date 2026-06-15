@@ -1,3 +1,6 @@
+// HeroCarousel.kt
+// this thing is for hero carousel
+
 package com.example.musicfy.ui.component
 
 import androidx.compose.animation.core.tween

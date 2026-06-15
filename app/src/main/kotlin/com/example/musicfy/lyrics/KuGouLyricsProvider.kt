@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// KuGouLyricsProvider.kt
+// this thing is part of ku gou lyrics provider
 
 package com.example.musicfy.lyrics
 

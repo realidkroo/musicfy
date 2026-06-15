@@ -1,3 +1,6 @@
+// WelcomeActivity.kt
+// the file functioned as welcome activity
+
 @file:OptIn(ExperimentalTextApi::class)
 
 package com.example.musicfy

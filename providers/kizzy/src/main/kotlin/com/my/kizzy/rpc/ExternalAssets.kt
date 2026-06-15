@@ -1,3 +1,6 @@
+// ExternalAssets.kt
+// this thing is part of external assets
+
 package com.my.kizzy.rpc
 
 import io.ktor.client.HttpClient

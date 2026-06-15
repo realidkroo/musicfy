@@ -1,3 +1,6 @@
+// EditPlaylistBody.kt
+// what is this for you ask its for edit playlist body ofc
+
 package com.music.innertube.models.body
 
 import com.music.innertube.models.Context

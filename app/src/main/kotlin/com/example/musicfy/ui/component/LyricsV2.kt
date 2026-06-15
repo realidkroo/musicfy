@@ -1,3 +1,6 @@
+// LyricsV2.kt
+// the file functioned as lyrics v2
+
 /**
  * musicfy Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors

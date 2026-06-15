@@ -1,3 +1,6 @@
+// CastManager.kt
+// this thing is part of cast manager
+
 package com.example.musicfy.cast
 
 import android.content.Context

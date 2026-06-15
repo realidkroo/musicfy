@@ -1,3 +1,6 @@
+// MusicMultiRowImageItemRenderer.kt
+// the file functioned as music multi row image item renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

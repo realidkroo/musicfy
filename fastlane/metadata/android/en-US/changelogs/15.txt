@@ -32,7 +32,7 @@ Introduced new M3E chip design
 
 Added new updater downloader
 
-Redesigned VIVI MUSIC updater
+Redesigned music player updater
 
 Updated updater to Android 16 style
 

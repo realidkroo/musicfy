@@ -1,3 +1,6 @@
+// GetSearchSuggestionsBody.kt
+// the file functioned as get search suggestions body
+
 package com.music.innertube.models.body
 
 import com.music.innertube.models.Context

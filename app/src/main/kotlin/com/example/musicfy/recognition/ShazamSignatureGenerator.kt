@@ -1,3 +1,6 @@
+// ShazamSignatureGenerator.kt
+// this thing is for shazam signature generator
+
 package com.example.musicfy.recognition
 
 import android.util.Base64

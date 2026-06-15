@@ -1,3 +1,6 @@
+// ArtistVideoCanvasProvider.kt
+// this thing is part of artist video canvas provider
+
 package com.example.musicfy.artistvideo
 
 import io.ktor.client.HttpClient

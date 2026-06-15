@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// StringUtils.kt
+// what is this for you ask its for string utils ofc
 
 package com.example.musicfy.ui.utils
 

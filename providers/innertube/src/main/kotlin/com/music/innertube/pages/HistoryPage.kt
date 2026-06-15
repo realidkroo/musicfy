@@ -1,3 +1,6 @@
+// HistoryPage.kt
+// this thing is for history page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

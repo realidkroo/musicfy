@@ -1,3 +1,6 @@
+// UserInfo.kt
+// this thing is part of user info
+
 package com.my.kizzy.rpc
 
 /**

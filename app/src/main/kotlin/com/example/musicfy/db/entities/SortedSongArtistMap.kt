@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// SortedSongArtistMap.kt
+// what is this for you ask its for sorted song artist map ofc
 
 package com.example.musicfy.db.entities
 

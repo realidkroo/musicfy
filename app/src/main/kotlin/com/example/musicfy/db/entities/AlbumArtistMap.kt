@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// AlbumArtistMap.kt
+// this thing is part of album artist map
 
 package com.example.musicfy.db.entities
 

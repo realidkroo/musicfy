@@ -1,3 +1,6 @@
+// LastFM.kt
+// what is this for you ask its for last fm ofc
+
 package com.music.lastfm
 
 import com.music.lastfm.models.Authentication

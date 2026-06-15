@@ -1,3 +1,6 @@
+// SpeedDialItem.kt
+// what is this for you ask its for speed dial item ofc
+
 package com.example.musicfy.db.entities
 
 import androidx.room.Entity

@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// HomeViewModel.kt
+// the file functioned as home view model
 
 package com.example.musicfy.viewmodels
 

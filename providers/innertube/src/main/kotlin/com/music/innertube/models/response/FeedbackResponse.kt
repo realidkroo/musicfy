@@ -1,3 +1,6 @@
+// FeedbackResponse.kt
+// this thing is part of feedback response
+
 package com.music.innertube.models.response
 
 import kotlinx.serialization.Serializable

@@ -1,3 +1,6 @@
+// UpdaterComponents.kt
+// this thing is for updater components
+
 package com.example.musicfy.ui.component
 
 import androidx.compose.foundation.background

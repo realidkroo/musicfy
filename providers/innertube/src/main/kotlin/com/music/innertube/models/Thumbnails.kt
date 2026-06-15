@@ -1,3 +1,6 @@
+// Thumbnails.kt
+// this thing is for thumbnails
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

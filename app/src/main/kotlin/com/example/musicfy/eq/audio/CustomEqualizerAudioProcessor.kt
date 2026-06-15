@@ -1,3 +1,6 @@
+// CustomEqualizerAudioProcessor.kt
+// the file functioned as custom equalizer audio processor
+
 package com.example.musicfy.eq.audio
 
 import androidx.media3.common.C

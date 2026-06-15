@@ -1,3 +1,6 @@
+// SpeedDialGridItem.kt
+// this thing is part of speed dial grid item
+
 package com.example.musicfy.ui.component
 
 import androidx.compose.foundation.background

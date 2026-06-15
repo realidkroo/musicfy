@@ -1,3 +1,6 @@
+// PlaylistPanelVideoRenderer.kt
+// this thing is for playlist panel video renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

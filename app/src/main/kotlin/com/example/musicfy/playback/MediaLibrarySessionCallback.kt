@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// MediaLibrarySessionCallback.kt
+// the file functioned as media library session callback
 
 package com.example.musicfy.playback
 

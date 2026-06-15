@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// LocalAlbumRadio.kt
+// the file functioned as local album radio
 
 package com.example.musicfy.playback.queues
 

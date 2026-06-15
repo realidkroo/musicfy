@@ -1,3 +1,6 @@
+// Metadata.kt
+// this thing is for metadata
+
 package com.my.kizzy.gateway.entities.presence
 
 import kotlinx.serialization.SerialName

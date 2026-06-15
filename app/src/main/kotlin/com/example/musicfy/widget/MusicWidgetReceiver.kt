@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// MusicWidgetReceiver.kt
+// the file functioned as music widget receiver
 
 package com.example.musicfy.widget
 

@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// LazyGridSnapLayoutInfoProvider.kt
+// this thing is for lazy grid snap layout info provider
 
 package com.example.musicfy.ui.utils
 

@@ -1,3 +1,6 @@
+// PlaylistDeleteBody.kt
+// the file functioned as playlist delete body
+
 package com.music.innertube.models.body
 
 import com.music.innertube.models.Context

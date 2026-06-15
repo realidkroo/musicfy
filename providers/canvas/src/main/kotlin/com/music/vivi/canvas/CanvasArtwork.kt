@@ -1,3 +1,6 @@
+// CanvasArtwork.kt
+// this thing is part of canvas artwork
+
 package com.example.musicfy.canvas
 
 import kotlinx.serialization.SerialName

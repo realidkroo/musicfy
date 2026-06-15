@@ -1,3 +1,6 @@
+// AudioFormatBadge.kt
+// this thing is for audio format badge
+
 package com.example.musicfy.ui.component
 
 import androidx.compose.foundation.Image

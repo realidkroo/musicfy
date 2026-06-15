@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// MediaSessionConstants.kt
+// what is this for you ask its for media session constants ofc
 
 package com.example.musicfy.constants
 

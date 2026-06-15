@@ -1,3 +1,6 @@
+// LyricsResponse.kt
+// what is this for you ask its for lyrics response ofc
+
 package com.music.simpmusic.models
 
 import kotlinx.serialization.SerialName

@@ -1,3 +1,6 @@
+// SearchSongResponse.kt
+// this thing is for search song response
+
 package com.music.kugou.models
 
 import kotlinx.serialization.Serializable

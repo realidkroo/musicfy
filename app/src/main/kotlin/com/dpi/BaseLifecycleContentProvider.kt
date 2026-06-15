@@ -1,3 +1,6 @@
+// BaseLifecycleContentProvider.kt
+// this thing is for base lifecycle content provider
+
 package com.dpi
 
 import android.content.ContentProvider

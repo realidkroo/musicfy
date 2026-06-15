@@ -1,3 +1,6 @@
+// MusicEditablePlaylistDetailHeaderRenderer.kt
+// this thing is part of music editable playlist detail header renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

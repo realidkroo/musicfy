@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// MoodAndGenresViewModel.kt
+// this thing is part of mood and genres view model
 
 package com.example.musicfy.viewmodels
 

@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// OpenRouterStreamingService.kt
+// this thing is for open router streaming service
 
 package com.example.musicfy.api
 

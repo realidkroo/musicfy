@@ -1,3 +1,6 @@
+// DownloadLyricsResponse.kt
+// this thing is for download lyrics response
+
 package com.music.kugou.models
 
 import kotlinx.serialization.Serializable

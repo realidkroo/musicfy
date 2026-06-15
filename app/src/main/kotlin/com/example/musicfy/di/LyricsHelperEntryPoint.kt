@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// LyricsHelperEntryPoint.kt
+// this thing is part of lyrics helper entry point
 
 package com.example.musicfy.di
 

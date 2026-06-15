@@ -1,3 +1,6 @@
+// GetTranscriptBody.kt
+// the file functioned as get transcript body
+
 package com.music.innertube.models.body
 
 import com.music.innertube.models.Context

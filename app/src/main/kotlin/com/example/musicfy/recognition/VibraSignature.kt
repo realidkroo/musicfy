@@ -1,3 +1,6 @@
+// VibraSignature.kt
+// what is this for you ask its for vibra signature ofc
+
 package com.example.musicfy.recognition
 
 /**

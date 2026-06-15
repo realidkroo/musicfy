@@ -1,3 +1,6 @@
+// SubscriptionButton.kt
+// this thing is for subscription button
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

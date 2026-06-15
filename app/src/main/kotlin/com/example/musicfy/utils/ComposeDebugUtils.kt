@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// ComposeDebugUtils.kt
+// the file functioned as compose debug utils
 
 package com.example.musicfy.utils
 

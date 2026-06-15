@@ -1,3 +1,6 @@
+// OldPlayerMenu.kt
+// this thing is for old player menu
+
 package com.example.musicfy.ui.menu
 
 import android.content.Intent

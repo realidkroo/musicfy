@@ -1,3 +1,6 @@
+// SimpMusicLyrics.kt
+// the file functioned as simp music lyrics
+
 package com.music.simpmusic
 
 import com.music.simpmusic.models.LyricsData

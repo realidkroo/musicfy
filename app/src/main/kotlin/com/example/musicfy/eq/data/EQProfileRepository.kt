@@ -1,3 +1,6 @@
+// EQProfileRepository.kt
+// this thing is part of eqprofile repository
+
 package com.example.musicfy.eq.data
 
 import android.content.Context

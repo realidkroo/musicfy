@@ -1,3 +1,6 @@
+// PlayerResponse.kt
+// the file functioned as player response
+
 package com.music.innertube.models.response
 
 import com.music.innertube.models.ResponseContext

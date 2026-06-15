@@ -1,3 +1,6 @@
+// ChartsPage.kt
+// this thing is for charts page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.*

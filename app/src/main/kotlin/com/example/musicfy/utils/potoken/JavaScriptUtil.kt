@@ -1,3 +1,6 @@
+// JavaScriptUtil.kt
+// the file functioned as java script util
+
 package com.example.musicfy.utils.potoken
 
 import kotlinx.serialization.json.Json

@@ -1,3 +1,6 @@
+// SpeedDialDao.kt
+// the file functioned as speed dial dao
+
 package com.example.musicfy.db.daos
 
 import androidx.room.Dao

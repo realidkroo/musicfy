@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// AlbumWithSongs.kt
+// this thing is for album with songs
 
 package com.example.musicfy.db.entities
 

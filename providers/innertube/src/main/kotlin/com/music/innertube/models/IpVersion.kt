@@ -1,3 +1,6 @@
+// IpVersion.kt
+// the file functioned as ip version
+
 package com.music.innertube.models
 
 enum class IpVersion {

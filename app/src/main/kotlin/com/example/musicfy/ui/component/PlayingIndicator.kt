@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// PlayingIndicator.kt
+// this thing is part of playing indicator
 
 package com.example.musicfy.ui.component
 

@@ -1,3 +1,6 @@
+// CastConnectionHandler.kt
+// this thing is part of cast connection handler
+
 package com.example.musicfy.playback
 
 import android.content.Context

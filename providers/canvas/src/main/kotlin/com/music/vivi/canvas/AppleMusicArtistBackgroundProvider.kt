@@ -1,3 +1,6 @@
+// AppleMusicArtistBackgroundProvider.kt
+// the file functioned as apple music artist background provider
+
 package com.example.musicfy.canvas
 
 import io.ktor.client.HttpClient

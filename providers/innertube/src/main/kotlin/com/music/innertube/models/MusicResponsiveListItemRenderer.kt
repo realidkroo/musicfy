@@ -1,3 +1,6 @@
+// MusicResponsiveListItemRenderer.kt
+// the file functioned as music responsive list item renderer
+
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package com.music.innertube.models

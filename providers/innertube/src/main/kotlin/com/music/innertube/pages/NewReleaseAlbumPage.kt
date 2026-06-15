@@ -1,3 +1,6 @@
+// NewReleaseAlbumPage.kt
+// this thing is for new release album page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.AlbumItem

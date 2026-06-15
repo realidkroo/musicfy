@@ -1,3 +1,6 @@
+// Authentication.kt
+// this thing is for authentication
+
 package com.music.lastfm.models
 
 import kotlinx.serialization.Serializable

@@ -1,3 +1,6 @@
+// YouTubeClient.kt
+// what is this for you ask its for you tube client ofc
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

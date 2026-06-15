@@ -1,3 +1,6 @@
+// SearchPage.kt
+// this thing is for search page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

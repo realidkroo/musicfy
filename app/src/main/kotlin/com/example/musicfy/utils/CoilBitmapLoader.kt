@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// CoilBitmapLoader.kt
+// the file functioned as coil bitmap loader
 
 package com.example.musicfy.utils
 

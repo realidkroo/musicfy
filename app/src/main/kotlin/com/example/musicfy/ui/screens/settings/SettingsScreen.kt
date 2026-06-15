@@ -1,3 +1,6 @@
+// SettingsScreen.kt
+// this thing is for settings screen
+
 package com.example.musicfy.ui.screens.settings
 
 import androidx.compose.foundation.layout.Column

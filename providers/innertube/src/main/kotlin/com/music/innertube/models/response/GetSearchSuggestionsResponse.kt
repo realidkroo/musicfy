@@ -1,3 +1,6 @@
+// GetSearchSuggestionsResponse.kt
+// this thing is part of get search suggestions response
+
 package com.music.innertube.models.response
 
 import com.music.innertube.models.SearchSuggestionsSectionRenderer

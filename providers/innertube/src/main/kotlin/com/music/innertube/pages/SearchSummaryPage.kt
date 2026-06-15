@@ -1,3 +1,6 @@
+// SearchSummaryPage.kt
+// the file functioned as search summary page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

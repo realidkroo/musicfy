@@ -1,3 +1,6 @@
+// CastOptionsProvider.kt
+// the file functioned as cast options provider
+
 package com.example.musicfy.cast
 
 import android.content.Context

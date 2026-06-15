@@ -1,3 +1,6 @@
+// ShazamModels.kt
+// what is this for you ask its for shazam models ofc
+
 package com.music.shazamkit.models
 
 import kotlinx.serialization.SerialName

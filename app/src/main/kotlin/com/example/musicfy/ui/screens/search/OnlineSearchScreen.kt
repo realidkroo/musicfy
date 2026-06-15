@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// OnlineSearchScreen.kt
+// what is this for you ask its for online search screen ofc
 
 package com.example.musicfy.ui.screens.search
 

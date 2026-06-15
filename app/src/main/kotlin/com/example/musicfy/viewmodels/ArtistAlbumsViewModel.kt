@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// ArtistAlbumsViewModel.kt
+// what is this for you ask its for artist albums view model ofc
 
 package com.example.musicfy.viewmodels
 

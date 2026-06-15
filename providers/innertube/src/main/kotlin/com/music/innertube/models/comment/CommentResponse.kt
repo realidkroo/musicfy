@@ -1,3 +1,6 @@
+// CommentResponse.kt
+// what is this for you ask its for comment response ofc
+
 package com.music.innertube.models.comment
 
 import kotlinx.serialization.Serializable

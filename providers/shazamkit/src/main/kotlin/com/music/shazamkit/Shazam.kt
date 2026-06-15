@@ -1,3 +1,6 @@
+// Shazam.kt
+// this thing is for shazam
+
 package com.music.shazamkit
 
 import com.music.shazamkit.models.RecognitionResult

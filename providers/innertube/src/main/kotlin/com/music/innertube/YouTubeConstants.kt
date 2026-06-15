@@ -1,3 +1,6 @@
+// YouTubeConstants.kt
+// what is this for you ask its for you tube constants ofc
+
 package com.music.innertube
 
 object YouTubeConstants {

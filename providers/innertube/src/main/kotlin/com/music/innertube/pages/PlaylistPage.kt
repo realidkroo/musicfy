@@ -1,3 +1,6 @@
+// PlaylistPage.kt
+// this thing is for playlist page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

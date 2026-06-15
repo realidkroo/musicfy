@@ -1,3 +1,6 @@
+// Tabs.kt
+// this thing is for tabs
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

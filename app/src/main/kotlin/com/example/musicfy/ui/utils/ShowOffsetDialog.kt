@@ -1,3 +1,6 @@
+// ShowOffsetDialog.kt
+// this thing is part of show offset dialog
+
 package com.example.musicfy.ui.utils
 
 import androidx.compose.foundation.layout.Arrangement

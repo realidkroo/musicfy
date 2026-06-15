@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// AutoResizeText.kt
+// the file functioned as auto resize text
 
 package com.example.musicfy.ui.component
 

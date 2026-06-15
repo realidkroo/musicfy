@@ -1,3 +1,6 @@
+// ExplorePage.kt
+// this thing is part of explore page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.AlbumItem

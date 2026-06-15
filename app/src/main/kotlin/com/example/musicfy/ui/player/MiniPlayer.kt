@@ -1,3 +1,6 @@
+// MiniPlayer.kt
+// this thing is for mini player
+
 /**
  * musicfy Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
@@ -128,6 +131,7 @@ import com.example.musicfy.playback.CastConnectionHandler
 import com.example.musicfy.playback.PlayerConnection
 import com.example.musicfy.ui.screens.DarkMode
 import com.example.musicfy.ui.theme.PlayerColorExtractor
+import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.core.AudioDeviceBottomSheet
@@ -404,7 +408,11 @@ private fun NewMiniPlayer(
                     ) {
                         mediaMetadata?.let { metadata ->
                             AsyncImage(
-                                model = metadata.thumbnailUrl,
+                                model = ImageRequest.Builder(context)
+                                    .data(metadata.thumbnailUrl?.resize(256, 256))
+                                    .size(256, 256)
+                                    .allowHardware(true)
+                                    .build(),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -461,9 +469,9 @@ private fun NewMiniPlayer(
                             }
                     ) {
                         val iconRes = when {
-                            !effectiveIsPlaying || playbackState == Player.STATE_ENDED -> R.drawable.play
-                            effectiveIsPlaying -> R.drawable.pause
-                            else -> R.drawable.play
+                            !effectiveIsPlaying || playbackState == Player.STATE_ENDED -> R.drawable.ic_untitled_play
+                            effectiveIsPlaying -> R.drawable.ic_untitled_pause
+                            else -> R.drawable.ic_untitled_play
                         }
                         Icon(
                             painter = painterResource(iconRes),
@@ -498,7 +506,7 @@ private fun NewMiniPlayer(
                             }
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.skip_next),
+                            painter = painterResource(R.drawable.ic_untitled_skip_next),
                             contentDescription = null,
                             tint = if (canSkipNext) onSurfaceColor else onSurfaceColor.copy(alpha = 0.38f),
                             modifier = Modifier.size(20.dp)
@@ -542,21 +550,7 @@ private fun NewMiniPlayerSongInfo(
     Column(
         modifier = modifier
             .offset(y = (-1).dp)
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .drawWithContent {
-                drawContent()
-                drawRect(
-                    brush = Brush.horizontalGradient(
-                        colorStops = arrayOf(
-                            0.00f to Color.Transparent,
-                            0.08f to Color.Black,
-                            0.88f to Color.Black,
-                            1.00f to Color.Transparent
-                        )
-                    ),
-                    blendMode = BlendMode.DstIn
-                )
-            },
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
         verticalArrangement = Arrangement.Center
     ) {
         mediaMetadata?.let { metadata ->
@@ -567,10 +561,8 @@ private fun NewMiniPlayerSongInfo(
                 lineHeight = 17.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Clip,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1800, velocity = 34.dp),
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
             Row(
                 horizontalArrangement = Arrangement.Start,
@@ -780,7 +772,7 @@ private fun LegacyMiniPlayer(
                     enabled = canSkipNext,
                     onClick = { playerConnection.seekToNext() },
             ) {
-                Icon(painter = painterResource(R.drawable.forward), contentDescription = null)
+                Icon(painter = painterResource(R.drawable.ic_untitled_skip_next), contentDescription = null)
             }
         }
 
@@ -793,7 +785,7 @@ private fun LegacyMiniPlayer(
             ) {
                 Icon(
                     painter = painterResource(
-                        if (offsetXAnimatable.value > 0) R.drawable.before else R.drawable.forward
+                        if (offsetXAnimatable.value > 0) R.drawable.ic_untitled_skip_previous else R.drawable.ic_untitled_skip_next
                     ),
                     contentDescription = null,
                     tint = primaryColor.copy(
@@ -832,9 +824,9 @@ private fun LegacyPlayPauseButton(
         Icon(
             painter = painterResource(
                 when {
-                    !effectiveIsPlaying || playbackState == Player.STATE_ENDED -> R.drawable.play
-                    effectiveIsPlaying -> R.drawable.pause
-                    else -> R.drawable.play
+                    !effectiveIsPlaying || playbackState == Player.STATE_ENDED -> R.drawable.ic_untitled_play
+                    effectiveIsPlaying -> R.drawable.ic_untitled_pause
+                    else -> R.drawable.ic_untitled_play
                 }
             ),
             contentDescription = null,
@@ -911,12 +903,20 @@ private fun LegacyMiniMediaInfo(
             )
 
             if (mediaMetadata.artists.any { it.name.isNotBlank() }) {
+                val artistText = buildString {
+                    append(mediaMetadata.artists.joinToString { it.name })
+                    if (!mediaMetadata.album?.title.isNullOrEmpty()) {
+                        append(" - ")
+                        append(mediaMetadata.album.title)
+                    }
+                }
                 Text(
-                    text = mediaMetadata.artists.joinToString { it.name },
+                    text = artistText,
                     color = MaterialTheme.colorScheme.secondary,
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee(),
                 )
             }
         }
@@ -957,7 +957,7 @@ private fun FavoriteButton(
             .clickable { playerConnection.service.toggleLike() }
     ) {
         Icon(
-            painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
+            painter = painterResource(if (isLiked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill),
             contentDescription = null,
             tint = if (isLiked) errorColor else onSurfaceColor.copy(alpha = 0.7f),
             modifier = Modifier.size(20.dp)

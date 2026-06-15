@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// YouTubeBrowseScreen.kt
+// the file functioned as you tube browse screen
 
 package com.example.musicfy.ui.screens
 

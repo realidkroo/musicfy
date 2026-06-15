@@ -1,3 +1,6 @@
+// AddItemYouTubePlaylistResponse.kt
+// what is this for you ask its for add item you tube playlist response ofc
+
 package com.music.innertube.models.response
 
 import kotlinx.serialization.Serializable

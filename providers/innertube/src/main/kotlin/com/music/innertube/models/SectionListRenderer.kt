@@ -1,3 +1,6 @@
+// SectionListRenderer.kt
+// the file functioned as section list renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.ExperimentalSerializationApi

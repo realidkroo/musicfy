@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// BigSeekBar.kt
+// this thing is for big seek bar
 
 package com.example.musicfy.ui.component
 

@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// ItemWrapper.kt
+// this thing is part of item wrapper
 
 package com.example.musicfy.ui.utils
 

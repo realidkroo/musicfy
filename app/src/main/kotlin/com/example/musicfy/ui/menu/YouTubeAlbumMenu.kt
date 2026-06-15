@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// YouTubeAlbumMenu.kt
+// this thing is part of you tube album menu
 
 package com.example.musicfy.ui.menu
 

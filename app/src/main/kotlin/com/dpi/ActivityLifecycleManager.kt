@@ -1,3 +1,6 @@
+// ActivityLifecycleManager.kt
+// the file functioned as activity lifecycle manager
+
 package com.dpi
 
 import android.annotation.SuppressLint

@@ -1,3 +1,6 @@
+// DensityScaler.kt
+// this thing is for density scaler
+
 package com.dpi
 
 import android.content.Context

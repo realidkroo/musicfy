@@ -1,3 +1,6 @@
+// ParametricEQParser.kt
+// this thing is for parametric eqparser
+
 package com.example.musicfy.eq.data
 
 import java.io.File

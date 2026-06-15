@@ -1,3 +1,6 @@
+// RelatedPage.kt
+// this thing is part of related page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

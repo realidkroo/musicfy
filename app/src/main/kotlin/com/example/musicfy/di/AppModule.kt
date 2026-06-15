@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// AppModule.kt
+// this thing is for app module
 
 package com.example.musicfy.di
 

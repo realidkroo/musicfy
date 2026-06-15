@@ -1,3 +1,6 @@
+// ArtistVideo.kt
+// the file functioned as artist video
+
 package com.example.musicfy.artistvideo
 
 import android.view.TextureView

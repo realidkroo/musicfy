@@ -1,3 +1,6 @@
+// ThumbnailRenderer.kt
+// the file functioned as thumbnail renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.ExperimentalSerializationApi

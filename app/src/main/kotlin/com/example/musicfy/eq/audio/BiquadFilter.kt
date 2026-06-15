@@ -1,3 +1,6 @@
+// BiquadFilter.kt
+// what is this for you ask its for biquad filter ofc
+
 package com.example.musicfy.eq.audio
 
 import com.example.musicfy.eq.data.FilterType

@@ -1,3 +1,6 @@
+// MediaInfo.kt
+// this thing is for media info
+
 package com.music.innertube.models
 
 data class MediaInfo(

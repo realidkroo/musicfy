@@ -1,3 +1,6 @@
+// SuperProperties.kt
+// what is this for you ask its for super properties ofc
+
 package com.example.musicfy.utils
 
 import android.os.Build

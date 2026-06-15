@@ -1,3 +1,6 @@
+// LibraryPage.kt
+// the file functioned as library page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

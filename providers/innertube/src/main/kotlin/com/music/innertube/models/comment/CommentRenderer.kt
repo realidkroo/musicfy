@@ -1,3 +1,6 @@
+// CommentRenderer.kt
+// this thing is part of comment renderer
+
 package com.music.innertube.models.comment
 
 import com.music.innertube.models.Runs

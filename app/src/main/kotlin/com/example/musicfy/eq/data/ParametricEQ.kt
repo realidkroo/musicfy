@@ -1,3 +1,6 @@
+// ParametricEQ.kt
+// this thing is for parametric eq
+
 package com.example.musicfy.eq.data
 
 import kotlinx.serialization.Serializable

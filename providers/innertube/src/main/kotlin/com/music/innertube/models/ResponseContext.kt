@@ -1,3 +1,6 @@
+// ResponseContext.kt
+// what is this for you ask its for response context ofc
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

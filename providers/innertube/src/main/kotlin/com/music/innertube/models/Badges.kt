@@ -1,3 +1,6 @@
+// Badges.kt
+// this thing is for badges
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

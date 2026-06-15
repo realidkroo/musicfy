@@ -1,3 +1,6 @@
+// CanvasArtworkPlayer.kt
+// this thing is for canvas artwork player
+
 package com.example.musicfy.ui.player
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -102,6 +105,13 @@ fun CanvasArtworkPlayer(
                 ),
             )
         }
+    val aspectRatioFrameLayout = remember {
+        AspectRatioFrameLayout(context).apply {
+            layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
+    }
     val exoPlayer =
         remember(initial) {
             ExoPlayer.Builder(context)
@@ -110,7 +120,9 @@ fun CanvasArtworkPlayer(
                 .apply {
                 trackSelectionParameters = trackSelectionParameters
                     .buildUpon()
-                    .setForceHighestSupportedBitrate(true)
+                    .setMaxVideoSize(1280, 1280)
+                    .setMaxVideoBitrate(2_500_000)
+                    .setForceHighestSupportedBitrate(false)
                     .build()
                 setAudioAttributes(
                     AudioAttributes
@@ -122,6 +134,7 @@ fun CanvasArtworkPlayer(
                 )
                 volume = 0f
                 repeatMode = Player.REPEAT_MODE_ONE
+                videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
                 playWhenReady = isPlaying
             }
         }
@@ -149,6 +162,12 @@ fun CanvasArtworkPlayer(
 
                 override fun onRenderedFirstFrame() {
                     isVideoReady = true
+                }
+
+                override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                    if (videoSize.width > 0 && videoSize.height > 0) {
+                        aspectRatioFrameLayout.setAspectRatio(videoSize.width.toFloat() / videoSize.height)
+                    }
                 }
             }
         exoPlayer.addListener(listener)
@@ -202,16 +221,14 @@ fun CanvasArtworkPlayer(
 
     AndroidView(
         factory = { viewContext ->
-            AspectRatioFrameLayout(viewContext).apply {
-                layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                
+            aspectRatioFrameLayout.apply {
+                if (childCount == 0) {
                 val textureView = TextureView(viewContext).apply {
                     layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
                 }
                 addView(textureView)
                 exoPlayer.setVideoTextureView(textureView)
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                }
             }
         },
         update = { view ->

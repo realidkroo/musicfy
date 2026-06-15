@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// SearchHistory.kt
+// this thing is for search history
 
 package com.example.musicfy.db.entities
 

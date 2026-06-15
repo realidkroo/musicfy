@@ -1,3 +1,6 @@
+// AppleMusicCanvasProvider.kt
+// this thing is for apple music canvas provider
+
 package com.example.musicfy.applecanvas
 
 import com.example.musicfy.canvas.CanvasArtwork

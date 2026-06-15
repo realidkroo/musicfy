@@ -1,3 +1,6 @@
+// GridRenderer.kt
+// this thing is part of grid renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

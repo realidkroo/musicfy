@@ -1,3 +1,6 @@
+// NextPage.kt
+// the file functioned as next page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

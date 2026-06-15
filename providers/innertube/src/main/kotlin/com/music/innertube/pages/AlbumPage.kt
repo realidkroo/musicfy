@@ -1,3 +1,6 @@
+// AlbumPage.kt
+// this thing is for album page
+
 package com.music.innertube.pages
 
 import com.music.innertube.models.Album

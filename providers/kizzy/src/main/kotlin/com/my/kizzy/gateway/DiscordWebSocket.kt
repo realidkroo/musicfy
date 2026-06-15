@@ -1,3 +1,6 @@
+// DiscordWebSocket.kt
+// what is this for you ask its for discord web socket ofc
+
 package com.my.kizzy.gateway
 
 import com.my.kizzy.gateway.entities.Heartbeat

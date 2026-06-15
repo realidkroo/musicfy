@@ -1,3 +1,6 @@
+// MonochromeApiCanvas.kt
+// what is this for you ask its for monochrome api canvas ofc
+
 package com.example.musicfy.canvas
 
 import io.ktor.client.HttpClient

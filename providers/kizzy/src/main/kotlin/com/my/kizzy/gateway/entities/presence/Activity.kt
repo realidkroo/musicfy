@@ -1,3 +1,6 @@
+// Activity.kt
+// the file functioned as activity
+
 package com.my.kizzy.gateway.entities.presence
 
 import kotlinx.serialization.SerialName

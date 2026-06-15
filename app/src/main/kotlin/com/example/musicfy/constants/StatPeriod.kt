@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// StatPeriod.kt
+// this thing is part of stat period
 
 package com.example.musicfy.constants
 

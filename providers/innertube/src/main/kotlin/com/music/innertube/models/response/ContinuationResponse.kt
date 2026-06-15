@@ -1,3 +1,6 @@
+// ContinuationResponse.kt
+// this thing is for continuation response
+
 package com.music.innertube.models.response
  
  import com.music.innertube.models.MusicShelfRenderer

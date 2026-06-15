@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// UtilExt.kt
+// this thing is part of util ext
 
 package com.example.musicfy.extensions
 

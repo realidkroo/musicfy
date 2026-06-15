@@ -1,3 +1,6 @@
+// AppleMusicPlayer.kt
+// this thing is for apple music player
+
 package com.example.musicfy.ui.player
 
 import androidx.compose.foundation.layout.Box

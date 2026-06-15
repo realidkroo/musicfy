@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// YouTubeAlbumRadio.kt
+// the file functioned as you tube album radio
 
 package com.example.musicfy.playback.queues
 

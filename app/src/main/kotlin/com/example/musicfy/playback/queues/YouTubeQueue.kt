@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// YouTubeQueue.kt
+// this thing is for you tube queue
 
 package com.example.musicfy.playback.queues
 

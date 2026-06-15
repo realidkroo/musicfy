@@ -1,3 +1,6 @@
+// MusicResponsiveHeaderRenderer.kt
+// this thing is part of music responsive header renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

@@ -1,3 +1,6 @@
+// ArtworkCache.kt
+// this thing is for artwork cache
+
 package com.my.kizzy.rpc
 
 import java.util.concurrent.ConcurrentHashMap

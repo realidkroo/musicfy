@@ -1,3 +1,6 @@
+// MusicShelfRenderer.kt
+// the file functioned as music shelf renderer
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

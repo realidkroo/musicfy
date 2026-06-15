@@ -1,3 +1,6 @@
+// BrowseBody.kt
+// this thing is part of browse body
+
 package com.music.innertube.models.body
 
 import com.music.innertube.models.Context

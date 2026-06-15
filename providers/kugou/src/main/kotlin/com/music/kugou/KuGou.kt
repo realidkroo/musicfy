@@ -1,3 +1,6 @@
+// KuGou.kt
+// what is this for you ask its for ku gou ofc
+
 package com.music.kugou
 
 import com.music.kugou.models.DownloadLyricsResponse

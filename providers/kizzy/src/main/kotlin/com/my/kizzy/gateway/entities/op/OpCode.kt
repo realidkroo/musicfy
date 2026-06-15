@@ -1,3 +1,6 @@
+// OpCode.kt
+// the file functioned as op code
+
 package com.my.kizzy.gateway.entities.op
 
 import kotlinx.serialization.Serializable

@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// YouTubePlaylistMenu.kt
+// the file functioned as you tube playlist menu
 
 package com.example.musicfy.ui.menu
 

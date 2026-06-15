@@ -1,3 +1,6 @@
+// AudioResampler.kt
+// the file functioned as audio resampler
+
 package com.example.musicfy.recognition
 
 import androidx.annotation.OptIn

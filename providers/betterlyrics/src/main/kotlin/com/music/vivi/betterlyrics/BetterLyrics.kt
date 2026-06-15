@@ -1,3 +1,6 @@
+// BetterLyrics.kt
+// the file functioned as better lyrics
+
 package com.example.musicfy.betterlyrics
 
 import com.example.musicfy.betterlyrics.models.TTMLResponse

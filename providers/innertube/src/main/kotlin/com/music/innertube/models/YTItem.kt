@@ -1,3 +1,6 @@
+// YTItem.kt
+// this thing is part of ytitem
+
 package com.music.innertube.models
 
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_ATV

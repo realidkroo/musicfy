@@ -1,3 +1,6 @@
+// CastOptionsProvider.kt
+// what is this for you ask its for cast options provider ofc
+
 package com.example.musicfy.cast
 
 /**

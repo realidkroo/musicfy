@@ -1,3 +1,6 @@
+// EqualizerService.kt
+// what is this for you ask its for equalizer service ofc
+
 package com.example.musicfy.eq
 
 

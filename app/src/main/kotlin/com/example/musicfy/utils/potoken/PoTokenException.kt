@@ -1,3 +1,6 @@
+// PoTokenException.kt
+// this thing is part of po token exception
+
 package com.example.musicfy.utils.potoken
 
 class PoTokenException(message: String) : Exception(message)

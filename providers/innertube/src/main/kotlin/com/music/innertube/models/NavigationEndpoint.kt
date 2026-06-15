@@ -1,3 +1,6 @@
+// NavigationEndpoint.kt
+// the file functioned as navigation endpoint
+
 package com.music.innertube.models
 
 import kotlinx.serialization.Serializable

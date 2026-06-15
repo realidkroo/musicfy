@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// CachePlaylistViewModel.kt
+// this thing is for cache playlist view model
 
 package com.example.musicfy.viewmodels
 

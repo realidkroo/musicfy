@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// FileExt.kt
+// this thing is for file ext
 
 package com.example.musicfy.extensions
 

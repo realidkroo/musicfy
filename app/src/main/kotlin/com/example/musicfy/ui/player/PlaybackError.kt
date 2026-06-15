@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// PlaybackError.kt
+// this thing is part of playback error
 
 package com.example.musicfy.ui.player
 

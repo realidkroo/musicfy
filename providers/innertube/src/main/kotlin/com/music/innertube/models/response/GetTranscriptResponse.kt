@@ -1,3 +1,6 @@
+// GetTranscriptResponse.kt
+// the file functioned as get transcript response
+
 package com.music.innertube.models.response
 
 import kotlinx.serialization.Serializable

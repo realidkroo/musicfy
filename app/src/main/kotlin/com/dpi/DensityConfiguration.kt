@@ -1,3 +1,6 @@
+// DensityConfiguration.kt
+// this thing is for density configuration
+
 package com.dpi
 
 import android.annotation.SuppressLint

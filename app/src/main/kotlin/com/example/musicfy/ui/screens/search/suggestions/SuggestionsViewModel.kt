@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// SuggestionsViewModel.kt
+// the file functioned as suggestions view model
 
 package com.example.musicfy.ui.screens.search.suggestions
 

@@ -1,3 +1,6 @@
+// PlayerBottomCards.kt
+// this thing is for player bottom cards
+
 package com.example.musicfy.ui.player
 
 import androidx.compose.foundation.background

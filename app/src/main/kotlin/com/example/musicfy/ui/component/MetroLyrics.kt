@@ -1,3 +1,6 @@
+// MetroLyrics.kt
+// this thing is for metro lyrics
+
 package com.example.musicfy.ui.component
 
 import android.graphics.BlurMaskFilter

@@ -1,3 +1,6 @@
+// MonochromeAlbumCanvas.kt
+// the file functioned as monochrome album canvas
+
 package com.example.musicfy.canvas
 
 import io.ktor.client.HttpClient

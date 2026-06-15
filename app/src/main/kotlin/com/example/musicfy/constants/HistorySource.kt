@@ -1,7 +1,5 @@
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- */
+// HistorySource.kt
+// this thing is part of history source
 
 package com.example.musicfy.constants
 

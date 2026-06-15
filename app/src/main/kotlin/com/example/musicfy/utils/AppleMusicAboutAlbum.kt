@@ -1,3 +1,6 @@
+// AppleMusicAboutAlbum.kt
+// this thing is part of apple music about album
+
 package com.example.musicfy.utils
 
 import io.ktor.client.HttpClient
