@@ -458,13 +458,15 @@ class HomeViewModel @Inject constructor(
         val keepListeningArtists = database.mostPlayedArtists(fromTimeStamp).first()
             .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }.shuffled().take(5)
         
-        // Find playlists that contain the most played songs
-        val mostPlayedSongsIds = keepListeningSongs.map { it.id }.toSet()
+        // Find playlists that contain the most played songs using a single batch query
+        val mostPlayedSongsIds = keepListeningSongs.map { it.id }
         val playlists = database.playlistsByUpdatedDateAsc().first()
-        val keepListeningPlaylists = playlists.filter { playlist ->
-            val playlistSongs = database.playlistSongs(playlist.id).first()
-            playlistSongs.any { it.song.id in mostPlayedSongsIds }
-        }.shuffled().take(3)
+        val matchingPlaylistIds = if (mostPlayedSongsIds.isNotEmpty()) {
+            database.playlistIdsContainingSongs(mostPlayedSongsIds).toSet()
+        } else emptySet()
+        val keepListeningPlaylists = playlists
+            .filter { it.id in matchingPlaylistIds }
+            .shuffled().take(3)
 
         keepListening.value = (keepListeningSongs + keepListeningAlbums + keepListeningArtists + keepListeningPlaylists).shuffled()
         

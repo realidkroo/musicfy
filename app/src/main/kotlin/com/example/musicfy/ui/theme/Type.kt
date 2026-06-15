@@ -14,9 +14,15 @@ import androidx.compose.ui.unit.sp
 import com.example.musicfy.R
 
 val InterFontFamily = FontFamily(
+    Font(R.font.inter_medium, FontWeight.Thin),
+    Font(R.font.inter_medium, FontWeight.ExtraLight),
+    Font(R.font.inter_medium, FontWeight.Light),
     Font(R.font.inter_medium, FontWeight.Normal),
     Font(R.font.inter_semibold, FontWeight.Medium),
-    Font(R.font.inter_bold, FontWeight.Bold)
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+    Font(R.font.inter_bold, FontWeight.Bold),
+    Font(R.font.inter_bold, FontWeight.ExtraBold),
+    Font(R.font.inter_bold, FontWeight.Black)
 )
 
 val AppTypography = Typography(

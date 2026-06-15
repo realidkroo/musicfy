@@ -84,6 +84,8 @@ constructor(
         val providers = resolveLyricsProviders()
         val scope = CoroutineScope(SupervisorJob())
         val deferred = scope.async {
+            var fallbackLyrics: LyricsWithProvider? = null
+
             for (provider in providers) {
                 if (provider.isEnabled(context)) {
                     try {
@@ -95,7 +97,16 @@ constructor(
                             mediaMetadata.album?.title,
                         )
                         result.onSuccess { lyrics ->
-                            return@async LyricsWithProvider(lyrics, provider.name)
+                            // Check if these lyrics have moving text patterns (e.g. word-by-word sync <MM:SS.mm>)
+                            val hasMovingLyrics = lyrics.contains("<") && lyrics.contains(">") && lyrics.contains(":")
+                            val currentLyricsWithProvider = LyricsWithProvider(lyrics, provider.name)
+
+                            if (hasMovingLyrics) {
+                                return@async currentLyricsWithProvider
+                            } else if (fallbackLyrics == null) {
+                                // Save the first successful (but non-moving) lyrics as fallback
+                                fallbackLyrics = currentLyricsWithProvider
+                            }
                         }.onFailure {
                             reportException(it)
                         }
@@ -105,7 +116,7 @@ constructor(
                     }
                 }
             }
-            return@async LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
+            return@async fallbackLyrics ?: LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         }
 
         val result = deferred.await()

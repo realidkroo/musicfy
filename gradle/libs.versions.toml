@@ -41,6 +41,7 @@ smoothCorner = "v1.0.0"
 lottie = "6.6.2"
 work = "2.10.0"
 coreSplashscreen = "1.2.0"
+haze = "1.5.3"
 
 
 [libraries]
@@ -77,6 +78,7 @@ appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat"
 
 coil = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
+coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
 ucrop = { module = "com.github.yalantis:ucrop", version.ref = "ucrop" }
 
 shimmer = { module = "com.valentinilk.shimmer:compose-shimmer", version.ref = "shimmer" }
@@ -132,6 +134,7 @@ smoothCorner = { module = "com.github.racra:smooth-corner-rect-android-compose",
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie" }
 work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 
 
 [plugins]

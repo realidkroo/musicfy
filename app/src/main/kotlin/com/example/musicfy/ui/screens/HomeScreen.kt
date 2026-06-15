@@ -260,7 +260,7 @@ fun CommunityPlaylistCard(
                     Column(modifier = Modifier.fillMaxSize()) {
                         Row(modifier = Modifier.weight(1f)) {
                             AsyncImage(
-                                model = item.songs.getOrNull(0)?.thumbnail?.resize(544, 544),
+                                model = item.songs.getOrNull(0)?.thumbnail?.resize(256, 256),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -268,7 +268,7 @@ fun CommunityPlaylistCard(
                                     .fillMaxSize()
                             )
                             AsyncImage(
-                                model = item.songs.getOrNull(1)?.thumbnail?.resize(544, 544),
+                                model = item.songs.getOrNull(1)?.thumbnail?.resize(256, 256),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -278,7 +278,7 @@ fun CommunityPlaylistCard(
                         }
                         Row(modifier = Modifier.weight(1f)) {
                             AsyncImage(
-                                model = item.songs.getOrNull(2)?.thumbnail?.resize(544, 544),
+                                model = item.songs.getOrNull(2)?.thumbnail?.resize(256, 256),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -286,7 +286,7 @@ fun CommunityPlaylistCard(
                                     .fillMaxSize()
                             )
                             AsyncImage(
-                                model = item.songs.getOrNull(3)?.thumbnail?.resize(544, 544),
+                                model = item.songs.getOrNull(3)?.thumbnail?.resize(256, 256),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -334,7 +334,7 @@ fun CommunityPlaylistCard(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         AsyncImage(
-                            model = song.thumbnail.resize(544, 544),
+                            model = song.thumbnail.resize(256, 256),
                             contentDescription = null,
                             modifier = Modifier
                                 .size(56.dp)
@@ -874,57 +874,44 @@ fun HomeScreen(
         )
     }
 
-    val homeSections = remember(
-        randomizeHomeOrder,
-        randomSeed,
-        speedDialItems,
-        quickPicks,
-        dailyDiscover,
-        keepListening,
-        accountPlaylists,
-        forgottenFavorites,
-        communityPlaylists,
-        similarRecommendations,
-        homePage?.sections,
-        explorePage?.moodAndGenres
-    ) {
-        val list = mutableListOf<HomeSection>()
+    val homeSections by remember {
+        derivedStateOf {
+            val list = mutableListOf<HomeSection>()
 
-        if (speedDialItems.isNotEmpty()) list.add(HomeSection.SpeedDial)
-        if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
-        if (keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
-        if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
-        if (dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
-        list.add(HomeSection.YourLibrary)
-        if (accountPlaylists?.isNotEmpty() == true || localPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
-        if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
+            if (speedDialItems.isNotEmpty()) list.add(HomeSection.SpeedDial)
+            if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
+            if (keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
+            if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
+            if (dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
+            list.add(HomeSection.YourLibrary)
+            if (accountPlaylists?.isNotEmpty() == true || localPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
+            if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
 
-        similarRecommendations?.indices?.forEach { i ->
-            list.add(HomeSection.SimilarRecommendation(i))
-        }
+            similarRecommendations?.indices?.forEach { i ->
+                list.add(HomeSection.SimilarRecommendation(i))
+            }
 
-        homePage?.sections?.indices?.forEach { i ->
-            list.add(HomeSection.HomePageSection(i))
-        }
+            homePage?.sections?.indices?.forEach { i ->
+                list.add(HomeSection.HomePageSection(i))
+            }
 
+            val defaultOrder = mapOf(
+                HomeSection.SpeedDial to 100, // Recently Played
+                HomeSection.QuickPicks to 90, // Most Played
+                HomeSection.KeepListening to 80, // History
+                HomeSection.YourLibrary to 70, // Your Library
+                HomeSection.AccountPlaylists to 60, // Your Playlists
+                HomeSection.DailyDiscover to 50,
+                HomeSection.ForgottenFavorites to 40,
+                HomeSection.FromTheCommunity to 30,
+            )
 
-
-        val defaultOrder = mapOf(
-            HomeSection.SpeedDial to 100, // Recently Played
-            HomeSection.QuickPicks to 90, // Most Played
-            HomeSection.KeepListening to 80, // History
-            HomeSection.YourLibrary to 70, // Your Library
-            HomeSection.AccountPlaylists to 60, // Your Playlists
-            HomeSection.DailyDiscover to 50,
-            HomeSection.ForgottenFavorites to 40,
-            HomeSection.FromTheCommunity to 30,
-        )
-
-        list.sortedByDescending { section ->
-            when(section) {
-                is HomeSection.SimilarRecommendation -> 30 - section.index
-                is HomeSection.HomePageSection -> 20 - section.index
-                else -> defaultOrder[section] ?: 0
+            list.sortedByDescending { section ->
+                when(section) {
+                    is HomeSection.SimilarRecommendation -> 30 - section.index
+                    is HomeSection.HomePageSection -> 20 - section.index
+                    else -> defaultOrder[section] ?: 0
+                }
             }
         }
     }
@@ -1280,7 +1267,10 @@ fun HomeScreen(
                                             }) * rows)
                                             
                                     ) {
-                                        items(keepListening) {
+                                        items(
+                                            items = keepListening,
+                                            key = { it.id }
+                                        ) {
                                             localGridItem(it)
                                         }
                                     }
@@ -1531,7 +1521,10 @@ fun HomeScreen(
                                             .asPaddingValues(),
                                         modifier = Modifier
                                     ) {
-                                        items(recommendation.items) { item ->
+                                        items(
+                                            items = recommendation.items,
+                                            key = { it.id }
+                                        ) { item ->
                                             ytGridItem(item)
                                         }
                                     }
@@ -1671,7 +1664,10 @@ fun HomeScreen(
                                                 .asPaddingValues(),
                                             modifier = Modifier
                                         ) {
-                                            items(sectionData.items) { item ->
+                                            items(
+                                                items = sectionData.items,
+                                                key = { it.id }
+                                            ) { item ->
                                                 ytGridItem(item)
                                             }
                                         }
@@ -1830,52 +1826,8 @@ fun HomeScreen(
                 }
             }
         } // End of Box wrapping LazyColumn
-
-            HideOnScrollFAB(
-                visible = allLocalItems.isNotEmpty() || allYtItems.isNotEmpty(),
-                lazyListState = lazylistState,
-                icon = R.drawable.shuffle,
-                onClick = {
-                    val local = when {
-                        allLocalItems.isNotEmpty() && allYtItems.isNotEmpty() -> Random.nextFloat() < 0.5
-                        allLocalItems.isNotEmpty() -> true
-                        else -> false
-                    }
-                    scope.launch(Dispatchers.Main) {
-                        if (local) {
-                            when (val luckyItem = allLocalItems.random()) {
-                                is Song -> playerConnection.playQueue(YouTubeQueue.radio(luckyItem.toMediaMetadata()))
-                                is Album -> {
-                                    val albumWithSongs = withContext(Dispatchers.IO) {
-                                        database.albumWithSongs(luckyItem.id).first()
-                                    }
-                                    albumWithSongs?.let {
-                                        playerConnection.playQueue(LocalAlbumRadio(it))
-                                    }
-                                }
-                                is Artist -> {}
-                                is Playlist -> {}
-                            }
-                        } else {
-                            when (val luckyItem = allYtItems.random()) {
-                                is SongItem -> playerConnection.playQueue(YouTubeQueue.radio(luckyItem.toMediaMetadata()))
-                                is AlbumItem -> playerConnection.playQueue(YouTubeAlbumRadio(luckyItem.playlistId))
-                                is ArtistItem -> luckyItem.radioEndpoint?.let {
-                                    playerConnection.playQueue(YouTubeQueue(it))
-                                }
-                                is PlaylistItem -> luckyItem.playEndpoint?.let {
-                                    playerConnection.playQueue(YouTubeQueue(it))
-                                }
-                            }
-                        }
-                    }
-                },
-                onRecognitionClick = {
-                    navController.navigate("recognition")
-                }
-            )
-        }
     }
+}
 }
 @Composable
 fun LibraryCard(

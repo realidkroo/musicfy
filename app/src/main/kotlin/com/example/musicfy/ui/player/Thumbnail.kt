@@ -16,6 +16,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -95,6 +96,7 @@ import com.example.musicfy.constants.SeekExtraSeconds
 import com.example.musicfy.constants.SwipeThumbnailKey
 import com.example.musicfy.constants.ThumbnailCornerRadiusKey
 import com.example.musicfy.constants.ThumbnailCornerRadius
+import com.example.musicfy.constants.UseNewPlayerDesignKey
 
 import com.example.musicfy.ui.component.CastButton
 import com.example.musicfy.utils.rememberEnumPreference
@@ -275,7 +277,7 @@ fun Thumbnail(
     modifier: Modifier = Modifier,
     isPlayerExpanded: () -> Boolean = { true },
     isLandscape: Boolean = false,
-
+    onMoreActionsClick: () -> Unit = {},
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -296,8 +298,9 @@ fun Thumbnail(
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.GRADIENT
+        defaultValue = PlayerBackgroundStyle.APPLE_MUSIC
     )
+    val useNewPlayerDesign by rememberPreference(UseNewPlayerDesignKey, defaultValue = true)
     val thumbnailCornerRadius by rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 3f)
     
     // Pre-calculate text color based on background style
@@ -422,14 +425,14 @@ fun Thumbnail(
                 verticalArrangement = if (isLandscape) Arrangement.Center else Arrangement.Top
             ) {
                 // Now Playing header - hide in landscape mode
-                if (!isLandscape) {
-                    ThumbnailHeader(
-                        queueTitle = queueTitle,
-                        albumTitle = mediaMetadata?.album?.title,
-                        textColor = textBackgroundColor
-                    )
-                }
-                
+                if (useNewPlayerDesign && !isLandscape) {
+            ThumbnailHeader(
+                queueTitle = queueTitle,
+                albumTitle = mediaMetadata?.album?.title,
+                textColor = if (playerBackground == PlayerBackgroundStyle.LIVE_MESH || playerBackground == PlayerBackgroundStyle.APPLE_MUSIC) Color.White else textBackgroundColor,
+                onMoreActionsClick = onMoreActionsClick,
+            )
+        }        
                 // Thumbnail content
                 BoxWithConstraints(
                     contentAlignment = Alignment.Center,
@@ -528,6 +531,7 @@ private fun ThumbnailHeader(
     queueTitle: String?,
     albumTitle: String?,
     textColor: Color,
+    onMoreActionsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -536,42 +540,35 @@ private fun ThumbnailHeader(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(horizontal = 48.dp)
-        ) {
-                Text(
-                    text = stringResource(R.string.now_playing),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = textColor
-                )
-            val playingFrom = albumTitle ?: queueTitle // Prioritize album title
-            androidx.compose.animation.AnimatedContent(
-                targetState = playingFrom,
-                transitionSpec = { androidx.compose.animation.fadeIn() togetherWith androidx.compose.animation.fadeOut() },
-                label = "NowPlayingAnimation"
-            ) { text ->
-                if (!text.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = textColor.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        modifier = Modifier.basicMarquee()
-                    )
-                }
-            }
-        }
-
-        CastButton(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(24.dp),
-            tintColor = textColor
+                .width(36.dp)
+                .height(5.dp)
+                .clip(RoundedCornerShape(2.5.dp))
+                .background(textColor.copy(alpha = 0.5f))
         )
+
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CastButton(
+                modifier = Modifier.size(24.dp),
+                tintColor = textColor
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Icon(
+                painter = painterResource(R.drawable.more_vert),
+                contentDescription = null,
+                tint = textColor,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable { onMoreActionsClick() }
+            )
+        }
     }
 }
 

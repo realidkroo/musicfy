@@ -419,7 +419,7 @@ object LyricsUtils {
             }
         }
         
-        return result.sorted()
+        return insertInstrumentalPauses(result.sorted())
     }
     
     /**
@@ -513,7 +513,7 @@ object LyricsUtils {
             }
             i++
         }
-        return result.sorted()
+        return insertInstrumentalPauses(result.sorted())
     }
     
     private fun parseWordTimestamps(data: String): List<WordTimestamp>? {
@@ -580,6 +580,41 @@ object LyricsUtils {
             }
         }
         return lines.lastIndex
+    }
+
+    private fun insertInstrumentalPauses(entries: List<LyricsEntry>): List<LyricsEntry> {
+        if (entries.isEmpty()) return entries
+        
+        val result = mutableListOf<LyricsEntry>()
+        val gapThresholdMs = 15000L // 15 seconds gap threshold
+        
+        // Check gap before first line
+        val firstEntry = entries.first()
+        if (firstEntry.time > gapThresholdMs) {
+            result.add(LyricsEntry(time = 0L, text = "•••", isBackground = false))
+        }
+        
+        for (i in 0 until entries.size - 1) {
+            val current = entries[i]
+            val next = entries[i + 1]
+            result.add(current)
+            
+            // Calculate when the current line roughly ends
+            val currentEndTime = if (!current.words.isNullOrEmpty()) {
+                (current.words.last().endTime * 1000).toLong()
+            } else {
+                current.time + 5000L // Assume 5 seconds for a standard line
+            }
+            
+            val gap = next.time - currentEndTime
+            if (gap > gapThresholdMs) {
+                // Insert instrumental pause after the current line ends
+                result.add(LyricsEntry(time = currentEndTime + 2000L, text = "•••", isBackground = false))
+            }
+        }
+        
+        result.add(entries.last())
+        return result
     }
 
     // TODO: Will be useful if we let the user pick the language, useless for now

@@ -38,6 +38,7 @@ import com.example.musicfy.ui.screens.search.OnlineSearchResult
 import com.example.musicfy.ui.screens.search.SearchScreen
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
+import com.example.musicfy.ui.screens.settings.SettingsScreen
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +66,14 @@ fun NavGraphBuilder.navigationBuilder(
             navController = navController,
             pureBlack = pureBlack
         )
+    }
+
+    composable("library") {
+        // Placeholder for Library screen
+    }
+
+    composable(Screens.Settings.route) {
+        SettingsScreen(navController = navController)
     }
 
     composable(

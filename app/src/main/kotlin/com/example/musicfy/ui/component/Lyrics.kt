@@ -249,7 +249,7 @@ fun Lyrics(
 
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.GRADIENT
+        defaultValue = PlayerBackgroundStyle.APPLE_MUSIC
     )
 
     val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
@@ -1193,7 +1193,10 @@ fun Lyrics(
 
                     // Determine alignment based on agent for multi-singer support
                     val agentAlignment = when {
-                        item.isBackground -> Alignment.CenterHorizontally // Background always centered
+                        item.isBackground -> when (lyricsTextPosition) {
+                            LyricsPosition.RIGHT -> Alignment.Start
+                            else -> Alignment.End
+                        }
                         item.agent == "v1" -> Alignment.Start // First vocalist - left
                         item.agent == "v2" -> Alignment.End // Second vocalist - right
                         item.agent == "v1000" -> Alignment.CenterHorizontally // Group/chorus - center
@@ -1205,7 +1208,10 @@ fun Lyrics(
                     }
                     
                     val agentTextAlign = when {
-                        item.isBackground -> TextAlign.Center
+                        item.isBackground -> when (lyricsTextPosition) {
+                            LyricsPosition.RIGHT -> TextAlign.Left
+                            else -> TextAlign.Right
+                        }
                         item.agent == "v1" -> TextAlign.Left
                         item.agent == "v2" -> TextAlign.Right
                         item.agent == "v1000" -> TextAlign.Center

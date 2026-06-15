@@ -149,7 +149,7 @@ import com.example.musicfy.constants.NavigationBarHeight
 import com.example.musicfy.constants.SlimNavBarHeight
 import com.example.musicfy.constants.SlimNavBarKey
 import com.example.musicfy.constants.StopMusicOnTaskClearKey
-import com.example.musicfy.constants.UseNewMiniPlayerDesignKey
+
 import com.example.musicfy.core.updater.checkForUpdate
 import com.example.musicfy.core.updater.getAutoUpdateCheckSetting
 import com.example.musicfy.core.updater.isNewerVersion
@@ -158,6 +158,8 @@ import com.example.musicfy.core.updater.getUpdateNotificationsSetting
 import com.example.musicfy.core.UpdateNotificationHelper
 import android.util.Log
 import androidx.compose.ui.platform.LocalContext
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 import com.example.musicfy.constants.PauseListenHistoryKey
 import com.example.musicfy.constants.PauseSearchHistoryKey
 import com.example.musicfy.constants.PureBlackKey
@@ -487,6 +489,7 @@ class MainActivity : ComponentActivity() {
                     .fillMaxSize()
                     .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
             ) {
+                val hazeState = remember { HazeState() }
                 val focusManager = LocalFocusManager.current
                 val density = LocalDensity.current
                 val configuration = LocalWindowInfo.current
@@ -505,7 +508,7 @@ class MainActivity : ComponentActivity() {
                         Screens.MainScreens
                 }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
-                val (useNewMiniPlayerDesign) = rememberPreference(UseNewMiniPlayerDesignKey, defaultValue = true)
+
                 val defaultOpenTab = remember {
                     dataStore[DefaultOpenTabKey].toEnum<NavigationTab>(defaultValue = NavigationTab.HOME)
                 }
@@ -584,7 +587,6 @@ class MainActivity : ComponentActivity() {
                     dismissedBound = 0.dp,
                     collapsedBound = bottomInset +
                         (if (!showRail && shouldShowNavigationBar) navPadding else 0.dp) +
-                        (if (useNewMiniPlayerDesign) MiniPlayerBottomSpacing else 0.dp) +
                         MiniPlayerHeight,
                     expandedBound = maxHeight,
                 )
@@ -752,6 +754,7 @@ class MainActivity : ComponentActivity() {
                     LocalDatabase provides database,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
                     LocalPlayerConnection provides playerConnection,
+                    LocalHazeState provides hazeState,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
                     LocalDownloadUtil provides downloadUtil,
                     LocalShimmerTheme provides ShimmerTheme,
@@ -892,19 +895,6 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             }
                                     )
-
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .align(Alignment.BottomCenter)
-                                            .height(bottomInsetDp)
-                                            // Use graphicsLayer for background color changes
-                                            .graphicsLayer {
-                                                val progress = playerBottomSheetState.progress
-                                                alpha = if (progress > 0f || (useNewMiniPlayerDesign && !shouldShowNavigationBar)) 0f else 1f
-                                            }
-                                            .background(baseBg)
-                                    )
                                 }
                             } else {
                                 if (currentRoute != "wrapped" && currentRoute != "update" && currentRoute != "listen_together/chat") {
@@ -915,18 +905,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
 
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .align(Alignment.BottomCenter)
-                                        .height(bottomInsetDp)
-                                        // Use graphicsLayer for background color changes
-                                        .graphicsLayer {
-                                            val progress = playerBottomSheetState.progress
-                                            alpha = if (progress > 0f || (useNewMiniPlayerDesign && !shouldShowNavigationBar)) 0f else 1f
-                                        }
-                                        .background(baseBg)
-                                )
+
                             }
                         },
                         modifier = Modifier
@@ -1039,7 +1018,9 @@ class MainActivity : ComponentActivity() {
                                         else
                                             slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                     },
-                                    modifier = Modifier.nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                                    modifier = Modifier
+                                        .haze(state = hazeState)
+                                        .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
                                 ) {
                                     navigationBuilder(
                                         navController = navController,
@@ -1197,6 +1178,7 @@ class MainActivity : ComponentActivity() {
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
 val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
+val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
 val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }

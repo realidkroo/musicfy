@@ -13,26 +13,40 @@ import com.example.musicfy.R
 @Immutable
 sealed class Screens(
     @StringRes val titleId: Int,
-    @DrawableRes val iconIdInactive: Int,
-    @DrawableRes val iconIdActive: Int,
+    val iconIdInactive: Int,
+    val iconIdActive: Int,
     val route: String,
 ) {
     object Home : Screens(
         titleId = R.string.home,
-        iconIdInactive = R.drawable.home_outlined,
-        iconIdActive = R.drawable.home_filled,
+        iconIdInactive = R.raw.home,
+        iconIdActive = R.raw.home_filled,
         route = "home"
     )
 
     object Search : Screens(
         titleId = R.string.search,
-        iconIdInactive = R.drawable.search,
-        iconIdActive = R.drawable.search,
+        iconIdInactive = R.raw.search,
+        iconIdActive = R.raw.search_filled,
         route = "search_input"
     )
 
+    object Library : Screens(
+        titleId = R.string.your_library,
+        iconIdInactive = R.raw.library_music_outlined,
+        iconIdActive = R.raw.library_music_filled,
+        route = "library"
+    )
+
+    object Settings : Screens(
+        titleId = R.string.settings,
+        iconIdInactive = R.drawable.settings,
+        iconIdActive = R.drawable.settings,
+        route = "settings"
+    )
+
     companion object {
-        val MainScreens = listOf(Home, Search)
+        val MainScreens = listOf(Home, Search, Library, Settings)
     }
 }
 

@@ -208,9 +208,15 @@ fun HeroCarousel(
                                     Color.Transparent,
                                     Color.Black.copy(alpha = 0.7f),
                                     Color.Black // completely black at the bottom to blend with background
-                                ),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY
+                                )
+                            )
+                        )
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                0.0f to Color.Black.copy(alpha = 0.5f),
+                                0.1f to Color.Transparent,
+                                0.9f to Color.Transparent,
+                                1.0f to Color.Black.copy(alpha = 0.5f)
                             )
                         )
                 )
