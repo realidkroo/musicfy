@@ -123,7 +123,6 @@ import com.example.musicfy.constants.PureBlackMiniPlayerKey
 import com.example.musicfy.constants.SwipeSensitivityKey
 import com.example.musicfy.constants.SwipeThumbnailKey
 import com.example.musicfy.constants.ThumbnailCornerRadius
-import com.example.musicfy.constants.UseNewMiniPlayerDesignKey
 import com.example.musicfy.db.entities.ArtistEntity
 
 import com.example.musicfy.models.MediaMetadata
@@ -143,16 +142,9 @@ import com.example.musicfy.core.isBluetoothHeadphoneConnected
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Speaker
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
-import kotlin.math.roundToInt
 import com.example.musicfy.ui.component.Icon as MIcon
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -184,28 +176,16 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     isTransparent: Boolean = false,
 ) {
-    val useNewMiniPlayerDesign by rememberPreference(UseNewMiniPlayerDesignKey, true)
-    
     // Create stable progress state - doesn't cause recomposition on position changes
     val progressState = remember { ProgressState(positionState, durationState) }
 
-    if (useNewMiniPlayerDesign) {
-        NewMiniPlayer(
-            positionState = positionState,
-            durationState = durationState,
-            progressState = progressState,
-            modifier = modifier,
-            isTransparent = isTransparent
-        )
-    } else {
-        LegacyMiniPlayer(
-            positionState = positionState,
-            durationState = durationState,
-            progressState = progressState,
-            modifier = modifier,
-            isTransparent = isTransparent
-        )
-    }
+    NewMiniPlayer(
+        positionState = positionState,
+        durationState = durationState,
+        progressState = progressState,
+        modifier = modifier,
+        isTransparent = isTransparent
+    )
 }
 
 // ============================================================================

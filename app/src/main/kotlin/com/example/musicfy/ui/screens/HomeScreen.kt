@@ -881,7 +881,6 @@ fun HomeScreen(
             if (keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
             if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
             if (dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
-            list.add(HomeSection.YourLibrary)
             if (accountPlaylists?.isNotEmpty() == true || localPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
             if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
 
@@ -897,7 +896,6 @@ fun HomeScreen(
                 HomeSection.SpeedDial to 100, // Recently Played
                 HomeSection.QuickPicks to 90, // Most Played
                 HomeSection.KeepListening to 80, // History
-                HomeSection.YourLibrary to 70, // Your Library
                 HomeSection.AccountPlaylists to 60, // Your Playlists
                 HomeSection.DailyDiscover to 50,
                 HomeSection.ForgottenFavorites to 40,

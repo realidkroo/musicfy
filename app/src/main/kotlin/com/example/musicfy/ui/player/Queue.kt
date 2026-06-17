@@ -118,7 +118,6 @@ import com.example.musicfy.constants.ListItemHeight
 import com.example.musicfy.constants.PlayerBackgroundStyle
 import com.example.musicfy.constants.QueueEditLockKey
 import com.example.musicfy.constants.ShowCommentButtonKey
-import com.example.musicfy.constants.UseNewPlayerDesignKey
 import com.example.musicfy.extensions.metadata
 import com.example.musicfy.extensions.move
 import com.example.musicfy.extensions.toggleRepeatMode
@@ -272,10 +271,7 @@ fun Queue(
 
     var locked by rememberPreference(QueueEditLockKey, defaultValue = true)
 
-    val (useNewPlayerDesign, onUseNewPlayerDesignChange) = rememberPreference(
-        UseNewPlayerDesignKey,
-        defaultValue = true
-    )
+    val useNewPlayerDesign = true
     val (showCommentButton) = rememberPreference(
         ShowCommentButtonKey,
         defaultValue = true
@@ -779,17 +775,35 @@ fun Queue(
                             .weight(1f)
                             .height(56.dp),
                     ) {
-                        Icon(
-                            painter = painterResource(
-                                when (repeatMode) {
-                                    Player.REPEAT_MODE_ALL -> R.drawable.repeat
-                                    Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
-                                    else -> R.drawable.repeat
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.repeat),
+                                contentDescription = null,
+                                modifier = Modifier.size(23.dp)
+                            )
+                            if (repeatMode == Player.REPEAT_MODE_ONE) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .size(11.dp)
+                                        .clip(CircleShape)
+                                        .background(LocalContentColor.current)
+                                ) {
+                                    Text(
+                                        text = "1",
+                                        color = MaterialTheme.colorScheme.surface,
+                                        fontSize = 7.sp,
+                                        lineHeight = 7.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                                        textAlign = TextAlign.Center
+                                    )
                                 }
-                            ),
-                            contentDescription = null,
-                            modifier = Modifier.size(22.dp)
-                        )
+                            }
+                        }
                         Spacer(Modifier.size(ToggleButtonDefaults.IconSpacing))
                         Text(
                             text = stringResource(R.string.repeat),

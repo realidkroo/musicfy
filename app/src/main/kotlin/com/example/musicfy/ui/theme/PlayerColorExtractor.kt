@@ -70,6 +70,39 @@ object PlayerColorExtractor {
         )
     }
 
+    suspend fun extractAppleMusicColors(
+        palette: Palette,
+        fallbackColor: Int
+    ): List<Color> = withContext(Dispatchers.Default) {
+        val ranked = palette.swatches
+            .sortedWith(
+                compareByDescending<Palette.Swatch> { it.population }
+                    .thenBy { saturationOf(Color(it.rgb)) }
+            )
+            .map { Color(it.rgb).softenedForPlayerBackground() }
+            .distinctBy { it.toArgb() }
+
+        val dominant = palette.dominantSwatch?.rgb?.let { Color(it) }
+            ?: Color(palette.getDominantColor(fallbackColor))
+        val muted = palette.mutedSwatch?.rgb?.let { Color(it) }
+        val darkMuted = palette.darkMutedSwatch?.rgb?.let { Color(it) }
+        val lightMuted = palette.lightMutedSwatch?.rgb?.let { Color(it) }
+
+        val base = listOfNotNull(
+            dominant,
+            muted,
+            darkMuted,
+            lightMuted
+        ).map { it.softenedForPlayerBackground() }
+
+        (base + ranked)
+            .ifEmpty { listOf(Color(fallbackColor)) }
+            .let { colors ->
+                val expanded = if (colors.size >= 6) colors else List(6) { index -> colors[index % colors.size] }
+                expanded.take(6)
+            }
+    }
+
     /**
      * Determines if a color is vibrant enough for use in player UI
      * 
@@ -105,6 +138,20 @@ object PlayerColorExtractor {
         // Adjust brightness for better visibility
         hsv[2] = (hsv[2] * 0.9f).coerceIn(0.4f, 0.85f)
         
+        return Color(android.graphics.Color.HSVToColor(hsv))
+    }
+
+    private fun saturationOf(color: Color): Float {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+        return hsv[1]
+    }
+
+    private fun Color.softenedForPlayerBackground(): Color {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(toArgb(), hsv)
+        hsv[1] = (hsv[1] * 0.52f).coerceIn(0.04f, 0.42f)
+        hsv[2] = hsv[2].coerceIn(0.20f, 0.70f)
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
