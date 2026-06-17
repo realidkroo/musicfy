@@ -10,6 +10,7 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.utils.reportException
+import com.example.musicfy.utils.ArtistImageResolver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -68,11 +69,20 @@ constructor(
                         albumArtists.firstOrNull()?.id?.let { artistId ->
                             viewModelScope.launch(Dispatchers.IO) {
                                 val artistEntity = database.getArtistById(artistId)
-                                if (artistEntity?.thumbnailUrl == null) {
+                                if (artistEntity != null && artistEntity.thumbnailUrl == null) {
+                                    val preferredThumbnailUrl = ArtistImageResolver.resolveThumbnail(artistEntity)
                                     YouTube.artist(artistId).onSuccess { artistPage ->
                                         database.query {
                                             getArtistById(artistId)?.let { currentArtist ->
-                                                update(currentArtist, artistPage)
+                                                update(currentArtist, artistPage, preferredThumbnailUrl)
+                                            }
+                                        }
+                                    }.onFailure {
+                                        if (preferredThumbnailUrl != null) {
+                                            database.query {
+                                                getArtistById(artistId)?.let { currentArtist ->
+                                                    update(currentArtist.copy(thumbnailUrl = preferredThumbnailUrl))
+                                                }
                                             }
                                         }
                                     }

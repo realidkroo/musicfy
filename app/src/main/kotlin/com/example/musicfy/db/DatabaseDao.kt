@@ -1477,12 +1477,15 @@ interface DatabaseDao {
     @Transaction
     fun update(
         artist: ArtistEntity,
-        artistPage: ArtistPage
+        artistPage: ArtistPage,
+        preferredThumbnailUrl: String? = null,
     ) {
         update(
             artist.copy(
                 name = artistPage.artist.title,
-                thumbnailUrl = artistPage.artist.thumbnail?.resize(544, 544),
+                thumbnailUrl = preferredThumbnailUrl
+                    ?: artistPage.artist.thumbnail?.resize(544, 544)
+                    ?: artist.thumbnailUrl,
                 lastUpdateTime = LocalDateTime.now()
             )
         )

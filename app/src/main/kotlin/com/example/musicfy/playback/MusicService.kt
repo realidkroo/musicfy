@@ -127,6 +127,7 @@ import com.example.musicfy.constants.PreventDuplicateTracksInQueueKey
 import com.example.musicfy.constants.SimilarContent
 import com.example.musicfy.constants.SkipSilenceInstantKey
 import com.example.musicfy.constants.SkipSilenceKey
+import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
 import com.example.musicfy.constants.IpVersionKey
 import com.music.innertube.models.IpVersion
 import okhttp3.Dns
@@ -2992,6 +2993,10 @@ class MusicService :
     override fun onBind(intent: Intent?) = super.onBind(intent) ?: binder
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        if (dataStore.get(StopPlaybackOnTaskRemovedKey, false)) {
+            player.stop()
+            stopSelf()
+        }
         super.onTaskRemoved(rootIntent)
     }
 

@@ -165,6 +165,7 @@ import com.example.musicfy.LocalDownloadUtil
 
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
+import com.example.musicfy.constants.AppleMusicDarkChromeKey
 import com.example.musicfy.constants.AudioQuality
 import com.example.musicfy.constants.AudioQualityKey
 import com.example.musicfy.constants.CropAlbumArtKey
@@ -218,6 +219,7 @@ import com.example.musicfy.extensions.metadata
 import com.example.musicfy.lyrics.LyricsUtils.parseLyrics
 import com.example.musicfy.lyrics.LyricsUtils.findCurrentLineIndex
 import com.example.musicfy.utils.makeTimeString
+import com.example.musicfy.utils.ArtistImageResolver
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import dagger.hilt.android.EntryPointAccessors
@@ -375,6 +377,33 @@ fun BottomSheetPlayer(
         AudioQualityKey,
         defaultValue = AudioQuality.AUTO
     )
+    val (appleMusicDarkChrome) = rememberPreference(
+        AppleMusicDarkChromeKey,
+        defaultValue = false
+    )
+
+    LaunchedEffect(currentSong?.song?.id) {
+        val missingArtists = currentSong
+            ?.artists
+            ?.filter { it.thumbnailUrl.isNullOrBlank() && it.name.isNotBlank() }
+            ?.take(2)
+            .orEmpty()
+        if (missingArtists.isEmpty()) return@LaunchedEffect
+
+        withContext(Dispatchers.IO) {
+            missingArtists.forEach { artist ->
+                val thumbnailUrl = ArtistImageResolver.resolveThumbnail(artist) ?: return@forEach
+                database.query {
+                    update(
+                        artist.copy(
+                            thumbnailUrl = thumbnailUrl,
+                            lastUpdateTime = java.time.LocalDateTime.now()
+                        )
+                    )
+                }
+            }
+        }
+    }
 
     LaunchedEffect(mediaMetadata?.id, currentLyrics) {
         val metadata = mediaMetadata ?: return@LaunchedEffect
@@ -582,13 +611,24 @@ fun BottomSheetPlayer(
         }
     }
 
+    val useDarkAppleMusicChrome = remember(playerBackground, gradientColors, appleMusicDarkChrome) {
+        if (!appleMusicDarkChrome || playerBackground != PlayerBackgroundStyle.APPLE_MUSIC || gradientColors.isEmpty()) {
+            false
+        } else {
+            gradientColors
+                .take(4)
+                .map { (it.red * 0.299f) + (it.green * 0.587f) + (it.blue * 0.114f) }
+                .average() > 0.62
+        }
+    }
+
     val TextBackgroundColor by animateColorAsState(
         targetValue = when (playerBackground) {
             PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.onBackground
             PlayerBackgroundStyle.BLUR -> Color.White
             PlayerBackgroundStyle.GRADIENT -> Color.White
             PlayerBackgroundStyle.GLOW_ANIMATED -> Color.White
-            PlayerBackgroundStyle.APPLE_MUSIC -> Color.White
+            PlayerBackgroundStyle.APPLE_MUSIC -> if (useDarkAppleMusicChrome) Color(0xFF171717) else Color.White
             PlayerBackgroundStyle.LIVE_MESH -> Color.White
         },
         label = "TextBackgroundColor"
@@ -600,7 +640,7 @@ fun BottomSheetPlayer(
             PlayerBackgroundStyle.BLUR -> Color.Black
             PlayerBackgroundStyle.GRADIENT -> Color.Black
             PlayerBackgroundStyle.GLOW_ANIMATED -> Color.Black
-            PlayerBackgroundStyle.APPLE_MUSIC -> Color.Black
+            PlayerBackgroundStyle.APPLE_MUSIC -> if (useDarkAppleMusicChrome) Color.White else Color.Black
             PlayerBackgroundStyle.LIVE_MESH -> Color.Black
         },
         label = "icBackgroundColor"
@@ -863,8 +903,11 @@ fun BottomSheetPlayer(
     }
 
     // Cache parsed lyrics lines — only re-parses when lyrics entity changes
-    val parsedLyricsLines = remember(currentLyrics) {
-        val lyricsText = currentLyrics?.lyrics?.trim()
+    val parsedLyricsLines = remember(currentLyrics, mediaMetadata?.id) {
+        val lyricsText = currentLyrics
+            ?.takeIf { it.id == mediaMetadata?.id }
+            ?.lyrics
+            ?.trim()
         if (lyricsText != null && lyricsText.startsWith("[")) {
             try { parseLyrics(lyricsText) } catch (_: Exception) { emptyList() }
         } else emptyList()
@@ -894,7 +937,7 @@ fun BottomSheetPlayer(
     LaunchedEffect(isPlaying, isCasting) {
         if (!isCasting && isPlaying) {
             while (isActive) {
-                delay(100) // Update more frequently for smoother progress bar
+                delay(if (state.isExpanded) 100 else 250)
                 if (sliderPosition == null) { // Only update if user isn't dragging
                     position = playerConnection.player.currentPosition
                     duration = playerConnection.player.duration
@@ -944,6 +987,9 @@ fun BottomSheetPlayer(
     }
 
     val backgroundAlpha = state.progress.coerceIn(0f, 1f)
+    val renderHeavyPlayerEffects by remember {
+        derivedStateOf { state.progress > 0.92f || state.isExpanded }
+    }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
@@ -959,7 +1005,26 @@ fun BottomSheetPlayer(
                     .fillMaxSize()
                     .background(bottomSheetBackgroundColor)
             ) {
-                when (playerBackground) {
+                if (!renderHeavyPlayerEffects && playerBackground != PlayerBackgroundStyle.DEFAULT) {
+                    val colors = gradientColors.ifEmpty {
+                        listOf(
+                            MaterialTheme.colorScheme.surfaceContainer,
+                            MaterialTheme.colorScheme.surface
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        colors.first().copy(alpha = 0.55f),
+                                        bottomSheetBackgroundColor
+                                    )
+                                )
+                            )
+                    )
+                } else when (playerBackground) {
                     PlayerBackgroundStyle.BLUR -> {
                         AnimatedContent(
                             targetState = mediaMetadata?.thumbnailUrl,
@@ -1427,6 +1492,7 @@ fun BottomSheetPlayer(
                 animationSpec = tween(durationMillis = 90, easing = LinearEasing),
                 label = "playPauseRoundness",
             )
+            val newPlayerHeaderLift = if (useNewPlayerDesign) (-20).dp else 0.dp
 
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1434,7 +1500,8 @@ fun BottomSheetPlayer(
                 modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = PlayerHorizontalPadding),
+                    .padding(horizontal = PlayerHorizontalPadding)
+                    .offset(y = newPlayerHeaderLift),
             ) {
                 AnimatedContent(
                     targetState = showInlineLyrics,
@@ -1876,6 +1943,7 @@ fun BottomSheetPlayer(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(28.dp)
+                        .offset(y = newPlayerHeaderLift)
                 ) {
                     Slider(
                         value = (sliderPosition ?: effectivePosition).toFloat(),
@@ -2070,7 +2138,8 @@ fun BottomSheetPlayer(
                 modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = PlayerHorizontalPadding + 4.dp),
+                    .padding(horizontal = PlayerHorizontalPadding + 4.dp)
+                    .offset(y = newPlayerHeaderLift),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -2573,7 +2642,11 @@ fun BottomSheetPlayer(
             PlayerBackgroundStyle.APPLE_MUSIC,
             PlayerBackgroundStyle.GRADIENT,
             PlayerBackgroundStyle.GLOW_ANIMATED -> {
-                Color.Black.copy(alpha = 0.15f)
+                if (useDarkAppleMusicChrome) {
+                    Color.White.copy(alpha = 0.28f)
+                } else {
+                    Color.White.copy(alpha = 0.08f)
+                }
             }
             PlayerBackgroundStyle.LIVE_MESH -> Color(0xFF303035)
             else -> MaterialTheme.colorScheme.surfaceContainerHighest
@@ -2732,7 +2805,7 @@ fun BottomSheetPlayer(
                         )
                     }
 
-                    Spacer(Modifier.height(if (useNewPlayerDesign) 16.dp else 8.dp))
+                    Spacer(Modifier.height(if (useNewPlayerDesign) 0.dp else 8.dp))
                 }
             }
         }
@@ -3117,6 +3190,7 @@ private fun AppleMusicWarpBackground(
         (colors.ifEmpty { fallbackColors })
             .filter { it.alpha > 0f }
             .ifEmpty { listOf(Color(0xFF5F6872), Color(0xFF2D3238), Color(0xFF8A7668)) }
+            .map { it.towardsWhite(0.08f) }
             .let { palette ->
                 if (palette.size >= 6) palette else List(6) { index -> palette[index % palette.size] }
             }
@@ -3155,7 +3229,7 @@ private fun AppleMusicWarpBackground(
                 val width = size.width
                 val height = size.height
                 val longestSide = max(width, height)
-                val base = colorAt(0).towardsBlack(0.36f)
+                val base = colorAt(0).towardsWhite(0.06f)
                 val c1 = colorAt(1)
                 val c2 = colorAt(2, 0.08f)
                 val c3 = colorAt(3, 0.16f)
@@ -3163,9 +3237,9 @@ private fun AppleMusicWarpBackground(
                 val c5 = colorAt(5, 0.32f)
 
                 val baseBrush = Brush.verticalGradient(
-                    0f to c1.towardsWhite(0.10f),
+                    0f to c1.towardsWhite(0.22f),
                     0.42f to base,
-                    1f to c2.towardsBlack(0.50f)
+                    1f to c2.towardsBlack(0.18f)
                 )
                 val glowTop = Brush.radialGradient(
                     colors = listOf(
@@ -3205,8 +3279,8 @@ private fun AppleMusicWarpBackground(
                 )
                 val deepField = Brush.radialGradient(
                     colors = listOf(
-                        c4.towardsBlack(0.22f).copy(alpha = 0.62f),
-                        c5.towardsBlack(0.40f).copy(alpha = 0.34f),
+                        c4.towardsWhite(0.10f).copy(alpha = 0.56f),
+                        c5.towardsBlack(0.16f).copy(alpha = 0.26f),
                         Color.Transparent
                     ),
                     center = Offset(
@@ -3216,10 +3290,10 @@ private fun AppleMusicWarpBackground(
                     radius = longestSide * wave(0.50f, 0.94f, 0.87f, 0.56f)
                 )
                 val milkyWash = Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = 0.11f),
-                    0.38f to Color.White.copy(alpha = 0.04f),
-                    0.70f to Color.Black.copy(alpha = 0.05f),
-                    1f to Color.Black.copy(alpha = 0.16f)
+                    0f to Color.White.copy(alpha = 0.18f),
+                    0.38f to Color.White.copy(alpha = 0.08f),
+                    0.70f to Color.White.copy(alpha = 0.02f),
+                    1f to Color.Black.copy(alpha = 0.06f)
                 )
 
                 onDrawBehind {

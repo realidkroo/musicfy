@@ -45,6 +45,7 @@ import com.example.musicfy.extensions.filterVideoSongs
 import com.example.musicfy.extensions.filterYoutubeShorts
 import com.example.musicfy.extensions.toEnum
 import com.example.musicfy.playback.DownloadUtil
+import com.example.musicfy.utils.ArtistImageResolver
 import com.example.musicfy.utils.SyncUtils
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.reportException
@@ -148,9 +149,21 @@ constructor(
                             LocalDateTime.now()
                         ) > Duration.ofDays(10)
                     }.forEach { artist ->
+                        val preferredThumbnailUrl = ArtistImageResolver.resolveThumbnail(artist)
                         YouTube.artist(artist.id).onSuccess { artistPage ->
                             database.query {
-                                update(artist, artistPage)
+                                update(artist, artistPage, preferredThumbnailUrl)
+                            }
+                        }.onFailure {
+                            if (preferredThumbnailUrl != null) {
+                                database.query {
+                                    update(
+                                        artist.copy(
+                                            thumbnailUrl = preferredThumbnailUrl,
+                                            lastUpdateTime = LocalDateTime.now()
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -363,9 +376,21 @@ constructor(
                                     LocalDateTime.now(),
                                 ) > Duration.ofDays(10)
                     }.forEach { artist ->
+                        val preferredThumbnailUrl = ArtistImageResolver.resolveThumbnail(artist)
                         YouTube.artist(artist.id).onSuccess { artistPage ->
                             database.query {
-                                update(artist, artistPage)
+                                update(artist, artistPage, preferredThumbnailUrl)
+                            }
+                        }.onFailure {
+                            if (preferredThumbnailUrl != null) {
+                                database.query {
+                                    update(
+                                        artist.copy(
+                                            thumbnailUrl = preferredThumbnailUrl,
+                                            lastUpdateTime = LocalDateTime.now(),
+                                        )
+                                    )
+                                }
                             }
                         }
                     }

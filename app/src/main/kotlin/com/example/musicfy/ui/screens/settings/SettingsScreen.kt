@@ -18,7 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import com.example.musicfy.R
+import com.example.musicfy.constants.AppleMusicDarkChromeKey
 import com.example.musicfy.constants.LocalSongAutoMetadataKey
+import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
 import com.example.musicfy.constants.UseNewPlayerDesignKey
 import com.example.musicfy.ui.component.Material3SettingsGroup
 import com.example.musicfy.ui.component.Material3SettingsItem
@@ -40,6 +42,14 @@ fun SettingsScreen(
     val (localSongAutoMetadata, onLocalSongAutoMetadataChange) = rememberPreference(
         LocalSongAutoMetadataKey,
         defaultValue = true
+    )
+    val (stopPlaybackOnTaskRemoved, onStopPlaybackOnTaskRemovedChange) = rememberPreference(
+        StopPlaybackOnTaskRemovedKey,
+        defaultValue = false
+    )
+    val (appleMusicDarkChrome, onAppleMusicDarkChromeChange) = rememberPreference(
+        AppleMusicDarkChromeKey,
+        defaultValue = false
     )
 
     Scaffold(
@@ -91,6 +101,30 @@ fun SettingsScreen(
                             androidx.compose.material3.Switch(
                                 checked = localSongAutoMetadata,
                                 onCheckedChange = onLocalSongAutoMetadataChange
+                            )
+                        }
+                    ),
+                    Material3SettingsItem(
+                        title = { Text("Dark Player Text On Light Art") },
+                        description = { Text("Use dark controls on bright Apple Music style backgrounds") },
+                        icon = painterResource(R.drawable.contrast),
+                        onClick = { onAppleMusicDarkChromeChange(!appleMusicDarkChrome) },
+                        trailingContent = {
+                            androidx.compose.material3.Switch(
+                                checked = appleMusicDarkChrome,
+                                onCheckedChange = onAppleMusicDarkChromeChange
+                            )
+                        }
+                    ),
+                    Material3SettingsItem(
+                        title = { Text("Stop Playback When Closed") },
+                        description = { Text("Stop the current song when the app is swiped away from recents") },
+                        icon = painterResource(R.drawable.close),
+                        onClick = { onStopPlaybackOnTaskRemovedChange(!stopPlaybackOnTaskRemoved) },
+                        trailingContent = {
+                            androidx.compose.material3.Switch(
+                                checked = stopPlaybackOnTaskRemoved,
+                                onCheckedChange = onStopPlaybackOnTaskRemovedChange
                             )
                         }
                     )

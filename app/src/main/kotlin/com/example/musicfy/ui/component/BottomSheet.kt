@@ -315,16 +315,16 @@ fun BottomSheet(
                             )
                         }
 
-                        // Full content fixed to expandedBound height so it doesn't squish
-                        if (!state.isCollapsed) {
+                        // Full content is delayed slightly so the mini-to-player morph gets
+                        // the first frames without composing the whole expanded player.
+                        if (!state.isCollapsed && progress > 0.32f) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .requiredHeight(state.expandedBound)
                                     .align(androidx.compose.ui.Alignment.BottomCenter)
                                     .graphicsLayer {
-                                        // Fades in starting after 20%
-                                        alpha = ((progress - 0.2f) / 0.8f).coerceIn(0f, 1f)
+                                        alpha = ((progress - 0.32f) / 0.68f).coerceIn(0f, 1f)
                                         // Slide up from bottom like iOS
                                         translationY = (1f - progress) * 200.dp.toPx()
                                     }
