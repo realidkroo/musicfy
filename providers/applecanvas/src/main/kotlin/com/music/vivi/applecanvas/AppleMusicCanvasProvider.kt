@@ -14,6 +14,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
@@ -23,6 +24,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
+import java.util.Base64
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
@@ -55,10 +57,78 @@ object AppleMusicCanvasProvider {
 
     // Public read-only JWT used by the Apple Music web player for unauthenticated catalog reads.
     private const val APPLE_MUSIC_TOKEN =
-        "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IldlYlBsYXlLaWQifQ" +
-        ".eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzc0NDU2MzgyLCJleHAiOjE3ODE3" +
-        "MTM5ODIsInJvb3RfaHR0cHNfb3JpZ2luIjpbImFwcGxlLmNvbSJdfQ" +
-        ".4n8qYF4qa18sL1E0G9A3qX35cD8wQ-IJcS9Bh8ZT8JV_yLBtVq46B-9-2ZS3EvWHuw3yK9BYFYAhAdTaDm38vQ"
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiIsImtpZCI6IldlYlBsYXlLaWQifQ" +
+        ".eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzgxMDMyODU1LCJleHAiOjE3ODQw" +
+        "NTY4NTUsInJvb3RfaHR0cHNfb3JpZ2luIjpbImFwcGxlLmNvbSJdfQ" +
+        ".fiMFcJWkfSlxKP9NVA0UW9CbItD1Rge0SISuepz203XcpU762OqdCpU9M-YkmtKkjRmaIWtjsfGgqZPrlMonpA"
+
+    private var cachedToken: String? = null
+    private var tokenExpiryMs: Long = 0L
+
+    private suspend fun getOrFetchToken(): String {
+        val now = System.currentTimeMillis()
+        if (cachedToken != null && now < tokenExpiryMs - 60_000) {
+            return cachedToken!!
+        }
+
+        AppleCanvasLogger.d("Fetching fresh developer token dynamically...")
+        return try {
+            val html = client.get("https://music.apple.com/us/browse") {
+                header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            }.body<String>()
+
+            val scriptRegex = Regex("""/assets/index(?:-legacy)?[~-][a-zA-Z0-9_-]+\.js""")
+            val scripts = scriptRegex.findAll(html).map { it.value }.distinct().toList()
+            AppleCanvasLogger.d("Found script candidates in HTML: $scripts")
+
+            var fetchedToken: String? = null
+            for (scriptPath in scripts) {
+                val scriptUrl = "https://music.apple.com$scriptPath"
+                AppleCanvasLogger.d("Fetching script: $scriptUrl")
+                val scriptText = client.get(scriptUrl) {
+                    header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                }.body<String>()
+
+                val tokenRegex = Regex("""ey[a-zA-Z0-9_-]+\.ey[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+""")
+                val tokens = tokenRegex.findAll(scriptText).map { it.value }
+                AppleCanvasLogger.d("Found ${tokens.count()} JWT candidates in $scriptPath")
+                for (token in tokens) {
+                    try {
+                        val body = token.split(".")[1]
+                        val decodedBytes = java.util.Base64.getUrlDecoder().decode(body)
+                        val decoded = String(decodedBytes, Charsets.UTF_8)
+                        if (decoded.contains("iss") && decoded.contains("exp")) {
+                            val expIndex = decoded.indexOf("\"exp\":")
+                            if (expIndex != -1) {
+                                val expValStr = decoded.substring(expIndex + 6).takeWhile { it.isDigit() }
+                                val expSeconds = expValStr.toLongOrNull() ?: 0L
+                                if (expSeconds * 1000 > now) {
+                                    fetchedToken = token
+                                    tokenExpiryMs = expSeconds * 1000
+                                    AppleCanvasLogger.d("Successfully decoded and verified new token. Expires at: ${java.util.Date(tokenExpiryMs)}")
+                                    break
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // ignore decoding issues
+                    }
+                }
+                if (fetchedToken != null) break
+            }
+
+            if (fetchedToken != null) {
+                cachedToken = fetchedToken
+                fetchedToken
+            } else {
+                AppleCanvasLogger.w("Could not locate any valid fresh token in script files. Using fallback token.")
+                APPLE_MUSIC_TOKEN
+            }
+        } catch (e: Exception) {
+            AppleCanvasLogger.e(e, "Error occurred during dynamic token fetch. Using fallback token.")
+            APPLE_MUSIC_TOKEN
+        }
+    }
 
     private const val ITUNES_SEARCH_URL = "https://itunes.apple.com/search"
     private const val AMP_BASE_URL = "https://amp-api.music.apple.com"
@@ -95,8 +165,18 @@ object AppleMusicCanvasProvider {
         val expiresAtMs: Long,
     )
 
+    private data class TokenCacheEntry(
+        val token: String,
+        val expiresAtMs: Long,
+    )
+
     private val cache = ConcurrentHashMap<String, CacheEntry>()
+    @Volatile
+    private var tokenCache: TokenCacheEntry? = null
+
     private const val CACHE_TTL_MS = 1000L * 60 * 60 * 24 // 24 hours
+    private const val TOKEN_REFRESH_SAFETY_MS = 1000L * 60 * 10 // refresh 10 minutes early
+    private const val TOKEN_FALLBACK_TTL_MS = 1000L * 60 * 60 * 6 // if exp cannot be read
 
     suspend fun getByAlbumArtist(
         album: String,
@@ -161,8 +241,9 @@ object AppleMusicCanvasProvider {
                 query = "$query $album"
             }
             val url = "$AMP_BASE_URL/v1/catalog/$storefront/search"
+            val token = currentAppleMusicToken()
             val response = client.get(url) {
-                header("Authorization", "Bearer $APPLE_MUSIC_TOKEN")
+                header("Authorization", "Bearer $token")
                 header("Origin", "https://music.apple.com")
                 header("Referer", "https://music.apple.com/")
                 header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
@@ -345,8 +426,9 @@ object AppleMusicCanvasProvider {
         return runCatching {
             AppleCanvasLogger.d("fetching album $albumId")
             val url = "$AMP_BASE_URL/v1/catalog/$storefront/albums/$albumId"
+            val token = currentAppleMusicToken()
             val response = client.get(url) {
-                header("Authorization", "Bearer $APPLE_MUSIC_TOKEN")
+                header("Authorization", "Bearer $token")
                 header("Origin", "https://music.apple.com")
                 header("Referer", "https://music.apple.com/")
                 header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
@@ -399,6 +481,86 @@ object AppleMusicCanvasProvider {
             if (it is CancellationException) throw it
             AppleCanvasLogger.e(it, "error in fetchMotionArtwork for $albumId")
         }.getOrNull()
+    }
+
+    private suspend fun currentAppleMusicToken(): String {
+        val now = System.currentTimeMillis()
+        tokenCache
+            ?.takeIf { now < it.expiresAtMs - TOKEN_REFRESH_SAFETY_MS }
+            ?.let { return it.token }
+
+        val freshToken = fetchCurrentAppleMusicToken()
+        if (!freshToken.isNullOrBlank()) {
+            val expiresAtMs = tokenExpiryMs(freshToken) ?: (now + TOKEN_FALLBACK_TTL_MS)
+            tokenCache = TokenCacheEntry(freshToken, expiresAtMs)
+            AppleCanvasLogger.d("refreshed Apple Music web token, expiresAtMs=$expiresAtMs")
+            return freshToken
+        }
+
+        AppleCanvasLogger.w("could not refresh Apple Music web token; using bundled fallback token")
+        return APPLE_MUSIC_TOKEN
+    }
+
+    private suspend fun fetchCurrentAppleMusicToken(): String? {
+        return runCatching {
+            val html = client.get("https://music.apple.com/us/browse") {
+                header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            }.bodyAsText()
+
+            val scriptUrls = Regex("""<script[^>]+src=["']([^"']+\.js[^"']*)["']""")
+                .findAll(html)
+                .map { it.groupValues[1].toAppleAbsoluteUrl() }
+                .distinct()
+                .toList()
+
+            for (scriptUrl in scriptUrls) {
+                val script = runCatching {
+                    client.get(scriptUrl) {
+                        header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    }.bodyAsText()
+                }.getOrNull() ?: continue
+
+                val token = Regex("""eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?""")
+                    .findAll(script)
+                    .map { it.value }
+                    .firstOrNull { candidate ->
+                        val payload = jwtPayload(candidate)
+                        payload.contains("AMPWebPlay") && payload.contains("root_https_origin")
+                    }
+
+                if (!token.isNullOrBlank()) {
+                    return@runCatching token
+                }
+            }
+
+            null
+        }.onFailure {
+            if (it is CancellationException) throw it
+            AppleCanvasLogger.e(it, "error refreshing Apple Music web token")
+        }.getOrNull()
+    }
+
+    private fun String.toAppleAbsoluteUrl(): String {
+        if (startsWith("http://") || startsWith("https://")) return this
+        return "https://music.apple.com" + if (startsWith("/")) this else "/$this"
+    }
+
+    private fun tokenExpiryMs(token: String): Long? {
+        val payload = jwtPayload(token).takeIf { it.isNotBlank() } ?: return null
+        val expSeconds = Regex(""""exp"\s*:\s*(\d+)""")
+            .find(payload)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toLongOrNull()
+        return expSeconds?.times(1000L)
+    }
+
+    private fun jwtPayload(token: String): String {
+        return runCatching {
+            val payload = token.split(".").getOrNull(1) ?: return@runCatching ""
+            val padded = payload + "=".repeat((4 - payload.length % 4) % 4)
+            String(Base64.getUrlDecoder().decode(padded))
+        }.getOrDefault("")
     }
 
     private fun extractEditorialVideoUrl(ev: JsonObject): String? {

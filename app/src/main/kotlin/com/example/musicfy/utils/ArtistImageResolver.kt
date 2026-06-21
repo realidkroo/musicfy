@@ -23,7 +23,7 @@ object ArtistImageResolver {
             .build()
     }
 
-    private val memoryCache = ConcurrentHashMap<String, String?>()
+    private val memoryCache = ConcurrentHashMap<String, String>()
 
     suspend fun resolveThumbnail(artist: ArtistEntity): String? {
         val normalizedName = artist.name.trim()
@@ -35,7 +35,9 @@ object ArtistImageResolver {
         val resolved = fetchAppleArtwork(normalizedName)
             ?: fetchYouTubeThumbnail(artist)
 
-        memoryCache[key] = resolved
+        if (!resolved.isNullOrBlank()) {
+            memoryCache[key] = resolved
+        }
         return resolved
     }
 

@@ -829,7 +829,7 @@ private fun ThumbnailItem(
 
                 canvasArtwork?.let { artwork ->
                     CanvasArtworkPlayer(
-                        primaryUrl = artwork.animated,
+                        primaryUrl = artwork.preferredAnimationUrl,
                         fallbackUrl = artwork.videoUrl,
                         isPlaying = isPlaying,
                         modifier = Modifier.fillMaxSize()

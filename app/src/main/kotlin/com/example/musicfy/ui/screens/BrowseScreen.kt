@@ -103,7 +103,10 @@ package com.example.musicfy.ui.screens
                                              YouTubePlaylistMenu(
                                                  playlist = item,
                                                  coroutineScope = coroutineScope,
-                                                 onDismiss = menuState::dismiss
+                                                 onDismiss = menuState::dismiss,
+                                                 onImportedPlaylist = { playlistId ->
+                                                     navController.navigate("local_playlist/$playlistId")
+                                                 }
                                              )
                                          }
  

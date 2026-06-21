@@ -97,6 +97,7 @@ fun YouTubePlaylistMenu(
     onDismiss: () -> Unit,
     selectAction: () -> Unit = {},
     canSelect: Boolean = false,
+    onImportedPlaylist: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -268,7 +269,8 @@ fun YouTubePlaylistMenu(
             allSongs.map { it.id }
         },
         playlistTitle = playlist.title,
-        onDismiss = { showImportPlaylistDialog = false }
+        onDismiss = { showImportPlaylistDialog = false },
+        onImportedPlaylist = onImportedPlaylist
     )
 
     if (showErrorPlaylistAddDialog) {

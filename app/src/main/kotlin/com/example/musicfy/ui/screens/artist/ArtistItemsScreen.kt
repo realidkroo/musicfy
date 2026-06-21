@@ -161,6 +161,9 @@ fun ArtistItemsScreen(
                                                 playlist = item,
                                                 coroutineScope = coroutineScope,
                                                 onDismiss = menuState::dismiss,
+                                                onImportedPlaylist = { playlistId ->
+                                                    navController.navigate("local_playlist/$playlistId")
+                                                },
                                             )
                                     }
                                 }
@@ -267,7 +270,10 @@ fun ArtistItemsScreen(
                                         is PlaylistItem -> YouTubePlaylistMenu(
                                             playlist = item,
                                             coroutineScope = coroutineScope,
-                                            onDismiss = menuState::dismiss
+                                            onDismiss = menuState::dismiss,
+                                            onImportedPlaylist = { playlistId ->
+                                                navController.navigate("local_playlist/$playlistId")
+                                            }
                                         )
                                     }
                                 }

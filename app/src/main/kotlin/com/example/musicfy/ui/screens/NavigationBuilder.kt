@@ -4,6 +4,9 @@
 package com.example.musicfy.ui.screens
 
 import android.app.Activity
+import android.content.Intent
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.tween
@@ -38,17 +41,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +75,9 @@ import com.example.musicfy.LocalDatabase
 import com.example.musicfy.constants.DarkModeKey
 import com.example.musicfy.constants.PlaylistSortType
 import com.example.musicfy.constants.PureBlackKey
+import com.example.musicfy.db.entities.ArtistEntity
+import com.example.musicfy.db.entities.SongArtistMap
+import com.example.musicfy.db.entities.SongEntity
 import com.example.musicfy.ui.component.NavigationTitle
 import com.example.musicfy.ui.screens.artist.ArtistAlbumsScreen
 import com.example.musicfy.ui.screens.artist.ArtistItemsScreen
@@ -80,6 +93,13 @@ import com.example.musicfy.ui.screens.search.SearchScreen
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.ui.screens.settings.SettingsScreen
+import com.example.musicfy.ui.screens.library.LibraryAlbumsScreen
+import com.example.musicfy.ui.screens.library.LibraryArtistsScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
+import java.util.UUID
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -296,18 +316,33 @@ fun NavGraphBuilder.navigationBuilder(
     ) {
         YouTubeBrowseScreen(navController)
     }
+
+    composable("library/albums") {
+        LibraryAlbumsScreen(navController, scrollBehavior)
+    }
+
+    composable("library/artists") {
+        LibraryArtistsScreen(navController, scrollBehavior)
+    }
 }
 
 @Composable
 private fun LibraryTabScreen(navController: NavHostController) {
+    val context = LocalContext.current
     val database = LocalDatabase.current
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val songs by database.allSongs().collectAsState(initial = emptyList())
     val playlists by database.playlists(PlaylistSortType.SONG_COUNT, descending = true)
         .collectAsState(initial = emptyList())
+
+    var importProgress by remember { mutableFloatStateOf(-1f) } // -1 = not importing
+    var isImporting by remember { mutableStateOf(false) }
+
     val automaticPlaylists = remember(songs) {
         listOf(
             LibraryAutoPlaylist(
-                title = "Liked Song",
+                title = "Liked Songs",
                 subtitle = "${songs.count { it.song.liked }} songs",
                 playTime = songs.filter { it.song.liked }.sumOf { it.song.totalPlayTime },
                 route = "auto_playlist/liked"
@@ -322,7 +357,7 @@ private fun LibraryTabScreen(navController: NavHostController) {
                 title = "Local Songs",
                 subtitle = "${songs.count { it.song.isLocal }} songs",
                 playTime = songs.filter { it.song.isLocal }.sumOf { it.song.totalPlayTime },
-                route = "search_input"
+                route = "auto_playlist/local"
             ),
             LibraryAutoPlaylist(
                 title = "Uploaded",
@@ -332,92 +367,175 @@ private fun LibraryTabScreen(navController: NavHostController) {
             )
         ).sortedByDescending { it.playTime }
     }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments(),
-        onResult = { /* Local import pipeline is handled by the media library layer. */ }
-    )
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-        contentPadding = WindowInsets.systemBars
-            .only(WindowInsetsSides.Horizontal)
-            .asPaddingValues()
-    ) {
-        item(key = "library_title") {
-            NavigationTitle(title = stringResource(R.string.your_library))
-        }
-        item(key = "library_import") {
-            LibraryImportCard(
-                totalSongs = songs.size,
-                totalPlaylists = playlists.size,
-                onClick = {
-                    launcher.launch(
-                        arrayOf(
-                            "audio/*",
-                            "audio/mpeg",
-                            "audio/mp4",
-                            "audio/flac",
-                            "audio/ogg",
-                            "audio/wav",
-                            "audio/x-wav",
-                            "audio/aac"
+        onResult = { uris: List<Uri> ->
+            if (uris.isEmpty()) return@rememberLauncherForActivityResult
+            isImporting = true
+            importProgress = 0f
+            coroutineScope.launch {
+                var successCount = 0
+                var failCount = 0
+                val total = uris.size
+                for ((index, uri) in uris.withIndex()) {
+                    try {
+                        // Take persistable permission so we can play it later
+                        context.contentResolver.takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
-                    )
+
+                        // Extract metadata
+                        val metadata = withContext(Dispatchers.IO) {
+                            extractAudioMetadata(context, uri)
+                        }
+
+                        // Insert into database
+                        withContext(Dispatchers.IO) {
+                            database.transaction {
+                                val songId = "LOCAL_${UUID.randomUUID()}"
+                                insert(
+                                    SongEntity(
+                                        id = songId,
+                                        title = metadata.title,
+                                        duration = metadata.durationSeconds,
+                                        thumbnailUrl = null,
+                                        albumName = metadata.album,
+                                        isLocal = true,
+                                        inLibrary = LocalDateTime.now(),
+                                    )
+                                )
+
+                                // Insert artist
+                                val artistName = metadata.artist
+                                val artistId = artistByName(artistName)?.id
+                                    ?: ArtistEntity.generateArtistId()
+                                insert(
+                                    ArtistEntity(
+                                        id = artistId,
+                                        name = artistName,
+                                        isLocal = true,
+                                    )
+                                )
+                                insert(
+                                    SongArtistMap(
+                                        songId = songId,
+                                        artistId = artistId,
+                                        position = 0,
+                                    )
+                                )
+                            }
+                        }
+                        successCount++
+                    } catch (e: Exception) {
+                        failCount++
+                    }
+                    importProgress = (index + 1).toFloat() / total
                 }
-            )
-        }
-        item(key = "library_categories_title") {
-            Text(
-                text = "Categories",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
-        }
-        item(key = "library_categories") {
-            Column(Modifier.padding(horizontal = 24.dp)) {
-                LibraryCategoryRow("Liked Song") { navController.navigate("auto_playlist/liked") }
-                LibraryCategoryRow("Recently Added") { navController.navigate("search_input") }
-                LibraryCategoryRow("Playlist") { }
-                LibraryCategoryRow("Albums") { navController.navigate("search_input") }
-                LibraryCategoryRow("Songs") { navController.navigate("search_input") }
-                LibraryCategoryRow("Local") { navController.navigate("search_input") }
-                LibraryCategoryRow("Artist") { navController.navigate("search_input") }
+                isImporting = false
+                importProgress = -1f
+
+                val message = if (failCount == 0) {
+                    "Imported $successCount song${if (successCount != 1) "s" else ""}"
+                } else {
+                    "Imported $successCount, failed $failCount"
+                }
+                snackbarHostState.showSnackbar(message)
             }
         }
-        item(key = "library_playlists_title") {
-            Text(
-                text = "Playlists",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 24.dp)
-            )
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+            contentPadding = WindowInsets.systemBars
+                .only(WindowInsetsSides.Horizontal)
+                .asPaddingValues()
+        ) {
+            item(key = "library_title") {
+                NavigationTitle(title = stringResource(R.string.your_library))
+            }
+            item(key = "library_import") {
+                LibraryImportCard(
+                    totalSongs = songs.size,
+                    totalPlaylists = playlists.size,
+                    isImporting = isImporting,
+                    importProgress = importProgress,
+                    onClick = {
+                        if (!isImporting) {
+                            launcher.launch(
+                                arrayOf(
+                                    "audio/*",
+                                    "audio/mpeg",
+                                    "audio/mp4",
+                                    "audio/flac",
+                                    "audio/ogg",
+                                    "audio/wav",
+                                    "audio/x-wav",
+                                    "audio/aac"
+                                )
+                            )
+                        }
+                    }
+                )
+            }
+            item(key = "library_categories_title") {
+                Text(
+                    text = "Categories",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+            }
+            item(key = "library_categories") {
+                Column(Modifier.padding(horizontal = 24.dp)) {
+                    LibraryCategoryRow("Liked Songs") { navController.navigate("auto_playlist/liked") }
+                    LibraryCategoryRow("Downloaded") { navController.navigate("auto_playlist/downloaded") }
+                    LibraryCategoryRow("Albums") { navController.navigate("library/albums") }
+                    LibraryCategoryRow("Local") { navController.navigate("auto_playlist/local") }
+                    LibraryCategoryRow("Artist") { navController.navigate("library/artists") }
+                }
+            }
+            item(key = "library_playlists_title") {
+                Text(
+                    text = "Playlists",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+            }
+            items(
+                items = automaticPlaylists,
+                key = { "library_auto_${it.title}" }
+            ) { playlist ->
+                LibraryPlaylistRow(
+                    title = playlist.title,
+                    subtitle = playlist.subtitle,
+                    onClick = { navController.navigate(playlist.route) }
+                )
+            }
+            items(
+                items = playlists,
+                key = { "library_playlist_${it.id}" }
+            ) { playlist ->
+                LibraryPlaylistRow(
+                    title = playlist.title,
+                    subtitle = "${playlist.songCount} songs",
+                    onClick = { navController.navigate("local_playlist/${playlist.id}") }
+                )
+            }
         }
-        items(
-            items = automaticPlaylists,
-            key = { "library_auto_${it.title}" }
-        ) { playlist ->
-            LibraryPlaylistRow(
-                title = playlist.title,
-                subtitle = playlist.subtitle,
-                onClick = { navController.navigate(playlist.route) }
-            )
-        }
-        items(
-            items = playlists,
-            key = { "library_playlist_${it.id}" }
-        ) { playlist ->
-            LibraryPlaylistRow(
-                title = playlist.title,
-                subtitle = "${playlist.songCount} songs",
-                onClick = { navController.navigate("local_playlist/${playlist.id}") }
-            )
-        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
@@ -432,10 +550,11 @@ private data class LibraryAutoPlaylist(
 private fun LibraryImportCard(
     totalSongs: Int,
     totalPlaylists: Int,
+    isImporting: Boolean,
+    importProgress: Float,
     onClick: () -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
         modifier = Modifier
             .padding(horizontal = 24.dp)
             .fillMaxWidth()
@@ -444,43 +563,106 @@ private fun LibraryImportCard(
             .clickable(onClick = onClick)
             .padding(18.dp)
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(54.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f),
-                    shape = RoundedCornerShape(10.dp)
-                )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painter = painterResource(R.drawable.add_circle),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                modifier = Modifier.size(30.dp)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.add_circle),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = if (isImporting) "Importing songs..." else "Add more song here!",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Total songs - $totalSongs | Total Playlist - $totalPlaylists",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        if (isImporting && importProgress >= 0f) {
+            Spacer(Modifier.height(12.dp))
+            LinearProgressIndicator(
+                progress = { importProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "${(importProgress * 100).toInt()}%",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                style = MaterialTheme.typography.labelSmall,
             )
         }
-        Spacer(Modifier.width(16.dp))
-        Column {
-            Text(
-                text = "Add more song here!",
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = "Total songs - $totalSongs | Total Playlist - $totalPlaylists",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+    }
+}
+
+private data class LocalAudioMetadata(
+    val title: String,
+    val artist: String,
+    val album: String?,
+    val durationSeconds: Int,
+)
+
+private fun extractAudioMetadata(
+    context: android.content.Context,
+    uri: Uri,
+): LocalAudioMetadata {
+    val retriever = MediaMetadataRetriever()
+    return try {
+        retriever.setDataSource(context, uri)
+        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+            ?: uri.lastPathSegment?.substringBeforeLast('.') ?: "Unknown"
+        val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+            ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+            ?: "Unknown Artist"
+        val album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+        val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+            ?.toLongOrNull() ?: 0L
+        LocalAudioMetadata(
+            title = title,
+            artist = artist,
+            album = album,
+            durationSeconds = (durationMs / 1000).toInt(),
+        )
+    } catch (e: Exception) {
+        // Fallback: use filename as title
+        LocalAudioMetadata(
+            title = uri.lastPathSegment?.substringBeforeLast('.') ?: "Unknown",
+            artist = "Unknown Artist",
+            album = null,
+            durationSeconds = 0,
+        )
+    } finally {
+        retriever.release()
     }
 }
 

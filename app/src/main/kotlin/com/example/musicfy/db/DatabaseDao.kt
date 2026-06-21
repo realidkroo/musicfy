@@ -117,6 +117,57 @@ interface DatabaseDao {
     }.map { it.reversed(descending) }
 
     @Transaction
+    @Query("SELECT * FROM song WHERE isLocal = 1 ORDER BY rowId")
+    fun localSongsByRowIdAsc(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal = 1 ORDER BY inLibrary")
+    fun localSongsByCreateDateAsc(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal = 1 ORDER BY title")
+    fun localSongsByNameAsc(): Flow<List<Song>>
+
+    @Transaction
+    @Query("SELECT * FROM song WHERE isLocal = 1 ORDER BY totalPlayTime")
+    fun localSongsByPlayTimeAsc(): Flow<List<Song>>
+
+    fun localSongs(
+        sortType: SongSortType,
+        descending: Boolean,
+    ) = when (sortType) {
+        SongSortType.CREATE_DATE -> localSongsByCreateDateAsc()
+        SongSortType.NAME ->
+            localSongsByNameAsc().map { songs ->
+                val collator = Collator.getInstance(Locale.getDefault())
+                collator.strength = Collator.PRIMARY
+                songs.sortedWith(compareBy(collator) { it.song.title })
+            }
+
+        SongSortType.ARTIST ->
+            localSongsByRowIdAsc().map { songs ->
+                val collator = Collator.getInstance(Locale.getDefault())
+                collator.strength = Collator.PRIMARY
+                songs
+                    .sortedWith(
+                        compareBy(collator) { song ->
+                            song.artists.joinToString("") { it.name }
+                        },
+                    ).groupBy { it.album?.title }
+                    .flatMap { (_, songsByAlbum) ->
+                        songsByAlbum.sortedBy { album ->
+                            album.artists.joinToString(
+                                "",
+                            ) { it.name }
+                        }
+                    }
+            }
+
+        SongSortType.PLAY_TIME -> localSongsByPlayTimeAsc()
+    }.map { it.reversed(descending) }
+
+
+    @Transaction
     @Query("SELECT * FROM song WHERE liked ORDER BY rowId")
     fun likedSongsByRowIdAsc(): Flow<List<Song>>
 

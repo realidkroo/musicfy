@@ -863,7 +863,10 @@ fun HomeScreen(
                                 is PlaylistItem -> YouTubePlaylistMenu(
                                     playlist = item,
                                     coroutineScope = scope,
-                                    onDismiss = menuState::dismiss
+                                    onDismiss = menuState::dismiss,
+                                    onImportedPlaylist = { playlistId ->
+                                        navController.navigate("local_playlist/$playlistId")
+                                    }
                                 )
                             }
                         }

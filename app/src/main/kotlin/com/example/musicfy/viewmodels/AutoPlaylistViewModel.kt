@@ -70,6 +70,15 @@ constructor(
                     "uploaded" -> database.uploadedSongs(sortType, descending)
                         .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
 
+                    "local" -> database.localSongs(sortType, descending)
+                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+
+                    "songs" -> database.songs(sortType, descending)
+                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+
+                    "recently_added" -> database.songs(SongSortType.CREATE_DATE, true)
+                        .map { it.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs) }
+
                     else -> kotlinx.coroutines.flow.flowOf(emptyList())
                 }
             }

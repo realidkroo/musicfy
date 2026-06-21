@@ -10,7 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
@@ -21,6 +20,7 @@ import com.example.musicfy.ui.component.TextFieldDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ImportPlaylistDialog(
@@ -28,15 +28,12 @@ fun ImportPlaylistDialog(
     onGetSong: suspend () -> List<String>, // list of song ids. Songs should be inserted to database in this function.
     playlistTitle: String,
     onDismiss: () -> Unit,
+    onImportedPlaylist: (String) -> Unit = {},
 ) {
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
 
     val textFieldValue by remember { mutableStateOf(TextFieldValue(text = playlistTitle)) }
-    var songIds by remember {
-        mutableStateOf<List<String>?>(null) // list is not saveable
-    }
-
     if (isVisible) {
         TextFieldDialog(
             icon = { Icon(painter = painterResource(R.drawable.add), contentDescription = null) },
@@ -48,17 +45,21 @@ fun ImportPlaylistDialog(
                 val newPlaylist = PlaylistEntity(
                     name = finalName
                 )
-                database.query { insert(newPlaylist) }
+                coroutineScope.launch {
+                    val importedPlaylistId = withContext(Dispatchers.IO) {
+                        database.query { insert(newPlaylist) }
+                        val playlist = database.playlist(newPlaylist.id).firstOrNull()
 
-                coroutineScope.launch(Dispatchers.IO) {
-                    val playlist = database.playlist(newPlaylist.id).firstOrNull()
+                        if (playlist != null) {
+                            val importedSongIds = onGetSong()
+                            database.addSongToPlaylist(playlist, importedSongIds)
+                        }
 
-                    if (playlist != null) {
-                        songIds = onGetSong()
-                        database.addSongToPlaylist(playlist, songIds!!)
+                        newPlaylist.id
                     }
 
                     onDismiss()
+                    onImportedPlaylist(importedPlaylistId)
                 }
             }
         )

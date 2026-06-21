@@ -409,7 +409,9 @@ object LyricsUtils {
                 val wordTimings = parseRichSyncWords(content, index, lines)
                 
                 // Extract plain text (remove all <MM:SS.mm> tags)
-                val plainText = content.replace(Regex("<\\d{1,2}:\\d{2}\\.\\d{2,3}>\\s*"), "").trim()
+                val plainText = repairRichSyncPlainText(
+                    content.replace(Regex("<\\d{1,2}:\\d{2}\\.\\d{2,3}>\\s*"), "").trim()
+                )
                 
                 if (plainText.isNotBlank()) {
                     result.add(LyricsEntry(lineTimeMs, plainText, wordTimings, agent = agent, isBackground = isBackground))
@@ -418,6 +420,25 @@ object LyricsUtils {
         }
         
         return insertInstrumentalPauses(result.sorted())
+    }
+
+    private fun repairRichSyncPlainText(text: String): String {
+        val compacted = text.replace(Regex("[\\t\\u00A0]+"), " ").trim()
+        if (compacted.isBlank()) return compacted
+        if (!Regex(" {2,}").containsMatchIn(compacted)) {
+            return compacted.replace(Regex(" +"), " ")
+        }
+
+        return compacted
+            .split(Regex(" {2,}"))
+            .joinToString(" ") { wordGroup ->
+                val parts = wordGroup.trim().split(Regex(" +")).filter { it.isNotBlank() }
+                if (parts.size > 1 && parts.all { part -> part.length <= 4 && part.any(Char::isLetter) }) {
+                    parts.joinToString("")
+                } else {
+                    wordGroup.trim().replace(Regex(" +"), " ")
+                }
+            }
     }
     
     /**

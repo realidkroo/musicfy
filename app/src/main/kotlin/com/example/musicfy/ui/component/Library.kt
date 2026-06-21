@@ -201,7 +201,10 @@ fun LibraryPlaylistListItem(
                                     isEditable = false
                                 ),
                                 coroutineScope = coroutineScope,
-                                onDismiss = menuState::dismiss
+                                onDismiss = menuState::dismiss,
+                                onImportedPlaylist = { playlistId ->
+                                    navController.navigate("local_playlist/$playlistId")
+                                }
                             )
                         }
                     }
@@ -276,7 +279,10 @@ fun LibraryPlaylistGridItem(
                                     isEditable = false
                                 ),
                                 coroutineScope = coroutineScope,
-                                onDismiss = menuState::dismiss
+                                onDismiss = menuState::dismiss,
+                                onImportedPlaylist = { playlistId ->
+                                    navController.navigate("local_playlist/$playlistId")
+                                }
                             )
                         }
                     }

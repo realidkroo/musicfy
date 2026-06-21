@@ -6,33 +6,31 @@ package com.example.musicfy.ui.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,28 +39,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
-import com.example.musicfy.R
 import com.example.musicfy.lyrics.LyricsEntry
-
-enum class FrontCard {
-    LYRICS, QUEUE
-}
+import com.example.musicfy.ui.theme.InterFontFamily
+import kotlinx.coroutines.launch
 
 @Composable
 fun PlayerBottomCards(
@@ -73,20 +68,84 @@ fun PlayerBottomCards(
     nextQueueArtist: String?,
     textColor: Color,
     cardColor: Color,
-    onCardTap: (FrontCard) -> Unit,
-    modifier: Modifier = Modifier
+    onCardTap: () -> Unit,
+    modifier: Modifier = Modifier,
+    revealReady: Boolean = true,
 ) {
-    val surfaceColor = cardColor
+    val surfaceColor = cardColor.copy(alpha = 0.30f)
+    val rearSurfaceColor = cardColor.copy(alpha = 0.24f)
+    val backReveal = remember { Animatable(0f) }
+    val frontReveal = remember { Animatable(0f) }
+
+    LaunchedEffect(revealReady) {
+        if (!revealReady) {
+            backReveal.snapTo(0f)
+            frontReveal.snapTo(0f)
+        } else {
+            launch {
+                backReveal.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing)
+                )
+            }
+            launch {
+                frontReveal.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 380, delayMillis = 70, easing = FastOutSlowInEasing)
+                )
+            }
+        }
+    }
+
+    val rearProgress = backReveal.value
+    val rearHorizontalPadding = lerp(0.dp, 12.dp, rearProgress)
+    val rearHeight = lerp(132.dp, 104.dp, rearProgress)
+    val rearOffsetY = lerp(88.dp, 46.dp, rearProgress)
+    val frontHeight = 132.dp
+    val frontOffsetY = 88.dp
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(98.dp)
+            .height(150.dp)
             .clipToBounds()
             .padding(horizontal = 24.dp)
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            }
     ) {
+        EmptyPreviewCard(
+            cardColor = rearSurfaceColor,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = rearHorizontalPadding)
+                .height(rearHeight)
+                .align(Alignment.BottomCenter)
+                .offset(y = rearOffsetY)
+                .graphicsLayer {
+                    alpha = rearProgress
+                }
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(frontHeight)
+                .align(Alignment.BottomCenter)
+                .offset(y = frontOffsetY)
+                .graphicsLayer {
+                    translationY = (1f - frontReveal.value) * 22.dp.toPx()
+                }
+                .drawWithContent {
+                    if (frontReveal.value > 0.04f) {
+                        drawRoundRect(
+                            color = Color.Black,
+                            cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx()),
+                            blendMode = BlendMode.Clear
+                        )
+                    }
+                }
+        )
         PlayerPreviewCard(
-            card = FrontCard.LYRICS,
             currentLyricsLine = currentLyricsLine,
             currentLyricsEntry = currentLyricsEntry,
             playbackPosition = playbackPosition,
@@ -96,18 +155,37 @@ fun PlayerBottomCards(
             cardColor = surfaceColor,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(132.dp)
+                .height(frontHeight)
                 .align(Alignment.BottomCenter)
-                .offset(y = 44.dp)
-                .graphicsLayer { alpha = 1f },
-            onClick = { onCardTap(FrontCard.LYRICS) }
+                .offset(y = frontOffsetY)
+                .graphicsLayer {
+                    alpha = frontReveal.value
+                    translationY = (1f - frontReveal.value) * 22.dp.toPx()
+                },
+            onClick = onCardTap
         )
     }
 }
 
 @Composable
+private fun EmptyPreviewCard(
+    cardColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(cardColor)
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.18f),
+                shape = RoundedCornerShape(24.dp)
+            )
+    )
+}
+
+@Composable
 private fun PlayerPreviewCard(
-    card: FrontCard,
     currentLyricsLine: String?,
     currentLyricsEntry: LyricsEntry?,
     playbackPosition: Long,
@@ -124,90 +202,58 @@ private fun PlayerPreviewCard(
             .background(cardColor)
             .border(
                 width = 1.dp,
-                color = Color(0xFFB8B8B8).copy(alpha = 0.30f),
+                color = Color.White.copy(alpha = 0.22f),
                 shape = RoundedCornerShape(24.dp)
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
-        if (card == FrontCard.LYRICS) {
-            Box(
-                contentAlignment = Alignment.TopStart,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 14.dp, end = 24.dp, top = 10.dp)
-            ) {
-                AnimatedContent(
-                    targetState = currentLyricsLine?.takeIf { it.isNotBlank() } ?: "...",
-                    transitionSpec = {
-                        (slideInVertically(
-                            animationSpec = tween(durationMillis = 280),
-                            initialOffsetY = { it / 2 }
-                        ) + fadeIn(animationSpec = tween(durationMillis = 220))) togetherWith
-                            (slideOutVertically(
-                                animationSpec = tween(durationMillis = 280),
-                                targetOffsetY = { -it / 2 }
-                            ) + fadeOut(animationSpec = tween(durationMillis = 220)))
-                    },
-                    label = "BottomLyricsLine"
-                ) { lyricLine ->
-                    BottomLyricsPreviewText(
-                        text = lyricLine,
-                        entry = currentLyricsEntry,
-                        playbackPosition = playbackPosition,
-                        color = textColor,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.queue_music),
-                        contentDescription = null,
-                        tint = textColor.copy(alpha = 0.72f),
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = "QUEUE",
-                        color = textColor.copy(alpha = 0.72f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.sp,
-                    )
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                Text(
-                    text = nextQueueTitle ?: "End of queue",
+        Box(
+            contentAlignment = Alignment.TopStart,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 24.dp, top = 8.dp)
+        ) {
+            AnimatedContent(
+                targetState = currentLyricsLine?.takeIf { it.isNotBlank() }?.repairSyllableSpacing() ?: "...",
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(durationMillis = 180)) togetherWith
+                        fadeOut(animationSpec = tween(durationMillis = 140))
+                },
+                label = "BottomLyricsLine"
+            ) { lyricLine ->
+                BottomLyricsPreviewText(
+                    text = lyricLine,
+                    entry = currentLyricsEntry,
+                    playbackPosition = playbackPosition,
                     color = textColor,
-                    fontSize = 18.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.fillMaxWidth()
                 )
-                if (!nextQueueArtist.isNullOrBlank()) {
-                    Text(
-                        text = nextQueueArtist,
-                        color = textColor.copy(alpha = 0.7f),
-                        fontSize = 13.sp,
-                        lineHeight = 15.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
         }
     }
 }
 
 private val LyricsFontSize = 18.sp
+
+private fun String.repairSyllableSpacing(): String {
+    val compacted = replace(Regex("[\\t\\u00A0]+"), " ").trim()
+    if (compacted.isBlank()) return compacted
+    if (!Regex(" {2,}").containsMatchIn(compacted)) {
+        return compacted.replace(Regex(" +"), " ")
+    }
+
+    return compacted
+        .split(Regex(" {2,}"))
+        .joinToString(" ") { group ->
+            val parts = group.trim().split(Regex(" +")).filter { it.isNotBlank() }
+            if (parts.size > 1 && parts.all { part -> part.length <= 4 && part.any(Char::isLetter) }) {
+                parts.joinToString("")
+            } else {
+                group.trim().replace(Regex(" +"), " ")
+            }
+        }
+}
 
 private data class WordVisualState(
     val text: String,
@@ -227,12 +273,16 @@ private fun BottomLyricsPreviewText(
 ) {
     val words = entry?.words
 
-    val plainText = remember(entry, text) {
-        words?.joinToString(" ") { it.text } ?: text
+    val plainText = remember(text) {
+        text.trim().repairSyllableSpacing()
     }
 
-    val wordStates = remember(words, playbackPosition) {
-        if (words.isNullOrEmpty()) {
+    val canRenderWordTiming = remember(words, plainText) {
+        !words.isNullOrEmpty() && words.joinToString(" ") { it.text }.trim() == plainText
+    }
+
+    val wordStates = remember(words, playbackPosition, canRenderWordTiming) {
+        if (!canRenderWordTiming || words.isNullOrEmpty()) {
             emptyList()
         } else {
             var cursor = 0
@@ -290,7 +340,8 @@ private fun AutoResizeLyricsLine(
             color = Color.Transparent,
             fontSize = fontSize,
             lineHeight = lineHeight,
-            fontWeight = FontWeight.Black,
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Left,
             softWrap = true,
             style = TextStyle(letterSpacing = 0.sp),
@@ -361,7 +412,8 @@ private fun AutoResizeLyricsLine(
                         color = color,
                         fontSize = fontSize,
                         lineHeight = lineHeight,
-                        fontWeight = FontWeight.Black,
+                        fontFamily = InterFontFamily,
+                        fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Left,
                         maxLines = 1,
                         softWrap = false,
@@ -398,48 +450,41 @@ private fun LyricsWordItem(
     fontSize: TextUnit,
 ) {
     val wordScale = if (word.isActive) {
-        1f + 0.07f * kotlin.math.sin(word.wordProgress.toDouble() * Math.PI).toFloat()
+        1f + 0.035f * kotlin.math.sin(word.wordProgress.toDouble() * Math.PI).toFloat()
     } else {
         1f
     }
-
-    val styledWord = remember(word.text, word.isActive, word.hasPassed, word.wordProgress, baseColor) {
-        buildAnnotatedString {
-            if (word.isActive) {
-                val sweepPos = word.wordProgress * word.text.length
-                val transitionWidth = (word.text.length / 1.6f).coerceIn(0.7f, 2.4f)
-                word.text.forEachIndexed { charIdx, ch ->
-                    val charCenter = charIdx + 0.5f
-                    val localT = (((sweepPos - charCenter) / transitionWidth) + 0.5f).coerceIn(0f, 1f)
-                    val glow = kotlin.math.sin(localT.toDouble() * Math.PI).toFloat()
-                    val charColor = lerp(baseColor.copy(alpha = 0.42f), baseColor.copy(alpha = 1f), localT)
-                    withStyle(
-                        SpanStyle(
-                            color = charColor,
-                            shadow = if (glow > 0.05f) {
-                                Shadow(color = baseColor.copy(alpha = 0.34f * glow), blurRadius = 12f)
-                            } else null
-                        )
-                    ) {
-                        append(ch)
-                    }
-                }
-            } else {
-                val alpha = if (word.hasPassed) 1f else 0.42f
-                withStyle(SpanStyle(color = baseColor.copy(alpha = alpha))) {
-                    append(word.text)
-                }
-            }
-        }
-    }
+    val inactiveAlpha = if (word.hasPassed) 1f else 0.42f
 
     Text(
-        text = styledWord,
+        text = word.text,
         fontSize = fontSize,
-        fontWeight = FontWeight.Black,
+        fontFamily = InterFontFamily,
+        fontWeight = FontWeight.SemiBold,
         maxLines = 1,
         softWrap = false,
-        style = TextStyle(letterSpacing = 0.sp),
+        style = if (word.isActive) {
+            MaterialTheme.typography.bodyMedium.copy(
+                brush = Brush.horizontalGradient(
+                    0f to baseColor,
+                    word.wordProgress.coerceAtLeast(0.01f) to baseColor,
+                    (word.wordProgress + 0.18f).coerceAtMost(1f) to baseColor.copy(alpha = 0.42f),
+                    1f to baseColor.copy(alpha = 0.42f)
+                ),
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = fontSize,
+                letterSpacing = 0.sp,
+            )
+        } else {
+            MaterialTheme.typography.bodyMedium.copy(
+                color = baseColor.copy(alpha = inactiveAlpha),
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = fontSize,
+                letterSpacing = 0.sp,
+            )
+        },
         modifier = Modifier.graphicsLayer(scaleX = wordScale, scaleY = wordScale)
     )
 }

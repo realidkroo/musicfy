@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
@@ -62,6 +61,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.example.musicfy.ui.theme.InterFontFamily
 
 @Composable
 fun rememberAdjustedFontSize(
@@ -357,9 +357,10 @@ fun LyricsImageCard(
                     val availableHeight = maxHeight
                     val textStyle = TextStyle(
                         color = mainTextColor,
-                        fontWeight = FontWeight.Bold,
+                        fontFamily = InterFontFamily,
+                        fontWeight = FontWeight.SemiBold,
                         textAlign = textAlign,
-                        letterSpacing = 0.005.em,
+                        letterSpacing = 0.sp,
                     )
 
                     val textMeasurer = rememberTextMeasurer()
@@ -427,4 +428,3 @@ fun LyricsImageCard(
         }
     }
 }
-

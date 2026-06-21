@@ -268,6 +268,9 @@ fun OnlineSearchScreen(
                                         onDismiss = {
                                             menuState.dismiss()
                                             onDismiss()
+                                        },
+                                        onImportedPlaylist = { playlistId ->
+                                            navController.navigate("local_playlist/$playlistId")
                                         }
                                     )
                                 }
@@ -341,6 +344,9 @@ fun OnlineSearchScreen(
                                         onDismiss = {
                                             menuState.dismiss()
                                             onDismiss()
+                                        },
+                                        onImportedPlaylist = { playlistId ->
+                                            navController.navigate("local_playlist/$playlistId")
                                         }
                                     )
                                 }

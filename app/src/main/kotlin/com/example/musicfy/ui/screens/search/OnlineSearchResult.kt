@@ -224,6 +224,9 @@ fun OnlineSearchResult(
                             playlist = item,
                             coroutineScope = coroutineScope,
                             onDismiss = menuState::dismiss,
+                            onImportedPlaylist = { playlistId ->
+                                navController.navigate("local_playlist/$playlistId")
+                            },
                         )
                 }
             }
@@ -469,4 +472,3 @@ fun OnlineSearchResult(
         }
     }
 }
-

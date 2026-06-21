@@ -180,6 +180,7 @@ import com.example.musicfy.ui.component.shimmer.ShimmerHost
 import com.example.musicfy.ui.component.shimmer.TextPlaceholder
 import com.example.musicfy.ui.screens.DarkMode
 import com.example.musicfy.ui.screens.LyricsPosition
+import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.ui.utils.fadingEdge
 import com.example.musicfy.utils.ComposeToImage
 import com.example.musicfy.utils.rememberEnumPreference
@@ -2090,7 +2091,8 @@ fun Lyrics(
 
         val textStyleForMeasurement = TextStyle(
             color = previewTextColor,
-            fontWeight = FontWeight.Bold,
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.SemiBold,
             textAlign = lyricsTextAlign
         )
         val textMeasurer = rememberTextMeasurer()

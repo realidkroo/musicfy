@@ -399,7 +399,10 @@ fun OnlinePlaylistScreen(
                                                             is PlaylistItem -> YouTubePlaylistMenu(
                                                                 playlist = item,
                                                                 coroutineScope = coroutineScope,
-                                                                onDismiss = menuState::dismiss
+                                                                onDismiss = menuState::dismiss,
+                                                                onImportedPlaylist = { playlistId ->
+                                                                    navController.navigate("local_playlist/$playlistId")
+                                                                }
                                                             )
                                                             is SongItem -> YouTubeSongMenu(
                                                                 song = item,
@@ -994,6 +997,9 @@ private fun OnlinePlaylistHeader(
                                 songs = songs,
                                 coroutineScope = coroutineScope,
                                 onDismiss = menuState::dismiss,
+                                onImportedPlaylist = { playlistId ->
+                                    navController.navigate("local_playlist/$playlistId")
+                                },
                             )
                         }
                     },
