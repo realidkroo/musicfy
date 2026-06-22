@@ -336,6 +336,8 @@ class MusicService :
     @DownloadCache
     lateinit var downloadCache: SimpleCache
 
+    private lateinit var customStreamFetcher: com.example.musicfy.playback.custom.CustomStreamFetcher
+
     lateinit var player: ExoPlayer
         private set
     private var secondaryPlayer: ExoPlayer? = null
@@ -486,6 +488,12 @@ class MusicService :
                     setSmallIcon(R.drawable.musicfy_notification)
                 },
         )
+        customStreamFetcher = com.example.musicfy.playback.custom.CustomStreamFetcher(
+            dataStore = dataStore,
+            database = database,
+            httpClient = OkHttpClient.Builder().build()
+        )
+
         player = createExoPlayer()
         player.addListener(this@MusicService)
         sleepTimer = SleepTimer(scope, player)
@@ -2318,12 +2326,14 @@ class MusicService :
             Timber.tag(TAG).e(e, "Failed to clear player cache for $mediaId")
         }
 
-        // Clear decryption caches
-        try {
-            YTPlayerUtils.forceRefreshForVideo(mediaId)
-            Timber.tag(TAG).d("Cleared decryption caches for $mediaId")
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Failed to clear decryption caches for $mediaId")
+        // Clear decryption caches (only for YouTube streams)
+        if (!mediaId.startsWith("LOCAL_")) {
+            try {
+                YTPlayerUtils.forceRefreshForVideo(mediaId)
+                Timber.tag(TAG).d("Cleared decryption caches for $mediaId")
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to clear decryption caches for $mediaId")
+            }
         }
     }
 
@@ -2709,6 +2719,12 @@ class MusicService :
             // Check if we need to bypass cache for quality change
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
 
+            // If it's a local file, immediately return the dataSpec without hitting YouTube
+            val scheme = dataSpec.uri.scheme
+            if (scheme == "content" || scheme == "file") {
+                return@Factory dataSpec
+            }
+
             if (!shouldBypassCache) {
                 if (downloadCache.isCached(
                         mediaId,
@@ -2727,6 +2743,15 @@ class MusicService :
                 }
             } else {
                 Timber.tag("MusicService").i("BYPASSING CACHE for $mediaId due to quality change")
+            }
+            
+            // Try Custom Stream Fetcher first if enabled
+            val customStreamUrl = runBlocking(Dispatchers.IO) {
+                customStreamFetcher.fetchStreamUrl(mediaId)
+            }
+            if (customStreamUrl != null) {
+                Timber.tag("MusicService").i("Using Custom API Stream for $mediaId: $customStreamUrl")
+                return@Factory dataSpec.withUri(customStreamUrl.toUri())
             }
 
             Timber.tag("MusicService").i("FETCHING STREAM: $mediaId | quality=$audioQuality")
@@ -2812,9 +2837,7 @@ class MusicService :
     private fun createMediaSourceFactory() =
         DefaultMediaSourceFactory(
             createDataSourceFactory(),
-            ExtractorsFactory {
-                arrayOf(MatroskaExtractor(), FragmentedMp4Extractor())
-            },
+            androidx.media3.extractor.DefaultExtractorsFactory(),
         )
 
     private fun createRenderersFactory(

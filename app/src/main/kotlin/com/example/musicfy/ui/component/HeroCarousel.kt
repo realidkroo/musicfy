@@ -214,14 +214,6 @@ fun HeroCarousel(
                                 )
                             )
                         )
-                        .background(
-                            brush = Brush.horizontalGradient(
-                                0.0f to Color.Black.copy(alpha = 0.5f),
-                                0.1f to Color.Transparent,
-                                0.9f to Color.Transparent,
-                                1.0f to Color.Black.copy(alpha = 0.5f)
-                            )
-                        )
                 )
 
                 // Bottom text block

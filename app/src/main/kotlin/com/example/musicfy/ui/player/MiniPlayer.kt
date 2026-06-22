@@ -200,6 +200,14 @@ private fun NewMiniPlayer(
     modifier: Modifier = Modifier,
     isTransparent: Boolean = false,
 ) {
+    // Fast-path: when transparent (during morphing animation), skip ALL rendering.
+    // The morphing shared elements handle the visual transition —
+    // this avoids ~15 collectAsState() calls, hazeEffect, color extraction, etc.
+    if (isTransparent) {
+        Box(modifier = modifier.fillMaxWidth().height(MiniPlayerHeight))
+        return
+    }
+    
     val playerConnection = LocalPlayerConnection.current ?: return
     
     // Theme settings - these rarely change

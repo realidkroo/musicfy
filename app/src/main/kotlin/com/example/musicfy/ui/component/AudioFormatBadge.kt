@@ -15,7 +15,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import com.example.musicfy.R
 import com.example.musicfy.constants.AudioQuality
+import com.example.musicfy.constants.EnableSpatialAudioKey
 import com.example.musicfy.db.entities.FormatEntity
+import com.example.musicfy.utils.rememberPreference
 
 @Composable
 fun AudioFormatBadge(
@@ -24,20 +26,22 @@ fun AudioFormatBadge(
     height: Dp,
     modifier: Modifier = Modifier,
     audioQuality: AudioQuality = AudioQuality.AUTO,
+    fallbackId: String? = null
 ) {
-    if (format == null) return
-
-    val mimeType = format.mimeType.lowercase()
-    val codecs = format.codecs.lowercase()
+    val mimeType = format?.mimeType?.lowercase() ?: ""
+    val codecs = format?.codecs?.lowercase() ?: ""
+    val ext = fallbackId?.substringAfterLast('.')?.lowercase() ?: ""
     
+    val (spatialAudio) = rememberPreference(EnableSpatialAudioKey, defaultValue = false)
+
     val iconRes = when {
-        audioQuality == AudioQuality.LOW -> R.drawable.low_res_mp3
-        mimeType.contains("flac") || mimeType.contains("alac") -> {
-            if (format.sampleRate != null && format.sampleRate >= 48000) R.drawable.hi_res_flac else R.drawable.flac
+        mimeType.contains("flac") || mimeType.contains("alac") || ext == "flac" || ext == "alac" -> {
+            val sampleRate = format?.sampleRate ?: 0
+            if (sampleRate >= 48000) R.drawable.hi_res_flac else R.drawable.flac
         }
-        mimeType.contains("mp4") || mimeType.contains("aac") || codecs.contains("aac") -> R.drawable.aac
-        codecs.contains("opus") || mimeType.contains("webm") -> R.drawable.low_res_mp3
-        mimeType.contains("mp3") || mimeType.contains("mpeg") -> R.drawable.low_res_mp3
+        mimeType.contains("mp4") || mimeType.contains("aac") || codecs.contains("aac") || ext == "m4a" || ext == "aac" -> R.drawable.aac
+        codecs.contains("opus") || mimeType.contains("webm") || ext == "webm" || ext == "opus" -> R.drawable.low_res_mp3
+        mimeType.contains("mp3") || mimeType.contains("mpeg") || ext == "mp3" -> R.drawable.low_res_mp3
         codecs.contains("ac-3") || codecs.contains("ec-3") -> R.drawable.dolby
         else -> R.drawable.low_res_mp3
     }

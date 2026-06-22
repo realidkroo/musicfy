@@ -72,6 +72,15 @@ fun PlayerBottomCards(
     modifier: Modifier = Modifier,
     revealReady: Boolean = true,
 ) {
+    // Don't compose the expensive card content until the player is fully settled.
+    // During the open transition, the cards aren't visible anyway.
+    // However, we MUST render an empty box with the exact same dimensions (150.dp)
+    // so we don't break the layout of the player controls above us.
+    if (!revealReady) {
+        Box(modifier = modifier.fillMaxWidth().height(150.dp))
+        return
+    }
+    
     val surfaceColor = cardColor.copy(alpha = 0.30f)
     val rearSurfaceColor = cardColor.copy(alpha = 0.24f)
     val backReveal = remember { Animatable(0f) }
@@ -281,7 +290,11 @@ private fun BottomLyricsPreviewText(
         !words.isNullOrEmpty() && words.joinToString(" ") { it.text }.trim() == plainText
     }
 
-    val wordStates = remember(words, playbackPosition, canRenderWordTiming) {
+    // Coarsen playbackPosition to 250ms buckets so small position changes don't
+    // trigger recalculation of the entire word timing array every frame.
+    val coarsenedPosition = remember(playbackPosition) { (playbackPosition / 250L) * 250L }
+    
+    val wordStates = remember(words, coarsenedPosition, canRenderWordTiming) {
         if (!canRenderWordTiming || words.isNullOrEmpty()) {
             emptyList()
         } else {

@@ -98,6 +98,8 @@ enum class AudioQuality {
     AUTO,
     HIGH,
     LOW,
+    LOSSLESS,
+    HI_RES_LOSSLESS
 }
 
 val AudioOffload = booleanPreferencesKey("enableOffload")
@@ -705,3 +707,19 @@ val SuggestionRegionSlugToName =
         "ae" to "United Arab Emirates",
         "il" to "Israel"
     )
+
+// Custom API & Advanced Audio Options
+val EnableCustomApiKey = booleanPreferencesKey("enableCustomApi")
+val EnableSpatialAudioKey = booleanPreferencesKey("enableSpatialAudio")
+
+val AmazonMusicApiUrlKey = stringPreferencesKey("amazonMusicApiUrl")
+val TidalToAsinUrlKey = stringPreferencesKey("tidalToAsinUrl")
+val TurnstileSiteKeyKey = stringPreferencesKey("turnstileSiteKey")
+val TurnstileBypassTokenKey = stringPreferencesKey("turnstileBypassToken")
+
+val DeezerFallbackEnabledKey = booleanPreferencesKey("deezerFallbackEnabled")
+val DeezerFallbackUrlKey = stringPreferencesKey("deezerFallbackUrl")
+
+val ApiInstancesKey = stringPreferencesKey("apiInstances")
+val StreamingInstancesKey = stringPreferencesKey("streamingInstances")
+val QobuzInstancesKey = stringPreferencesKey("qobuzInstances")

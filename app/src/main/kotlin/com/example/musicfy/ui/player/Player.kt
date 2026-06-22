@@ -1017,15 +1017,19 @@ fun BottomSheetPlayer(
     LaunchedEffect(isPlaying, isCasting) {
         if (!isCasting && isPlaying) {
             while (isActive) {
-                val isOpeningPlayer = state.progress > 0.02f && state.progress < 0.995f && !state.isExpanded
+                val currentProgress = state.progress
+                val isAnimating = currentProgress > 0.02f && currentProgress < 0.95f && !state.isExpanded
                 delay(
                     when {
-                        isOpeningPlayer -> 320
+                        isAnimating -> 500 // During animation, updates aren't visible
                         state.isExpanded -> 100
                         else -> 250
                     }
                 )
-                if (!isOpeningPlayer && sliderPosition == null) { // Only update if user isn't dragging
+                // Skip position updates entirely during sheet animation —
+                // the position values aren't visible so writing them just triggers
+                // useless recomposition of slider/time labels.
+                if (!isAnimating && sliderPosition == null) {
                     position = playerConnection.player.currentPosition
                     duration = playerConnection.player.duration
                 }
@@ -1075,7 +1079,7 @@ fun BottomSheetPlayer(
 
 
     val renderHeavyPlayerEffects by remember {
-        derivedStateOf { state.progress > 0.92f || state.isExpanded }
+        derivedStateOf { state.progress > 0.85f || state.isExpanded }
     }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
@@ -1812,7 +1816,8 @@ fun BottomSheetPlayer(
                             tint = Color.Unspecified,
                             height = 16.dp,
                             modifier = Modifier.padding(end = 6.dp),
-                            audioQuality = audioQuality
+                            audioQuality = audioQuality,
+                            fallbackId = currentSong?.id
                         )
 
                         if (mediaMetadata.artists.any { it.name.isNotBlank() }) {
@@ -2455,6 +2460,8 @@ fun BottomSheetPlayer(
                                             AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
                                             AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
                                             AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
+                                            AudioQuality.LOSSLESS -> "Lossless"
+                                            AudioQuality.HI_RES_LOSSLESS -> "Hi-Res"
                                         }.uppercase(),
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             fontSize = 10.sp,
@@ -2862,7 +2869,6 @@ fun BottomSheetPlayer(
                                 Thumbnail(
                                     sliderPositionProvider = sliderPositionProvider,
                                     modifier = Modifier
-                                        .animateContentSize()
                                         .graphicsLayer {
                                             alpha = (if (state.progress > 0.95f) ((state.progress - 0.95f) * 20f).coerceIn(0f, 1f) else 0f) *
                                                     (1f - inlineLyricsMorphProgress).coerceIn(0f, 1f)
@@ -2914,8 +2920,7 @@ fun BottomSheetPlayer(
                     modifier =
                     Modifier
                         .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
-                        .padding(bottom = bottomPadding)
-                        .animateContentSize(),
+                        .padding(bottom = bottomPadding),
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -3233,7 +3238,8 @@ fun InlineLyricsView(
                             format = currentFormat,
                             tint = Color.Unspecified,
                             height = 16.dp,
-                            audioQuality = audioQuality
+                            audioQuality = audioQuality,
+                            fallbackId = currentSong?.id
                         )
                         Text(
                             text = mediaMetadata?.artists?.joinToString { it.name }.orEmpty(),

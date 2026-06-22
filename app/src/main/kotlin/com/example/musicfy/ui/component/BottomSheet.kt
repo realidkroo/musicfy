@@ -231,7 +231,14 @@ fun BottomSheet(
                                 it.background(containerColor.copy(alpha = 0.85f * blurAlpha))
                             }
                         }
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(cornerRadius))
+                        .then(
+                            // Only draw border when collapsed or nearly collapsed — skip during animation
+                            if (progress < 0.05f) {
+                                Modifier.border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(cornerRadius))
+                            } else {
+                                Modifier
+                            }
+                        )
                         .pointerInput(state, isExpandable) {
                             if (!isExpandable) return@pointerInput
                             val velocityTracker = VelocityTracker()
@@ -315,18 +322,17 @@ fun BottomSheet(
                             )
                         }
 
-                        // Full content is delayed slightly so the mini-to-player morph gets
-                        // the first frames without composing the whole expanded player.
-                        if (!state.isCollapsed && progress > 0.32f) {
+                        // Full content is deferred until progress > 0.55f so the morphing
+                        // shared elements carry the visual transition without heavy composition.
+                        // Alpha-only fade avoids layout changes every frame (no translationY).
+                        if (!state.isCollapsed && progress > 0.55f) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .requiredHeight(state.expandedBound)
                                     .align(androidx.compose.ui.Alignment.BottomCenter)
                                     .graphicsLayer {
-                                        alpha = ((progress - 0.32f) / 0.68f).coerceIn(0f, 1f)
-                                        // Slide up from bottom like iOS
-                                        translationY = (1f - progress) * 200.dp.toPx()
+                                        alpha = ((progress - 0.55f) / 0.45f).coerceIn(0f, 1f)
                                     }
                             ) {
                                 content()

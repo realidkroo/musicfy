@@ -18,7 +18,7 @@ val MediaItem.metadata: MediaMetadata?
 
 fun Song.toMediaItem() = MediaItem.Builder()
     .setMediaId(song.id)
-    .setUri(song.id)
+    .setUri(if (song.isLocal && song.localUri != null) song.localUri else song.id)
     .setCustomCacheKey(song.id)
     .setTag(toMediaMetadata())
     .setMediaMetadata(
@@ -66,7 +66,7 @@ fun SongItem.toMediaItem() = MediaItem.Builder()
 
 fun MediaMetadata.toMediaItem() = MediaItem.Builder()
     .setMediaId(id)
-    .setUri(id)
+    .setUri(localUri ?: id)
     .setCustomCacheKey(id)
     .setTag(this)
     .setMediaMetadata(

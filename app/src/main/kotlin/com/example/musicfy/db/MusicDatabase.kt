@@ -113,7 +113,7 @@ class MusicDatabase(
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 36,
+    version = 37,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -135,6 +135,7 @@ abstract class InternalDatabase : RoomDatabase() {
                         MIGRATION_22_24,
                         MIGRATION_24_25,
                         MIGRATION_35_36,
+                        MIGRATION_36_37,
                     )
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -689,5 +690,25 @@ val MIGRATION_35_36 =
                 "CREATE TABLE IF NOT EXISTS `playlist_event` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playlistId` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, FOREIGN KEY(`playlistId`) REFERENCES `playlist`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
             )
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_playlist_event_playlistId` ON `playlist_event` (`playlistId`)")
+        }
+    }
+
+val MIGRATION_36_37 =
+    object : Migration(36, 37) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Add localUri column to song table for local file playback
+            var columnExists = false
+            db.query("PRAGMA table_info(song)").use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (cursor.getString(nameIndex) == "localUri") {
+                        columnExists = true
+                        break
+                    }
+                }
+            }
+            if (!columnExists) {
+                db.execSQL("ALTER TABLE song ADD COLUMN localUri TEXT DEFAULT NULL")
+            }
         }
     }

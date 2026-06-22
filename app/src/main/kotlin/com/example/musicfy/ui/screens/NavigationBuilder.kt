@@ -9,6 +9,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.example.musicfy.db.entities.FormatEntity
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -135,6 +136,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(Screens.Settings.route) {
         SettingsScreen(navController = navController)
+    }
+
+    composable("advanced_audio_settings") {
+        com.example.musicfy.ui.screens.settings.AdvancedAudioSettingsScreen(navController = navController)
     }
 
     composable(
@@ -386,24 +391,39 @@ private fun LibraryTabScreen(navController: NavHostController) {
                             Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
 
-                        // Extract metadata
+                        // Extract metadata (includes artwork + mime type)
                         val metadata = withContext(Dispatchers.IO) {
                             extractAudioMetadata(context, uri)
+                        }
+
+                        // Extract and save embedded artwork during import
+                        val songId = "LOCAL_${UUID.randomUUID()}"
+                        val thumbnailUrl = withContext(Dispatchers.IO) {
+                            metadata.embeddedArtwork?.let { artworkData ->
+                                try {
+                                    val artworkFile = java.io.File(
+                                        context.cacheDir,
+                                        "artwork_${songId.hashCode()}.jpg"
+                                    )
+                                    artworkFile.writeBytes(artworkData)
+                                    android.net.Uri.fromFile(artworkFile).toString()
+                                } catch (_: Exception) { null }
+                            }
                         }
 
                         // Insert into database
                         withContext(Dispatchers.IO) {
                             database.transaction {
-                                val songId = "LOCAL_${UUID.randomUUID()}"
                                 insert(
                                     SongEntity(
                                         id = songId,
                                         title = metadata.title,
                                         duration = metadata.durationSeconds,
-                                        thumbnailUrl = null,
+                                        thumbnailUrl = thumbnailUrl,
                                         albumName = metadata.album,
                                         isLocal = true,
                                         inLibrary = LocalDateTime.now(),
+                                        localUri = uri.toString(),
                                     )
                                 )
 
@@ -423,6 +443,30 @@ private fun LibraryTabScreen(navController: NavHostController) {
                                         songId = songId,
                                         artistId = artistId,
                                         position = 0,
+                                    )
+                                )
+
+                                // Create FormatEntity immediately so format badge shows
+                                val mimeType = metadata.mimeType ?: "audio/mpeg"
+                                val codecs = when {
+                                    mimeType.contains("flac") -> "flac"
+                                    mimeType.contains("opus") || mimeType.contains("ogg") -> "opus"
+                                    mimeType.contains("mp4") || mimeType.contains("m4a") || mimeType.contains("aac") -> "mp4a.40.2"
+                                    mimeType.contains("wav") -> "pcm"
+                                    else -> "mp3"
+                                }
+                                upsert(
+                                    FormatEntity(
+                                        id = songId,
+                                        itag = -1,
+                                        mimeType = mimeType,
+                                        codecs = codecs,
+                                        bitrate = metadata.bitrate ?: 0,
+                                        sampleRate = metadata.sampleRate,
+                                        contentLength = 0L,
+                                        loudnessDb = null,
+                                        perceptualLoudnessDb = null,
+                                        playbackUrl = null
                                     )
                                 )
                             }
@@ -630,6 +674,10 @@ private data class LocalAudioMetadata(
     val artist: String,
     val album: String?,
     val durationSeconds: Int,
+    val mimeType: String?,
+    val bitrate: Int?,
+    val sampleRate: Int?,
+    val embeddedArtwork: ByteArray?,
 )
 
 private fun extractAudioMetadata(
@@ -647,11 +695,26 @@ private fun extractAudioMetadata(
         val album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
         val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
             ?.toLongOrNull() ?: 0L
+        val mimeType = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
+            ?: context.contentResolver.getType(uri)
+        val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
+            ?.toIntOrNull()
+        val sampleRate = try {
+            // METADATA_KEY_SAMPLERATE = 38, available on API 31+
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                retriever.extractMetadata(38)?.toIntOrNull()
+            } else null
+        } catch (_: Exception) { null }
+        val embeddedArtwork = try { retriever.embeddedPicture } catch (_: Exception) { null }
         LocalAudioMetadata(
             title = title,
             artist = artist,
             album = album,
             durationSeconds = (durationMs / 1000).toInt(),
+            mimeType = mimeType,
+            bitrate = bitrate,
+            sampleRate = sampleRate,
+            embeddedArtwork = embeddedArtwork,
         )
     } catch (e: Exception) {
         // Fallback: use filename as title
@@ -660,6 +723,10 @@ private fun extractAudioMetadata(
             artist = "Unknown Artist",
             album = null,
             durationSeconds = 0,
+            mimeType = context.contentResolver.getType(uri),
+            bitrate = null,
+            sampleRate = null,
+            embeddedArtwork = null,
         )
     } finally {
         retriever.release()

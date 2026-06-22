@@ -130,6 +130,17 @@ fun SettingsScreen(
                     )
                 )
             )
+            Material3SettingsGroup(
+                title = "Advanced",
+                items = listOf(
+                    Material3SettingsItem(
+                        title = { Text("Advanced Audio Settings") },
+                        description = { Text("Custom API endpoints, Lossless & Hi-Res streaming options, and Spatial Audio") },
+                        icon = painterResource(R.drawable.music_note),
+                        onClick = { navController.navigate("advanced_audio_settings") }
+                    )
+                )
+            )
         }
     }
 }

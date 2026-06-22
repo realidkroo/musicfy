@@ -28,6 +28,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -35,10 +36,10 @@ import timber.log.Timber
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerConnection(
-    context: Context,
+    val context: Context,
     binder: MusicBinder,
     val database: MusicDatabase,
-    scope: CoroutineScope,
+    val scope: CoroutineScope,
 ) : Player.Listener {
     private companion object {
         private const val TAG = "PlayerConnection"
@@ -423,6 +424,68 @@ class PlayerConnection(
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
         updateCanSkipPreviousAndNext()
+    }
+
+    override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+        super.onTracksChanged(tracks)
+        val format = player.audioFormat ?: return
+        val mediaItem = player.currentMediaItem ?: return
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val isLocal = database.song(mediaItem.mediaId).first()?.song?.isLocal == true
+                if (isLocal) {
+                    database.query {
+                        upsert(
+                            com.example.musicfy.db.entities.FormatEntity(
+                                id = mediaItem.mediaId,
+                                itag = -1,
+                                mimeType = format.sampleMimeType?.split(";")?.get(0) ?: "audio/flac",
+                                codecs = format.codecs ?: "",
+                                bitrate = format.bitrate,
+                                sampleRate = format.sampleRate,
+                                contentLength = 0L,
+                                loudnessDb = null,
+                                perceptualLoudnessDb = null,
+                                playbackUrl = null
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Error updating local format entity")
+            }
+        }
+    }
+
+    override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) {
+        super.onMediaMetadataChanged(mediaMetadata)
+        val artworkData = mediaMetadata.artworkData ?: return
+        val mediaItem = player.currentMediaItem ?: return
+        
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val songEntity = database.song(mediaItem.mediaId).first() ?: return@launch
+                if (songEntity.song.isLocal && songEntity.song.thumbnailUrl == null) {
+                    val artworkFile = java.io.File(context.cacheDir, "artwork_${mediaItem.mediaId.hashCode()}.jpg")
+                    if (!artworkFile.exists()) {
+                        artworkFile.writeBytes(artworkData)
+                    }
+                    val newThumbnailUrl = android.net.Uri.fromFile(artworkFile).toString()
+                    database.query {
+                        upsert(songEntity.song.copy(thumbnailUrl = newThumbnailUrl))
+                    }
+                    Timber.tag(TAG).d("Extracted local artwork to $newThumbnailUrl")
+                    
+                    // Update current mediaMetadata if it matches
+                    val currentMetadata = this@PlayerConnection.mediaMetadata.value
+                    if (currentMetadata?.id == mediaItem.mediaId) {
+                        this@PlayerConnection.mediaMetadata.value = currentMetadata.copy(thumbnailUrl = newThumbnailUrl)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Error extracting local artwork")
+            }
+        }
     }
 
     override fun onTimelineChanged(
