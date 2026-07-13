@@ -57,13 +57,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.size
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import com.example.musicfy.LocalHazeState
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.size
 
 @Immutable
 private data class NavItemState(
@@ -178,7 +178,7 @@ fun AppNavigationBar(
         val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
         
         val hazeState = LocalHazeState.current
-        
+
         androidx.compose.foundation.layout.Box(
             modifier = Modifier
                 .fillMaxWidth()

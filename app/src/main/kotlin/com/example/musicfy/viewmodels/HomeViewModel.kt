@@ -353,14 +353,8 @@ class HomeViewModel @Inject constructor(
                 val topSongs = database.mostPlayedSongs(fromTimeStamp = thirtyDaysAgo, limit = 20)
                     .first()
                     .filterVideoSongs(hideVideoSongs)
-                val topPlaylists = database.mostPlayedPlaylists(fromTimeStamp = thirtyDaysAgo, limit = 10)
-                    .first()
 
-                val combined: List<LocalItem> = (topSongs + topPlaylists)
-                    .shuffled()
-                    .take(20)
-
-                quickPicks.value = combined.distinctBy { it.id }
+                quickPicks.value = topSongs.distinctBy { it.id }.take(20)
             }
             QuickPicks.LAST_LISTEN -> {
                 val song = database.events().first().firstOrNull()?.song

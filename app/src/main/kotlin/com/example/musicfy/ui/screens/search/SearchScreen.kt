@@ -246,6 +246,7 @@ fun SearchScreen(
                 modifier = Modifier
                     .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
             ) {
+                @Suppress("DEPRECATION")
                 SearchBar(
                     query = query.text,
                     onQueryChange = { query = TextFieldValue(it) },

@@ -1093,6 +1093,7 @@ fun BottomSheetPlayer(
             state = state,
             modifier = modifier,
             isPillTransition = true,
+            pureBlack = pureBlack,
         background = {
             Box(
                 modifier = Modifier
@@ -1647,13 +1648,7 @@ fun BottomSheetPlayer(
             playerConnection.player.stop()
             playerConnection.player.clearMediaItems()
         },
-        collapsedContent = {
-            MiniPlayer(
-                positionState = positionState,
-                durationState = durationState,
-                isTransparent = true
-            )
-        },
+        collapsedContent = {},
     ) {
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->
             val newPlayerHeaderLift = if (useNewPlayerDesign) (-20).dp else 0.dp

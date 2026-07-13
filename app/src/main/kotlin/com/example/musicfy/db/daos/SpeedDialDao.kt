@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SpeedDialDao {
-    @Query("SELECT * FROM speed_dial_item ORDER BY createDate ASC")
+    @Query("SELECT * FROM speed_dial_item ORDER BY createDate DESC")
     fun getAll(): Flow<List<SpeedDialItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

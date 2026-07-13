@@ -96,7 +96,7 @@ import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.ui.screens.settings.SettingsScreen
 import com.example.musicfy.ui.screens.library.LibraryAlbumsScreen
 import com.example.musicfy.ui.screens.SectionDetailScreen
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.activity.ComponentActivity
 import com.example.musicfy.viewmodels.HomeViewModel
 import com.example.musicfy.ui.screens.library.LibraryArtistsScreen
@@ -133,6 +133,10 @@ fun NavGraphBuilder.navigationBuilder(
             sectionId = sectionId,
             homeViewModel = homeViewModel
         )
+    }
+
+    composable("history") {
+        HistoryScreen(navController = navController)
     }
 
 

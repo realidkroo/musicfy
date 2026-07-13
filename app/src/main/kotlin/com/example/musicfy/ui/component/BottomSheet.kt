@@ -95,6 +95,7 @@ fun BottomSheet(
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
     isPillTransition: Boolean = false,
+    pureBlack: Boolean = false,
     sharedContent: @Composable (BoxScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -192,7 +193,7 @@ fun BottomSheet(
             // iOS Pill Morphing Transition
             val hazeState = LocalHazeState.current
             val playerConnection = LocalPlayerConnection.current
-            val containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer
+            val containerColor = if (pureBlack) androidx.compose.ui.graphics.Color.Black else androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer
             
             val coroutineScope = rememberCoroutineScope()
             val animationSpec = remember {
