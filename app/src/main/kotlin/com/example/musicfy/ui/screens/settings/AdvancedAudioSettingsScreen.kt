@@ -68,8 +68,8 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(paddingValues)
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
             Material3SettingsGroup(

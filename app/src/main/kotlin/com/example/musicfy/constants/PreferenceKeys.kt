@@ -727,3 +727,6 @@ val DeezerFallbackUrlKey = stringPreferencesKey("deezerFallbackUrl")
 val ApiInstancesKey = stringPreferencesKey("apiInstances")
 val StreamingInstancesKey = stringPreferencesKey("streamingInstances")
 val QobuzInstancesKey = stringPreferencesKey("qobuzInstances")
+
+val MusicHapticsEnabledKey = booleanPreferencesKey("musicHapticsEnabled")
+val MusicHapticsSensitivityKey = stringPreferencesKey("musicHapticsSensitivity")

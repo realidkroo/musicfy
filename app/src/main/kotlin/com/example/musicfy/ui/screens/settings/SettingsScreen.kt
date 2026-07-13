@@ -22,8 +22,12 @@ import com.example.musicfy.constants.AppleMusicDarkChromeKey
 import com.example.musicfy.constants.LocalSongAutoMetadataKey
 import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
 import com.example.musicfy.constants.UseNewPlayerDesignKey
+import com.example.musicfy.constants.MusicHapticsEnabledKey
+import com.example.musicfy.constants.MusicHapticsSensitivityKey
+import com.example.musicfy.constants.HapticSensitivity
 import com.example.musicfy.ui.component.Material3SettingsGroup
 import com.example.musicfy.ui.component.Material3SettingsItem
+import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.rememberPreference
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,6 +60,15 @@ fun SettingsScreen(
         defaultValue = false
     )
     
+    val (musicHapticsEnabled, onMusicHapticsEnabledChange) = rememberPreference(
+        MusicHapticsEnabledKey,
+        defaultValue = false
+    )
+    val (musicHapticsSensitivity, onMusicHapticsSensitivityChange) = rememberEnumPreference(
+        MusicHapticsSensitivityKey,
+        defaultValue = HapticSensitivity.MEDIUM
+    )
+    
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -68,8 +81,8 @@ fun SettingsScreen(
     ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(paddingValues)
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
             Material3SettingsGroup(
@@ -133,6 +146,47 @@ fun SettingsScreen(
                                 checked = stopPlaybackOnTaskRemoved,
                                 onCheckedChange = onStopPlaybackOnTaskRemovedChange
                             )
+                        }
+                    )
+                )
+            )
+            Material3SettingsGroup(
+                title = "Accessibility",
+                items = listOf(
+                    Material3SettingsItem(
+                        title = { Text("Music Haptics") },
+                        description = { Text("Vibrate device to the beat of the music (uses more battery)") },
+                        icon = painterResource(R.drawable.music_note),
+                        onClick = { onMusicHapticsEnabledChange(!musicHapticsEnabled) },
+                        trailingContent = {
+                            androidx.compose.material3.Switch(
+                                checked = musicHapticsEnabled,
+                                onCheckedChange = onMusicHapticsEnabledChange
+                            )
+                        }
+                    ),
+                    Material3SettingsItem(
+                        title = { Text("Haptics Sensitivity") },
+                        description = { 
+                            Text(
+                                "Current: ${
+                                    when(musicHapticsSensitivity) {
+                                        HapticSensitivity.LOW -> "Low"
+                                        HapticSensitivity.MEDIUM -> "Medium"
+                                        HapticSensitivity.HIGH -> "High"
+                                    }
+                                }"
+                            )
+                        },
+                        icon = painterResource(R.drawable.contrast),
+                        enabled = musicHapticsEnabled,
+                        onClick = {
+                            val next = when (musicHapticsSensitivity) {
+                                HapticSensitivity.LOW -> HapticSensitivity.MEDIUM
+                                HapticSensitivity.MEDIUM -> HapticSensitivity.HIGH
+                                HapticSensitivity.HIGH -> HapticSensitivity.LOW
+                            }
+                            onMusicHapticsSensitivityChange(next)
                         }
                     )
                 )

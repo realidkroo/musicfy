@@ -162,6 +162,13 @@ import com.example.musicfy.models.PersistPlayerState
 import com.example.musicfy.models.PersistQueue
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.audio.SilenceDetectorAudioProcessor
+import com.example.musicfy.playback.audio.HapticAudioProcessor
+import com.example.musicfy.constants.MusicHapticsEnabledKey
+import com.example.musicfy.constants.MusicHapticsSensitivityKey
+import com.example.musicfy.constants.HapticSensitivity
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.os.VibrationEffect
 import com.example.musicfy.playback.queues.EmptyQueue
 import com.example.musicfy.playback.queues.Queue
 import com.example.musicfy.playback.queues.YouTubeQueue
@@ -362,6 +369,7 @@ class MusicService :
 
     private var isAudioEffectSessionOpened = false
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private lateinit var hapticAudioProcessor: HapticAudioProcessor
 
     private var discordRpc: DiscordRPC? = null
     private var lastPlaybackSpeed = 1.0f
@@ -498,6 +506,22 @@ class MusicService :
         player.addListener(this@MusicService)
         sleepTimer = SleepTimer(scope, player)
         player.addListener(sleepTimer)
+        
+        scope.launch {
+            dataStore.data.map { it[MusicHapticsEnabledKey] ?: false }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    hapticAudioProcessor.enabled = enabled
+                }
+        }
+        
+        scope.launch {
+            dataStore.data.map { it[MusicHapticsSensitivityKey]?.toEnum(HapticSensitivity.MEDIUM) ?: HapticSensitivity.MEDIUM }
+                .distinctUntilChanged()
+                .collect { sensitivity ->
+                    hapticAudioProcessor.sensitivity = sensitivity
+                }
+        }
 
         // Mark player as initialized after successful creation
         playerInitialized.value = true
@@ -976,6 +1000,52 @@ class MusicService :
         equalizerService.addAudioProcessor(eqProcessor)
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
+        
+        val hapticVibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        
+        hapticAudioProcessor = HapticAudioProcessor { amplitude, isBassKick ->
+            scope.launch(Dispatchers.Default) {
+                delay(150) // Compensate for audio pipeline latency
+                try {
+                    if (hapticVibrator.hasVibrator()) {
+                        val scale = (amplitude / 255f).coerceIn(0.01f, 1f)
+                        
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            if (isBassKick && hapticVibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
+                                // Bass kick: sharp CLICK for punch
+                                val effect = VibrationEffect.startComposition()
+                                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, scale)
+                                    .compose()
+                                hapticVibrator.vibrate(effect)
+                            } else if (hapticVibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_LOW_TICK)) {
+                                // Melody layer: gentle LOW_TICK for smooth iOS-like feel
+                                val effect = VibrationEffect.startComposition()
+                                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, scale)
+                                    .compose()
+                                hapticVibrator.vibrate(effect)
+                            } else if (hapticVibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_TICK)) {
+                                val effect = VibrationEffect.startComposition()
+                                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, scale)
+                                    .compose()
+                                hapticVibrator.vibrate(effect)
+                            } else if (hapticVibrator.hasAmplitudeControl()) {
+                                hapticVibrator.vibrate(VibrationEffect.createOneShot(20, amplitude))
+                            }
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hapticVibrator.hasAmplitudeControl()) {
+                            hapticVibrator.vibrate(VibrationEffect.createOneShot(20, amplitude))
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Error processing haptics")
+                }
+            }
+        }
 
         // Set initial state
         runBlocking {
@@ -986,7 +1056,7 @@ class MusicService :
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
-            .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, hapticAudioProcessor))
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setAudioAttributes(
@@ -2842,7 +2912,8 @@ class MusicService :
 
     private fun createRenderersFactory(
         eqProcessor: CustomEqualizerAudioProcessor,
-        silenceProcessor: SilenceDetectorAudioProcessor
+        silenceProcessor: SilenceDetectorAudioProcessor,
+        hapticProcessor: HapticAudioProcessor
     ) =
         object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
@@ -2859,6 +2930,7 @@ class MusicService :
                         arrayOf(
                             eqProcessor,
                             silenceProcessor,
+                            hapticProcessor
                         ),
                         SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                         SonicAudioProcessor(),
