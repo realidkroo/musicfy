@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.example.musicfy.constants.AppleMusicLyricsBlurKey
 import com.example.musicfy.lyrics.LyricsEntry
 import com.example.musicfy.ui.screens.LyricsPosition
+import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.utils.rememberPreference
 
 /**
@@ -235,7 +236,7 @@ fun MusicfyLyricsLine(
                     label = "wordProgress"
                 )
 
-                val finalFontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Bold
+                val finalFontWeight = FontWeight.Bold
 
                 // Single Layer Rendering with Dynamic ShaderBrush
                 // This guarantees perfect alignment because the text is measured and drawn only once.
@@ -249,6 +250,7 @@ fun MusicfyLyricsLine(
                             (progress + 0.05f).coerceAtMost(1f) to textColor.copy(alpha = 0.45f),
                             1.0f to textColor.copy(alpha = 0.45f)
                         ),
+                        fontFamily = InterFontFamily,
                         fontWeight = finalFontWeight,
 //                        letterSpacing = (-0.5).sp,
                         // Cap internal line height for wrapped words
@@ -268,6 +270,7 @@ fun MusicfyLyricsLine(
                         color = textColor.copy(alpha = if (lineRelTime >= endRelative) 1f else 0.45f), // Increased from 0.35f
                         lineHeight = (textSize * lineSpacing.coerceAtMost(1.3f)).sp,
                         style = TextStyle(
+                            fontFamily = InterFontFamily,
                             shadow = if (lineRelTime >= endRelative) {
                                 androidx.compose.ui.graphics.Shadow(
                                     color = textColor.copy(alpha = 0.3f),

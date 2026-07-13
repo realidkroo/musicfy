@@ -110,6 +110,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.YouTubeGridItem
+import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.ui.menu.YouTubeAlbumMenu
 import com.example.musicfy.constants.GridThumbnailHeight
 import com.example.musicfy.constants.GridItemsSizeKey
@@ -264,6 +265,7 @@ fun SearchScreen(
                             ),
                             style = TextStyle(
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                fontFamily = InterFontFamily,
                                 fontSize = 16.sp
                             )
                         )

@@ -95,6 +95,10 @@ import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.ui.screens.settings.SettingsScreen
 import com.example.musicfy.ui.screens.library.LibraryAlbumsScreen
+import com.example.musicfy.ui.screens.SectionDetailScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.activity.ComponentActivity
+import com.example.musicfy.viewmodels.HomeViewModel
 import com.example.musicfy.ui.screens.library.LibraryArtistsScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -113,6 +117,24 @@ fun NavGraphBuilder.navigationBuilder(
     composable(Screens.Home.route) {
         HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
     }
+
+    composable(
+        route = "section_detail/{sectionId}",
+        arguments = listOf(
+            navArgument("sectionId") {
+                type = NavType.StringType
+            },
+        ),
+    ) { backStackEntry ->
+        val sectionId = backStackEntry.arguments?.getString("sectionId") ?: return@composable
+        val homeViewModel: HomeViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+        SectionDetailScreen(
+            navController = navController,
+            sectionId = sectionId,
+            homeViewModel = homeViewModel
+        )
+    }
+
 
     composable(Screens.Search.route) {
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)

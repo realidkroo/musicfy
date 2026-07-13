@@ -4,6 +4,7 @@
 package com.example.musicfy.ui.component
 
 import android.graphics.BlurMaskFilter
+import android.graphics.Typeface
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -50,11 +52,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.res.ResourcesCompat
+import com.example.musicfy.R
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.AppleMusicLyricsBlurKey
 import com.example.musicfy.constants.LyricsRomanizeAsMainKey
 import com.example.musicfy.lyrics.LyricsEntry
 import com.example.musicfy.ui.screens.LyricsPosition
+import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.utils.rememberPreference
 import kotlinx.coroutines.isActive
 import kotlin.math.PI
@@ -229,6 +234,7 @@ fun MetroLyricsLine(
     }
 
     val lyricStyle = TextStyle(
+        fontFamily = InterFontFamily,
         fontSize = lyricsTextSize.sp,
         fontWeight = FontWeight.Bold,
         fontStyle = if (entry.isBackground) FontStyle.Italic else FontStyle.Normal,
@@ -303,6 +309,7 @@ fun MetroLyricsLine(
                 fontSize = 18.sp,
                 color = baseLineColor.copy(alpha = 0.6f),
                 textAlign = agentTextAlign,
+                fontFamily = InterFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 2.dp).fillMaxWidth(),
                 lineHeight = (18 * lyricsLineSpacing.coerceAtMost(1.3f)).sp
@@ -317,6 +324,7 @@ fun MetroLyricsLine(
                     fontSize = 16.sp,
                     color = expressiveAccent.copy(alpha = 0.8f),
                     textAlign = agentTextAlign,
+                    fontFamily = InterFontFamily,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(top = 4.dp).fillMaxWidth(),
                     lineHeight = (16 * lyricsLineSpacing.coerceAtMost(1.3f)).sp
@@ -341,7 +349,13 @@ private fun WordLevelCanvasLyrics(
     alignment: TextAlign
 ) {
     val density = LocalDensity.current
+    val context = LocalContext.current
     val textMeasurer = rememberTextMeasurer()
+    val interBoldTypeface = remember(context) {
+        ResourcesCompat.getFont(context, R.font.inter_bold)
+            ?: ResourcesCompat.getFont(context, R.font.inter_regular)
+            ?: Typeface.create("sans-serif", Typeface.NORMAL)
+    }
     val glowPaint = remember {
         android.graphics.Paint().apply {
             isAntiAlias = true
@@ -857,7 +871,7 @@ private fun WordLevelCanvasLyrics(
                                         BlurMaskFilter(baseGlowRadius, BlurMaskFilter.Blur.NORMAL)
                                     glowPaint.color = expressiveAccent.copy(alpha = glowAlpha).toArgb()
                                     glowPaint.textSize = lyricStyle.fontSize.toPx()
-                                    glowPaint.typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                                    glowPaint.typeface = interBoldTypeface
                                     canvas.nativeCanvas.drawText(letterLayouts[i].layoutInput.text.text, 0f, letterLayouts[i].firstBaseline, glowPaint)
                                 }
                             }

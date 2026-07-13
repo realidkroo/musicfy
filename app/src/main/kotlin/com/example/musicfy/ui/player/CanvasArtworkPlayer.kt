@@ -41,6 +41,7 @@ fun CanvasArtworkPlayer(
     fallbackUrl: String?,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
+    blurRadiusPx: Float = 0f,
 ) {
     val context = LocalContext.current
     val primary = primaryUrl?.takeIf { it.isNotBlank() }
@@ -232,7 +233,20 @@ fun CanvasArtworkPlayer(
             }
         },
         update = { view ->
-            // AspectRatioFrameLayout handles itself, no specific update needed here
+            // Apply native RenderEffect for hardware-accelerated blur on Android 12+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                if (blurRadiusPx > 0f) {
+                    view.setRenderEffect(
+                        android.graphics.RenderEffect.createBlurEffect(
+                            blurRadiusPx, 
+                            blurRadiusPx, 
+                            android.graphics.Shader.TileMode.CLAMP
+                        )
+                    )
+                } else {
+                    view.setRenderEffect(null)
+                }
+            }
         },
         modifier = modifier.alpha(alpha),
     )

@@ -798,7 +798,7 @@ fun Queue(
                                         color = MaterialTheme.colorScheme.surface,
                                         fontSize = 7.sp,
                                         lineHeight = 7.sp,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                         textAlign = TextAlign.Center
                                     )
                                 }

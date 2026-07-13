@@ -204,6 +204,7 @@ import com.example.musicfy.utils.setAppLocale
 import com.example.musicfy.viewmodels.HomeViewModel
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import com.example.musicfy.ui.screens.setup.SetupWizardContainer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -748,6 +749,9 @@ class MainActivity : ComponentActivity() {
                 val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
                 val swipeToSong by rememberPreference(SwipeToSongKey, false)
 
+                val setupCompleted by rememberPreference(com.example.musicfy.constants.SetupCompletedKey, false)
+                var forceShowSetup by remember { mutableStateOf(false) }
+
                 CompositionLocalProvider(
                     LocalDatabase provides database,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -761,8 +765,40 @@ class MainActivity : ComponentActivity() {
                     LocalGridItemSize provides gridItemSize,
                     LocalSwipeToSong provides swipeToSong,
                 ) {
+                    SetupWizardContainer(
+                        isVisible = !setupCompleted || forceShowSetup,
+                        onSetupCompleted = { username, uri ->
+                            coroutineScope.launch(Dispatchers.IO) {
+                                // Save URI to internal storage if not null
+                                var savedUriStr = ""
+                                if (uri != null) {
+                                    try {
+                                        val inputStream = context.contentResolver.openInputStream(uri)
+                                        val file = java.io.File(context.filesDir, "profile_pic.jpg")
+                                        val outputStream = java.io.FileOutputStream(file)
+                                        inputStream?.copyTo(outputStream)
+                                        inputStream?.close()
+                                        outputStream.close()
+                                        savedUriStr = file.absolutePath
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
 
-                    Scaffold(
+                                dataStore.updateData { prefs ->
+                                    prefs.toMutablePreferences().apply {
+                                        set(com.example.musicfy.constants.SetupCompletedKey, true)
+                                        set(com.example.musicfy.constants.UsernameKey, username)
+                                        if (savedUriStr.isNotEmpty()) {
+                                            set(com.example.musicfy.constants.ProfilePicUriKey, savedUriStr)
+                                        }
+                                    }
+                                }
+                            }
+                            forceShowSetup = false
+                        }
+                    ) {
+                        Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             AnimatedVisibility(
@@ -860,6 +896,36 @@ class MainActivity : ComponentActivity() {
 
                             if (!showRail && currentRoute != "wrapped" && currentRoute != "update" && currentRoute != "listen_together/chat") {
                                 Box {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .fillMaxWidth()
+                                            .height(bottomInset + navPadding + 40.dp)
+                                            .background(
+                                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color.Transparent,
+                                                        Color.Black.copy(alpha = 0.5f),
+                                                        Color.Black.copy(alpha = 0.9f),
+                                                        Color.Black
+                                                    )
+                                                )
+                                            )
+                                            .graphicsLayer {
+                                                val navBarHeightPx = navigationBarHeight.toPx()
+                                                val totalHeightPx = navBarTotalHeight.toPx()
+
+                                                translationY = if (navBarHeightPx == 0f) {
+                                                    totalHeightPx
+                                                } else {
+                                                    val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
+                                                    val slideOffset = totalHeightPx * progress
+                                                    val hideOffset = totalHeightPx * (1 - navBarHeightPx / NavigationBarHeight.toPx())
+                                                    slideOffset + hideOffset
+                                                }
+                                            }
+                                    )
+
                                     BottomSheetPlayer(
                                         state = playerBottomSheetState,
                                         navController = navController,
@@ -1029,7 +1095,8 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    }
+                    } // End Scaffold
+                    } // End SetupWizardContainer
 
                     BottomSheetMenu(
                         state = LocalMenuState.current,

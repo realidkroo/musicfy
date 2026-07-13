@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,13 +40,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -53,17 +54,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.lyrics.LyricsEntry
 import com.example.musicfy.ui.theme.InterFontFamily
-import kotlinx.coroutines.launch
 
 @Composable
 fun PlayerBottomCards(
     currentLyricsLine: String?,
     currentLyricsEntry: LyricsEntry?,
-    playbackPosition: Long,
+    playbackPositionProvider: () -> Long,
     nextQueueTitle: String?,
     nextQueueArtist: String?,
     textColor: Color,
@@ -83,33 +82,20 @@ fun PlayerBottomCards(
     
     val surfaceColor = cardColor.copy(alpha = 0.30f)
     val rearSurfaceColor = cardColor.copy(alpha = 0.24f)
-    val backReveal = remember { Animatable(0f) }
-    val frontReveal = remember { Animatable(0f) }
+    val reveal = remember { Animatable(0f) }
 
     LaunchedEffect(revealReady) {
         if (!revealReady) {
-            backReveal.snapTo(0f)
-            frontReveal.snapTo(0f)
+            reveal.snapTo(0f)
         } else {
-            launch {
-                backReveal.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing)
-                )
-            }
-            launch {
-                frontReveal.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(durationMillis = 380, delayMillis = 70, easing = FastOutSlowInEasing)
-                )
-            }
+            reveal.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 360, easing = FastOutSlowInEasing)
+            )
         }
     }
 
-    val rearProgress = backReveal.value
-    val rearHorizontalPadding = lerp(0.dp, 12.dp, rearProgress)
-    val rearHeight = lerp(132.dp, 104.dp, rearProgress)
-    val rearOffsetY = lerp(88.dp, 46.dp, rearProgress)
+    val revealProgress = reveal.value
     val frontHeight = 132.dp
     val frontOffsetY = 88.dp
 
@@ -119,45 +105,48 @@ fun PlayerBottomCards(
             .height(150.dp)
             .clipToBounds()
             .padding(horizontal = 24.dp)
-            .graphicsLayer {
-                compositingStrategy = CompositingStrategy.Offscreen
-            }
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
     ) {
         EmptyPreviewCard(
             cardColor = rearSurfaceColor,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = rearHorizontalPadding)
-                .height(rearHeight)
+                .padding(horizontal = 12.dp)
+                .height(104.dp)
                 .align(Alignment.BottomCenter)
-                .offset(y = rearOffsetY)
+                .offset(y = 46.dp)
                 .graphicsLayer {
-                    alpha = rearProgress
+                    translationY = (1f - revealProgress) * 42.dp.toPx()
+                    scaleX = 0.96f + 0.04f * revealProgress
+                    scaleY = 0.96f + 0.04f * revealProgress
                 }
         )
-        Box(
+        
+        Spacer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(frontHeight)
                 .align(Alignment.BottomCenter)
                 .offset(y = frontOffsetY)
                 .graphicsLayer {
-                    translationY = (1f - frontReveal.value) * 22.dp.toPx()
+                    translationY = (1f - revealProgress) * 22.dp.toPx()
+                    scaleX = 0.97f + 0.03f * revealProgress
+                    scaleY = 0.97f + 0.03f * revealProgress
                 }
-                .drawWithContent {
-                    if (frontReveal.value > 0.04f) {
-                        drawRoundRect(
-                            color = Color.Black,
-                            cornerRadius = CornerRadius(24.dp.toPx(), 24.dp.toPx()),
-                            blendMode = BlendMode.Clear
-                        )
-                    }
+                .drawBehind {
+                    drawRoundRect(
+                        color = Color.Black,
+                        size = size,
+                        cornerRadius = CornerRadius(24.dp.toPx()),
+                        blendMode = BlendMode.Clear
+                    )
                 }
         )
+
         PlayerPreviewCard(
             currentLyricsLine = currentLyricsLine,
             currentLyricsEntry = currentLyricsEntry,
-            playbackPosition = playbackPosition,
+            playbackPositionProvider = playbackPositionProvider,
             nextQueueTitle = nextQueueTitle,
             nextQueueArtist = nextQueueArtist,
             textColor = textColor,
@@ -168,8 +157,11 @@ fun PlayerBottomCards(
                 .align(Alignment.BottomCenter)
                 .offset(y = frontOffsetY)
                 .graphicsLayer {
-                    alpha = frontReveal.value
-                    translationY = (1f - frontReveal.value) * 22.dp.toPx()
+                    // Translation and scale stay in the render layer, so the lyric card
+                    // does not get remeasured or allocate a clear-mask buffer every frame.
+                    translationY = (1f - revealProgress) * 22.dp.toPx()
+                    scaleX = 0.97f + 0.03f * revealProgress
+                    scaleY = 0.97f + 0.03f * revealProgress
                 },
             onClick = onCardTap
         )
@@ -197,7 +189,7 @@ private fun EmptyPreviewCard(
 private fun PlayerPreviewCard(
     currentLyricsLine: String?,
     currentLyricsEntry: LyricsEntry?,
-    playbackPosition: Long,
+    playbackPositionProvider: () -> Long,
     nextQueueTitle: String?,
     nextQueueArtist: String?,
     textColor: Color,
@@ -234,7 +226,7 @@ private fun PlayerPreviewCard(
                 BottomLyricsPreviewText(
                     text = lyricLine,
                     entry = currentLyricsEntry,
-                    playbackPosition = playbackPosition,
+                    playbackPositionProvider = playbackPositionProvider,
                     color = textColor,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -264,19 +256,18 @@ private fun String.repairSyllableSpacing(): String {
         }
 }
 
-private data class WordVisualState(
+private data class WordTiming(
     val text: String,
     val charRange: IntRange,
-    val isActive: Boolean,
-    val hasPassed: Boolean,
-    val wordProgress: Float,
+    val startMs: Long,
+    val endMs: Long,
 )
 
 @Composable
 private fun BottomLyricsPreviewText(
     text: String,
     entry: LyricsEntry?,
-    playbackPosition: Long,
+    playbackPositionProvider: () -> Long,
     color: Color,
     modifier: Modifier = Modifier,
 ) {
@@ -290,11 +281,7 @@ private fun BottomLyricsPreviewText(
         !words.isNullOrEmpty() && words.joinToString(" ") { it.text }.trim() == plainText
     }
 
-    // Coarsen playbackPosition to 250ms buckets so small position changes don't
-    // trigger recalculation of the entire word timing array every frame.
-    val coarsenedPosition = remember(playbackPosition) { (playbackPosition / 250L) * 250L }
-    
-    val wordStates = remember(words, coarsenedPosition, canRenderWordTiming) {
+    val wordTimings = remember(words, canRenderWordTiming) {
         if (!canRenderWordTiming || words.isNullOrEmpty()) {
             emptyList()
         } else {
@@ -302,31 +289,28 @@ private fun BottomLyricsPreviewText(
             words.map { word ->
                 val startMs = (word.startTime * 1000).toLong()
                 val endMs = (word.endTime * 1000).toLong().coerceAtLeast(startMs + 40L)
-                val isActive = playbackPosition in startMs until endMs
-                val hasPassed = playbackPosition >= endMs
-                val progress = if (isActive) {
-                    ((playbackPosition - startMs).toFloat() / (endMs - startMs).toFloat()).coerceIn(0f, 1f)
-                } else {
-                    0f
-                }
                 val range = cursor until (cursor + word.text.length)
                 cursor += word.text.length + 1
-                WordVisualState(word.text, range, isActive, hasPassed, progress)
+                WordTiming(word.text, range, startMs, endMs)
             }
         }
     }
 
-    val activeCharIndex = remember(wordStates) {
-        val active = wordStates.firstOrNull { it.isActive }
-        val lastPassed = wordStates.lastOrNull { it.hasPassed }
-        active?.charRange?.first ?: lastPassed?.let { it.charRange.last + 2 } ?: 0
+    val activeCharIndex by remember(wordTimings) {
+        androidx.compose.runtime.derivedStateOf {
+            val pos = playbackPositionProvider()
+            val active = wordTimings.firstOrNull { pos in it.startMs until it.endMs }
+            val lastPassed = wordTimings.lastOrNull { pos >= it.endMs }
+            active?.charRange?.first ?: lastPassed?.let { it.charRange.last + 2 } ?: 0
+        }
     }
 
     AutoResizeLyricsLine(
         plainText = plainText,
-        wordStates = wordStates,
+        wordTimings = wordTimings,
         fallbackText = text,
-        activeCharIndex = activeCharIndex,
+        activeCharIndexProvider = { activeCharIndex },
+        playbackPositionProvider = playbackPositionProvider,
         color = color,
         fontSize = LyricsFontSize,
         lineHeight = 22.sp,
@@ -337,9 +321,10 @@ private fun BottomLyricsPreviewText(
 @Composable
 private fun AutoResizeLyricsLine(
     plainText: String,
-    wordStates: List<WordVisualState>,
+    wordTimings: List<WordTiming>,
     fallbackText: String,
-    activeCharIndex: Int,
+    activeCharIndexProvider: () -> Int,
+    playbackPositionProvider: () -> Long,
     color: Color,
     fontSize: TextUnit,
     lineHeight: TextUnit,
@@ -379,10 +364,14 @@ private fun AutoResizeLyricsLine(
         )
 
         if (lineBoundaries.isNotEmpty()) {
-            val safeIndex = activeCharIndex.coerceIn(0, kotlin.math.max(0, plainText.length - 1))
-            val activeLineIndex = lineBoundaries.indexOfLast { safeIndex >= it.first }
-                .coerceAtLeast(0)
-                .coerceAtMost(lineBoundaries.lastIndex)
+            val activeLineIndex by remember(lineBoundaries) {
+                androidx.compose.runtime.derivedStateOf {
+                    val safeIndex = activeCharIndexProvider().coerceIn(0, kotlin.math.max(0, plainText.length - 1))
+                    lineBoundaries.indexOfLast { safeIndex >= it.first }
+                        .coerceAtLeast(0)
+                        .coerceAtMost(lineBoundaries.lastIndex)
+                }
+            }
 
             AnimatedContent(
                 targetState = activeLineIndex,
@@ -419,7 +408,7 @@ private fun AutoResizeLyricsLine(
                 modifier = Modifier.fillMaxWidth()
             ) { lineIdx ->
                 val range = lineBoundaries.getOrNull(lineIdx)
-                if (wordStates.isEmpty() || range == null) {
+                if (wordTimings.isEmpty() || range == null) {
                     Text(
                         text = fallbackText,
                         color = color,
@@ -434,12 +423,17 @@ private fun AutoResizeLyricsLine(
                         style = TextStyle(letterSpacing = 0.sp),
                     )
                 } else {
-                    val lineWords = wordStates.filter {
+                    val lineWords = wordTimings.filter {
                         it.charRange.first >= range.first && it.charRange.first <= range.last
                     }
                     Row(verticalAlignment = Alignment.Bottom) {
                         lineWords.forEachIndexed { idx, word ->
-                            LyricsWordItem(word = word, baseColor = color, fontSize = fontSize)
+                            LyricsWordItem(
+                                word = word, 
+                                baseColor = color, 
+                                fontSize = fontSize,
+                                playbackPositionProvider = playbackPositionProvider
+                            )
                             if (idx < lineWords.lastIndex) {
                                 Text(
                                     text = " ",
@@ -458,16 +452,38 @@ private fun AutoResizeLyricsLine(
 
 @Composable
 private fun LyricsWordItem(
-    word: WordVisualState,
+    word: WordTiming,
     baseColor: Color,
     fontSize: TextUnit,
+    playbackPositionProvider: () -> Long,
 ) {
-    val wordScale = if (word.isActive) {
-        1f + 0.035f * kotlin.math.sin(word.wordProgress.toDouble() * Math.PI).toFloat()
+    val isActive by remember {
+        androidx.compose.runtime.derivedStateOf {
+            val pos = playbackPositionProvider()
+            pos in word.startMs until word.endMs
+        }
+    }
+    val hasPassed by remember {
+        androidx.compose.runtime.derivedStateOf {
+            val pos = playbackPositionProvider()
+            pos >= word.endMs
+        }
+    }
+    val progress by remember {
+        androidx.compose.runtime.derivedStateOf {
+            if (isActive) {
+                val pos = playbackPositionProvider()
+                ((pos - word.startMs).toFloat() / (word.endMs - word.startMs).toFloat()).coerceIn(0f, 1f)
+            } else 0f
+        }
+    }
+
+    val wordScale = if (isActive) {
+        1f + 0.035f * kotlin.math.sin(progress.toDouble() * Math.PI).toFloat()
     } else {
         1f
     }
-    val inactiveAlpha = if (word.hasPassed) 1f else 0.42f
+    val inactiveAlpha = if (hasPassed) 1f else 0.42f
 
     Text(
         text = word.text,
@@ -476,12 +492,12 @@ private fun LyricsWordItem(
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
         softWrap = false,
-        style = if (word.isActive) {
+        style = if (isActive) {
             MaterialTheme.typography.bodyMedium.copy(
                 brush = Brush.horizontalGradient(
                     0f to baseColor,
-                    word.wordProgress.coerceAtLeast(0.01f) to baseColor,
-                    (word.wordProgress + 0.18f).coerceAtMost(1f) to baseColor.copy(alpha = 0.42f),
+                    progress.coerceAtLeast(0.01f) to baseColor,
+                    (progress + 0.18f).coerceAtMost(1f) to baseColor.copy(alpha = 0.42f),
                     1f to baseColor.copy(alpha = 0.42f)
                 ),
                 fontFamily = InterFontFamily,
@@ -501,3 +517,4 @@ private fun LyricsWordItem(
         modifier = Modifier.graphicsLayer(scaleX = wordScale, scaleY = wordScale)
     )
 }
+

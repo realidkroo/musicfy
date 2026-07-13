@@ -3,6 +3,12 @@
 
 package com.example.musicfy.ui.player
 
+import androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi
+import androidx.compose.animation.graphics.res.animatedVectorResource
+import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
+import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.compose.foundation.Indication
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -118,6 +124,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -1078,9 +1085,6 @@ fun BottomSheetPlayer(
     }
 
 
-    val renderHeavyPlayerEffects by remember {
-        derivedStateOf { state.progress > 0.85f || state.isExpanded }
-    }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
@@ -1095,7 +1099,8 @@ fun BottomSheetPlayer(
                     .fillMaxSize()
                     .background(bottomSheetBackgroundColor)
             ) {
-                if (!renderHeavyPlayerEffects && playerBackground != PlayerBackgroundStyle.DEFAULT && playerBackground != PlayerBackgroundStyle.APPLE_MUSIC) {
+                // Static gradient base (always active)
+                if (playerBackground != PlayerBackgroundStyle.DEFAULT) {
                     val colors = gradientColors.ifEmpty {
                         listOf(
                             MaterialTheme.colorScheme.surfaceContainer,
@@ -1114,75 +1119,84 @@ fun BottomSheetPlayer(
                                 )
                             )
                     )
-                } else when (playerBackground) {
-                    PlayerBackgroundStyle.BLUR -> {
-                        AnimatedContent(
-                            targetState = mediaMetadata?.thumbnailUrl,
-                            transitionSpec = {
-                                fadeIn(tween(800)).togetherWith(fadeOut(tween(800)))
-                            },
-                            label = "blurBackground"
-                        ) { thumbnailUrl ->
-                            if (thumbnailUrl != null) {
-                                Box(modifier = Modifier.graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(context)
-                                            .data(thumbnailUrl)
-                                            .size(100, 100)
-                                            .allowHardware(false)
-                                            .build(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .blur(if (useDarkTheme) 150.dp else 100.dp)
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.Black.copy(alpha = 0.3f))
-                                    )
+                }
+                
+                // Heavy effects fade in on top
+                val heavyEffectsAlpha = if (playerBackground != PlayerBackgroundStyle.DEFAULT) state.progress.coerceIn(0f, 1f) else 0f
+                if (heavyEffectsAlpha > 0.01f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = heavyEffectsAlpha }
+                    ) {
+                        when (playerBackground) {
+                            PlayerBackgroundStyle.BLUR -> {
+                                AnimatedContent(
+                                    targetState = mediaMetadata?.thumbnailUrl,
+                                    transitionSpec = {
+                                        fadeIn(tween(400)).togetherWith(fadeOut(tween(400)))
+                                    },
+                                    label = "blurBackground"
+                                ) { thumbnailUrl ->
+                                    if (thumbnailUrl != null) {
+                                        Box(modifier = Modifier.fillMaxSize()) {
+                                            AsyncImage(
+                                                model = ImageRequest.Builder(context)
+                                                    .data(thumbnailUrl)
+                                                    .size(100, 100)
+                                                    .allowHardware(false)
+                                                    .build(),
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .blur(if (useDarkTheme) 150.dp else 100.dp)
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(Color.Black.copy(alpha = 0.3f))
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                    PlayerBackgroundStyle.GRADIENT -> {
-                        AnimatedContent(
-                            targetState = gradientColors,
-                            transitionSpec = {
-                                fadeIn(tween(800)).togetherWith(fadeOut(tween(800)))
-                            },
-                            label = "gradientBackground"
-                        ) { colors ->
-                            if (colors.isNotEmpty()) {
-                                val gradientColorStops = if (colors.size >= 3) {
-                                    arrayOf(
-                                        0.0f to colors[0],
-                                        0.5f to colors[1],
-                                        1.0f to colors[2]
-                                    )
-                                } else {
-                                    arrayOf(
-                                        0.0f to colors[0],
-                                        0.6f to colors[0].copy(alpha = 0.7f),
-                                        1.0f to Color.Black
-                                    )
+                            PlayerBackgroundStyle.GRADIENT -> {
+                                AnimatedContent(
+                                    targetState = gradientColors,
+                                    transitionSpec = {
+                                        fadeIn(tween(400)).togetherWith(fadeOut(tween(400)))
+                                    },
+                                    label = "gradientBackground"
+                                ) { colors ->
+                                    if (colors.isNotEmpty()) {
+                                        val gradientColorStops = if (colors.size >= 3) {
+                                            arrayOf(
+                                                0.0f to colors[0],
+                                                0.5f to colors[1],
+                                                1.0f to colors[2]
+                                            )
+                                        } else {
+                                            arrayOf(
+                                                0.0f to colors[0],
+                                                0.6f to colors[0].copy(alpha = 0.7f),
+                                                1.0f to Color.Black
+                                            )
+                                        }
+                                        Box(
+                                            Modifier
+                                                .fillMaxSize()
+                                                .background(Brush.verticalGradient(colorStops = gradientColorStops))
+                                                .background(Color.Black.copy(alpha = 0.2f))
+                                        )
+                                    }
                                 }
-                                Box(
-                                    Modifier
-                                        .fillMaxSize()
-                                        .graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
-                                        .background(Brush.verticalGradient(colorStops = gradientColorStops))
-                                        .background(Color.Black.copy(alpha = 0.2f))
-                                )
                             }
-                        }
-                    }
-                    PlayerBackgroundStyle.GLOW_ANIMATED -> {
-                        AnimatedContent(
+                            PlayerBackgroundStyle.GLOW_ANIMATED -> {
+                                AnimatedContent(
                             targetState = gradientColors,
                             transitionSpec = {
-                                fadeIn(tween(1200)) togetherWith fadeOut(tween(1200))
+                                fadeIn(tween(400)) togetherWith fadeOut(tween(400))
                             },
                             label = "GlowAnimatedContent"
                         ) { colors ->
@@ -1259,7 +1273,6 @@ fun BottomSheetPlayer(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                                         .drawWithCache {
                                             val width = size.width
                                             val height = size.height
@@ -1345,7 +1358,7 @@ fun BottomSheetPlayer(
                         AnimatedContent(
                             targetState = bgState,
                             transitionSpec = {
-                                fadeIn(tween(1200)).togetherWith(fadeOut(tween(1200)))
+                                fadeIn(tween(400)).togetherWith(fadeOut(tween(400)))
                             },
                             label = "appleMusicBackground"
                         ) { currentBgState ->
@@ -1353,16 +1366,21 @@ fun BottomSheetPlayer(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                                 ) {
                                     if (currentBgState.isVideo) {
+                                        val blurRadiusPx = with(androidx.compose.ui.platform.LocalDensity.current) { 150.dp.toPx() }
                                         CanvasArtworkPlayer(
                                             primaryUrl = currentBgState.primaryUrl,
                                             fallbackUrl = currentBgState.fallbackUrl,
                                             isPlaying = isPlaying,
+                                            blurRadiusPx = blurRadiusPx,
                                             modifier = Modifier
                                                 .fillMaxSize()
-                                                .blur(150.dp)
+                                                .graphicsLayer {
+                                                    scaleX = -1.2f
+                                                    scaleY = 1.2f
+                                                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                                                }
                                         )
                                     } else {
                                         val infiniteTransition = rememberInfiniteTransition(label = "appleMusicWarp")
@@ -1390,10 +1408,13 @@ fun BottomSheetPlayer(
                                                 .graphicsLayer {
                                                     scaleX = 1.2f
                                                     scaleY = 1.2f
+                                                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
                                                 } // Scale up to hide warped edges
                                                 .let {
                                                     if (android.os.Build.VERSION.SDK_INT >= 33) {
-                                                        it.blur(150.dp).liquidWarpEffect(time)
+                                                        // Freeze time animation during transition to save GPU
+                                                        val transitionTime = if (state.progress > 0.01f && state.progress < 0.99f) 0f else time
+                                                        it.blur(150.dp).liquidWarpEffect(transitionTime)
                                                     } else {
                                                         it.blur(150.dp)
                                                     }
@@ -1463,7 +1484,6 @@ fun BottomSheetPlayer(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .graphicsLayer {
-                                            alpha = state.progress.coerceIn(0f, 1f)
                                             // Scale up to avoid showing edges during rotation
                                             scaleX = 1.7f
                                             scaleY = 1.7f
@@ -1559,6 +1579,8 @@ fun BottomSheetPlayer(
                     }
                 }
             }
+        }
+    }
         },
         sharedContent = {
             val progressProvider = remember(state) { { state.progress.coerceIn(0f, 1f) } }
@@ -1634,11 +1656,6 @@ fun BottomSheetPlayer(
         },
     ) {
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->
-            val playPauseRoundness by animateDpAsState(
-                targetValue = if (isPlaying) 24.dp else 36.dp,
-                animationSpec = tween(durationMillis = 90, easing = LinearEasing),
-                label = "playPauseRoundness",
-            )
             val newPlayerHeaderLift = if (useNewPlayerDesign) (-20).dp else 0.dp
 
             Row(
@@ -2502,8 +2519,8 @@ fun BottomSheetPlayer(
                                 .fillMaxWidth()
                                 .padding(horizontal = PlayerHorizontalPadding)
                         ) {
-                            PressScaleIconButton(
-                                icon = R.drawable.ic_untitled_skip_previous,
+                            AnimatedPressScaleSkipButton(
+                                icon = R.drawable.avd_skip_previous,
                                 onClick = playerConnection::seekToPrevious,
                                 enabled = canSkipPrevious,
                                 tint = TextBackgroundColor,
@@ -2511,12 +2528,9 @@ fun BottomSheetPlayer(
                                 modifier = Modifier.size(74.dp)
                             )
 
-                            PressScaleIconButton(
-                                icon = when {
-                                    playbackState == Player.STATE_ENDED -> R.drawable.replay
-                                    effectiveIsPlaying -> R.drawable.ic_untitled_pause
-                                    else -> R.drawable.ic_untitled_play
-                                },
+                            AnimatedPressScalePlayPauseButton(
+                                isPlaying = effectiveIsPlaying,
+                                playbackState = playbackState,
                                 onClick = {
                                     if (isCasting) {
                                         if (castIsPlaying) {
@@ -2536,8 +2550,8 @@ fun BottomSheetPlayer(
                                 modifier = Modifier.size(74.dp)
                             )
 
-                            PressScaleIconButton(
-                                icon = R.drawable.ic_untitled_skip_next,
+                            AnimatedPressScaleSkipButton(
+                                icon = R.drawable.avd_skip_next,
                                 onClick = playerConnection::seekToNext,
                                 enabled = canSkipNext,
                                 tint = TextBackgroundColor,
@@ -2574,8 +2588,8 @@ fun BottomSheetPlayer(
 //                            }
 
                             Box(modifier = Modifier.weight(1f)) {
-                                ResizableIconButton(
-                                    icon = R.drawable.ic_untitled_skip_previous,
+                                AnimatedResizableSkipButton(
+                                    icon = R.drawable.avd_skip_previous,
                                     enabled = canSkipPrevious,
                                     color = TextBackgroundColor,
                                     modifier =
@@ -2593,7 +2607,7 @@ fun BottomSheetPlayer(
                                 modifier =
                                 Modifier
                                     .size(64.dp) // Adjusted to better match 48.dp side buttons visually
-                                    .clip(RoundedCornerShape(playPauseRoundness))
+                                    .clip(CircleShape)
                                     .clickable {
                                         if (isCasting) {
                                             if (castIsPlaying) {
@@ -2609,32 +2623,32 @@ fun BottomSheetPlayer(
                                         }
                                     },
                             ) {
-                                Image(
-                                    painter =
-                                    painterResource(
-                                        when {
-                                            playbackState == Player.STATE_ENDED ->
-                                                R.drawable.replay
-                                            effectiveIsPlaying ->
-                                                R.drawable.ic_untitled_pause
-                                            else ->
-                                                R.drawable.ic_untitled_play
-                                        }
-                                    ),
-                                    contentDescription = null,
-                                    colorFilter = ColorFilter.tint(TextBackgroundColor),
-                                    modifier =
-                                    Modifier
-                                        .align(Alignment.Center)
-                                        .size(48.dp),
-                                )
+                                if (playbackState == Player.STATE_ENDED) {
+                                    Image(
+                                        painter = painterResource(R.drawable.replay),
+                                        contentDescription = null,
+                                        colorFilter = ColorFilter.tint(TextBackgroundColor),
+                                        modifier = Modifier.align(Alignment.Center).size(48.dp),
+                                    )
+                                } else {
+                                    @OptIn(androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi::class)
+                                    val avd = AnimatedImageVector.animatedVectorResource(R.drawable.avd_play_to_pause)
+                                    @OptIn(androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi::class)
+                                    val painter = rememberAnimatedVectorPainter(avd, atEnd = effectiveIsPlaying)
+                                    Image(
+                                        painter = painter,
+                                        contentDescription = null,
+                                        colorFilter = ColorFilter.tint(TextBackgroundColor),
+                                        modifier = Modifier.align(Alignment.Center).size(48.dp),
+                                    )
+                                }
                             }
 
                             Spacer(Modifier.width(8.dp))
 
                             Box(modifier = Modifier.weight(1f)) {
-                                ResizableIconButton(
-                                    icon = R.drawable.ic_untitled_skip_next,
+                                AnimatedResizableSkipButton(
+                                    icon = R.drawable.avd_skip_next,
                                     enabled = canSkipNext,
                                     color = TextBackgroundColor,
                                     modifier =
@@ -2968,7 +2982,7 @@ fun BottomSheetPlayer(
                         PlayerBottomCards(
                             currentLyricsLine = currentLyricsLine,
                             currentLyricsEntry = currentLyricsEntry,
-                            playbackPosition = bottomCardLyricsPosition,
+                            playbackPositionProvider = { effectivePosition },
                             nextQueueTitle = nextQueueMetadata?.title,
                             nextQueueArtist = nextQueueMetadata?.artists?.joinToString { it.name },
                             textColor = TextBackgroundColor,
@@ -2987,7 +3001,7 @@ fun BottomSheetPlayer(
         }
 
         AnimatedVisibility(
-            visible = !isFullScreen && !(useNewPlayerDesign && !showInlineLyrics && showPlayerBottomCard),
+            visible = !isFullScreen && showPlayerBottomCard && !(useNewPlayerDesign && !showInlineLyrics),
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             exit = shrinkVertically(shrinkTowards = Alignment.Top) + slideOutVertically(targetOffsetY = { it }) + fadeOut()
         ) {
@@ -3680,7 +3694,7 @@ private fun PressScaleIconButton(
                     color = MaterialTheme.colorScheme.surface,
                     fontSize = 6.5.sp,
                     lineHeight = 6.5.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
             }
@@ -3703,9 +3717,9 @@ private fun adaptiveLyricsCardColor(
     )
     val luminance = average.red * 0.299f + average.green * 0.587f + average.blue * 0.114f
     val glassBase = when {
-        preferLightCard -> average.towardsWhite(0.54f)
-        luminance > 0.55f -> average.towardsWhite(0.22f)
-        else -> average.towardsWhite(0.42f)
+        preferLightCard -> average.towardsWhite(0.35f)
+        luminance > 0.55f -> average.towardsWhite(0.1f)
+        else -> average.towardsWhite(0.18f)
     }
     return glassBase.copy(alpha = 1f)
 }
@@ -3879,5 +3893,157 @@ private fun Modifier.liquidWarpEffect(time: Float): Modifier = composed {
         shader.setFloatUniform("time", time)
         renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "image").asComposeRenderEffect()
         clip = true
+    }
+}
+
+@OptIn(androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi::class)
+@Composable
+private fun AnimatedPressScaleSkipButton(
+    icon: Int,
+    tint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    iconSize: Dp = 28.dp,
+    containerColor: Color = Color.Transparent,
+    enabled: Boolean = true,
+) {
+    var trigger by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.54f, stiffness = 720f),
+        label = "pressScaleIconButton"
+    )
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = if (enabled) 1f else 0.36f
+            }
+            .clip(RoundedCornerShape(50))
+            .background(containerColor)
+            .clickable(
+                enabled = enabled,
+                indication = null,
+                interactionSource = interactionSource,
+                onClick = {
+                    trigger++
+                    onClick()
+                }
+            )
+    ) {
+        val avd = AnimatedImageVector.animatedVectorResource(icon)
+        androidx.compose.runtime.key(trigger) {
+            var atEnd by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                if (trigger > 0) atEnd = true
+            }
+            val painter = rememberAnimatedVectorPainter(avd, atEnd)
+            Image(
+                painter = painter,
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(tint),
+                modifier = Modifier.size(iconSize).scale(2.0f)
+            )
+        }
+    }
+}
+
+@OptIn(androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi::class)
+@Composable
+private fun AnimatedPressScalePlayPauseButton(
+    isPlaying: Boolean,
+    playbackState: Int,
+    tint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    iconSize: Dp = 28.dp,
+    containerColor: Color = Color.Transparent,
+    enabled: Boolean = true,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.54f, stiffness = 720f),
+        label = "pressScaleIconButton"
+    )
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                alpha = if (enabled) 1f else 0.36f
+            }
+            .clip(RoundedCornerShape(50))
+            .background(containerColor)
+            .clickable(
+                enabled = enabled,
+                indication = null,
+                interactionSource = interactionSource,
+                onClick = onClick
+            )
+    ) {
+        if (playbackState == Player.STATE_ENDED) {
+            Image(
+                painter = painterResource(R.drawable.replay),
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(tint),
+                modifier = Modifier.size(iconSize)
+            )
+        } else {
+            val avd = AnimatedImageVector.animatedVectorResource(R.drawable.avd_play_to_pause)
+            val painter = rememberAnimatedVectorPainter(avd, atEnd = isPlaying)
+            Image(
+                painter = painter,
+                contentDescription = null,
+                colorFilter = ColorFilter.tint(tint),
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+@OptIn(androidx.compose.animation.graphics.ExperimentalAnimationGraphicsApi::class)
+@Composable
+fun AnimatedResizableSkipButton(
+    icon: Int,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    enabled: Boolean = true,
+    indication: androidx.compose.foundation.Indication? = null,
+    onClick: () -> Unit = {},
+) {
+    var trigger by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val avd = AnimatedImageVector.animatedVectorResource(icon)
+    androidx.compose.runtime.key(trigger) {
+        var atEnd by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            if (trigger > 0) atEnd = true
+        }
+        val painter = rememberAnimatedVectorPainter(avd, atEnd)
+        Image(
+            painter = painter,
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(color),
+            modifier = modifier
+                .clickable(
+                    indication = indication ?: androidx.compose.material3.ripple(bounded = false),
+                    interactionSource = remember { MutableInteractionSource() },
+                    enabled = enabled,
+                    onClick = {
+                        trigger++
+                        onClick()
+                    },
+                )
+                .alpha(if (enabled) 1f else 0.5f)
+                .scale(2.0f),
+        )
     }
 }

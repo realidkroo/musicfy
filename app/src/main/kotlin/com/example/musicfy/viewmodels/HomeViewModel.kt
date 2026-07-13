@@ -289,10 +289,20 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun getDailyDiscover() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
-        val likedSongs = database.likedSongsByCreateDateAsc().first()
-        if (likedSongs.isEmpty()) return
+        
+        // Require at least 10 listens before showing Daily Discover
+        val playEvents = database.events().first()
+        if (playEvents.size < 10) return
 
-        val seeds = likedSongs.shuffled().distinctBy { it.id }.take(5)
+        val likedSongs = database.likedSongsByCreateDateAsc().first()
+        
+        val eligibleSeeds = if (likedSongs.isNotEmpty()) {
+            (likedSongs + playEvents.map { it.song }).distinctBy { it.id }
+        } else {
+            playEvents.map { it.song }.distinctBy { it.id }
+        }
+
+        val seeds = eligibleSeeds.shuffled().take(5)
 
         // Use a synchronized list to collect results safely from concurrent coroutines
         val items = java.util.Collections.synchronizedList(mutableListOf<DailyDiscoverItem>())

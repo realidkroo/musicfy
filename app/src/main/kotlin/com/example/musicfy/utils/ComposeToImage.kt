@@ -23,6 +23,7 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.FileProvider
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
@@ -195,18 +196,21 @@ object ComposeToImage {
 
         val textStartX = padding + coverArtSize + (16f * scale)
         val textMaxWidth = imageWidth - textStartX - padding
+        val interRegular = ResourcesCompat.getFont(context, R.font.inter_regular)
+            ?: Typeface.create("sans-serif", Typeface.NORMAL)
+        val interBold = ResourcesCompat.getFont(context, R.font.inter_bold) ?: interRegular
         
         val titlePaint = TextPaint().apply {
             color = mainTextColor
             textSize = 20f * scale
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = interBold
             isAntiAlias = true
         }
         
         val artistPaint = TextPaint().apply {
             color = secondaryTxtColor
             textSize = 16f * scale
-            typeface = Typeface.DEFAULT
+            typeface = interRegular
             isAntiAlias = true
         }
 
@@ -277,7 +281,7 @@ object ComposeToImage {
         val appNamePaint = TextPaint().apply {
             color = secondaryTxtColor
             textSize = 14f * scale
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = interBold
             isAntiAlias = true
         }
         
@@ -295,7 +299,7 @@ object ComposeToImage {
 
         val lyricsPaint = TextPaint().apply {
             color = mainTextColor
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            typeface = interBold
             isAntiAlias = true
             letterSpacing = 0.005f
         }

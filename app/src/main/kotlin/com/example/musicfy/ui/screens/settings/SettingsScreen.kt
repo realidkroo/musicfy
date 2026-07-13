@@ -24,7 +24,11 @@ import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
 import com.example.musicfy.constants.UseNewPlayerDesignKey
 import com.example.musicfy.ui.component.Material3SettingsGroup
 import com.example.musicfy.ui.component.Material3SettingsItem
+import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.rememberPreference
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +55,9 @@ fun SettingsScreen(
         AppleMusicDarkChromeKey,
         defaultValue = false
     )
+    
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -138,6 +145,20 @@ fun SettingsScreen(
                         description = { Text("Custom API endpoints, Lossless & Hi-Res streaming options, and Spatial Audio") },
                         icon = painterResource(R.drawable.music_note),
                         onClick = { navController.navigate("advanced_audio_settings") }
+                    ),
+                    Material3SettingsItem(
+                        title = { Text("Repeat Initial Setup") },
+                        description = { Text("Re-run the welcome and profile setup wizard") },
+                        icon = painterResource(R.drawable.refresh),
+                        onClick = {
+                            coroutineScope.launch {
+                                context.dataStore.updateData { prefs ->
+                                    prefs.toMutablePreferences().apply {
+                                        set(com.example.musicfy.constants.SetupCompletedKey, false)
+                                    }
+                                }
+                            }
+                        }
                     )
                 )
             )

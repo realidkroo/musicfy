@@ -5,7 +5,11 @@ package com.example.musicfy.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -19,6 +23,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -28,6 +33,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeEffect
+import com.example.musicfy.LocalHazeState
+import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.glassRoot
+import com.example.musicfy.ui.component.GlassPillBackground
+import com.example.musicfy.ui.component.ProgressiveGlassBackground
+import com.example.musicfy.ui.component.BlurDirection
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -68,12 +84,15 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -883,7 +902,6 @@ fun HomeScreen(
             if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
             if (keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
             if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
-            if (dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
             if (accountPlaylists?.isNotEmpty() == true || localPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
             if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
 
@@ -961,14 +979,20 @@ fun HomeScreen(
             }
 
             // Wrap LazyColumn to allow fixed Top Bar overlay
+            val homeHazeState = remember { HazeState() }
+            val homeGlassState = remember { GlassState() }
             Box(modifier = Modifier.fillMaxSize()) {
                 val backgroundColor = if (isSystemInDarkTheme()) Color.Black else MaterialTheme.colorScheme.surface
-                LazyColumn(
-                    state = lazylistState,
-                    contentPadding = PaddingValues(
-                        bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
-                    )
+                CompositionLocalProvider(
+                    com.example.musicfy.ui.component.LocalGridItemPadding provides 0.dp
                 ) {
+                    LazyColumn(
+                        modifier = Modifier.glassRoot(homeGlassState).haze(state = homeHazeState),
+                        state = lazylistState,
+                        contentPadding = PaddingValues(
+                            bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
+                        )
+                    ) {
                 item {
                     HeroCarousel(
                         keepListening = keepListening,
@@ -985,10 +1009,8 @@ fun HomeScreen(
                     item(key = "chips_shimmer") {
                         ShimmerHost {
                             LazyRow(
-                                contentPadding = WindowInsets.systemBars
-                                    .only(WindowInsetsSides.Horizontal)
-                                    .asPaddingValues(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 items(5) {
@@ -1010,17 +1032,16 @@ fun HomeScreen(
                                 item(key = "speed_dial_title") {
                                     NavigationTitle(
                                         title = stringResource(R.string.speed_dial),
-                                        modifier = Modifier
+                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        onClick = { navController.navigate("section_detail/speed_dial") }
                                     )
                                 }
 
                                 item(key = "speed_dial_list") {
                                     LazyRow(
-                                        contentPadding = WindowInsets.systemBars
-                                            .only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
+                                        contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
                                         modifier = Modifier,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
                                         items(
                                             items = items,
@@ -1038,7 +1059,8 @@ fun HomeScreen(
                                     val quickPicksTitle = stringResource(R.string.vivi_quick_picks)
                                     NavigationTitle(
                                         title = quickPicksTitle,
-                                        modifier = Modifier,
+                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        onClick = { navController.navigate("section_detail/quick_picks") },
                                         onPlayAllClick = {
                                             playerConnection.playQueue(
                                                 ListQueue(
@@ -1055,8 +1077,9 @@ fun HomeScreen(
                                         state = quickPicksLazyGridState,
                                         rows = GridCells.Fixed(4),
                                         flingBehavior = rememberSnapFlingBehavior(quickPicksSnapLayoutInfoProvider),
-                                        contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
+                                        contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(ListItemHeight * 4)
@@ -1149,8 +1172,8 @@ fun HomeScreen(
                                 item(key = "community_playlists_title") {
                                     NavigationTitle(
                                         title = stringResource(R.string.from_the_community),
-                                        modifier = Modifier
-                                    )
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                        )
                                 }
 
                                 item(key = "community_playlists_content") {
@@ -1207,7 +1230,7 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(340.dp)
-                                            .padding(horizontal = 16.dp),
+                                            .padding(horizontal = 24.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         val carouselState = rememberCarouselState { discoverList.size }
@@ -1243,11 +1266,12 @@ fun HomeScreen(
                             }
                         }
                         HomeSection.KeepListening -> {
-                            keepListening?.takeIf { it.isNotEmpty() }?.let { keepListening ->
+                            keepListening?.filterIsInstance<Song>()?.takeIf { it.isNotEmpty() }?.let { keepListening ->
                                 item(key = "keep_listening_title") {
                                     NavigationTitle(
                                         title = stringResource(R.string.vivi_on_heavy_rotation),
-                                        modifier = Modifier
+                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        onClick = { navController.navigate("section_detail/history") }
                                     )
                                 }
 
@@ -1256,8 +1280,9 @@ fun HomeScreen(
                                     LazyHorizontalGrid(
                                         state = rememberLazyGridState(),
                                         rows = GridCells.Fixed(rows),
-                                        contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
+                                        contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height((currentGridHeight + with(LocalDensity.current) {
@@ -1279,17 +1304,15 @@ fun HomeScreen(
                         HomeSection.YourLibrary -> {
                             item(key = "your_library_title") {
                                 NavigationTitle(
-                                    title = stringResource(R.string.your_library),
-                                    modifier = Modifier
-                                )
+                                        title = stringResource(R.string.your_library),
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                        )
                             }
                             item(key = "your_library_list") {
                                 LazyRow(
-                                    contentPadding = WindowInsets.systemBars
-                                        .only(WindowInsetsSides.Horizontal)
-                                        .asPaddingValues(),
+                                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
                                     modifier = Modifier,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     item {
                                         LibraryCard(
@@ -1355,11 +1378,9 @@ fun HomeScreen(
 
                                 item(key = "account_playlists_list") {
                                     LazyRow(
-                                        contentPadding = WindowInsets.systemBars
-                                            .only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
+                                        contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
                                         modifier = Modifier,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
                                         localPlaylists?.let { items ->
                                             items(
@@ -1387,7 +1408,8 @@ fun HomeScreen(
                                     val forgottenFavoritesTitle = stringResource(R.string.forgotten_favorites)
                                     NavigationTitle(
                                         title = forgottenFavoritesTitle,
-                                        modifier = Modifier,
+                                        modifier = Modifier.padding(horizontal = 12.dp),
+                                        onClick = { navController.navigate("section_detail/forgotten_favorites") },
                                         onPlayAllClick = {
                                             playerConnection.playQueue(
                                                 ListQueue(
@@ -1405,8 +1427,9 @@ fun HomeScreen(
                                     LazyHorizontalGrid(
                                         state = forgottenFavoritesLazyGridState,
                                         rows = GridCells.Fixed(rows),
-                                        contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
+                                        contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
                                         flingBehavior = rememberSnapFlingBehavior(
                                             forgottenFavoritesSnapLayoutInfoProvider
                                         ),
@@ -1515,9 +1538,8 @@ fun HomeScreen(
 
                                 item(key = "similar_to_list_${section.index}") {
                                     LazyRow(
-                                        contentPadding = WindowInsets.systemBars
-                                            .only(WindowInsetsSides.Horizontal)
-                                            .asPaddingValues(),
+                                        contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                                         modifier = Modifier
                                     ) {
                                         items(
@@ -1591,9 +1613,9 @@ fun HomeScreen(
                                         LazyHorizontalGrid(
                                             state = rememberLazyGridState(),
                                             rows = GridCells.Fixed(4),
-                                            contentPadding = WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
+                                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(ListItemHeight * 4)
@@ -1658,9 +1680,8 @@ fun HomeScreen(
                                     // Render mixed content as horizontal grid items (albums, playlists, artists, etc.)
                                     item(key = "home_section_list_${section.index}") {
                                         LazyRow(
-                                            contentPadding = WindowInsets.systemBars
-                                                .only(WindowInsetsSides.Horizontal)
-                                                .asPaddingValues(),
+                                            contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                                             modifier = Modifier
                                         ) {
                                             items(
@@ -1691,9 +1712,8 @@ fun HomeScreen(
                                         .width(250.dp),
                                 )
                                 LazyRow(
-                                    contentPadding = WindowInsets.systemBars
-                                        .only(WindowInsetsSides.Horizontal)
-                                        .asPaddingValues(),
+                                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 ) {
                                     items(4) {
                                         GridItemPlaceHolder()
@@ -1708,34 +1728,64 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(30.dp))
                 }
             } // End of LazyColumn
+            } // End of CompositionLocalProvider
 
             // Fixed Top Bar Overlay
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.7f),
-                                Color.Black.copy(alpha = 0.4f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-                    .padding(
-                        top = WindowInsets.systemBars.asPaddingValues().calculateTopPadding() + 16.dp,
-                        bottom = 16.dp,
-                        start = 24.dp,
-                        end = 24.dp
-                    )
+                modifier = Modifier.fillMaxWidth()
             ) {
+                // ─── True progressive blur using GlassKit (RenderNode capture) ───
+                // Matches the weatherify settings screen approach exactly.
+                if (heroScrollProgress > 0.01f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer { alpha = heroScrollProgress.coerceIn(0f, 1f) }
+                    ) {
+                        ProgressiveGlassBackground(
+                            state = homeGlassState,
+                            maxBlurRadius = 50f,
+                            foundationColor = backgroundColor,
+                            direction = BlurDirection.BottomToTop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    // Tinted background overlay that fades with scroll
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    0f to Color.Black.copy(alpha = heroScrollProgress * 0.9f),
+                                    0.3f to Color.Black.copy(alpha = heroScrollProgress * 0.6f),
+                                    0.6f to Color.Black.copy(alpha = heroScrollProgress * 0.3f),
+                                    1f to Color.Transparent
+                                )
+                            )
+                    )
+                }
+
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            top = WindowInsets.systemBars.asPaddingValues().calculateTopPadding() + 16.dp,
+                            bottom = 16.dp,
+                            start = 24.dp,
+                            end = 24.dp
+                        ),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val isScrolled by remember { derivedStateOf { heroScrollProgress > 0.5f } }
+                    val topBarProgress by animateFloatAsState(
+                        targetValue = if (isScrolled) 1f else 0f,
+                        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+                        label = "topBarProgress"
+                    )
+
                     Box(modifier = Modifier.graphicsLayer {
-                        val scale = 1f - (heroScrollProgress * 0.2f)
+                        val scale = 1f - (topBarProgress * 0.2f)
                         scaleX = scale
                         scaleY = scale
                         transformOrigin = TransformOrigin(0f, 0.5f)
@@ -1743,12 +1793,12 @@ fun HomeScreen(
                         // "Musicfy" Text
                         Text(
                             text = "Musicfy",
-                            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Normal),
                             color = Color.White,
                             modifier = Modifier.graphicsLayer {
-                                alpha = 1f - heroScrollProgress
+                                alpha = 1f - topBarProgress
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    val rawBlur = heroScrollProgress * 15f
+                                    val rawBlur = topBarProgress * 15f
                                     val blurRadius = (rawBlur / 3f).toInt() * 3
                                     if (blurRadius > 0) {
                                         renderEffect = blurCache.getOrPut(blurRadius) {
@@ -1765,12 +1815,12 @@ fun HomeScreen(
                         // "Home" Text
                         Text(
                             text = "Home",
-                            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Normal),
                             color = Color.White,
                             modifier = Modifier.graphicsLayer {
-                                alpha = heroScrollProgress
+                                alpha = topBarProgress
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    val rawBlur = (1f - heroScrollProgress) * 15f
+                                    val rawBlur = (1f - topBarProgress) * 15f
                                     val blurRadius = (rawBlur / 3f).toInt() * 3
                                     if (blurRadius > 0) {
                                         renderEffect = blurCache.getOrPut(blurRadius) {
@@ -1786,40 +1836,90 @@ fun HomeScreen(
                         )
                     }
 
-                    if (url != null) {
-                        AsyncImage(
-                            model = url,
-                            contentDescription = "Profile",
-                            modifier = Modifier
-                                .graphicsLayer {
-                                    val scale = 1f - (heroScrollProgress * 0.2f)
-                                    scaleX = scale
-                                    scaleY = scale
-                                    transformOrigin = TransformOrigin(1f, 0.5f)
-                                }
-                                .size(40.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .graphicsLayer {
-                                    val scale = 1f - (heroScrollProgress * 0.2f)
-                                    scaleX = scale
-                                    scaleY = scale
-                                    transformOrigin = TransformOrigin(1f, 0.5f)
-                                }
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.person),
-                                contentDescription = "Profile",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    // Profile pill — GlassKit frosted glass (no Haze glow)
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                val scale = 1f - (topBarProgress * 0.1f)
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin = TransformOrigin(1f, 0.5f)
+                            }
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(50))
+                            .clickable(enabled = isScrolled) {
+                                // optional click action
+                            },
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        // Frosted glass background for the pill
+                        if (topBarProgress > 0.01f) {
+                            GlassPillBackground(
+                                state = homeGlassState,
+                                blurRadius = 24f,
+                                tint = Color.Black.copy(alpha = topBarProgress * 0.2f),
+                                foundationColor = backgroundColor,
+                                shape = RoundedCornerShape(50),
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .graphicsLayer { alpha = topBarProgress }
                             )
+                            // Subtle border
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.White.copy(alpha = topBarProgress * 0.2f),
+                                        shape = RoundedCornerShape(50)
+                                    )
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(
+                                start = (topBarProgress * 12).dp,
+                                end = (topBarProgress * 4).dp,
+                                top = 4.dp,
+                                bottom = 4.dp
+                            )
+                        ) {
+                            if (topBarProgress > 0.01f) {
+                                Icon(
+                                    painter = painterResource(R.drawable.arrow_back_ios),
+                                    contentDescription = "Back",
+                                    tint = Color.White.copy(alpha = topBarProgress),
+                                    modifier = Modifier
+                                        .size((topBarProgress * 18).dp)
+                                        .padding(end = (topBarProgress * 4).dp)
+                                )
+                            }
+
+                            if (url != null) {
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = "Profile",
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.person),
+                                        contentDescription = "Profile",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

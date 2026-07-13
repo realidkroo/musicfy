@@ -1290,7 +1290,7 @@ fun Lyrics(
                                     val wordWeight = when {
                                         !isActiveLine -> FontWeight.Bold
                                         hasWordPassed -> FontWeight.Bold
-                                        isWordActive -> FontWeight.ExtraBold
+                                        isWordActive -> FontWeight.Bold
                                         else -> FontWeight.Medium
                                     }
 
@@ -1333,7 +1333,7 @@ fun Lyrics(
                                     val wordWeight = when {
                                         !isActiveLine -> FontWeight.Bold
                                         hasWordPassed -> FontWeight.Bold
-                                        isWordActive -> FontWeight.ExtraBold
+                                        isWordActive -> FontWeight.Bold
                                         else -> FontWeight.Medium
                                     }
                                     // Enhanced shadow for active words
@@ -1388,7 +1388,7 @@ fun Lyrics(
                                     }
                                     val wordWeight = when {
                                         !isActiveLine -> FontWeight.Bold
-                                        isWordActive -> FontWeight.ExtraBold
+                                        isWordActive -> FontWeight.Bold
                                         hasWordPassed -> FontWeight.Bold
                                         else -> FontWeight.Medium
                                     }
@@ -1438,7 +1438,7 @@ fun Lyrics(
 
                                         withStyle(style = SpanStyle(
                                             brush = slideBrush,
-                                            fontWeight = FontWeight.ExtraBold,
+                                            fontWeight = FontWeight.Bold,
                                             shadow = Shadow(color = expressiveAccent.copy(alpha = 0.4f * glowIntensity), offset = Offset(0f, 0f), blurRadius = 14f + (4f * fillProgress))
                                         )) {
                                             append(word.text)
@@ -1499,7 +1499,7 @@ fun Lyrics(
 
                                         withStyle(style = SpanStyle(
                                             brush = wordBrush,
-                                            fontWeight = FontWeight.ExtraBold,
+                                            fontWeight = FontWeight.Bold,
                                             shadow = wordShadow
                                         )) {
                                             append(word.text)
@@ -1556,7 +1556,7 @@ fun Lyrics(
                                     val wordWeight = when {
                                         !isActiveLine -> FontWeight.SemiBold
                                         hasWordPassed -> FontWeight.Bold
-                                        isWordActive -> FontWeight.ExtraBold
+                                        isWordActive -> FontWeight.Bold
                                         else -> FontWeight.Normal
                                     }
                                     // Enhanced shadow with better glow intensity
@@ -1777,7 +1777,7 @@ fun Lyrics(
                                 text = styledText,
                                 fontSize = lyricsTextSize.sp,
                                 textAlign = alignment,
-                                fontWeight = FontWeight.ExtraBold,
+                                fontWeight = FontWeight.Bold,
                                 lineHeight = (lyricsTextSize * lyricsLineSpacing.coerceAtMost(1.3f)).sp,
                                 modifier = Modifier
                                     .graphicsLayer {
@@ -1792,7 +1792,7 @@ fun Lyrics(
                                 fontSize = lyricsTextSize.sp,
                                 color = expressiveAccent,
                                 textAlign = alignment,
-                                fontWeight = FontWeight.ExtraBold,
+                                fontWeight = FontWeight.Bold,
                                 lineHeight = (lyricsTextSize * lyricsLineSpacing.coerceAtMost(1.3f)).sp
                             )
                         } else {

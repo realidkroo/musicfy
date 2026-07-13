@@ -20,6 +20,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -61,6 +62,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -116,6 +118,7 @@ import com.example.musicfy.db.entities.Album
 import com.example.musicfy.db.entities.Artist
 import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.Song
+import com.example.musicfy.constants.SongSortType
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.MediaMetadata
 import com.example.musicfy.playback.queues.LocalAlbumRadio
@@ -129,9 +132,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+import androidx.compose.runtime.compositionLocalOf
+import kotlinx.coroutines.launch
 
 const val ActiveBoxAlpha = 0.6f
 
@@ -140,6 +144,8 @@ fun currentGridThumbnailHeight(): Dp {
     val gridItemSize = com.example.musicfy.LocalGridItemSize.current
     return if (gridItemSize == GridItemSize.BIG) GridThumbnailHeight else SmallGridThumbnailHeight
 }
+
+val LocalGridItemPadding = compositionLocalOf { 12.dp }
 
 // Basic list item - optimized with inline to reduce recomposition
 @Composable
@@ -314,14 +320,15 @@ fun GridItem(
     fillMaxWidth: Boolean = false,
 ) {
     val gridHeight = currentGridThumbnailHeight()
+    val padding = LocalGridItemPadding.current
     Column(
         modifier = if (fillMaxWidth) {
             modifier
-                .padding(12.dp)
+                .padding(padding)
                 .fillMaxWidth()
         } else {
             modifier
-                .padding(12.dp)
+                .padding(padding)
                 .width(gridHeight * thumbnailRatio)
         }
     ) {
@@ -363,7 +370,7 @@ fun GridItem(
     title = {
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -374,7 +381,7 @@ fun GridItem(
     subtitle = {
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -500,7 +507,7 @@ fun SongGridItem(
     title = {
         Text(
             text = song.song.title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -513,7 +520,7 @@ fun SongGridItem(
                 song.artists.joinToString { it.name },
                 makeTimeString(song.song.duration * 1000L)
             ),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -678,7 +685,7 @@ fun AlbumGridItem(
     title = {
         Text(
             text = album.album.title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -688,7 +695,7 @@ fun AlbumGridItem(
     subtitle = {
         Text(
             text = album.artists.joinToString { it.name },
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
@@ -705,20 +712,6 @@ fun AlbumGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius),
-        )
-
-        AlbumPlayButton(
-            visible = !isActive,
-            onClick = {
-                scope.launch {
-                    val albumWithSongs = withContext(Dispatchers.IO) {
-                        database.albumWithSongs(album.id).firstOrNull()
-                    }
-                    albumWithSongs?.let {
-                        playerConnection.playQueue(LocalAlbumRadio(it))
-                    }
-                }
-            }
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -760,10 +753,13 @@ fun PlaylistListItem(
     },
     badges = badges,
     thumbnailContent = {
-        PlaylistThumbnail(
-            thumbnails = playlist.thumbnails,
-            size = ListThumbnailSize,
-            placeHolder = {
+        if (playlist.playlist.name == stringResource(R.string.liked)) {
+            LikedSongsThumbnail(size = ListThumbnailSize)
+        } else {
+            PlaylistThumbnail(
+                thumbnails = playlist.thumbnails,
+                size = ListThumbnailSize,
+                placeHolder = {
                 val painter = when (playlist.playlist.name) {
                     stringResource(R.string.liked) -> R.drawable.favorite_border
                     stringResource(R.string.offline) -> R.drawable.offline
@@ -781,6 +777,7 @@ fun PlaylistListItem(
             },
             shape = RoundedCornerShape(ThumbnailCornerRadius)
         )
+        }
     },
     trailingContent = trailingContent,
     modifier = modifier,
@@ -804,7 +801,7 @@ fun PlaylistGridItem(
     title = {
         Text(
             text = playlist.playlist.name,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -831,7 +828,7 @@ fun PlaylistGridItem(
         }
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
@@ -840,10 +837,13 @@ fun PlaylistGridItem(
     badges = badges,
     thumbnailContent = {
         val width = maxWidth
-        PlaylistThumbnail(
-            thumbnails = playlist.thumbnails,
-            size = width,
-            placeHolder = {
+        if (playlist.playlist.name == stringResource(R.string.liked)) {
+            LikedSongsThumbnail(size = width)
+        } else {
+            PlaylistThumbnail(
+                thumbnails = playlist.thumbnails,
+                size = width,
+                placeHolder = {
                 val painter = when (playlist.playlist.name) {
                     stringResource(R.string.liked) -> R.drawable.favorite_border
                     stringResource(R.string.offline) -> R.drawable.offline
@@ -866,6 +866,7 @@ fun PlaylistGridItem(
             },
             shape = RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius)
         )
+        }
     },
     fillMaxWidth = fillMaxWidth,
     modifier = modifier
@@ -1006,7 +1007,7 @@ fun YouTubeGridItem(
     title = {
         Text(
             text = item.title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1044,31 +1045,6 @@ fun YouTubeGridItem(
             shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius),
         )
 
-        if (item is SongItem && !isActive) {
-            OverlayPlayButton(
-                visible = true
-            )
-        }
-
-        AlbumPlayButton(
-            visible = item is AlbumItem && !isActive,
-            onClick = {
-                scope.launch(Dispatchers.IO) {
-                    var albumWithSongs = database.albumWithSongs(item.id).first()
-                    if (albumWithSongs?.songs.isNullOrEmpty()) {
-                        YouTube.album(item.id).onSuccess { albumPage ->
-                            database.transaction { insert(albumPage) }
-                            albumWithSongs = database.albumWithSongs(item.id).first()
-                        }.onFailure { reportException(it) }
-                    }
-                    albumWithSongs?.let {
-                        withContext(Dispatchers.Main) {
-                            playerConnection.playQueue(LocalAlbumRadio(it))
-                        }
-                    }
-                }
-            }
-        )
     },
     thumbnailRatio = thumbnailRatio,
     fillMaxWidth = fillMaxWidth,
@@ -1181,6 +1157,11 @@ fun ItemThumbnail(
             .fillMaxSize()
             .aspectRatio(thumbnailRatio)
             .clip(shape)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                shape = shape
+            )
     ) {
         if (albumIndex == null) {
             AsyncImage(
@@ -1673,6 +1654,72 @@ object Icon {
             modifier = Modifier
                 .size(18.dp)
                 .padding(end = 2.dp)
+        )
+    }
+}
+
+@Composable
+fun LikedSongsThumbnail(
+    size: Dp,
+    shape: Shape = RoundedCornerShape(com.example.musicfy.constants.ThumbnailCornerRadius),
+    modifier: Modifier = Modifier
+) {
+    val database = LocalDatabase.current
+    val likedSongs by database.likedSongs(SongSortType.CREATE_DATE, descending = true)
+        .collectAsState(initial = emptyList())
+        
+    val topSongs = remember(likedSongs) {
+        likedSongs.filter { it.song.thumbnailUrl != null }.take(9)
+    }
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainer),
+        contentAlignment = Alignment.Center
+    ) {
+        if (topSongs.isNotEmpty()) {
+            val columns = if (topSongs.size >= 9) 3 else if (topSongs.size >= 4) 2 else 1
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        rotationZ = 15f
+                        scaleX = 1.6f
+                        scaleY = 1.6f
+                    }
+                    .blur(8.dp)
+            ) {
+                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(columns),
+                    userScrollEnabled = false,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(topSongs.size) { index ->
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(topSongs[index].song.thumbnailUrl?.resize(256, 256))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.aspectRatio(1f)
+                        )
+                    }
+                }
+            }
+        }
+        
+        Icon(
+            painter = painterResource(R.drawable.favorite_border),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier
+                .size(size * 0.4f)
+                .graphicsLayer {
+                    shadowElevation = 8.dp.toPx()
+                }
         )
     }
 }

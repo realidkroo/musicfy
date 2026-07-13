@@ -2,6 +2,7 @@
 // this thing is part of bottom sheet
 
 package com.example.musicfy.ui.component
+import androidx.compose.foundation.gestures.detectTapGestures
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -59,6 +60,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -66,6 +68,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.example.musicfy.constants.NavigationBarAnimationSpec
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlin.math.pow
 
@@ -96,7 +99,6 @@ fun BottomSheet(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
-    val progress = state.progress.coerceIn(0f, 1f)
     
     if (!isPillTransition) {
         Box(
@@ -126,16 +128,23 @@ fun BottomSheet(
                         detectVerticalDragGestures(
                             onVerticalDrag = { change, dragAmount ->
                                 velocityTracker.addPointerInputChange(change)
-                                state.dispatchRawDelta(dragAmount)
+                                if (dragAmount < -3f && state.isCollapsed) {
+                                    state.expandSoft()
+                                    change.consume()
+                                } else if (dragAmount > 3f && state.isExpanded) {
+                                    state.collapseSoft()
+                                    change.consume()
+                                } else if (dragAmount > 3f && state.isCollapsed && onDismiss != null) {
+                                    state.dismiss()
+                                    onDismiss.invoke()
+                                    change.consume()
+                                }
                             },
                             onDragCancel = {
                                 velocityTracker.resetTracking()
-                                state.snapTo(state.collapsedBound)
                             },
                             onDragEnd = {
-                                val velocity = -velocityTracker.calculateVelocity().y
                                 velocityTracker.resetTracking()
-                                state.performFling(velocity, onDismiss)
                             }
                         )
                     }
@@ -181,9 +190,6 @@ fun BottomSheet(
             }
         } else {
             // iOS Pill Morphing Transition
-            val cornerRadius = androidx.compose.ui.unit.lerp(20.dp, 0.dp, progress)
-            val horizontalPadding = androidx.compose.ui.unit.lerp(24.dp, 0.dp, progress)
-            val bottomPadding = androidx.compose.ui.unit.lerp(state.collapsedBound - 64.dp, 0.dp, progress)
             val hazeState = LocalHazeState.current
             val playerConnection = LocalPlayerConnection.current
             val containerColor = androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer
@@ -205,45 +211,68 @@ fun BottomSheet(
                     modifier = Modifier
                         .align(androidx.compose.ui.Alignment.BottomCenter)
                         .fillMaxWidth()
-                        .height(state.value) // Height morphs physically
-                        .padding(
-                            start = horizontalPadding,
-                            end = horizontalPadding,
-                            bottom = bottomPadding
-                        )
+                        // Keep the child at its final size. The former custom layout reported a
+                        // different height for every drag sample, which remeasured the full
+                        // player tree on every frame. Layer translation gives the same
+                        // bottom-anchored visible bounds without remeasuring its children.
+                        .height(state.expandedBound)
                         .graphicsLayer {
-                            shape = RoundedCornerShape(cornerRadius)
+                            val p = state.progress.coerceIn(0f, 1f)
+                            val cr = androidx.compose.ui.unit.lerp(20.dp, 0.dp, p).toPx()
+                            val hp = androidx.compose.ui.unit.lerp(24.dp, 0.dp, p).toPx()
+                            val visibleHeight = androidx.compose.ui.unit.lerp(64.dp, state.expandedBound, p).toPx()
+                            
+                            shape = object : androidx.compose.ui.graphics.Shape {
+                                override fun createOutline(
+                                    size: androidx.compose.ui.geometry.Size,
+                                    layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+                                    density: androidx.compose.ui.unit.Density
+                                ): androidx.compose.ui.graphics.Outline {
+                                    return androidx.compose.ui.graphics.Outline.Rounded(
+                                        androidx.compose.ui.geometry.RoundRect(
+                                            left = hp,
+                                            top = 0f,
+                                            right = size.width - hp,
+                                            bottom = visibleHeight,
+                                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cr, cr)
+                                        )
+                                    )
+                                }
+                            }
                             clip = true
+                            translationY = (state.expandedBound - state.value).toPx()
                             translationX = state.horizontalOffset
                         }
-                        .let {
-                            val blurAlpha = (1f - progress / 0.9f).coerceIn(0f, 1f)
-                            if (hazeState != null && blurAlpha > 0f) {
-                                it.hazeEffect(
-                                    state = hazeState,
-                                    style = HazeStyle(
-                                        backgroundColor = containerColor.copy(alpha = blurAlpha),
-                                        tint = HazeTint(containerColor.copy(alpha = 0.65f * blurAlpha)),
-                                        blurRadius = 24.dp
-                                    )
+                        .drawWithContent {
+                            drawContent()
+                            val p = state.progress.coerceIn(0f, 1f)
+                            if (p < 0.05f) {
+                                val cr = androidx.compose.ui.unit.lerp(20.dp, 0.dp, p).toPx()
+                                val hp = androidx.compose.ui.unit.lerp(24.dp, 0.dp, p).toPx()
+                                val visibleHeight = androidx.compose.ui.unit.lerp(64.dp, state.expandedBound, p).toPx()
+                                drawRoundRect(
+                                    color = Color.White.copy(alpha = 0.1f),
+                                    topLeft = androidx.compose.ui.geometry.Offset(hp, 0f),
+                                    size = androidx.compose.ui.geometry.Size(size.width - hp * 2, visibleHeight),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(cr, cr),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx())
                                 )
-                            } else {
-                                it.background(containerColor.copy(alpha = 0.85f * blurAlpha))
                             }
                         }
-                        .then(
-                            // Only draw border when collapsed or nearly collapsed — skip during animation
-                            if (progress < 0.05f) {
-                                Modifier.border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(cornerRadius))
-                            } else {
-                                Modifier
-                            }
-                        )
+                        .pointerInput(state, isExpandable) {
+                            if (!isExpandable) return@pointerInput
+                            detectTapGestures(
+                                onTap = {
+                                    if (state.isCollapsed) {
+                                        coroutineScope.launch { state.expandSoft() }
+                                    }
+                                }
+                            )
+                        }
                         .pointerInput(state, isExpandable) {
                             if (!isExpandable) return@pointerInput
                             val velocityTracker = VelocityTracker()
                             
-                            // CHANGED TO detectDragGestures WITH PROPER X/Y ISOLATION BAKA!
                             detectDragGestures(
                                 onDragStart = {
                                     dragStartTime = System.currentTimeMillis()
@@ -259,21 +288,29 @@ fun BottomSheet(
                                         val resistance = 1f - (kotlin.math.abs(state.horizontalOffset) / (size.width / 2f)).coerceIn(0f, 0.8f)
                                         state.horizontalOffset += dragAmount.x * resistance
                                     } else {
-                                        state.dispatchRawDelta(dragAmount.y)
+                                        if (dragAmount.y < -2f && state.isCollapsed) {
+                                            state.expandSoft()
+                                            change.consume()
+                                        } else if (dragAmount.y > 2f && state.isExpanded) {
+                                            state.collapseSoft()
+                                            change.consume()
+                                        } else if (dragAmount.y > 2f && state.isCollapsed && onDismiss != null) {
+                                            state.dismiss()
+                                            onDismiss.invoke()
+                                            change.consume()
+                                        }
                                     }
                                 },
                                 onDragCancel = {
                                     velocityTracker.resetTracking()
-                                    state.snapTo(state.collapsedBound)
                                     coroutineScope.launch {
                                         state.animateHorizontalOffsetTo(0f)
                                     }
                                 },
                                 onDragEnd = {
-                                    val velocity = -velocityTracker.calculateVelocity().y
                                     velocityTracker.resetTracking()
                                     
-                                    if (state.isCollapsed || progress < 0.2f) {
+                                    if (state.isCollapsed || state.progress < 0.2f) {
                                         val dragDuration = System.currentTimeMillis() - dragStartTime
                                         val horizontalVelocity = if (dragDuration > 0) totalHorizontalDrag / dragDuration else 0f
                                         val currentOffset = state.horizontalOffset
@@ -287,56 +324,87 @@ fun BottomSheet(
                                         }
                                     }
                                     
-                                    state.performFling(velocity, onDismiss)
                                     coroutineScope.launch { state.animateHorizontalOffsetTo(0f) }
                                 }
                             )
                         }
                 ) {
-                    // Apply animated padding internally so it doesn't affect sharedContent coordinates
-                    Box(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // Background inside pill
+                    // Box is now FIXED size (maxWidth x expandedBound), avoiding all recomposition!
+                    
+                    val showHaze by remember { derivedStateOf { state.progress < 0.12f } }
+                    val showBackground by remember { derivedStateOf { !state.isCollapsed } }
+                    // The shared elements carry the first half of the morph. Composing the
+                    // full player before it is visible was doing image, lyrics, and queue work
+                    // on every launch frame without contributing any pixels.
+                    val showControls by remember { derivedStateOf { state.progress > 0.55f } }
+
+                    // Layer 1: Haze/Blur for MiniPlayer
+                    if (showHaze) {
                         Box(
                             modifier = Modifier
-                                .requiredWidth(androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp)
-                                .requiredHeight(state.expandedBound)
-                                .align(androidx.compose.ui.Alignment.BottomCenter)
-                                .graphicsLayer { 
-                                    alpha = progress 
-                                    translationX = -horizontalPadding.toPx()
+                                // Haze is only part of the collapsed pill. Keeping the effect
+                                // bounded avoids asking the GPU to blur the whole player while
+                                // the sheet is being dragged.
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .padding(horizontal = 24.dp)
+                                .graphicsLayer {
+                                    alpha = (1f - state.progress.coerceIn(0f, 1f) / 0.12f).coerceIn(0f, 1f)
+                                }
+                                .let {
+                                    if (hazeState != null) {
+                                        it.hazeEffect(
+                                            state = hazeState,
+                                            style = HazeStyle(
+                                                backgroundColor = containerColor,
+                                                tint = HazeTint(containerColor.copy(alpha = 0.65f)),
+                                                blurRadius = 24.dp
+                                            )
+                                        )
+                                    } else {
+                                        it.background(containerColor.copy(alpha = 0.85f))
+                                    }
+                                }
+                        )
+                    }
+                    
+                    // Layer 2: Player background
+                    if (showBackground) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    // Keep the background opaque throughout the morph. The
+                                    // clipped sheet grows to reveal it while this subtle zoom
+                                    // settles it into the final player composition.
+                                    val p = state.progress.coerceIn(0f, 1f)
+                                    scaleX = 1.10f - (0.10f * p)
+                                    scaleY = 1.10f - (0.10f * p)
                                 }
                         ) {
                             background()
                         }
+                    }
 
-                        // Shared content behind the controls
-                        if (sharedContent != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight()
-                                    .align(androidx.compose.ui.Alignment.BottomCenter),
-                                content = sharedContent
-                            )
-                        }
+                    // Layer 3: Shared content
+                    if (sharedContent != null) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            content = sharedContent
+                        )
+                    }
 
-                        // Full content is deferred until progress > 0.55f so the morphing
-                        // shared elements carry the visual transition without heavy composition.
-                        // Alpha-only fade avoids layout changes every frame (no translationY).
-                        if (!state.isCollapsed && progress > 0.55f) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .requiredHeight(state.expandedBound)
-                                    .align(androidx.compose.ui.Alignment.BottomCenter)
-                                    .graphicsLayer {
-                                        alpha = ((progress - 0.55f) / 0.45f).coerceIn(0f, 1f)
-                                    }
-                            ) {
-                                content()
-                            }
+                    // Layer 4: Full player controls
+                    // Alpha-only fade avoids layout changes every frame
+                    if (showControls) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    alpha = ((state.progress.coerceIn(0f, 1f) - 0.55f) / 0.45f).coerceIn(0f, 1f)
+                                }
+                        ) {
+                            content()
                         }
                     }
                 } // Close expanding clipping container
@@ -349,8 +417,8 @@ fun BottomSheet(
                             .fillMaxWidth()
                             .height(state.collapsedBound)
                             .graphicsLayer {
-                                // Fades out quickly in first 30%
-                                alpha = (1f - (progress / 0.3f)).coerceIn(0f, 1f)
+                                val p = state.progress.coerceIn(0f, 1f)
+                                alpha = (1f - (p / 0.3f)).coerceIn(0f, 1f)
                             }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
@@ -476,7 +544,7 @@ class BottomSheetState(
         } else {
             val l0 = dismissedBound
             val l1 = dismissedBound + (collapsedBound - dismissedBound) / 2
-            val l2 = collapsedBound + (expandedBound - collapsedBound) / 2
+            val l2 = expandedBound - (expandedBound - collapsedBound) / 6
             val l3 = expandedBound
 
             when (value) {
@@ -504,13 +572,7 @@ class BottomSheetState(
                 if (isExpanded && available.y < 0) {
                     isTopReached = false
                 }
-
-                return if (isTopReached && available.y < 0 && source == NestedScrollSource.UserInput) {
-                    dispatchRawDelta(available.y)
-                    available
-                } else {
-                    Offset.Zero
-                }
+                return Offset.Zero
             }
 
             override fun onPostScroll(
@@ -522,8 +584,8 @@ class BottomSheetState(
                     isTopReached = consumed.y == 0f && available.y > 0
                 }
 
-                return if (isTopReached && source == NestedScrollSource.UserInput) {
-                    dispatchRawDelta(available.y)
+                return if (isTopReached && source == NestedScrollSource.UserInput && available.y > 3f) {
+                    collapseSoft()
                     available
                 } else {
                     Offset.Zero
@@ -531,10 +593,8 @@ class BottomSheetState(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                return if (isTopReached) {
-                    val velocity = -available.y
-                    performFling(velocity, null)
-
+                return if (isTopReached && available.y > 100f) {
+                    collapseSoft()
                     available
                 } else {
                     Velocity.Zero
@@ -584,7 +644,10 @@ fun rememberBottomSheetState(
 
         BottomSheetState(
             draggableState = DraggableState { delta ->
-                coroutineScope.launch {
+                // Pointer events can arrive faster than the normal main-dispatch queue is
+                // drained on 120 Hz devices. Start the tiny snap operation immediately so the
+                // sheet follows the finger instead of accumulating one-frame delays.
+                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
                     animatable.snapTo(animatable.value - with(density) { delta.toDp() })
                 }
             },

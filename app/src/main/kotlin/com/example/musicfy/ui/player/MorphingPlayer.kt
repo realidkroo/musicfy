@@ -90,19 +90,24 @@ fun MorphingSharedElements(
     val endpoints = remember(maxWidth, maxHeight, isAppleMusic, useNewPlayerDesign) {
         val miniHeight = 64.dp
         val miniArtSize = 48.dp
-        val miniArtX = 12.dp
+        // Pill starts at 24.dp from screen edge, add 12.dp inner padding
+        val miniArtX = 36.dp 
         val miniArtY = (miniHeight - miniArtSize) / 2
 
         val miniTextX = miniArtX + miniArtSize + 12.dp
         val miniTextY = 14.dp
 
         val miniPlaySize = 36.dp
-        val miniPlayX = maxWidth - 48.dp - 92.dp
-        val miniPlayY = (miniHeight - miniPlaySize) / 2
-
         val miniSkipSize = 36.dp
-        val miniSkipX = maxWidth - 48.dp - 52.dp
+        
+        // Pill ends at maxWidth - 24.dp. Subtract 12.dp inner padding = maxWidth - 36.dp
+        // Skip button right edge should be at maxWidth - 36.dp
+        val miniSkipX = maxWidth - 36.dp - miniSkipSize
         val miniSkipY = (miniHeight - miniSkipSize) / 2
+
+        // Play button with 8.dp gap from skip button
+        val miniPlayX = miniSkipX - 8.dp - miniPlaySize
+        val miniPlayY = (miniHeight - miniPlaySize) / 2
 
         val fullWidth = if (isAppleMusic) maxWidth else maxWidth - (PlayerHorizontalPadding * 2)
         val fullArtHeight = if (isAppleMusic) maxHeight * 0.62f else fullWidth
@@ -212,7 +217,13 @@ fun MorphingSharedElements(
                         }
                         clip = true
                         shape = RoundedCornerShape(artCornerRadius)
-                        compositingStrategy = CompositingStrategy.Offscreen
+                        // The gradient mask is not drawn during the first part of the morph.
+                        // Avoid allocating a screen-sized offscreen buffer until it is needed.
+                        compositingStrategy = if (p > 0.58f) {
+                            CompositingStrategy.Offscreen
+                        } else {
+                            CompositingStrategy.Auto
+                        }
                     }
                     .drawWithCache {
                         onDrawWithContent {
@@ -469,7 +480,10 @@ private fun Modifier.morphLayout(
     val p = progressProvider()
     val hOffset = horizontalOffsetProvider()
     val availableHeightPx = constraints.maxHeight.toFloat()
-    val miniTopPx = availableHeightPx - endpointsPx.miniHeightPx
+    
+    // The container in BottomSheet is already BottomCenter aligned and its top starts at 
+    // ScreenHeight - 164dp. If we offset by availableHeightPx, we double-offset and push it off screen!
+    val miniTopPx = 0f
 
     val (x, y, w, h) = when (element) {
         MorphElement.ART -> {
