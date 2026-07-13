@@ -312,6 +312,10 @@ fun BottomSheetPlayer(
         ShowAudioQualityBadgeKey,
         defaultValue = false
     )
+    val (hideAudioQualityBadge) = rememberPreference(
+        com.example.musicfy.constants.HideAudioQualityBadgeKey,
+        defaultValue = false
+    )
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(HidePlayerThumbnailKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
     val (playerBackground, onPlayerBackgroundChange) = rememberEnumPreference(
@@ -1823,14 +1827,16 @@ fun BottomSheetPlayer(
                                 modifier = Modifier.size(16.dp).padding(end = 4.dp)
                             )
                         }
-                        AudioFormatBadge(
-                            format = currentFormat,
-                            tint = Color.Unspecified,
-                            height = 16.dp,
-                            modifier = Modifier.padding(end = 6.dp),
-                            audioQuality = audioQuality,
-                            fallbackId = currentSong?.id
-                        )
+                        if (!hideAudioQualityBadge) {
+                            AudioFormatBadge(
+                                format = currentFormat,
+                                tint = Color.Unspecified,
+                                height = 16.dp,
+                                modifier = Modifier.padding(end = 6.dp),
+                                audioQuality = audioQuality,
+                                fallbackId = currentSong?.id
+                            )
+                        }
 
                         if (mediaMetadata.artists.any { it.name.isNotBlank() }) {
                             val artistThumbnails = currentSong
@@ -2363,7 +2369,7 @@ fun BottomSheetPlayer(
                     }
                 }
 
-                if (!useNewPlayerDesign && (showAudioQualityBadge || sleepTimerEnabled)) {
+                if (!useNewPlayerDesign && ((showAudioQualityBadge && !hideAudioQualityBadge) || sleepTimerEnabled)) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
@@ -2427,7 +2433,7 @@ fun BottomSheetPlayer(
                                         maxLines = 1,
                                     )
                                 }
-                            } else {
+                            } else if (!hideAudioQualityBadge) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -3050,6 +3056,10 @@ fun InlineLyricsView(
     val lyricsTextSize by rememberPreference(LyricsTextSizeKey, 24f)
     val lyricsLineSpacing by rememberPreference(LyricsLineSpacingKey, 1.18f)
     val audioQuality by rememberEnumPreference(AudioQualityKey, AudioQuality.AUTO)
+    val (hideAudioQualityBadge) = rememberPreference(
+        com.example.musicfy.constants.HideAudioQualityBadgeKey,
+        defaultValue = false
+    )
     val listState = rememberLazyListState()
     var userTouchedAt by remember { mutableLongStateOf(0L) }
     var controlsVisible by remember { mutableStateOf(true) }
@@ -3243,13 +3253,15 @@ fun InlineLyricsView(
                                     .padding(horizontal = 4.dp, vertical = 1.dp)
                             )
                         }
-                        AudioFormatBadge(
-                            format = currentFormat,
-                            tint = Color.Unspecified,
-                            height = 16.dp,
-                            audioQuality = audioQuality,
-                            fallbackId = currentSong?.id
-                        )
+                        if (!hideAudioQualityBadge) {
+                            AudioFormatBadge(
+                                format = currentFormat,
+                                tint = Color.Unspecified,
+                                height = 16.dp,
+                                audioQuality = audioQuality,
+                                fallbackId = currentSong?.id
+                            )
+                        }
                         Text(
                             text = mediaMetadata?.artists?.joinToString { it.name }.orEmpty(),
                             color = textColor.copy(alpha = 0.78f),

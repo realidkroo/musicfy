@@ -730,3 +730,5 @@ val QobuzInstancesKey = stringPreferencesKey("qobuzInstances")
 
 val MusicHapticsEnabledKey = booleanPreferencesKey("musicHapticsEnabled")
 val MusicHapticsSensitivityKey = stringPreferencesKey("musicHapticsSensitivity")
+val HapticFocusKey = stringPreferencesKey("hapticFocus")
+val HideAudioQualityBadgeKey = booleanPreferencesKey("hideAudioQualityBadge")

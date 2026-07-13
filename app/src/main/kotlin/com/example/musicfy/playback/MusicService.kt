@@ -523,6 +523,14 @@ class MusicService :
                 }
         }
 
+        scope.launch {
+            dataStore.data.map { it[com.example.musicfy.constants.HapticFocusKey]?.toEnum(com.example.musicfy.constants.HapticFocus.VIBE) ?: com.example.musicfy.constants.HapticFocus.VIBE }
+                .distinctUntilChanged()
+                .collect { focus ->
+                    hapticAudioProcessor.focus = focus
+                }
+        }
+
         // Mark player as initialized after successful creation
         playerInitialized.value = true
         Timber.tag(TAG).d("Player successfully initialized")

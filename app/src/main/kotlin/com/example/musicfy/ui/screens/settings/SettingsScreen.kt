@@ -68,6 +68,14 @@ fun SettingsScreen(
         MusicHapticsSensitivityKey,
         defaultValue = HapticSensitivity.MEDIUM
     )
+    val (hapticFocus, onHapticFocusChange) = rememberEnumPreference(
+        com.example.musicfy.constants.HapticFocusKey,
+        defaultValue = com.example.musicfy.constants.HapticFocus.VIBE
+    )
+    val (hideAudioQualityBadge, onHideAudioQualityBadgeChange) = rememberPreference(
+        com.example.musicfy.constants.HideAudioQualityBadgeKey,
+        defaultValue = false
+    )
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -137,6 +145,18 @@ fun SettingsScreen(
                         }
                     ),
                     Material3SettingsItem(
+                        title = { Text("Hide Audio Quality Badge") },
+                        description = { Text("Hide the Hi-Res, Lossless, and High quality badges from the player") },
+                        icon = painterResource(R.drawable.close),
+                        onClick = { onHideAudioQualityBadgeChange(!hideAudioQualityBadge) },
+                        trailingContent = {
+                            androidx.compose.material3.Switch(
+                                checked = hideAudioQualityBadge,
+                                onCheckedChange = onHideAudioQualityBadgeChange
+                            )
+                        }
+                    ),
+                    Material3SettingsItem(
                         title = { Text("Stop Playback When Closed") },
                         description = { Text("Stop the current song when the app is swiped away from recents") },
                         icon = painterResource(R.drawable.close),
@@ -187,6 +207,32 @@ fun SettingsScreen(
                                 HapticSensitivity.HIGH -> HapticSensitivity.LOW
                             }
                             onMusicHapticsSensitivityChange(next)
+                        }
+                    ),
+                    Material3SettingsItem(
+                        title = { Text("Haptic Focus") },
+                        description = { 
+                            Text(
+                                "Current: ${
+                                    when(hapticFocus) {
+                                        com.example.musicfy.constants.HapticFocus.BALANCE -> "Balance"
+                                        com.example.musicfy.constants.HapticFocus.VOCAL -> "Focus on Vocal"
+                                        com.example.musicfy.constants.HapticFocus.VIBE -> "Focus on Vibe"
+                                        com.example.musicfy.constants.HapticFocus.BASS -> "Focus on Bass"
+                                    }
+                                }"
+                            )
+                        },
+                        icon = painterResource(R.drawable.equalizer),
+                        enabled = musicHapticsEnabled,
+                        onClick = {
+                            val next = when (hapticFocus) {
+                                com.example.musicfy.constants.HapticFocus.BALANCE -> com.example.musicfy.constants.HapticFocus.VOCAL
+                                com.example.musicfy.constants.HapticFocus.VOCAL -> com.example.musicfy.constants.HapticFocus.VIBE
+                                com.example.musicfy.constants.HapticFocus.VIBE -> com.example.musicfy.constants.HapticFocus.BASS
+                                com.example.musicfy.constants.HapticFocus.BASS -> com.example.musicfy.constants.HapticFocus.BALANCE
+                            }
+                            onHapticFocusChange(next)
                         }
                     )
                 )
