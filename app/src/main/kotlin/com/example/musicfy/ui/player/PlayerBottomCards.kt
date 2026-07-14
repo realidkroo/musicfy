@@ -105,7 +105,7 @@ fun PlayerBottomCards(
             .height(150.dp)
             .clipToBounds()
             .padding(horizontal = 24.dp)
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+
     ) {
         EmptyPreviewCard(
             cardColor = rearSurfaceColor,
@@ -122,26 +122,7 @@ fun PlayerBottomCards(
                 }
         )
         
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(frontHeight)
-                .align(Alignment.BottomCenter)
-                .offset(y = frontOffsetY)
-                .graphicsLayer {
-                    translationY = (1f - revealProgress) * 22.dp.toPx()
-                    scaleX = 0.97f + 0.03f * revealProgress
-                    scaleY = 0.97f + 0.03f * revealProgress
-                }
-                .drawBehind {
-                    drawRoundRect(
-                        color = Color.Black,
-                        size = size,
-                        cornerRadius = CornerRadius(24.dp.toPx()),
-                        blendMode = BlendMode.Clear
-                    )
-                }
-        )
+
 
         PlayerPreviewCard(
             currentLyricsLine = currentLyricsLine,

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import com.example.musicfy.R
@@ -38,6 +39,8 @@ import com.example.musicfy.extensions.togglePlayPause
 import com.example.musicfy.ui.utils.resize
 import androidx.media3.common.Player
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.togetherWith
 
 /**
  * Pre-computed static endpoints for the morphing animation.
@@ -238,16 +241,65 @@ fun MorphingSharedElements(
                         }
                     }
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(mediaMetadata.thumbnailUrl.resize(256, 256))
-                        .size(256, 256)
-                        .allowHardware(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                )
+                var readyItem by remember { mutableStateOf(mediaMetadata) }
+                LaunchedEffect(mediaMetadata) {
+                    if (readyItem != mediaMetadata) {
+                        val url = mediaMetadata?.thumbnailUrl?.resize(256, 256)
+                        if (url != null) {
+                            val request = ImageRequest.Builder(context)
+                                .data(url)
+                                .build()
+                            context.imageLoader.execute(request)
+                        }
+                        readyItem = mediaMetadata
+                    }
+                }
+
+                androidx.compose.animation.AnimatedContent(
+                    targetState = readyItem,
+                    transitionSpec = {
+                        val isMiniPlayer = progressProvider() < 0.5f
+                        if (isMiniPlayer) {
+                            (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(800)) + androidx.compose.animation.scaleIn(initialScale = 0.8f, animationSpec = androidx.compose.animation.core.tween(800))) togetherWith
+                            (androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(800)) + androidx.compose.animation.scaleOut(targetScale = 1.2f, animationSpec = androidx.compose.animation.core.tween(800)))
+                        } else {
+                            androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(400)) togetherWith androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(400))
+                        }
+                    },
+                    label = "MiniplayerArt"
+                ) { currentMeta ->
+                    val transitionProgress by transition.animateFloat(
+                        transitionSpec = { androidx.compose.animation.core.tween(800) },
+                        label = "ItemProgress"
+                    ) { state -> if (state == androidx.compose.animation.EnterExitState.Visible) 1f else 0f }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                val isMiniPlayer = progressProvider() < 0.5f
+                                if (isMiniPlayer && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                                    val rawBlur = (1f - transitionProgress) * 80f
+                                    if (rawBlur > 0f) {
+                                        renderEffect = android.graphics.RenderEffect.createBlurEffect(
+                                            rawBlur, rawBlur, android.graphics.Shader.TileMode.CLAMP
+                                        ).asComposeRenderEffect()
+                                    }
+                                }
+                            }
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(currentMeta?.thumbnailUrl?.resize(256, 256))
+                                .size(256, 256)
+                                .allowHardware(true)
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
 
                 // High-res artwork: use derivedStateOf to avoid recomposition churn
                 val shouldLoadHighArtwork by remember {

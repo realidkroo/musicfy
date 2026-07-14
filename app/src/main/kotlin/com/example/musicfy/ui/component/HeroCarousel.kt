@@ -4,6 +4,12 @@
 package com.example.musicfy.ui.component
 
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.musicfy.db.entities.Album
@@ -98,8 +105,14 @@ sealed interface HeroCarouselItem {
     fun onPlay(playerConnection: PlayerConnection, navController: NavController)
 }
 
-class KeepListeningItem(val item: com.example.musicfy.models.MediaMetadata, val isLastPlayed: Boolean = false) : HeroCarouselItem {
-    override fun getTitleLabel(isPlaying: Boolean): String = if (isLastPlayed && isPlaying) "Now playing" else "Continue where you left from"
+data class KeepListeningItem(val item: com.example.musicfy.models.MediaMetadata, val isLastPlayed: Boolean = false) : HeroCarouselItem {
+    override fun getTitleLabel(isPlaying: Boolean): String = if (isPlaying) {
+        "Now playing"
+    } else if (isLastPlayed) {
+        "Continue where you left from"
+    } else {
+        "Recently played"
+    }
     override val mainText: String = item.title ?: ""
     override val subText: String = item.artists.joinToString(", ") { it.name }
     override val thumbnailUrl: String? = item.thumbnailUrl
@@ -109,13 +122,19 @@ class KeepListeningItem(val item: com.example.musicfy.models.MediaMetadata, val 
     override val albumTitle: String? = item.album?.title
     
     override fun onPlay(playerConnection: PlayerConnection, navController: NavController) {
-        // Since it's from the player's last state, we can just start playing
-        playerConnection.play()
+        if (isLastPlayed) {
+            playerConnection.play()
+        } else {
+            val endpoint = item.id?.let { WatchEndpoint(videoId = it) }
+            if (endpoint != null) {
+                playerConnection.playQueue(YouTubeQueue(endpoint, item))
+            }
+        }
     }
 }
 
-class DiscoverItem(val item: DailyDiscoverItem) : HeroCarouselItem {
-    override fun getTitleLabel(isPlaying: Boolean): String = "Sounds like ${item.seed.title}..."
+data class DiscoverItem(val item: DailyDiscoverItem) : HeroCarouselItem {
+    override fun getTitleLabel(isPlaying: Boolean): String = if (isPlaying) "Now playing" else "Sounds like ${item.seed.title}..."
     override val mainText: String = item.recommendation.title
     override val subText: String = (item.recommendation as? SongItem)?.artists?.joinToString(", ") { it.name } ?: ""
     override val thumbnailUrl: String? = item.recommendation.thumbnail
@@ -180,14 +199,16 @@ fun HeroCarousel(
         return
     }
 
-    val pagerState = rememberPagerState(pageCount = { carouselItems.size })
-    val blurCache = remember { mutableMapOf<Int, androidx.compose.ui.graphics.RenderEffect>() }
+    val initialPage = remember(carouselItems.size) {
+        (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % carouselItems.size)
+    }
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { Int.MAX_VALUE })
 
-    LaunchedEffect(pagerState) {
+    LaunchedEffect(pagerState, carouselItems.size) {
         while (true) {
             delay(5000)
             if (!pagerState.isScrollInProgress) {
-                val nextPage = (pagerState.currentPage + 1) % carouselItems.size
+                val nextPage = pagerState.currentPage + 1
                 pagerState.animateScrollToPage(nextPage, animationSpec = tween(800))
             }
         }
@@ -202,134 +223,224 @@ fun HeroCarousel(
             state = pagerState,
             modifier = Modifier.fillMaxSize()
         ) { page ->
-            val item = carouselItems[page]
-            var canvasArtwork by remember(item.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
-            val storefront = remember {
-                val country = Locale.getDefault().country
-                if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
-            }
+            val realPage = page % carouselItems.size
+            val item = carouselItems[realPage]
+            val context = LocalContext.current
+            var readyItem by remember { mutableStateOf(item) }
 
-            LaunchedEffect(item.mediaId) {
-                val id = item.mediaId ?: return@LaunchedEffect
-                CanvasArtworkPlaybackCache.get(id)?.let {
-                    canvasArtwork = it
-                    return@LaunchedEffect
-                }
-                
-                val s = normalizeCanvasSongTitle(item.songTitle ?: "")
-                val a = normalizeCanvasArtistName(item.artistName ?: "")
-                if (s.isBlank() || a.isBlank()) return@LaunchedEffect
-                
-                val fetched = withContext(Dispatchers.IO) {
-                    MonochromeApiCanvas.getBySongArtist(s, a, item.albumTitle)
-                        ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                    ?: AppleMusicCanvasProvider.getBySongArtist(s, a, item.albumTitle, storefront)
-                        ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                }
-                if (fetched != null) {
-                    canvasArtwork = fetched
-                    CanvasArtworkPlaybackCache.put(id, fetched)
+            LaunchedEffect(item) {
+                if (readyItem != item) {
+                    val url = item.thumbnailUrl?.resize(1200, 1200)
+                    if (url != null) {
+                        val request = ImageRequest.Builder(context)
+                            .data(url)
+                            .build()
+                        context.imageLoader.execute(request)
+                    }
+                    readyItem = item
                 }
             }
 
-            Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
-                val parallaxModifier = Modifier.graphicsLayer {
-                    translationY = scrollOffsetProvider() * 0.5f
-                    val heroScrollProgress = heroScrollProgressProvider()
-                    alpha = 1f - heroScrollProgress
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        val rawBlur = heroScrollProgress * 30f
-                        val blurRadius = (rawBlur / 5f).toInt() * 5
-                        if (blurRadius > 0) {
-                            renderEffect = blurCache.getOrPut(blurRadius) {
-                                android.graphics.RenderEffect.createBlurEffect(
-                                    blurRadius.toFloat(), blurRadius.toFloat(), android.graphics.Shader.TileMode.CLAMP
+            androidx.compose.animation.AnimatedContent(
+                targetState = readyItem,
+                transitionSpec = {
+                    (fadeIn(tween(800)) + scaleIn(initialScale = 0.8f, animationSpec = tween(800))) togetherWith
+                    (fadeOut(tween(800)) + scaleOut(targetScale = 1.2f, animationSpec = tween(800)))
+                },
+                label = "HeroImageTransition",
+                modifier = Modifier.fillMaxSize()
+            ) { targetItem ->
+                var canvasArtwork by remember(targetItem.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
+                val storefront = remember {
+                    val country = Locale.getDefault().country
+                    if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
+                }
+
+                LaunchedEffect(targetItem.mediaId) {
+                    val id = targetItem.mediaId ?: return@LaunchedEffect
+                    CanvasArtworkPlaybackCache.get(id)?.let {
+                        canvasArtwork = it
+                        return@LaunchedEffect
+                    }
+                    
+                    val s = normalizeCanvasSongTitle(targetItem.songTitle ?: "")
+                    val a = normalizeCanvasArtistName(targetItem.artistName ?: "")
+                    if (s.isBlank() || a.isBlank()) return@LaunchedEffect
+                    
+                    val fetched = withContext(Dispatchers.IO) {
+                        MonochromeApiCanvas.getBySongArtist(s, a, targetItem.albumTitle)
+                            ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
+                        ?: AppleMusicCanvasProvider.getBySongArtist(s, a, targetItem.albumTitle, storefront)
+                            ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
+                    }
+                    if (fetched != null) {
+                        canvasArtwork = fetched
+                        CanvasArtworkPlaybackCache.put(id, fetched)
+                    }
+                }
+
+                val progress by transition.animateFloat(
+                    transitionSpec = { tween(800) },
+                    label = "ItemProgress"
+                ) { state -> if (state == androidx.compose.animation.EnterExitState.Visible) 1f else 0f }
+
+                Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
+                    val parallaxModifier = Modifier.graphicsLayer {
+                        translationY = scrollOffsetProvider() * 0.5f
+                        val heroScrollProgress = heroScrollProgressProvider()
+                        alpha = 1f - heroScrollProgress
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            val rawBlur = (heroScrollProgress * 30f) + ((1f - progress) * 80f)
+                            if (rawBlur > 0f) {
+                                renderEffect = android.graphics.RenderEffect.createBlurEffect(
+                                    rawBlur, rawBlur, android.graphics.Shader.TileMode.CLAMP
                                 ).asComposeRenderEffect()
+                            } else {
+                                renderEffect = null
                             }
-                        } else {
-                            renderEffect = null
                         }
                     }
-                }
-                
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(item.thumbnailUrl?.resize(1200, 1200))
-                        .crossfade(false)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().then(parallaxModifier)
-                )
-
-                if (canvasArtwork?.preferredAnimationUrl != null) {
-                    val isVisible = heroScrollProgressProvider() < 0.5f
-                    CanvasArtworkPlayer(
-                        primaryUrl = canvasArtwork?.preferredAnimationUrl,
-                        fallbackUrl = null,
-                        isPlaying = isVisible && !pagerState.isScrollInProgress,
+                    
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(targetItem.thumbnailUrl?.resize(1200, 1200))
+                            .crossfade(false)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().then(parallaxModifier)
                     )
-                }
 
-                // Dark gradient overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Black.copy(alpha = 0.4f), // top dark tint
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.7f),
-                                    Color.Black // completely black at the bottom to blend with background
-                                )
-                            )
-                        )
-                )
-
-                // Bottom text block
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 32.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { item.onPlay(playerConnection, navController) },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)) // frosted glass look
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_widget_play),
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column {
-                        Text(
-                            text = item.getTitleLabel(isPlaying),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(alpha = 0.8f)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (item.subText.isNotEmpty()) "${item.mainText} • ${item.subText}" else item.mainText,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    if (canvasArtwork?.preferredAnimationUrl != null) {
+                        val isVisible = heroScrollProgressProvider() < 0.5f
+                        CanvasArtworkPlayer(
+                            primaryUrl = canvasArtwork?.preferredAnimationUrl,
+                            fallbackUrl = null,
+                            isPlaying = isVisible && !pagerState.isScrollInProgress,
+                            modifier = Modifier.fillMaxSize().then(parallaxModifier)
                         )
                     }
                 }
             }
         }
+
+        // Static dark gradient overlay
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.4f), // top dark tint
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.7f),
+                            Color.Black // completely black at the bottom to blend with background
+                        )
+                    )
+                )
+        )
+
+        // Dynamic Text Overlay
+        val currentMediaId by playerConnection.mediaMetadata.collectAsState()
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            val offsetFraction = pagerState.currentPageOffsetFraction
+            val currentPage = pagerState.currentPage
+
+            val pagesToRender = buildList {
+                add(currentPage to offsetFraction)
+                if (offsetFraction > 0) {
+                    add(currentPage + 1 to offsetFraction - 1f)
+                } else if (offsetFraction < 0) {
+                    add(currentPage - 1 to offsetFraction + 1f)
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val currentMainPage = pagerState.currentPage
+                val safeMainPage = (currentMainPage % carouselItems.size + carouselItems.size) % carouselItems.size
+                val mainItem = carouselItems[safeMainPage]
+                val isMainPlaying = isPlaying && currentMediaId?.id == mainItem.mediaId
+
+                IconButton(
+                    onClick = {
+                        if (isMainPlaying) {
+                            playerConnection.pause()
+                        } else {
+                            mainItem.onPlay(playerConnection, navController)
+                        }
+                    },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f)) // frosted glass look
+                ) {
+                    androidx.compose.animation.AnimatedContent(targetState = isMainPlaying, label = "PlayPause") { playing ->
+                        Icon(
+                            painter = painterResource(if (playing) R.drawable.ic_untitled_pause else R.drawable.ic_untitled_play),
+                            contentDescription = if (playing) "Pause" else "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Box(modifier = Modifier.weight(1f)) {
+                    for ((pageIndex, pageOffset) in pagesToRender) {
+                        val safeRealPage = (pageIndex % carouselItems.size + carouselItems.size) % carouselItems.size
+                        val item = carouselItems[safeRealPage]
+                        val absOffset = kotlin.math.abs(pageOffset)
+                        val isThisItemPlaying = isPlaying && currentMediaId?.id == item.mediaId
+
+                        Column(
+                            modifier = Modifier.graphicsLayer {
+                                alpha = 1f - absOffset
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    val rawBlur = absOffset * 80f
+                                    if (rawBlur > 0f) {
+                                        renderEffect = android.graphics.RenderEffect.createBlurEffect(
+                                            rawBlur, rawBlur, android.graphics.Shader.TileMode.CLAMP
+                                        ).asComposeRenderEffect()
+                                    } else {
+                                        renderEffect = null
+                                    }
+                                }
+                            }
+                        ) {
+                            androidx.compose.animation.AnimatedContent(
+                                targetState = item.getTitleLabel(isThisItemPlaying),
+                                label = "TitleLabel",
+                                transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) }
+                            ) { textLabel ->
+                                Text(
+                                    text = textLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (item.subText.isNotEmpty()) "${item.mainText} • ${item.subText}" else item.mainText,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
     }
 }

@@ -1115,6 +1115,7 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                             .background(
                                 Brush.verticalGradient(
                                     colors = listOf(
@@ -1127,12 +1128,11 @@ fun BottomSheetPlayer(
                 }
                 
                 // Heavy effects fade in on top
-                val heavyEffectsAlpha = if (playerBackground != PlayerBackgroundStyle.DEFAULT) state.progress.coerceIn(0f, 1f) else 0f
-                if (heavyEffectsAlpha > 0.01f) {
+                if (playerBackground != PlayerBackgroundStyle.DEFAULT) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer { alpha = heavyEffectsAlpha }
+                            .graphicsLayer { alpha = state.progress.coerceIn(0f, 1f) }
                     ) {
                         when (playerBackground) {
                             PlayerBackgroundStyle.BLUR -> {
@@ -1606,12 +1606,11 @@ fun BottomSheetPlayer(
                     useNewPlayerDesign = useNewPlayerDesign
                 )
 
-                val topChromeAlpha = ((state.progress - 0.72f) / 0.2f).coerceIn(0f, 1f)
-                if (useNewPlayerDesign && topChromeAlpha > 0.01f) {
+                if (useNewPlayerDesign) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .graphicsLayer { alpha = topChromeAlpha }
+                            .graphicsLayer { alpha = ((state.progress - 0.72f) / 0.2f).coerceIn(0f, 1f) }
                     ) {
 
 
