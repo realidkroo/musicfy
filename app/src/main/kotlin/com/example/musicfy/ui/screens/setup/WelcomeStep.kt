@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -19,6 +20,10 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.glassRoot
+import com.example.musicfy.ui.component.ProgressiveGlassBackground
+import com.example.musicfy.ui.component.BlurDirection
 import kotlinx.coroutines.delay
 import kotlin.math.sin
 
@@ -28,68 +33,62 @@ enum class WelcomeAnimState {
 
 @Composable
 fun WelcomeStep() {
-    var animState by remember { mutableStateOf(WelcomeAnimState.Cassette) }
+    val glassState = remember { GlassState() }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            animState = WelcomeAnimState.Cassette
-            delay(5000)
-            animState = WelcomeAnimState.Blank
-            delay(500)
-            animState = WelcomeAnimState.Albums
-            delay(5000)
-            animState = WelcomeAnimState.Blank
-            delay(500)
-        }
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = Modifier.fillMaxSize().clipToBounds()
     ) {
-        Spacer(modifier = Modifier.height(64.dp))
-        
-        Text(
-            text = "Welcome to musicfy!",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        
-        Spacer(modifier = Modifier.weight(1f))
-        
+        // The Disc Animation covering the upper right area
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .glassRoot(glassState)
         ) {
-            when (animState) {
-                WelcomeAnimState.Cassette -> CassetteAnimation()
-                WelcomeAnimState.Albums -> AlbumsAnimation()
-                WelcomeAnimState.Blank -> { /* Empty state */ }
-            }
+            DiscAnimation()
         }
         
-        Spacer(modifier = Modifier.weight(1f))
+        // Progressive Blur overlay at the bottom covering the text area
+        ProgressiveGlassBackground(
+            state = glassState,
+            maxBlurRadius = 120f,
+            foundationColor = Color(0xFF121212),
+            tint = Color.Transparent,
+            direction = BlurDirection.TopToBottom,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .fillMaxHeight(0.48f)
+        )
+        
+        // The Text at bottom left - shifted up to avoid next button overlap
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 32.dp, bottom = 145.dp, end = 32.dp)
+        ) {
+            Text(
+                text = "Welcome to\nmusicfy!",
+                fontSize = 42.sp,
+                lineHeight = 44.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                letterSpacing = (-1).sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "A way to listen and own your\nmusic, differently.",
+                fontSize = 16.sp,
+                color = Color(0xFFB3B3B3),
+                lineHeight = 22.sp,
+                letterSpacing = (-0.5).sp
+            )
+        }
     }
 }
 
 @Composable
-fun CassetteAnimation() {
-    // Entrance animations
-    val enterTransition = updateTransition(targetState = true, label = "Enter")
-    val handleOffsetX by enterTransition.animateFloat(
-        transitionSpec = { spring(dampingRatio = 0.7f, stiffness = 100f) },
-        label = "HandleOffsetX"
-    ) { if (it) 0f else -500f }
-    val cassetteOffsetX by enterTransition.animateFloat(
-        transitionSpec = { spring(dampingRatio = 0.7f, stiffness = 100f) },
-        label = "CassetteOffsetX"
-    ) { if (it) 0f else 500f }
-
-    // Continuous animations
-    val infiniteTransition = rememberInfiniteTransition(label = "Infinite")
+fun DiscAnimation() {
+    val infiniteTransition = rememberInfiniteTransition(label = "InfiniteDisc")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -97,136 +96,98 @@ fun CassetteAnimation() {
             animation = tween(4000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "Rotation"
-    )
-    
-    val time by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 2f * Math.PI.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "Oscillation"
+        label = "DiscRotation"
     )
 
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val cx = size.width / 2
-        val cy = size.height / 2
-        
-        // Oscillation offsets
-        val floatY = sin(time) * 10f
-        val floatX = sin(time * 0.5f) * 5f
-        
-        // Draw Handle
-        translate(left = handleOffsetX + floatX, top = floatY) {
-            val handleStartX = cx - 120.dp.toPx()
-            val handleStartY = cy - 20.dp.toPx()
-            val handleEndX = cx - 20.dp.toPx()
-            val handleEndY = cy
-            
-            drawLine(
-                color = Color.DarkGray,
-                start = Offset(handleStartX, handleStartY),
-                end = Offset(handleEndX, handleEndY),
-                strokeWidth = 12.dp.toPx(),
-                cap = StrokeCap.Round
-            )
-            // Handle head
-            drawCircle(
-                color = Color.LightGray,
-                radius = 16.dp.toPx(),
-                center = Offset(handleEndX, handleEndY)
-            )
-        }
-
-        // Draw Cassette/Record
-        translate(left = cassetteOffsetX + floatX, top = floatY) {
-            val cassetteCenter = Offset(cx + 60.dp.toPx(), cy)
-            
-            rotate(rotation, pivot = cassetteCenter) {
-                // Outer ring
-                drawCircle(
-                    color = Color.DarkGray,
-                    radius = 80.dp.toPx(),
-                    center = cassetteCenter,
-                    style = Stroke(width = 16.dp.toPx())
-                )
-                // Middle fill
-                drawCircle(
-                    color = Color(0xFF222222),
-                    radius = 72.dp.toPx(),
-                    center = cassetteCenter
-                )
-                // Inner ring
-                drawCircle(
-                    color = Color.Gray,
-                    radius = 30.dp.toPx(),
-                    center = cassetteCenter,
-                    style = Stroke(width = 4.dp.toPx())
-                )
-                // Center hole
-                drawCircle(
-                    color = Color.Black,
-                    radius = 10.dp.toPx(),
-                    center = cassetteCenter
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun AlbumsAnimation() {
-    val infiniteTransition = rememberInfiniteTransition(label = "InfiniteAlbums")
-    
-    // Scale animation starts small, then grows
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
+    // Gentle shake for the arm
+    val armShake by infiniteTransition.animateFloat(
+        initialValue = -1f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearOutSlowInEasing),
+            animation = tween(200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "Scale"
+        label = "ArmShake"
     )
     
-    // Scroll animation moves left infinitely
-    val scrollX by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = -300.dp.value, // Scroll by roughly the width of one album + spacing
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "ScrollX"
-    )
-
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val cy = size.height / 2
-        val albumSize = 120.dp.toPx() * scale
-        val spacing = 40.dp.toPx()
-        val startX = scrollX.dp.toPx()
+        // Disc Center on the right edge, slightly above middle
+        val cx = size.width
+        val cy = size.height * 0.3f
+        val discCenter = Offset(cx, cy)
+        val maxRadius = size.width * 0.85f
         
-        // Draw 5 squares to create an infinite scrolling effect
-        for (i in 0..4) {
-            val cx = startX + (i * (albumSize + spacing))
+        rotate(rotation, pivot = discCenter) {
+            // Main disc
+            drawCircle(
+                color = Color(0xFF2A2A2A),
+                radius = maxRadius,
+                center = discCenter
+            )
+            // Inner groove 1
+            drawCircle(
+                color = Color(0xFF242424),
+                radius = maxRadius * 0.75f,
+                center = discCenter,
+                style = Stroke(width = 2.dp.toPx())
+            )
+            // Inner groove 2
+            drawCircle(
+                color = Color(0xFF242424),
+                radius = maxRadius * 0.5f,
+                center = discCenter,
+                style = Stroke(width = 2.dp.toPx())
+            )
+            // Label area
+            drawCircle(
+                color = Color(0xFF333333),
+                radius = maxRadius * 0.35f,
+                center = discCenter
+            )
+            // Ring around hole
+            drawCircle(
+                color = Color(0xFF444444),
+                radius = maxRadius * 0.12f,
+                center = discCenter,
+                style = Stroke(width = 4.dp.toPx())
+            )
+            // Center hole (background color)
+            drawCircle(
+                color = Color(0xFF121212),
+                radius = maxRadius * 0.08f,
+                center = discCenter
+            )
+        }
+        
+        // Reader Arm
+        // Pivot offscreen left
+        val armBaseX = -size.width * 0.1f
+        val armBaseY = size.height * 0.45f
+        
+        // Base rotation + shake
+        rotate(degrees = -15f + armShake, pivot = Offset(armBaseX, armBaseY)) {
+            val armLength = size.width * 0.8f
+            val armEndX = armBaseX + armLength
+            val armEndY = armBaseY
             
-            val rectStart = Offset(cx, cy - albumSize / 2)
-            
-            drawRoundRect(
-                color = Color.DarkGray,
-                topLeft = rectStart,
-                size = Size(albumSize, albumSize),
-                cornerRadius = CornerRadius(16.dp.toPx(), 16.dp.toPx())
+            // Draw arm line
+            drawLine(
+                color = Color(0xFF444444),
+                start = Offset(armBaseX, armBaseY),
+                end = Offset(armEndX, armEndY),
+                strokeWidth = 14.dp.toPx(),
+                cap = StrokeCap.Round
             )
             
-            // Draw an inner square for details
+            // Draw stylus head (pill shape)
+            val headWidth = 80.dp.toPx()
+            val headHeight = 28.dp.toPx()
+            
             drawRoundRect(
-                color = Color.Gray,
-                topLeft = Offset(rectStart.x + 16.dp.toPx(), rectStart.y + 16.dp.toPx()),
-                size = Size(albumSize - 32.dp.toPx(), albumSize - 32.dp.toPx()),
-                cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx())
+                color = Color(0xFF666666),
+                topLeft = Offset(armEndX - headWidth / 2, armEndY - headHeight / 2),
+                size = Size(headWidth, headHeight),
+                cornerRadius = CornerRadius(14.dp.toPx(), 14.dp.toPx())
             )
         }
     }

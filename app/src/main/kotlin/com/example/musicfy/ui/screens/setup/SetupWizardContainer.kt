@@ -37,6 +37,7 @@ fun SetupWizardContainer(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val overlayProgress = remember { Animatable(if (isVisible) 1f else 0f) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
 
     LaunchedEffect(isVisible) {
         if (isVisible) {
@@ -46,22 +47,25 @@ fun SetupWizardContainer(
         }
     }
 
+    // Calculate dynamic progress combining transition progress and drag offset
+    val dragProgress = (1f - (dragOffsetY / 1200f)).coerceIn(0f, 1f)
+    val effectiveProgress = overlayProgress.value * dragProgress
+
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        // Main App Content (shrinks and blurs when wizard is visible)
+        // Main App Content (shrinks and blurs dynamically based on setup wizard position)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val progress = overlayProgress.value
-                    val scale = 1f - 0.08f * progress
+                    val scale = 1f - 0.08f * effectiveProgress
                     scaleX = scale
                     scaleY = scale
 
                     clip = true
-                    val radius = (32f * progress).coerceAtLeast(0f)
+                    val radius = (32f * effectiveProgress).coerceAtLeast(0f)
                     shape = RoundedCornerShape(radius.dp.toPx())
 
-                    val blurPx = (12f * progress).dp.toPx()
+                    val blurPx = (12f * effectiveProgress).dp.toPx()
                     if (blurPx > 0.1f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                         renderEffect = android.graphics.RenderEffect.createBlurEffect(
                             blurPx,
@@ -81,8 +85,8 @@ fun SetupWizardContainer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = overlayProgress.value.coerceIn(0f, 1f) }
-                    .background(Color.Black.copy(alpha = 0.7f))
+                    .graphicsLayer { alpha = effectiveProgress.coerceIn(0f, 1f) }
+                    .background(Color.Black.copy(alpha = 0.7f * effectiveProgress))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -94,11 +98,30 @@ fun SetupWizardContainer(
                     .fillMaxSize()
                     .graphicsLayer {
                         val inverseProgress = 1f - overlayProgress.value
-                        translationY = inverseProgress * 2000f // Slide up from bottom
-                        alpha = overlayProgress.value.coerceIn(0f, 1f)
+                        translationY = inverseProgress * 2000f + dragOffsetY
                     }
             ) {
-                SetupWizardScreen(onComplete = onSetupCompleted)
+                SetupWizardScreen(
+                    onComplete = onSetupCompleted,
+                    onDrag = { delta ->
+                        val resistance = 1f - (dragOffsetY / 2000f).coerceIn(0f, 0.8f)
+                        val newOffset = dragOffsetY + delta * resistance
+                        if (newOffset > 0) {
+                            dragOffsetY = newOffset
+                        }
+                    },
+                    onDragRelease = {
+                        coroutineScope.launch {
+                            androidx.compose.animation.core.animate(
+                                initialValue = dragOffsetY,
+                                targetValue = 0f,
+                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f)
+                            ) { value, _ ->
+                                dragOffsetY = value
+                            }
+                        }
+                    }
+                )
             }
         }
     }

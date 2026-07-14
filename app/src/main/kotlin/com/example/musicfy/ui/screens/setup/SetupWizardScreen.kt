@@ -23,11 +23,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Composable
-fun SetupWizardScreen(onComplete: (String, Uri?) -> Unit) {
+fun SetupWizardScreen(
+    onComplete: (String, Uri?) -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragRelease: () -> Unit
+) {
     val pagerState = rememberPagerState(pageCount = { 4 })
     val coroutineScope = rememberCoroutineScope()
     
@@ -45,60 +53,82 @@ fun SetupWizardScreen(onComplete: (String, Uri?) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onVerticalDrag = { change, dragAmount ->
+                        change.consume()
+                        onDrag(dragAmount)
+                    },
+                    onDragEnd = {
+                        onDragRelease()
+                    },
+                    onDragCancel = {
+                        onDragRelease()
+                    }
+                )
+            }
             .padding(top = 48.dp) // Leave space at the top so the scaled background is visible
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
             .background(Color(0xFF121212)) // Dark gray/black surface
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Drag Handle
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(100.dp)
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                )
-            }
-            
-            // Pager Content
-            HorizontalPager(
-                state = pagerState,
-                userScrollEnabled = false, // Must use buttons to navigate
-                modifier = Modifier.weight(1f)
-            ) { page ->
-                when (page) {
-                    0 -> WelcomeStep()
-                    1 -> ProfileSetupStep(
+        // Pager Content (fill screen first, drawing behind overlays)
+        HorizontalPager(
+            state = pagerState,
+            userScrollEnabled = false, // Must use buttons to navigate
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            // Pass content padding to non-welcome pages so they don't overlap with the top drag handle
+            val pageModifier = Modifier.fillMaxSize().padding(top = 56.dp)
+            when (page) {
+                0 -> WelcomeStep()
+                1 -> Box(pageModifier) {
+                    ProfileSetupStep(
                         username = username,
                         onUsernameChange = { username = it },
                         profilePicUri = profilePicUri,
                         onProfilePicChange = { profilePicUri = it }
                     )
-                    2 -> GreetingStep(username = username, profilePicUri = profilePicUri)
-                    3 -> ThankYouStep()
+                }
+                2 -> Box(pageModifier) {
+                    GreetingStep(username = username, profilePicUri = profilePicUri)
+                }
+                3 -> Box(pageModifier) {
+                    ThankYouStep()
                 }
             }
-            
-            // Bottom Action Bar
+        }
+
+        // Drag Handle overlaid on top
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
-                    .navigationBarsPadding(),
-                contentAlignment = Alignment.Center
-            ) {
+                    .width(100.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.5f))
+            )
+        }
+        
+        // Bottom Action Bar overlaid on top
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(24.dp)
+                .navigationBarsPadding(),
+            contentAlignment = Alignment.Center
+        ) {
                 if (pagerState.currentPage == 3) {
                     Button(
                         onClick = { onComplete(username, profilePicUri) },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = CircleShape
                     ) {
                         Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
                     }
@@ -111,7 +141,7 @@ fun SetupWizardScreen(onComplete: (String, Uri?) -> Unit) {
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = CircleShape
                     ) {
                         Text("Next", color = Color.White, fontWeight = FontWeight.Bold)
                     }
@@ -130,7 +160,7 @@ fun SetupWizardScreen(onComplete: (String, Uri?) -> Unit) {
                             containerColor = Color(0xFF333333),
                             disabledContainerColor = Color(0xFF222222)
                         ),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = CircleShape
                     ) {
                         Text(
                             "Next", 
@@ -147,11 +177,10 @@ fun SetupWizardScreen(onComplete: (String, Uri?) -> Unit) {
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = CircleShape
                     ) {
                         Text("Next", color = Color.White, fontWeight = FontWeight.Bold)
                     }
-                }
             }
         }
     }

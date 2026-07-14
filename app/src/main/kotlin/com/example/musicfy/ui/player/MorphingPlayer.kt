@@ -286,6 +286,15 @@ fun MorphingSharedElements(
                                         ).asComposeRenderEffect()
                                     }
                                 }
+
+                                val p = progressProvider()
+                                val artCornerRadius = when {
+                                    isAppleMusic && !useNewPlayerDesign -> androidx.compose.ui.unit.lerp(16.dp, 0.dp, p)
+                                    isAppleMusic && useNewPlayerDesign -> androidx.compose.ui.unit.lerp(16.dp, 0.dp, p)
+                                    else -> ThumbnailCornerRadius
+                                }
+                                clip = true
+                                shape = RoundedCornerShape(artCornerRadius)
                             }
                     ) {
                         AsyncImage(
