@@ -275,6 +275,20 @@ fun SettingsScreen(
                                 }
                             }
                         }
+                    ),
+                    Material3SettingsItem(
+                        title = { Text("Show Beta Warning on Launch") },
+                        description = { Text("Re-enable the beta version popup when the app launches") },
+                        icon = painterResource(R.drawable.info),
+                        onClick = {
+                            coroutineScope.launch {
+                                context.dataStore.updateData { prefs ->
+                                    prefs.toMutablePreferences().apply {
+                                        set(com.example.musicfy.constants.BetaNoticeDismissedKey, false)
+                                    }
+                                }
+                            }
+                        }
                     )
                 )
             )

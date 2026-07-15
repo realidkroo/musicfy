@@ -39,79 +39,98 @@ fun ProfileSetupStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.Start
     ) {
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(48.dp)) // Moved up slightly
         
         Text(
             text = "Firstly",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
+            fontSize = 42.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.White,
+            letterSpacing = (-2).sp // Changed letter spacing
         )
         
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp)) // Reduced spacing
         
         Text(
-            text = "Your data will never be on the musicfy server as the dev are too poor to afford a server, and will never be :)",
-            fontSize = 14.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            text = "Set your username and profile picture, its for\nwhen you want to listen with your friend.",
+            fontSize = 16.sp,
+            color = Color(0xFFB3B3B3),
+            lineHeight = 22.sp,
+            letterSpacing = (-0.5).sp
         )
         
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(40.dp)) // Adjusted
         
-        // Profile Picture Picker
+        // Profile Picture Placeholder (visuals drawn by SetupWizardScreen overlay for smooth morphing)
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(140.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF222222))
-                .border(2.dp, Color(0xFF444444), CircleShape)
                 .clickable {
                     launcher.launch(
                         androidx.activity.result.PickVisualMediaRequest(
                             ActivityResultContracts.PickVisualMedia.ImageOnly
                         )
                     )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            if (profilePicUri != null) {
-                AsyncImage(
-                    model = profilePicUri,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Picture",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(48.dp)
-                )
-            }
-        }
+                }
+        )
         
         Spacer(modifier = Modifier.height(48.dp))
+        
+        Text(
+            text = "username",
+            fontSize = 14.sp, // Made smaller
+            color = Color.White,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
         
         OutlinedTextField(
             value = username,
             onValueChange = onUsernameChange,
-            placeholder = { Text("Username", color = Color.Gray) },
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(percent = 50), // Rounder
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp), // Smaller
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFF222222),
-                unfocusedContainerColor = Color(0xFF222222),
-                focusedBorderColor = Color(0xFF555555),
+                focusedContainerColor = Color(0xFF2C2C2C),
+                unfocusedContainerColor = Color(0xFF2C2C2C),
+                focusedBorderColor = Color.Transparent,
                 unfocusedBorderColor = Color.Transparent,
                 focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                unfocusedTextColor = Color.White,
+                cursorColor = Color.White
             )
         )
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 120.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_dialog_info),
+                contentDescription = null,
+                tint = Color(0xFF888888),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Your data will never be on the musicfy server", // Changed text
+                fontSize = 12.sp,
+                color = Color(0xFFD0D0D0),
+                fontWeight = FontWeight.Normal, // Not bold
+                lineHeight = 16.sp,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }

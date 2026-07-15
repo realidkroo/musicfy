@@ -116,9 +116,9 @@ fun ProgressiveGlassBackground(
     tint: Color = Color.Transparent,
     foundationColor: Color? = null,
     direction: BlurDirection = BlurDirection.TopToBottom,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    steps: Int = 5
 ) {
-    val steps = 5
     Box(modifier = modifier) {
         for (i in 1..steps) {
             val fraction = i.toFloat() / steps

@@ -5,12 +5,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,49 +33,106 @@ fun ThankYouStep() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.Start
     ) {
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(100.dp))
         
         Text(
-            text = "Thank you for using musicfy!",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
+            text = "Thank you",
+            fontSize = 48.sp,
+            fontWeight = FontWeight.Black,
             color = Color.White,
-            textAlign = TextAlign.Center
+            letterSpacing = (-2).sp,
+            lineHeight = 48.sp
         )
         
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Text(
+            text = "for using musicfy!",
+            fontSize = 16.sp,
+            color = Color(0xFFB3B3B3),
+            lineHeight = 22.sp,
+            letterSpacing = (-0.5).sp
+        )
+        
+        Spacer(modifier = Modifier.height(48.dp))
         
         AnimatedVisibility(
             visible = showCard,
             enter = slideInVertically(
                 initialOffsetY = { it }, // Slide from bottom
                 animationSpec = tween(durationMillis = 600)
-            )
+            ),
+            modifier = Modifier.weight(1f)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 64.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .fillMaxHeight()
+                    .padding(bottom = 120.dp) // Leave space for Done button
+                    .clip(RoundedCornerShape(32.dp))
                     .background(Color(0xFF222222))
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Background Watermark Text
+                Text(
+                    text = "MUSICFYIT",
+                    fontSize = 100.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF333333),
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .graphicsLayer {
+                            rotationZ = -90f
+                            translationX = 130.dp.toPx() // Push to the right edge safely
+                        },
+                    letterSpacing = 2.sp
+                )
+                
+                // Content
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
                     Text(
-                        text = "Made with ❤️ by roo",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
+                        text = "Made with <3 by roo",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF757575))
+                    )
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
                     Text(
-                        text = "Version 1.0.0", // Hardcoded for simplicity, can read BuildConfig
+                        text = "v6.7.5b",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        letterSpacing = (-1).sp
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = "This app still in beta!",
                         fontSize = 14.sp,
-                        color = Color.Gray
+                        color = Color(0xFFB3B3B3),
+                        lineHeight = 20.sp,
+                        letterSpacing = (-0.5).sp
                     )
                 }
             }

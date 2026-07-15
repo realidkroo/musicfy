@@ -134,12 +134,11 @@ import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
 import com.music.innertube.utils.completed
-import com.music.innertube.utils.parseCookieString
 import com.music.innertube.YouTube
 import com.example.musicfy.constants.GridItemSize
 import com.example.musicfy.constants.GridItemsSizeKey
 import com.example.musicfy.constants.GridThumbnailHeight
-import com.example.musicfy.constants.InnerTubeCookieKey
+import com.example.musicfy.constants.ProfilePicUriKey
 import com.example.musicfy.constants.ListItemHeight
 import com.example.musicfy.constants.ListThumbnailSize
 import com.example.musicfy.constants.RandomizeHomeOrderKey
@@ -645,15 +644,15 @@ fun HomeScreen(
 
     val accountName by viewModel.accountName.collectAsState()
     val accountImageUrl by viewModel.accountImageUrl.collectAsState()
-    val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
+    val profilePicUri by rememberPreference(ProfilePicUriKey, "")
     val randomizeHomeOrder = false
 
-
-
-    val isLoggedIn = remember(innerTubeCookie) {
-        "SAPISID" in parseCookieString(innerTubeCookie)
-    }
-    val url = if (isLoggedIn) accountImageUrl else null
+    // The setup flow saves the user's chosen photo as an absolute local path. Prefer it
+    // everywhere on Home; the linked music-account avatar remains a fallback.
+    val localProfileImageUrl = profilePicUri
+        .takeIf { it.isNotBlank() }
+        ?.let { if (it.contains("://")) it else "file://$it" }
+    val profileImageUrl = localProfileImageUrl ?: accountImageUrl
 
     val scope = rememberCoroutineScope()
     // Track randomization job
@@ -1346,12 +1345,12 @@ fun HomeScreen(
                                         label = "Your Playlists",
                                         title = accountName,
                                         thumbnail = {
-                                            if (url != null) {
+                                            if (profileImageUrl != null) {
                                                 AsyncImage(
                                                     model = ImageRequest.Builder(LocalContext.current)
-                                                        .data(url)
+                                                        .data(profileImageUrl)
                                                         .diskCachePolicy(CachePolicy.ENABLED)
-                                                        .diskCacheKey(url)
+                                                        .diskCacheKey(profileImageUrl)
                                                         .crossfade(false)
                                                         .build(),
                                                     placeholder = painterResource(id = R.drawable.person),
@@ -1905,9 +1904,15 @@ fun HomeScreen(
                                 )
                             }
 
-                            if (url != null) {
+                            if (profileImageUrl != null) {
                                 AsyncImage(
-                                    model = url,
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(profileImageUrl)
+                                        .diskCachePolicy(CachePolicy.ENABLED)
+                                        .diskCacheKey(profileImageUrl)
+                                        .build(),
+                                    placeholder = painterResource(R.drawable.person),
+                                    error = painterResource(R.drawable.person),
                                     contentDescription = "Profile",
                                     modifier = Modifier
                                         .size(36.dp)

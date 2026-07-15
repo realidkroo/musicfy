@@ -44,7 +44,9 @@ data class AccountMenuResponse(
                                     name = accountName.runs!!.first().text,
                                     email = email?.runs?.first()?.text,
                                     channelHandle = channelHandle?.runs?.first()?.text,
-                                    thumbnailUrl = accountPhoto.thumbnails.lastOrNull()?.url,
+                                    thumbnailUrl = accountPhoto.thumbnails.lastOrNull()?.url?.let {
+                                        if (it.startsWith("//")) "https:$it" else it
+                                    },
                                 )
                         }
                     }

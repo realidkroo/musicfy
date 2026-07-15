@@ -5,9 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,43 +25,34 @@ fun GreetingStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(start = 32.dp, end = 32.dp, bottom = 120.dp), // Adjust bottom padding for the next button
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.Bottom
     ) {
-        // Profile Picture (slightly smaller to show transition/morph)
-        Box(
-            modifier = Modifier
-                .size(140.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF222222))
-                .border(2.dp, Color(0xFF444444), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (profilePicUri != null) {
-                AsyncImage(
-                    model = profilePicUri,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "No Picture",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(64.dp)
-                )
-            }
-        }
+        // Profile Picture Placeholder (visuals drawn by SetupWizardScreen overlay for smooth morphing)
+        Spacer(
+            modifier = Modifier.size(110.dp)
+        )
         
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "hi, $username!",
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
+            text = "hi, ${username.lowercase()}!",
+            fontSize = 48.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White,
+            letterSpacing = (-2).sp,
+            lineHeight = 48.sp
+        )
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Text(
+            text = "Welcome to musicfy!",
+            fontSize = 16.sp,
+            color = Color(0xFFB3B3B3),
+            lineHeight = 22.sp,
+            letterSpacing = (-0.5).sp
         )
     }
 }
