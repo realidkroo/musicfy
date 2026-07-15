@@ -226,6 +226,7 @@ fun HeroCarousel(
             val realPage = page % carouselItems.size
             val item = carouselItems[realPage]
             val context = LocalContext.current
+            val heroBlurEffects = remember { mutableMapOf<Int, androidx.compose.ui.graphics.RenderEffect>() }
             var readyItem by remember { mutableStateOf(item) }
 
             LaunchedEffect(item) {
@@ -251,6 +252,12 @@ fun HeroCarousel(
                 modifier = Modifier.fillMaxSize()
             ) { targetItem ->
                 var canvasArtwork by remember(targetItem.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
+                val heroImageRequest = remember(targetItem.thumbnailUrl, context) {
+                    ImageRequest.Builder(context)
+                        .data(targetItem.thumbnailUrl?.resize(1200, 1200))
+                        .crossfade(false)
+                        .build()
+                }
                 val storefront = remember {
                     val country = Locale.getDefault().country
                     if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
@@ -291,10 +298,15 @@ fun HeroCarousel(
                         alpha = 1f - heroScrollProgress
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                             val rawBlur = (heroScrollProgress * 30f) + ((1f - progress) * 80f)
-                            if (rawBlur > 0f) {
-                                renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                                    rawBlur, rawBlur, android.graphics.Shader.TileMode.CLAMP
-                                ).asComposeRenderEffect()
+                            val blurRadius = rawBlur.toInt()
+                            if (blurRadius > 0) {
+                                renderEffect = heroBlurEffects.getOrPut(blurRadius) {
+                                    android.graphics.RenderEffect.createBlurEffect(
+                                        blurRadius.toFloat(),
+                                        blurRadius.toFloat(),
+                                        android.graphics.Shader.TileMode.CLAMP
+                                    ).asComposeRenderEffect()
+                                }
                             } else {
                                 renderEffect = null
                             }
@@ -302,10 +314,7 @@ fun HeroCarousel(
                     }
                     
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(targetItem.thumbnailUrl?.resize(1200, 1200))
-                            .crossfade(false)
-                            .build(),
+                        model = heroImageRequest,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize().then(parallaxModifier)
@@ -346,6 +355,7 @@ fun HeroCarousel(
         Box(modifier = Modifier.fillMaxSize()) {
             val offsetFraction = pagerState.currentPageOffsetFraction
             val currentPage = pagerState.currentPage
+            val textBlurEffects = remember { mutableMapOf<Int, androidx.compose.ui.graphics.RenderEffect>() }
 
             val pagesToRender = buildList {
                 add(currentPage to offsetFraction)
@@ -404,11 +414,15 @@ fun HeroCarousel(
                             modifier = Modifier.graphicsLayer {
                                 alpha = 1f - absOffset
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    val rawBlur = absOffset * 80f
-                                    if (rawBlur > 0f) {
-                                        renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                                            rawBlur, rawBlur, android.graphics.Shader.TileMode.CLAMP
-                                        ).asComposeRenderEffect()
+                                    val blurRadius = (absOffset * 80f).toInt()
+                                    if (blurRadius > 0) {
+                                        renderEffect = textBlurEffects.getOrPut(blurRadius) {
+                                            android.graphics.RenderEffect.createBlurEffect(
+                                                blurRadius.toFloat(),
+                                                blurRadius.toFloat(),
+                                                android.graphics.Shader.TileMode.CLAMP
+                                            ).asComposeRenderEffect()
+                                        }
                                     } else {
                                         renderEffect = null
                                     }

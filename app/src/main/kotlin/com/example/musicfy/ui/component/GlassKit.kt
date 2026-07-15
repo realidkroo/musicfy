@@ -73,6 +73,17 @@ fun GlassPillBackground(
     modifier: Modifier = Modifier
 ) {
     var position by remember { mutableStateOf(Offset.Zero) }
+    val blurEffect = remember(blurRadius) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurRadius > 0.5f) {
+            android.graphics.RenderEffect.createBlurEffect(
+                blurRadius,
+                blurRadius,
+                android.graphics.Shader.TileMode.DECAL
+            ).asComposeRenderEffect()
+        } else {
+            null
+        }
+    }
 
     androidx.compose.foundation.Canvas(
         modifier = modifier
@@ -137,8 +148,7 @@ fun ProgressiveGlassBackground(
                         .fillMaxHeight(heightFraction)
                         .align(if (direction == BlurDirection.TopToBottom) androidx.compose.ui.Alignment.BottomCenter else androidx.compose.ui.Alignment.TopCenter)
                         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
+                        .drawWithCache {
                             val brush = if (direction == BlurDirection.TopToBottom) {
                                 Brush.verticalGradient(
                                     0f to Color.Transparent,
@@ -152,7 +162,10 @@ fun ProgressiveGlassBackground(
                                     1f to Color.Transparent
                                 )
                             }
-                            drawRect(brush = brush, blendMode = BlendMode.DstIn)
+                            onDrawWithContent {
+                                drawContent()
+                                drawRect(brush = brush, blendMode = BlendMode.DstIn)
+                            }
                         }
                 ) {
                     GlassPillBackground(

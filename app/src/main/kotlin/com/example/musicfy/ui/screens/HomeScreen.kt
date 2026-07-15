@@ -653,6 +653,16 @@ fun HomeScreen(
         .takeIf { it.isNotBlank() }
         ?.let { if (it.contains("://")) it else "file://$it" }
     val profileImageUrl = localProfileImageUrl ?: accountImageUrl
+    val context = LocalContext.current
+    val profileImageRequest = remember(context, profileImageUrl) {
+        profileImageUrl?.let { imageUrl ->
+            ImageRequest.Builder(context)
+                .data(imageUrl)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .diskCacheKey(imageUrl)
+                .build()
+        }
+    }
 
     val scope = rememberCoroutineScope()
     // Track randomization job
@@ -678,6 +688,10 @@ fun HomeScreen(
             (firstItemScrollOffset / carouselHeightPx).coerceIn(0f, 1f)
         }
     }
+    // Keep these callbacks stable. Their reads occur inside graphics layers, which lets
+    // Compose update the transform without recomposing the carousel during every scroll tick.
+    val scrollOffsetProvider = remember { { firstItemScrollOffset } }
+    val heroScrollProgressProvider = remember { { heroScrollProgress } }
 
     val gridItemSize = com.example.musicfy.LocalGridItemSize.current
     val currentGridHeight = if (gridItemSize == GridItemSize.BIG) GridThumbnailHeight else SmallGridThumbnailHeight
@@ -1000,8 +1014,8 @@ fun HomeScreen(
                         dailyDiscover = dailyDiscover,
                         playerConnection = playerConnection,
                         navController = navController,
-                        scrollOffsetProvider = { firstItemScrollOffset },
-                        heroScrollProgressProvider = { heroScrollProgress }
+                        scrollOffsetProvider = scrollOffsetProvider,
+                        heroScrollProgressProvider = heroScrollProgressProvider
                     )
                 }
 
@@ -1347,12 +1361,7 @@ fun HomeScreen(
                                         thumbnail = {
                                             if (profileImageUrl != null) {
                                                 AsyncImage(
-                                                    model = ImageRequest.Builder(LocalContext.current)
-                                                        .data(profileImageUrl)
-                                                        .diskCachePolicy(CachePolicy.ENABLED)
-                                                        .diskCacheKey(profileImageUrl)
-                                                        .crossfade(false)
-                                                        .build(),
+                                                    model = profileImageRequest,
                                                     placeholder = painterResource(id = R.drawable.person),
                                                     error = painterResource(id = R.drawable.person),
                                                     contentDescription = null,
@@ -1750,6 +1759,9 @@ fun HomeScreen(
                             },
                             foundationColor = backgroundColor,
                             direction = BlurDirection.BottomToTop,
+                            // Three quality layers keep the progressive glass gradient while
+                            // reducing full-screen offscreen blur passes during scrolling.
+                            steps = 3,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -1906,11 +1918,7 @@ fun HomeScreen(
 
                             if (profileImageUrl != null) {
                                 AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(profileImageUrl)
-                                        .diskCachePolicy(CachePolicy.ENABLED)
-                                        .diskCacheKey(profileImageUrl)
-                                        .build(),
+                                    model = profileImageRequest,
                                     placeholder = painterResource(R.drawable.person),
                                     error = painterResource(R.drawable.person),
                                     contentDescription = "Profile",
