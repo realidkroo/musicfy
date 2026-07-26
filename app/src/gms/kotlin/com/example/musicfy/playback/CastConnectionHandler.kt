@@ -5,6 +5,7 @@ package com.example.musicfy.playback
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.Stable
 import androidx.media3.common.Player
 import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
@@ -43,7 +44,14 @@ import timber.log.Timber
  * - Session management
  * - Media loading and playback control
  * - Synchronization between local and remote playback
+ *
+ * [Stable]: without this, every composable taking a CastConnectionHandler parameter
+ * (PlayerSlider, PlayerControls, ...) is forced to fully recompose whenever its caller
+ * recomposes instead of skipping, since the compiler can't infer stability across the
+ * StateFlow properties. isSyncingFromCast is only read from MusicService, never a
+ * composable, so this holds.
  */
+@Stable
 class CastConnectionHandler(
     private val context: Context,
     private val scope: CoroutineScope,

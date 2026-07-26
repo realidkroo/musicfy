@@ -233,13 +233,14 @@ fun CanvasArtworkPlayer(
             }
         },
         update = { view ->
-            // Apply native RenderEffect for hardware-accelerated blur on Android 12+
+            // Apply native RenderEffect for hardware-accelerated blur on Android 12+ only when changed
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                val clampedBlur = if (blurRadiusPx > 0f) blurRadiusPx.coerceAtMost(96f) else 0f
                 if (blurRadiusPx > 0f) {
                     view.setRenderEffect(
                         android.graphics.RenderEffect.createBlurEffect(
-                            blurRadiusPx, 
-                            blurRadiusPx, 
+                            clampedBlur, 
+                            clampedBlur, 
                             android.graphics.Shader.TileMode.CLAMP
                         )
                     )

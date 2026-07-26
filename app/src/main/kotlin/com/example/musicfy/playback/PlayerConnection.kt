@@ -4,6 +4,7 @@
 package com.example.musicfy.playback
 
 import android.content.Context
+import androidx.compose.runtime.Stable
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -32,8 +33,19 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import timber.log.Timber
 
+// @Stable: PlayerConnection is passed as a parameter into nearly every player composable
+// (SongInfo, ActionButtons, PlayerSlider, PlayerControls, ...). Without this, Compose can't
+// infer stability across its Context/CoroutineScope/ExoPlayer-typed properties, so every one
+// of those composables is forced to fully recompose whenever the root player composable
+// recomposes for any reason — even when nothing they actually read changed. All meaningfully
+// observed state lives on the exposed StateFlow properties, which are already read through
+// collectAsState() everywhere, so this annotation doesn't change what gets observed.
+@Stable
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerConnection(
     val context: Context,
@@ -145,6 +157,50 @@ class PlayerConnection(
     val queueWindows = MutableStateFlow<List<Timeline.Window>>(emptyList())
     val currentMediaItemIndex = MutableStateFlow(-1)
     val currentWindowIndex = MutableStateFlow(-1)
+
+    val queueItems: kotlinx.coroutines.flow.StateFlow<List<com.example.musicfy.ui.player.models.QueueItemData>> = queueWindows.map { windows ->
+        windows.map { window ->
+            val mediaItem = window.mediaItem
+            com.example.musicfy.ui.player.models.QueueItemData(
+                uid = window.uid.hashCode(),
+                mediaId = mediaItem.mediaId,
+                title = mediaItem.mediaMetadata.title?.toString() ?: "",
+                artist = mediaItem.mediaMetadata.artist?.toString() ?: "",
+                artworkUri = mediaItem.mediaMetadata.artworkUri,
+                duration = window.durationMs
+            )
+        }
+    }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, emptyList())
+
+    /**
+     * Single 15Hz ticker for position/duration, replacing the per-screen polling loops
+     * that used to live in Player.kt and Lyrics.kt separately. Polls unconditionally
+     * (not gated on isPlaying) so a seek while paused is reflected immediately.
+     */
+    val progressState: kotlinx.coroutines.flow.StateFlow<com.example.musicfy.ui.player.models.ProgressState> =
+        kotlinx.coroutines.flow.callbackFlow {
+            while (true) {
+                try {
+                    val p = attachedPlayer
+                    if (p != null) {
+                        val position = p.currentPosition.coerceAtLeast(0L)
+                        val duration = p.duration.coerceAtLeast(0L)
+                        trySend(
+                            com.example.musicfy.ui.player.models.ProgressState(
+                                position = position,
+                                duration = duration,
+                                percentage = if (duration > 0L) position.toFloat() / duration else 0f,
+                            )
+                        )
+                    }
+                } catch (_: Exception) {}
+                kotlinx.coroutines.delay(66L)
+            }
+        }.distinctUntilChanged().stateIn(
+            scope,
+            SharingStarted.Lazily,
+            com.example.musicfy.ui.player.models.ProgressState(),
+        )
 
     val shuffleModeEnabled = MutableStateFlow(false)
     val repeatMode = MutableStateFlow(REPEAT_MODE_OFF)
@@ -533,6 +589,8 @@ class PlayerConnection(
             canSkipNext.value = false
         }
     }
+
+    val uiState: com.example.musicfy.ui.player.PlayerUiState by lazy { com.example.musicfy.ui.player.PlayerUiState(this) }
 
     fun dispose() {
         try {

@@ -1,0 +1,61 @@
+package com.example.musicfy.ui.player
+
+import androidx.compose.runtime.Stable
+import com.example.musicfy.playback.PlayerConnection
+import com.example.musicfy.ui.player.models.QueueState
+import com.example.musicfy.ui.player.models.TrackInfo
+import com.example.musicfy.ui.player.models.TransportState
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+
+/**
+ * Scoped, distinctUntilChanged views over [PlayerConnection]'s raw flows, one instance
+ * per connection (see [PlayerConnection.uiState]). Lets composables collect only the
+ * slice of state they render instead of the ~17 flows the old root player composable
+ * collected at once, which recomposed the whole tree on any single tick.
+ */
+@Stable
+class PlayerUiState(connection: PlayerConnection) {
+    private val scope = connection.scope
+
+    val transportState: StateFlow<TransportState> = combine(
+        connection.isEffectivelyPlaying,
+        connection.shuffleModeEnabled,
+        connection.repeatMode,
+        connection.canSkipNext,
+        connection.canSkipPrevious,
+    ) { isPlaying, shuffleModeEnabled, repeatMode, canSkipNext, canSkipPrevious ->
+        TransportState(
+            isPlaying = isPlaying,
+            shuffleModeEnabled = shuffleModeEnabled,
+            repeatMode = repeatMode,
+            canSkipNext = canSkipNext,
+            canSkipPrevious = canSkipPrevious,
+        )
+    }.combine(connection.playbackState) { partial, playbackState ->
+        partial.copy(playbackState = playbackState)
+    }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, TransportState())
+
+    val trackInfo: StateFlow<TrackInfo> = connection.mediaMetadata.map { metadata ->
+        TrackInfo(
+            mediaId = metadata?.id.orEmpty(),
+            title = metadata?.title.orEmpty(),
+            artist = metadata?.artists?.joinToString { it.name }.orEmpty(),
+            thumbnailUrl = metadata?.thumbnailUrl,
+        )
+    }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, TrackInfo())
+
+    val queueState: StateFlow<QueueState> = combine(
+        connection.queueItems,
+        connection.currentWindowIndex,
+        connection.queueTitle,
+    ) { items, currentIndex, title ->
+        QueueState(items = items, currentIndex = currentIndex, title = title.orEmpty())
+    }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, QueueState())
+
+    val progressState = connection.progressState
+}

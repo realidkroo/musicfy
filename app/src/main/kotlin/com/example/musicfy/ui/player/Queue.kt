@@ -988,6 +988,7 @@ fun Queue(
                     itemsIndexed(
                         items = mutableQueueWindows,
                         key = { _, item -> item.uid.hashCode() },
+                        contentType = { _, item -> if (item.uid == currentPlayingUid) "active" else "inactive" },
                     ) { index, window ->
                         ReorderableItem(
                             state = reorderableState,

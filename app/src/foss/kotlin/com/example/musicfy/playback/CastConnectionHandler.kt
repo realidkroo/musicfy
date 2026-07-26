@@ -4,6 +4,7 @@
 package com.example.musicfy.playback
 
 import android.content.Context
+import androidx.compose.runtime.Stable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +12,14 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Stub CastConnectionHandler for F-Droid builds.
  * Cast functionality is not available without Google Play Services.
+ *
+ * [Stable]: the compiler can't infer stability across StateFlow properties, so without this
+ * annotation every composable that takes a CastConnectionHandler parameter (PlayerSlider,
+ * PlayerControls, ...) is forced to fully recompose whenever its caller recomposes, instead of
+ * skipping — even though nothing it reads (all via collectAsState) actually changed.
+ * isSyncingFromCast is only ever read from MusicService, never from a composable, so this holds.
  */
+@Stable
 class CastConnectionHandler(
     context: Context,
     scope: CoroutineScope,

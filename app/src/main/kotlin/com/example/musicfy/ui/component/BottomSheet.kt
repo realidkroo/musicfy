@@ -202,44 +202,48 @@ fun BottomSheet(
             var dragStartTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
             var totalHorizontalDrag by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
+            val sheetClipShape = remember {
+                object : androidx.compose.ui.graphics.Shape {
+                    var hp = 0f
+                    var visibleHeight = 0f
+                    var cr = 0f
+
+                    override fun createOutline(
+                        size: androidx.compose.ui.geometry.Size,
+                        layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+                        density: androidx.compose.ui.unit.Density
+                    ): androidx.compose.ui.graphics.Outline {
+                        return androidx.compose.ui.graphics.Outline.Rounded(
+                            androidx.compose.ui.geometry.RoundRect(
+                                left = hp,
+                                top = 0f,
+                                right = size.width - hp,
+                                bottom = visibleHeight,
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cr, cr)
+                            )
+                        )
+                    }
+                }
+            }
+
             Box(
                 modifier = modifier
                     .fillMaxSize()
-                    .nestedScroll(state.preUpPostDownNestedScrollConnection)
+                    .nestedScroll(remember(state) { state.preUpPostDownNestedScrollConnection })
             ) {
                 // Expanding clipping container anchored to bottom
                 Box(
                     modifier = Modifier
                         .align(androidx.compose.ui.Alignment.BottomCenter)
                         .fillMaxWidth()
-                        // Keep the child at its final size. The former custom layout reported a
-                        // different height for every drag sample, which remeasured the full
-                        // player tree on every frame. Layer translation gives the same
-                        // bottom-anchored visible bounds without remeasuring its children.
                         .height(state.expandedBound)
                         .graphicsLayer {
                             val p = state.progress.coerceIn(0f, 1f)
-                            val cr = androidx.compose.ui.unit.lerp(20.dp, 0.dp, p).toPx()
-                            val hp = androidx.compose.ui.unit.lerp(24.dp, 0.dp, p).toPx()
-                            val visibleHeight = androidx.compose.ui.unit.lerp(64.dp, state.expandedBound, p).toPx()
+                            sheetClipShape.cr = androidx.compose.ui.unit.lerp(20.dp, 0.dp, p).toPx()
+                            sheetClipShape.hp = androidx.compose.ui.unit.lerp(24.dp, 0.dp, p).toPx()
+                            sheetClipShape.visibleHeight = androidx.compose.ui.unit.lerp(64.dp, state.expandedBound, p).toPx()
                             
-                            shape = object : androidx.compose.ui.graphics.Shape {
-                                override fun createOutline(
-                                    size: androidx.compose.ui.geometry.Size,
-                                    layoutDirection: androidx.compose.ui.unit.LayoutDirection,
-                                    density: androidx.compose.ui.unit.Density
-                                ): androidx.compose.ui.graphics.Outline {
-                                    return androidx.compose.ui.graphics.Outline.Rounded(
-                                        androidx.compose.ui.geometry.RoundRect(
-                                            left = hp,
-                                            top = 0f,
-                                            right = size.width - hp,
-                                            bottom = visibleHeight,
-                                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cr, cr)
-                                        )
-                                    )
-                                }
-                            }
+                            shape = sheetClipShape
                             clip = true
                             translationY = (state.expandedBound - state.value).toPx()
                             translationX = state.horizontalOffset
@@ -334,10 +338,9 @@ fun BottomSheet(
                     
                     val showHaze by remember { derivedStateOf { state.progress < 0.12f } }
                     val showBackground by remember { derivedStateOf { !state.isCollapsed } }
-                    // The shared elements carry the first half of the morph. Composing the
-                    // full player before it is visible was doing image, lyrics, and queue work
-                    // on every launch frame without contributing any pixels.
-                    val showControls by remember { derivedStateOf { state.progress > 0.55f } }
+                    // Keep full player controls composed while sheet is open to prevent
+                    // mid-swipe composition/uncomposition lag spikes at 0.55f progress threshold.
+                    val showControls by remember { derivedStateOf { !state.isCollapsed } }
 
                     // Layer 1: Haze/Blur for MiniPlayer
                     if (showHaze) {
@@ -402,7 +405,8 @@ fun BottomSheet(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    alpha = ((state.progress.coerceIn(0f, 1f) - 0.55f) / 0.45f).coerceIn(0f, 1f)
+                                    // Smooth alpha fade: 0f when progress < 0.25f, scaling to 1f at progress > 0.85f
+                                    alpha = ((state.progress.coerceIn(0f, 1f) - 0.25f) / 0.60f).coerceIn(0f, 1f)
                                 }
                         ) {
                             content()

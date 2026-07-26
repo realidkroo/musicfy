@@ -8,6 +8,9 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -96,6 +99,13 @@ fun PlayerBottomCards(
     }
 
     val revealProgress = reveal.value
+    var isRearActive by remember { mutableStateOf(false) }
+    val swapAnim by animateFloatAsState(
+        targetValue = if (isRearActive) 1f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "cardSwap"
+    )
+
     val frontHeight = 132.dp
     val frontOffsetY = 88.dp
 
@@ -105,7 +115,6 @@ fun PlayerBottomCards(
             .height(150.dp)
             .clipToBounds()
             .padding(horizontal = 24.dp)
-
     ) {
         EmptyPreviewCard(
             cardColor = rearSurfaceColor,
@@ -116,13 +125,15 @@ fun PlayerBottomCards(
                 .align(Alignment.BottomCenter)
                 .offset(y = 46.dp)
                 .graphicsLayer {
-                    translationY = (1f - revealProgress) * 42.dp.toPx()
-                    scaleX = 0.96f + 0.04f * revealProgress
-                    scaleY = 0.96f + 0.04f * revealProgress
-                }
+                    translationY = ((1f - revealProgress) * 42.dp.toPx()) - (swapAnim * 24.dp.toPx())
+                    scaleX = 0.96f + 0.04f * revealProgress + (swapAnim * 0.04f)
+                    scaleY = 0.96f + 0.04f * revealProgress + (swapAnim * 0.04f)
+                },
+            onClick = {
+                isRearActive = !isRearActive
+                onCardTap()
+            }
         )
-        
-
 
         PlayerPreviewCard(
             currentLyricsLine = currentLyricsLine,
@@ -138,13 +149,14 @@ fun PlayerBottomCards(
                 .align(Alignment.BottomCenter)
                 .offset(y = frontOffsetY)
                 .graphicsLayer {
-                    // Translation and scale stay in the render layer, so the lyric card
-                    // does not get remeasured or allocate a clear-mask buffer every frame.
-                    translationY = (1f - revealProgress) * 22.dp.toPx()
-                    scaleX = 0.97f + 0.03f * revealProgress
-                    scaleY = 0.97f + 0.03f * revealProgress
+                    translationY = ((1f - revealProgress) * 22.dp.toPx()) + (swapAnim * 18.dp.toPx())
+                    scaleX = 0.97f + 0.03f * revealProgress - (swapAnim * 0.03f)
+                    scaleY = 0.97f + 0.03f * revealProgress - (swapAnim * 0.03f)
                 },
-            onClick = onCardTap
+            onClick = {
+                isRearActive = false
+                onCardTap()
+            }
         )
     }
 }
@@ -153,6 +165,7 @@ fun PlayerBottomCards(
 private fun EmptyPreviewCard(
     cardColor: Color,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
 ) {
     Box(
         modifier = modifier
@@ -163,6 +176,7 @@ private fun EmptyPreviewCard(
                 color = Color.White.copy(alpha = 0.18f),
                 shape = RoundedCornerShape(24.dp)
             )
+            .clickable(onClick = onClick)
     )
 }
 

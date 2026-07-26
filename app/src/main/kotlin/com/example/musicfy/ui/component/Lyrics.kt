@@ -634,13 +634,18 @@ fun Lyrics(
             return@LaunchedEffect
         }
         while (isActive) {
-            delay(8) // Faster update for word-by-word animation
+            delay(66) // ~15Hz update for smooth karaoke & performance
             val sliderPosition = sliderPositionProvider()
             isSeeking = sliderPosition != null
-            val position = sliderPosition ?: playerConnection.player.currentPosition
-            currentPlaybackPosition = position
+            val position = sliderPosition ?: try { playerConnection.player.currentPosition } catch (_: Exception) { 0L }
+            if (currentPlaybackPosition != position) {
+                currentPlaybackPosition = position
+            }
             val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
-            currentLineIndex = findCurrentLineIndex(lines, position + lyricsOffset)
+            val newIndex = findCurrentLineIndex(lines, position + lyricsOffset)
+            if (currentLineIndex != newIndex) {
+                currentLineIndex = newIndex
+            }
         }
     }
 
@@ -911,7 +916,8 @@ fun Lyrics(
 
                 itemsIndexed(
                     items = lines,
-                    key = { index, item -> "$index-${item.time}" } // Add stable key
+                    key = { index, item -> "$index-${item.time}" },
+                    contentType = { index, _ -> if (index == displayedCurrentLineIndex) "active" else "inactive" }
                 ) { index, item ->
                     val isSelected = selectedIndices.contains(index)
                     if (lyricsAnimationStyle == LyricsAnimationStyle.MUSICFY_1 && item.words?.isNotEmpty() == true) {

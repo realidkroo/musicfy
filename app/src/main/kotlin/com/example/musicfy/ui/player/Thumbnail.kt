@@ -59,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -276,6 +277,7 @@ fun Thumbnail(
     isPlayerExpanded: () -> Boolean = { true },
     isLandscape: Boolean = false,
     onMoreActionsClick: () -> Unit = {},
+    lyricsMorphProgress: Float = 0f,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -424,13 +426,17 @@ fun Thumbnail(
             ) {
                 // Now Playing header - hide in landscape mode
                 if (useNewPlayerDesign && !isLandscape) {
-            ThumbnailHeader(
-                queueTitle = queueTitle,
-                albumTitle = mediaMetadata?.album?.title,
-                textColor = if (playerBackground == PlayerBackgroundStyle.LIVE_MESH || playerBackground == PlayerBackgroundStyle.APPLE_MUSIC) Color.White else textBackgroundColor,
-                onMoreActionsClick = onMoreActionsClick,
-            )
-        }        
+                    Box(modifier = Modifier.graphicsLayer {
+                        alpha = (1f - (lyricsMorphProgress * 3f)).coerceIn(0f, 1f)
+                    }) {
+                        ThumbnailHeader(
+                            queueTitle = queueTitle,
+                            albumTitle = mediaMetadata?.album?.title,
+                            textColor = if (playerBackground == PlayerBackgroundStyle.LIVE_MESH || playerBackground == PlayerBackgroundStyle.APPLE_MUSIC) Color.White else textBackgroundColor,
+                            onMoreActionsClick = onMoreActionsClick,
+                        )
+                    }
+                }        
                 // Thumbnail content
                 BoxWithConstraints(
                     contentAlignment = Alignment.Center,
@@ -471,7 +477,41 @@ fun Thumbnail(
                         modifier = if (isLandscape) {
                             Modifier.size(dimensions.thumbnailSize + (PlayerHorizontalPadding * 2))
                         } else {
-                            Modifier.fillMaxSize()
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    val p = lyricsMorphProgress
+                                    if (p > 0f) {
+                                        val targetSizePx = 128.dp.toPx()
+                                        val currentSizePx = dimensions.thumbnailSize.toPx()
+                                        val targetScale = (targetSizePx / currentSizePx).coerceIn(0.2f, 1f)
+                                        val scale = androidx.compose.ui.util.lerp(1f, targetScale, p)
+                                        scaleX = scale
+                                        scaleY = scale
+
+                                        // Move anchor to Top-Left
+                                        transformOrigin = TransformOrigin(0f, 0f)
+                                        
+                                        // Original top-left of the image inside the LazyHorizontalGrid
+                                        val originalX = (size.width - currentSizePx) / 2f
+                                        val originalY = (size.height - currentSizePx) / 2f
+
+                                        // Target top-left of the image relative to the entire Player sheet
+                                        // The LazyHorizontalGrid is inside BoxWithConstraints, which is below ThumbnailHeader (approx 50dp).
+                                        // Wait, to bypass exact coordinate tracking, we just visually align it:
+                                        // targetX = 28.dp, targetY = 24.dp - (statusBarsPadding + headerHeight)
+                                        // Let's use a known relative target offset:
+                                        val targetX = 28.dp.toPx()
+                                        val targetY = -(86.dp.toPx()) // Approximate upward shift to overcome header and status bar
+
+                                        // Instead of absolute target, we just translate relative to its origin
+                                        val translationXTarget = targetX - originalX
+                                        val translationYTarget = targetY - originalY
+                                        
+                                        translationX = androidx.compose.ui.util.lerp(0f, translationXTarget, p)
+                                        translationY = androidx.compose.ui.util.lerp(0f, translationYTarget, p)
+                                    }
+                                }
                         }
                     ) {
                         items(
@@ -596,16 +636,27 @@ private fun ThumbnailItem(
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val isCurrentItem = item.mediaId == currentMediaId
     
-    val infiniteTransition = rememberInfiniteTransition(label = "ThumbnailRotation")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = if (isPlaying && rotatingThumbnail && isCurrentItem) 360f else 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(20000, easing = LinearEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
-        ),
-        label = "Rotation"
-    )
+    // Only subscribe to the animation frame clock when rotation is actually possible for this
+    // item (rotatingThumbnail on and this is the current item). infiniteRepeatable keeps
+    // requesting a new frame every tick for as long as it's composed, even when its target
+    // never changes — with up to 3 items mounted at once (prev/current/next) this was
+    // continuously invalidating every frame the whole time the player was open, regardless of
+    // whether the preference was even enabled (it defaults to off).
+    val rotation = if (rotatingThumbnail && isCurrentItem) {
+        val infiniteTransition = rememberInfiniteTransition(label = "ThumbnailRotation")
+        val r by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = if (isPlaying) 360f else 0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(20000, easing = LinearEasing),
+                repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+            ),
+            label = "Rotation"
+        )
+        r
+    } else {
+        0f
+    }
 
     val incrementalSeekSkipEnabled by rememberPreference(SeekExtraSeconds, defaultValue = false)
     var skipMultiplier by remember { mutableIntStateOf(1) }
