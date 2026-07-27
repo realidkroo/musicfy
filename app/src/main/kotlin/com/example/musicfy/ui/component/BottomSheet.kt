@@ -2,13 +2,16 @@
 // this thing is part of bottom sheet
 
 package com.example.musicfy.ui.component
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+
 import androidx.compose.foundation.gestures.detectTapGestures
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Spring
+import androidx.compose.runtime.compositionLocalOf
+
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
@@ -18,12 +21,6 @@ import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeChild
-import com.example.musicfy.LocalHazeState
 import com.example.musicfy.LocalPlayerConnection
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
@@ -191,10 +188,8 @@ fun BottomSheet(
             }
         } else {
             // iOS Pill Morphing Transition
-            val hazeState = LocalHazeState.current
             val playerConnection = LocalPlayerConnection.current
-            val containerColor = if (pureBlack) androidx.compose.ui.graphics.Color.Black else androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainer
-            
+
             val coroutineScope = rememberCoroutineScope()
             val animationSpec = remember {
                 PlayerSheetHorizontalAnimationSpec
@@ -336,42 +331,11 @@ fun BottomSheet(
                 ) {
                     // Box is now FIXED size (maxWidth x expandedBound), avoiding all recomposition!
                     
-                    val showHaze by remember { derivedStateOf { state.progress < 0.12f } }
                     val showBackground by remember { derivedStateOf { !state.isCollapsed } }
                     // Keep full player controls composed while sheet is open to prevent
                     // mid-swipe composition/uncomposition lag spikes at 0.55f progress threshold.
                     val showControls by remember { derivedStateOf { !state.isCollapsed } }
 
-                    // Layer 1: Haze/Blur for MiniPlayer
-                    if (showHaze) {
-                        Box(
-                            modifier = Modifier
-                                // Haze is only part of the collapsed pill. Keeping the effect
-                                // bounded avoids asking the GPU to blur the whole player while
-                                // the sheet is being dragged.
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .padding(horizontal = 24.dp)
-                                .graphicsLayer {
-                                    alpha = (1f - state.progress.coerceIn(0f, 1f) / 0.12f).coerceIn(0f, 1f)
-                                }
-                                .let {
-                                    if (hazeState != null) {
-                                        it.hazeEffect(
-                                            state = hazeState,
-                                            style = HazeStyle(
-                                                backgroundColor = containerColor,
-                                                tint = HazeTint(containerColor.copy(alpha = 0.65f)),
-                                                blurRadius = 24.dp
-                                            )
-                                        )
-                                    } else {
-                                        it.background(containerColor.copy(alpha = 0.85f))
-                                    }
-                                }
-                        )
-                    }
-                    
                     // Layer 2: Player background
                     if (showBackground) {
                         Box(
@@ -442,6 +406,8 @@ fun BottomSheet(
             }
         }
     }
+
+val LocalPlayerBottomSheetState = compositionLocalOf<BottomSheetState?> { null }
 
 @Stable
 class BottomSheetState(

@@ -755,6 +755,8 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(
                     LocalDatabase provides database,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
+                    com.example.musicfy.ui.component.LocalPlayerBottomSheetState provides playerBottomSheetState,
+
                     LocalPlayerConnection provides playerConnection,
                     LocalHazeState provides hazeState,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,

@@ -529,6 +529,42 @@ object YTPlayerUtils {
         e.printStackTrace()
     }
     /**
+     * Resolves a playable VIDEO stream URL for a YouTube video — used only by the optional
+     * video-background player, never for audio playback. Deliberately much simpler than
+     * [playerResponseForPlayback]: tries MAIN_CLIENT then a single WEB_REMIX fallback and gives
+     * up, rather than working through all 11 [STREAM_FALLBACK_CLIENTS] with age-restriction/
+     * private-track special-casing. This is a cosmetic feature — on failure the caller falls
+     * back to the static cover art, so it should fail fast rather than retry aggressively the
+     * way audio resolution must.
+     *
+     * Reuses the same cipher/PoToken-free resolution helpers ([findUrlOrNull],
+     * [getSignatureTimestampOrNull]) as audio playback — no new stream-URL-resolution logic,
+     * just a video-aware format filter in place of [findFormat]'s audio-only one.
+     */
+    suspend fun resolveVideoStreamUrl(videoId: String): Result<String> = runCatching {
+        val signatureTimestamp = getSignatureTimestampOrNull(videoId)
+
+        var response = YouTube.player(videoId, null, MAIN_CLIENT, signatureTimestamp.timestamp, null).getOrThrow()
+        if (response.playabilityStatus.status != "OK") {
+            response = YouTube.player(videoId, null, WEB_REMIX, signatureTimestamp.timestamp, null).getOrThrow()
+        }
+        if (response.playabilityStatus.status != "OK") {
+            throw Exception("Video not playable: ${response.playabilityStatus.status}")
+        }
+
+        // Prefer a moderate resolution closest to 720p — it's a blurred/zoomed background, not
+        // a foreground video, so there's no benefit to 1080p+ and it costs more bandwidth/decode.
+        val format = response.streamingData?.adaptiveFormats
+            ?.filter { !it.isAudio && it.height != null }
+            ?.minByOrNull { kotlin.math.abs((it.height ?: 0) - 720) }
+            ?: response.streamingData?.formats?.firstOrNull { !it.isAudio }
+            ?: throw Exception("No video format found for videoId=$videoId")
+
+        findUrlOrNull(format, videoId, response, skipNewPipe = false)
+            ?: throw Exception("Could not resolve video stream URL for videoId=$videoId")
+    }
+
+    /**
      * Simple player response intended to use for metadata only.
      * Stream URLs of this response might not work so don't use them.
      */

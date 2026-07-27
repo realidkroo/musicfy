@@ -47,6 +47,10 @@ fun SettingsScreen(
         com.example.musicfy.constants.ShowPlayerBottomCardKey,
         defaultValue = true
     )
+    val (playVideoBackground, onPlayVideoBackgroundChange) = rememberPreference(
+        com.example.musicfy.constants.PlayVideoBackgroundKey,
+        defaultValue = false
+    )
     val (localSongAutoMetadata, onLocalSongAutoMetadataChange) = rememberPreference(
         LocalSongAutoMetadataKey,
         defaultValue = true
@@ -117,6 +121,18 @@ fun SettingsScreen(
                             androidx.compose.material3.Switch(
                                 checked = showPlayerBottomCard,
                                 onCheckedChange = onShowPlayerBottomCardChange
+                            )
+                        }
+                    ),
+                    Material3SettingsItem(
+                        title = { Text("YouTube Video Background") },
+                        description = { Text("Play the official YouTube music video as a zoomed background behind the player, falling back to the cover art when unavailable") },
+                        icon = painterResource(R.drawable.play),
+                        onClick = { onPlayVideoBackgroundChange(!playVideoBackground) },
+                        trailingContent = {
+                            androidx.compose.material3.Switch(
+                                checked = playVideoBackground,
+                                onCheckedChange = onPlayVideoBackgroundChange
                             )
                         }
                     ),

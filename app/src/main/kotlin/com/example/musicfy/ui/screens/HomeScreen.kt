@@ -609,6 +609,7 @@ fun HomeScreen(
 ) {
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
+    val playerBottomSheetState = com.example.musicfy.ui.component.LocalPlayerBottomSheetState.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptic = LocalHapticFeedback.current
@@ -1744,12 +1745,18 @@ fun HomeScreen(
                     ) {
                         ProgressiveGlassBackground(
                             state = homeGlassState,
-                            maxBlurRadius = 50f,
+                            maxBlurRadius = { 
+                                val sheetProgress = playerBottomSheetState?.progress ?: 0f
+                                50f * heroScrollProgress.coerceIn(0f, 1f) * (1f - sheetProgress.coerceIn(0f, 1f))
+                            },
                             foundationColor = backgroundColor,
                             direction = BlurDirection.BottomToTop,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+
+                }
+                if (heroScrollProgress > 0.01f) {
                     // Tinted background overlay that fades with scroll
                     Box(
                         modifier = Modifier
@@ -1856,7 +1863,10 @@ fun HomeScreen(
                         if (topBarProgress > 0.01f) {
                             GlassPillBackground(
                                 state = homeGlassState,
-                                blurRadius = 24f,
+                                blurRadius = { 
+                                    val sheetProgress = playerBottomSheetState?.progress ?: 0f
+                                    24f * (1f - sheetProgress.coerceIn(0f, 1f))
+                                },
                                 tint = Color.Black.copy(alpha = topBarProgress * 0.2f),
                                 foundationColor = backgroundColor,
                                 shape = RoundedCornerShape(50),

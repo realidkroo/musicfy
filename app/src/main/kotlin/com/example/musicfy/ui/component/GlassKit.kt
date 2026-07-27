@@ -66,7 +66,7 @@ fun Modifier.glassRoot(state: GlassState): Modifier = this
 @Composable
 fun GlassPillBackground(
     state: GlassState,
-    blurRadius: Float = 24f,
+    blurRadius: () -> Float = { 24f },
     tint: Color = Color.Transparent,
     foundationColor: Color? = null,
     shape: Shape? = null,
@@ -79,10 +79,11 @@ fun GlassPillBackground(
             .onGloballyPositioned { position = it.positionInWindow() }
             .then(if (shape != null) Modifier.clip(shape) else Modifier)
             .graphicsLayer {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurRadius > 0.5f) {
+                val currentBlur = blurRadius()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && currentBlur > 0.5f) {
                     renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                        blurRadius,
-                        blurRadius,
+                        currentBlur,
+                        currentBlur,
                         android.graphics.Shader.TileMode.DECAL
                     ).asComposeRenderEffect()
                 }
@@ -111,7 +112,7 @@ enum class BlurDirection { TopToBottom, BottomToTop }
 @Composable
 fun ProgressiveGlassBackground(
     state: GlassState,
-    maxBlurRadius: Float = 24f,
+    maxBlurRadius: () -> Float = { 24f },
     tint: Color = Color.Transparent,
     foundationColor: Color? = null,
     direction: BlurDirection = BlurDirection.TopToBottom,
@@ -122,7 +123,7 @@ fun ProgressiveGlassBackground(
         for (i in 1..steps) {
             val fraction = i.toFloat() / steps
             // Quadratic curve for smoother visual radius growth
-            val radius = maxBlurRadius * (fraction * fraction)
+            val radiusProvider = { maxBlurRadius() * (fraction * fraction) }
             
             val fadeStart = (i - 1).toFloat() / steps
             val heightFraction = 1f - fadeStart
@@ -156,7 +157,7 @@ fun ProgressiveGlassBackground(
                 ) {
                     GlassPillBackground(
                         state = state,
-                        blurRadius = radius,
+                        blurRadius = radiusProvider,
                         tint = tint,
                         foundationColor = foundationColor,
                         modifier = Modifier.fillMaxSize()

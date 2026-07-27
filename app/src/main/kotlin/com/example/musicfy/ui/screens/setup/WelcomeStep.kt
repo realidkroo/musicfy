@@ -50,7 +50,7 @@ fun WelcomeStep() {
         // Progressive Blur overlay at the bottom covering the text area
         ProgressiveGlassBackground(
             state = glassState,
-            maxBlurRadius = 120f,
+            maxBlurRadius = { 120f },
             foundationColor = Color(0xFF121212),
             tint = Color.Transparent,
             direction = BlurDirection.TopToBottom,
