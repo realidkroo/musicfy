@@ -1,9 +1,14 @@
-// Material3SettingsGroup.kt
+// SettingsGroup.kt
 // what is this for you ask its for material3settings group ofc
 
 package com.example.musicfy.ui.component
 
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,9 +46,9 @@ import androidx.compose.ui.unit.dp
  * @param items List of settings items to display
  */
 @Composable
-fun Material3SettingsGroup(
+fun SettingsGroup(
     title: String? = null,
-    items: List<Material3SettingsItem>
+    items: List<SettingsItem>
 ) {
     Column(
         modifier = Modifier
@@ -62,27 +67,40 @@ fun Material3SettingsGroup(
         // Settings items
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp) // No separator!
         ) {
+            val visibleItems = items.filter { it.isVisible }
             items.forEachIndexed { index, item ->
-                val shape = when {
-                    items.size == 1 -> RoundedCornerShape(24.dp)
-                    index == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 6.dp, bottomEnd = 6.dp)
-                    index == items.size - 1 -> RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-                    else -> RoundedCornerShape(6.dp)
-                }
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateContentSize(),
-                    shape = shape,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                AnimatedVisibility(
+                    visible = item.isVisible,
+                    enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                    exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
                 ) {
-                    Material3SettingsItemRow(item = item)
+                    // Recompute shape based on visibility position
+                    val visibleIndex = visibleItems.indexOf(item)
+                    val shape = when {
+                        visibleItems.size == 1 -> RoundedCornerShape(24.dp)
+                        visibleIndex == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
+                        visibleIndex == visibleItems.size - 1 -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
+                        else -> RoundedCornerShape(2.dp)
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = if (visibleIndex < visibleItems.size - 1) 1.dp else 0.dp), // Tiny separator gap or 0
+                        shape = shape,
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (item.isSubOption) {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            }
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        SettingsItemRow(item = item)
+                    }
                 }
             }
         }
@@ -93,8 +111,8 @@ fun Material3SettingsGroup(
  * Individual settings item row with Material 3 styling
  */
 @Composable
-private fun Material3SettingsItemRow(
-    item: Material3SettingsItem
+private fun SettingsItemRow(
+    item: SettingsItem
 ) {
     Row(
         modifier = Modifier
@@ -114,9 +132,7 @@ private fun Material3SettingsItemRow(
                     .clip(item.iconShape ?: RoundedCornerShape(12.dp))
                     .background(
                         if (item.tintIcon) {
-                            MaterialTheme.colorScheme.primary.copy(
-                                alpha = if (item.isHighlighted) 0.15f else 0.1f
-                            )
+                            androidx.compose.ui.graphics.Color(0xFF888888).copy(alpha = 0.3f)
                         } else {
                             androidx.compose.ui.graphics.Color.Transparent
                         }
@@ -137,11 +153,9 @@ private fun Material3SettingsItemRow(
                                 contentDescription = null,
                                 tint = if (!item.enabled)
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                else if (item.isHighlighted)
-                                    MaterialTheme.colorScheme.primary
                                 else
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                                modifier = Modifier.size(24.dp)
+                                    MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(20.dp)
                             )
                         } else {
                             Image(
@@ -159,11 +173,9 @@ private fun Material3SettingsItemRow(
                             contentDescription = null,
                             tint = if (!item.enabled)
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            else if (item.isHighlighted)
-                                MaterialTheme.colorScheme.primary
                             else
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                            modifier = Modifier.size(24.dp)
+                                MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(20.dp)
                         )
                     } else {
                         Image(
@@ -222,7 +234,7 @@ private fun Material3SettingsItemRow(
 /**
  * Data class for Material 3 settings item
  */
-data class Material3SettingsItem(
+data class SettingsItem(
     val icon: Painter? = null,
     val title: @Composable () -> Unit,
     val description: (@Composable () -> Unit)? = null,
@@ -232,5 +244,7 @@ data class Material3SettingsItem(
     val tintIcon: Boolean = true,
     val iconShape: Shape? = null,
     val enabled: Boolean = true,
+    val isVisible: Boolean = true,
+    val isSubOption: Boolean = false,
     val onClick: (() -> Unit)? = null
 )

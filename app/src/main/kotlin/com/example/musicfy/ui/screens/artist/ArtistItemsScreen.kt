@@ -301,7 +301,7 @@ fun ArtistItemsScreen(
                 onLongClick = navController::backToMain,
             ) {
                 Icon(
-                    painterResource(R.drawable.arrow_back),
+                    painterResource(R.drawable.arrow_back_ios),
                     contentDescription = null,
                 )
             }

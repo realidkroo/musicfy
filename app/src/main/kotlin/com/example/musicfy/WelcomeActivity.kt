@@ -127,6 +127,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.musicfy.constants.IsFirstRunKey
 import com.example.musicfy.ui.theme.MusicfyTheme
 import com.example.musicfy.ui.utils.safeOpenUri
+import com.example.musicfy.ui.utils.setZoomFadeExitAnimation
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.get
 import kotlinx.coroutines.flow.first
@@ -139,17 +140,20 @@ data class OnboardingPageInfo(
 
 class WelcomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
         val isFirstRun = dataStore.get(IsFirstRunKey, true)
         val forceShow = intent.getBooleanExtra("FORCE_SHOW", false)
 
         if (!isFirstRun && !forceShow) {
+            // Just a pass-through to MainActivity: let its own splash own the
+            // zoom/fade reveal instead of stacking two animations back to back.
             finishOnboarding()
             return
         }
 
+        splashScreen.setZoomFadeExitAnimation()
         enableEdgeToEdge()
         setContent {
             MusicfyTheme {

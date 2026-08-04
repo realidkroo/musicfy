@@ -21,7 +21,11 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
+import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -31,9 +35,31 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.YouTubeClient
 import okhttp3.OkHttpClient
 import java.util.Locale
+import android.content.Context
 import android.view.ViewGroup
 import android.view.TextureView
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+
+/**
+ * Disk cache for canvas video bytes, separate from the main song player cache. Without this,
+ * every canvas clip was re-fetched from the network from scratch each time this composable
+ * mounted (e.g. every time the full player was dragged open past 92% and back down) — the
+ * single biggest source of unexpected mobile data usage in the app. Lives under cacheDir (not
+ * filesDir) since this content is disposable and safely re-fetchable, so the OS is free to
+ * reclaim it under storage pressure.
+ */
+private object CanvasVideoCache {
+    @Volatile private var cache: SimpleCache? = null
+
+    fun get(context: Context): SimpleCache =
+        cache ?: synchronized(this) {
+            cache ?: SimpleCache(
+                java.io.File(context.cacheDir, "canvas_video"),
+                LeastRecentlyUsedCacheEvictor(300L * 1024 * 1024),
+                StandaloneDatabaseProvider(context),
+            ).also { cache = it }
+        }
+}
 
 @Composable
 fun CanvasArtworkPlayer(
@@ -99,12 +125,15 @@ fun CanvasArtworkPlayer(
         }
     val mediaSourceFactory =
         remember(okHttpClient) {
-            DefaultMediaSourceFactory(
-                DefaultDataSource.Factory(
-                    context,
-                    OkHttpDataSource.Factory(okHttpClient),
-                ),
+            val upstreamFactory = DefaultDataSource.Factory(
+                context,
+                OkHttpDataSource.Factory(okHttpClient),
             )
+            val cacheDataSourceFactory = CacheDataSource.Factory()
+                .setCache(CanvasVideoCache.get(context.applicationContext))
+                .setUpstreamDataSourceFactory(upstreamFactory)
+                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+            DefaultMediaSourceFactory(cacheDataSourceFactory)
         }
     val aspectRatioFrameLayout = remember {
         AspectRatioFrameLayout(context).apply {

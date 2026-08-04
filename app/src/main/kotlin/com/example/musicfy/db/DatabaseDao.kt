@@ -536,6 +536,51 @@ interface DatabaseDao {
         toTimeStamp: Long? = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli(),
     ): Flow<List<Playlist>>
 
+    @Transaction
+    @Query(
+        """
+        SELECT song.* FROM song
+        JOIN (SELECT songId, MAX(timestamp) AS lastPlayed FROM event GROUP BY songId) e
+        ON song.id = e.songId
+        ORDER BY e.lastPlayed DESC
+        LIMIT :limit
+        """
+    )
+    fun recentlyPlayedSongs(limit: Int = 15): Flow<List<Song>>
+
+    @Transaction
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @Query(
+        """
+        SELECT album.*,
+               (SELECT COUNT(1) FROM song_album_map sam2 JOIN event e2 ON sam2.songId = e2.songId WHERE sam2.albumId = album.id) AS songCountListened,
+               (SELECT SUM(e2.playTime) FROM song_album_map sam2 JOIN event e2 ON sam2.songId = e2.songId WHERE sam2.albumId = album.id) AS timeListened
+        FROM album
+        JOIN (
+            SELECT sam.albumId AS albumId, MAX(e.timestamp) AS lastPlayed
+            FROM song_album_map sam
+            JOIN event e ON sam.songId = e.songId
+            GROUP BY sam.albumId
+        ) recency ON album.id = recency.albumId
+        ORDER BY recency.lastPlayed DESC
+        LIMIT :limit
+        """
+    )
+    fun recentlyPlayedAlbums(limit: Int = 15): Flow<List<Album>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT playlist.*, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount
+        FROM playlist_event
+        JOIN playlist ON playlist_event.playlistId = playlist.id
+        GROUP BY playlist_event.playlistId
+        ORDER BY MAX(playlist_event.timestamp) DESC
+        LIMIT :limit
+        """
+    )
+    fun recentlyPlayedPlaylists(limit: Int = 15): Flow<List<Playlist>>
+
     @Query("SELECT SUM(playTime) FROM event WHERE timestamp >= :fromTimeStamp AND timestamp <= :toTimeStamp")
     fun getTotalPlayTimeInRange(fromTimeStamp: Long, toTimeStamp: Long): Flow<Long?>
 

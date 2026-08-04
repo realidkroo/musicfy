@@ -44,3 +44,14 @@ fun List<Run>.oddElements() =
     filterIndexed { index, _ ->
         index % 2 == 0
     }
+
+// The secondary text line on a list item is split on " • " and the FIRST group is
+// assumed to be the artist segment (see splitBySeparator/oddElements usage in the
+// *Page.kt parsers) — but some rows (auto-generated mixes, rows with no real artist
+// credit) don't have an artist segment at all, so that first group ends up being
+// whatever WAS first instead, e.g. a raw "3:45" duration string. Filtering those out
+// where an artist list is built stops a duration from being stored/displayed as if it
+// were an artist's name.
+private val TIMESTAMP_TEXT_REGEX = Regex("^\\d{1,2}:\\d{2}(:\\d{2})?$")
+
+fun String.looksLikeTimestamp(): Boolean = TIMESTAMP_TEXT_REGEX.matches(trim())

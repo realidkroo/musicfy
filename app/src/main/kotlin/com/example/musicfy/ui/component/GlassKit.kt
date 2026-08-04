@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import com.example.musicfy.constants.DisableBlurKey
+import com.example.musicfy.utils.rememberPreference
 
 /**
  * RenderNode-based glass blur system ported from weatherify.
@@ -33,30 +35,47 @@ class GlassState {
     var rootPosition by mutableStateOf(Offset.Zero)
 }
 
-fun Modifier.glassRoot(state: GlassState): Modifier = this
+fun Modifier.glassRoot(state: GlassState, isActive: () -> Boolean = { true }): Modifier = this
     .onGloballyPositioned { state.rootPosition = it.positionInWindow() }
     .drawWithCache {
-        val node = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            RenderNode("GlassRoot").apply {
-                setPosition(0, 0, size.width.toInt(), size.height.toInt())
+        val width = size.width.toInt()
+        val height = size.height.toInt()
+
+        val node = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && width > 0 && height > 0) {
+            val existingNode = state.renderNode
+            if (existingNode != null) {
+                existingNode.setPosition(0, 0, width, height)
+                existingNode
+            } else {
+                RenderNode("GlassRoot").apply {
+                    setPosition(0, 0, width, height)
+                }
             }
         } else null
-        
+
         state.renderNode = node
 
         onDrawWithContent {
             val drawContextCanvas = drawContext.canvas
-            if (node != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Recording into the RenderNode and immediately redrawing it back onto the real
+            // canvas is a full duplicate draw pass of this subtree's content. Skip it whenever
+            // nothing downstream is currently reading the captured node (isActive is a draw-phase
+            // read, same category as the provider lambdas consumers pass in, so checking it here
+            // never triggers recomposition) — falls back to the plain drawContent() path, which is
+            // exactly what already happens today when there's no consumer or on pre-API-31 devices.
+            if (node != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isActive()) {
                 val nativeCanvas = node.beginRecording()
                 val composeCanvas = Canvas(nativeCanvas)
 
                 drawContext.canvas = composeCanvas
                 drawContent()
-                
+
                 drawContext.canvas = drawContextCanvas
                 node.endRecording()
-                
-                drawIntoCanvas { it.nativeCanvas.drawRenderNode(node) }
+
+                if (node.hasDisplayList()) {
+                    drawIntoCanvas { it.nativeCanvas.drawRenderNode(node) }
+                }
             } else {
                 drawContent()
             }
@@ -70,33 +89,35 @@ fun GlassPillBackground(
     tint: Color = Color.Transparent,
     foundationColor: Color? = null,
     shape: Shape? = null,
+    // DECAL (the default) samples transparent past the layer's own bounds, which is what you
+    // want when the layer is meant to fade out at its edges (e.g. a pill floating over content).
+    // CLAMP instead replicates the edge pixel outward, so a layer whose bounds coincide with the
+    // area you actually want blurred edge-to-edge (no fade) reads as fully blurred right up to
+    // its true boundary — use it wherever the caller's own bounds ARE the intended blur extent.
+    tileMode: android.graphics.Shader.TileMode = android.graphics.Shader.TileMode.DECAL,
     modifier: Modifier = Modifier
 ) {
     var position by remember { mutableStateOf(Offset.Zero) }
-    val blurEffect = remember(blurRadius) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurRadius > 0.5f) {
-            android.graphics.RenderEffect.createBlurEffect(
-                blurRadius,
-                blurRadius,
-                android.graphics.Shader.TileMode.DECAL
-            ).asComposeRenderEffect()
-        } else {
-            null
-        }
-    }
+    // "Disable blur" replaces the actual blurred capture with a flat foundationColor/tint
+    // fallback everywhere in the app — same gate for every consumer of this primitive
+    // (nav bar, mini-player pill, profile menu, detail top bar, home top bar, settings),
+    // rather than each call site reimplementing its own on/off branch.
+    val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
 
     androidx.compose.foundation.Canvas(
         modifier = modifier
             .onGloballyPositioned { position = it.positionInWindow() }
             .then(if (shape != null) Modifier.clip(shape) else Modifier)
             .graphicsLayer {
-                val currentBlur = blurRadius()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && currentBlur > 0.5f) {
+                val currentBlur = if (disableBlur) 0f else blurRadius()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && currentBlur > 1f) {
                     renderEffect = android.graphics.RenderEffect.createBlurEffect(
                         currentBlur,
                         currentBlur,
-                        android.graphics.Shader.TileMode.DECAL
+                        tileMode
                     ).asComposeRenderEffect()
+                } else {
+                    renderEffect = null
                 }
                 clip = true
             }
@@ -104,12 +125,14 @@ fun GlassPillBackground(
         if (foundationColor != null) {
             drawRect(color = foundationColor)
         }
-        val node = state.renderNode
-        if (node != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val relX = position.x - state.rootPosition.x
-            val relY = position.y - state.rootPosition.y
-            translate(left = -relX, top = -relY) {
-                drawIntoCanvas { it.nativeCanvas.drawRenderNode(node) }
+        if (!disableBlur) {
+            val node = state.renderNode
+            if (node != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && node.hasDisplayList()) {
+                val relX = position.x - state.rootPosition.x
+                val relY = position.y - state.rootPosition.y
+                translate(left = -relX, top = -relY) {
+                    drawIntoCanvas { it.nativeCanvas.drawRenderNode(node) }
+                }
             }
         }
         if (tint != Color.Transparent) {

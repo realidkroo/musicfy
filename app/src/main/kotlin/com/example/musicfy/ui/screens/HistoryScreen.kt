@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,9 +42,12 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.playback.queues.ListQueue
+import com.example.musicfy.ui.component.IconButton
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.SongListItem
+import com.example.musicfy.ui.component.detail.DetailTrackRow
 import com.example.musicfy.ui.menu.SongMenu
+import com.example.musicfy.ui.utils.backToMain
+import com.example.musicfy.utils.makeTimeString
 import com.example.musicfy.viewmodels.DateAgo
 import com.example.musicfy.viewmodels.HistoryViewModel
 import java.time.format.DateTimeFormatter
@@ -77,9 +79,12 @@ fun HistoryScreen(
                 )
                 .padding(horizontal = 4.dp, vertical = 8.dp)
         ) {
-            IconButton(onClick = { navController.navigateUp() }) {
+            IconButton(
+                onClick = { navController.navigateUp() },
+                onLongClick = { navController.backToMain() },
+            ) {
                 Icon(
-                    painter = painterResource(R.drawable.arrow_back),
+                    painter = painterResource(R.drawable.arrow_back_ios),
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onBackground
                 )
@@ -134,38 +139,33 @@ fun HistoryScreen(
                     items = eventsList,
                     key = { _, event -> event.event.id }
                 ) { index, eventWithSong ->
-                    SongListItem(
-                        song = eventWithSong.song,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val allSongs = eventsMap.values.flatten().map { it.song }
-                                val mappedIndex = allSongs.indexOf(eventWithSong.song)
-                                if (mappedIndex != -1) {
-                                    playerConnection?.playQueue(
-                                        ListQueue(
-                                            title = "History",
-                                            items = allSongs.map { it.toMediaItem() },
-                                            startIndex = mappedIndex
-                                        )
+                    val song = eventWithSong.song
+                    DetailTrackRow(
+                        thumbnailUrl = song.song.thumbnailUrl,
+                        title = song.song.title,
+                        subtitle = "${song.artists.joinToString { it.name }} • ${makeTimeString(song.song.duration * 1000L)}",
+                        isActive = false,
+                        isPlaying = false,
+                        showDivider = index != eventsList.lastIndex,
+                        onClick = {
+                            val allSongs = eventsMap.values.flatten().map { it.song }
+                            val mappedIndex = allSongs.indexOf(song)
+                            if (mappedIndex != -1) {
+                                playerConnection?.playQueue(
+                                    ListQueue(
+                                        title = "History",
+                                        items = allSongs.map { it.toMediaItem() },
+                                        startIndex = mappedIndex
                                     )
-                                }
-                            },
-                        trailingContent = {
-                            IconButton(
-                                onClick = {
-                                    menuState.show {
-                                        SongMenu(originalSong = eventWithSong.song, navController = navController, onDismiss = { menuState.dismiss() })
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.more_horiz),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onBackground
                                 )
                             }
-                        }
+                        },
+                        onLongClick = {},
+                        onMenuClick = {
+                            menuState.show {
+                                SongMenu(originalSong = song, navController = navController, onDismiss = { menuState.dismiss() })
+                            }
+                        },
                     )
                 }
             }

@@ -304,7 +304,7 @@ fun OnlineSearchResult(
                     onClick = { navController.navigateUp() }
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.arrow_back),
+                        painter = painterResource(R.drawable.arrow_back_ios),
                         contentDescription = stringResource(R.string.dismiss),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )

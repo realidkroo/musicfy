@@ -40,12 +40,16 @@ class PlayerUiState(connection: PlayerConnection) {
         partial.copy(playbackState = playbackState)
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, TransportState())
 
-    val trackInfo: StateFlow<TrackInfo> = connection.mediaMetadata.map { metadata ->
+    val trackInfo: StateFlow<TrackInfo> = combine(
+        connection.mediaMetadata,
+        connection.currentSong,
+    ) { metadata, song ->
         TrackInfo(
             mediaId = metadata?.id.orEmpty(),
             title = metadata?.title.orEmpty(),
             artist = metadata?.artists?.joinToString { it.name }.orEmpty(),
             thumbnailUrl = metadata?.thumbnailUrl,
+            liked = song?.song?.liked == true,
         )
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, TrackInfo())
 

@@ -48,7 +48,6 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 48.dp) // Leave space at the top so the scaled background is visible
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
             .background(Color(0xFF161616)) // Dark gray/black surface
     ) {
@@ -66,6 +65,7 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .padding(top = 56.dp, start = 32.dp, end = 32.dp, bottom = 32.dp)
         ) {
             Text(

@@ -145,7 +145,7 @@ package com.example.musicfy.ui.screens
                  onLongClick = navController::backToMain
              ) {
                  Icon(
-                     painterResource(R.drawable.arrow_back),
+                     painterResource(R.drawable.arrow_back_ios),
                      contentDescription = null
                  )
              }

@@ -454,6 +454,7 @@ val SearchSourceKey = stringPreferencesKey("searchSource")
 val SwipeThumbnailKey = booleanPreferencesKey("swipeThumbnail")
 val RotatingThumbnailKey = booleanPreferencesKey("rotatingThumbnail")
 val CanvasThumbnailAnimationKey = booleanPreferencesKey("canvasThumbnailAnimation")
+val CanvasWifiOnlyKey = booleanPreferencesKey("canvasWifiOnly")
 val SwipeSensitivityKey = floatPreferencesKey("swipeSensitivity")
 
 enum class SearchSource {
@@ -716,7 +717,11 @@ val SuggestionRegionSlugToName =
 
 // Custom API & Advanced Audio Options
 val EnableCustomApiKey = booleanPreferencesKey("enableCustomApi")
+val EnableMonochromeBackendKey = booleanPreferencesKey("enableMonochromeBackend")
 val EnableSpatialAudioKey = booleanPreferencesKey("enableSpatialAudio")
+
+val EnableMonochromePlaybackBackendKey = booleanPreferencesKey("enableMonochromePlaybackBackend")
+val MonochromePlaybackApiUrlKey = stringPreferencesKey("monochromePlaybackApiUrl")
 
 val AmazonMusicApiUrlKey = stringPreferencesKey("amazonMusicApiUrl")
 val TidalToAsinUrlKey = stringPreferencesKey("tidalToAsinUrl")
@@ -727,10 +732,18 @@ val DeezerFallbackEnabledKey = booleanPreferencesKey("deezerFallbackEnabled")
 val DeezerFallbackUrlKey = stringPreferencesKey("deezerFallbackUrl")
 
 val ApiInstancesKey = stringPreferencesKey("apiInstances")
+val EnableAmazonMusicBackendKey = booleanPreferencesKey("enable_amazon_music_backend")
+val AmazonMusicInstancesKey = stringPreferencesKey("amazon_music_instances_list")
 val StreamingInstancesKey = stringPreferencesKey("streamingInstances")
 val QobuzInstancesKey = stringPreferencesKey("qobuzInstances")
+val MonochromeInstancesKey = stringPreferencesKey("monochromeInstances")
 
 val MusicHapticsEnabledKey = booleanPreferencesKey("musicHapticsEnabled")
 val MusicHapticsSensitivityKey = stringPreferencesKey("musicHapticsSensitivity")
 val HapticFocusKey = stringPreferencesKey("hapticFocus")
 val HideAudioQualityBadgeKey = booleanPreferencesKey("hideAudioQualityBadge")
+
+// Settings redesign additions
+val DisableBlurKey = booleanPreferencesKey("disableBlur")
+val AudioQualityBadgeDevKey = booleanPreferencesKey("audioQualityBadgeDev")
+val YtVideoBackgroundLyricsSyncKey = booleanPreferencesKey("ytVideoBackgroundLyricsSync")

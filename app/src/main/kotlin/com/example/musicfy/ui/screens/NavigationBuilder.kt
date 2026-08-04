@@ -13,8 +13,11 @@ import com.example.musicfy.db.entities.FormatEntity
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,6 +52,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -79,6 +83,7 @@ import com.example.musicfy.constants.PureBlackKey
 import com.example.musicfy.db.entities.ArtistEntity
 import com.example.musicfy.db.entities.SongArtistMap
 import com.example.musicfy.db.entities.SongEntity
+import com.example.musicfy.ui.component.LocalNavAnimatedContentScope
 import com.example.musicfy.ui.component.NavigationTitle
 import com.example.musicfy.ui.screens.artist.ArtistAlbumsScreen
 import com.example.musicfy.ui.screens.artist.ArtistItemsScreen
@@ -97,7 +102,6 @@ import com.example.musicfy.ui.screens.settings.SettingsScreen
 import com.example.musicfy.ui.screens.library.LibraryAlbumsScreen
 import com.example.musicfy.ui.screens.SectionDetailScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.activity.ComponentActivity
 import com.example.musicfy.viewmodels.HomeViewModel
 import com.example.musicfy.ui.screens.library.LibraryArtistsScreen
 import kotlinx.coroutines.Dispatchers
@@ -114,8 +118,24 @@ fun NavGraphBuilder.navigationBuilder(
     activity: Activity,
     snackbarHostState: SnackbarHostState
 ) {
-    composable(Screens.Home.route) {
-        HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
+    composable(
+        route = Screens.Home.route,
+        // Popping back from a detail screen (album/playlist/liked) should read as
+        // that screen shrinking away to reveal Home — which was already sitting there
+        // underneath the whole time, the same way the iOS home screen doesn't animate
+        // in when you close an app, it's just uncovered. So Home itself gets no
+        // scale/motion of its own (that was fighting the reveal, reading as two
+        // separate movements) — just a quick fade so the cut isn't jarring, instead
+        // of the NavHost-level default tab-slide (which is for switching between
+        // bottom-nav tabs, not this back-navigation case).
+        popEnterTransition = { fadeIn(tween(150)) },
+    ) {
+        // Needed on the SOURCE side too, not just destination routes — homeSharedElement
+        // on a grid cover no-ops without a real AnimatedVisibilityScope on both ends of
+        // the transition, and this route was the one missing it entirely.
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
+        }
     }
 
     composable(
@@ -127,7 +147,12 @@ fun NavGraphBuilder.navigationBuilder(
         ),
     ) { backStackEntry ->
         val sectionId = backStackEntry.arguments?.getString("sectionId") ?: return@composable
-        val homeViewModel: HomeViewModel = hiltViewModel(LocalContext.current as ComponentActivity)
+        // Scoped to Home's own back-stack entry (not the Activity) so this reads the exact
+        // same HomeViewModel instance HomeScreen already loaded — previously this created a
+        // second, independent instance with its own random seed, so this screen could show
+        // different community playlists / all-time-hits than what was tapped on Home, and
+        // looked slow because it was racing its own redundant network fetch.
+        val homeViewModel: HomeViewModel = hiltViewModel(navController.getBackStackEntry(Screens.Home.route))
         SectionDetailScreen(
             navController = navController,
             sectionId = sectionId,
@@ -137,6 +162,27 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("history") {
         HistoryScreen(navController = navController)
+    }
+
+    composable("artist_list_detail") {
+        // Same reasoning as section_detail above — share Home's own instance.
+        val homeViewModel: HomeViewModel = hiltViewModel(navController.getBackStackEntry(Screens.Home.route))
+        ArtistListDetailScreen(
+            navController = navController,
+            homeViewModel = homeViewModel
+        )
+    }
+
+    composable(
+        route = "coming_soon/{sectionTitle}",
+        arguments = listOf(
+            navArgument("sectionTitle") {
+                type = NavType.StringType
+            },
+        ),
+    ) { backStackEntry ->
+        val sectionTitle = backStackEntry.arguments?.getString("sectionTitle") ?: return@composable
+        ComingSoonScreen(navController = navController, sectionTitle = sectionTitle)
     }
 
 
@@ -156,8 +202,13 @@ fun NavGraphBuilder.navigationBuilder(
         )
     }
 
-    composable("library") {
-        LibraryTabScreen(navController = navController)
+    composable(
+        route = "library",
+        popEnterTransition = { fadeIn(tween(150)) },
+    ) {
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            LibraryTabScreen(navController = navController)
+        }
     }
 
     composable(Screens.Settings.route) {
@@ -166,6 +217,22 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("advanced_audio_settings") {
         com.example.musicfy.ui.screens.settings.AdvancedAudioSettingsScreen(navController = navController)
+    }
+
+    composable("appearance_settings") {
+        com.example.musicfy.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
+    }
+
+    composable("playback_settings") {
+        com.example.musicfy.ui.screens.settings.PlaybackSettingsScreen(navController = navController)
+    }
+
+    composable("experimental_settings") {
+        com.example.musicfy.ui.screens.settings.ExperimentalSettingsScreen(navController = navController)
+    }
+
+    composable("equalizer") {
+        com.example.musicfy.ui.screens.equalizer.EqualizerScreen(navController = navController)
     }
 
     composable(
@@ -221,8 +288,31 @@ fun NavGraphBuilder.navigationBuilder(
                 type = NavType.StringType
             },
         ),
+        // Plain fade instead of the NavHost-level slide — the cover's own shared-element
+        // morph (see ui/component/SharedElementTransition.kt) is the transition here; a
+        // competing whole-screen slide would fight it.
+        enterTransition = { fadeIn(tween(300)) },
+        exitTransition = { fadeOut(tween(200)) },
+        popEnterTransition = { fadeIn(tween(300)) },
+        // Closing: the whole screen (everything except the shared-element cover,
+        // which SharedTransitionLayout animates independently in its own overlay)
+        // shrinks + fades, instead of just fading in place — reads as "zooming out"
+        // rather than sliding away.
+        // Shrinks toward the top of the screen (roughly where the cover itself is
+        // heading back to) instead of the screen's center, and fades out quickly —
+        // reads as this screen collapsing away toward the cover rather than a
+        // generic center-anchored zoom.
+        popExitTransition = {
+            scaleOut(
+                animationSpec = tween(260),
+                targetScale = 0.82f,
+                transformOrigin = TransformOrigin(0.5f, 0.22f),
+            ) + fadeOut(tween(180))
+        },
     ) {
-        AlbumScreen(navController, scrollBehavior)
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            AlbumScreen(navController, scrollBehavior)
+        }
     }
 
     composable(
@@ -284,8 +374,28 @@ fun NavGraphBuilder.navigationBuilder(
                 type = NavType.StringType
             },
         ),
+        enterTransition = { fadeIn(tween(300)) },
+        exitTransition = { fadeOut(tween(200)) },
+        popEnterTransition = { fadeIn(tween(300)) },
+        // Closing: the whole screen (everything except the shared-element cover,
+        // which SharedTransitionLayout animates independently in its own overlay)
+        // shrinks + fades, instead of just fading in place — reads as "zooming out"
+        // rather than sliding away.
+        // Shrinks toward the top of the screen (roughly where the cover itself is
+        // heading back to) instead of the screen's center, and fades out quickly —
+        // reads as this screen collapsing away toward the cover rather than a
+        // generic center-anchored zoom.
+        popExitTransition = {
+            scaleOut(
+                animationSpec = tween(260),
+                targetScale = 0.82f,
+                transformOrigin = TransformOrigin(0.5f, 0.22f),
+            ) + fadeOut(tween(180))
+        },
     ) {
-        OnlinePlaylistScreen(navController, scrollBehavior)
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            OnlinePlaylistScreen(navController, scrollBehavior)
+        }
     }
 
     composable(
@@ -295,8 +405,28 @@ fun NavGraphBuilder.navigationBuilder(
                 type = NavType.StringType
             },
         ),
+        enterTransition = { fadeIn(tween(300)) },
+        exitTransition = { fadeOut(tween(200)) },
+        popEnterTransition = { fadeIn(tween(300)) },
+        // Closing: the whole screen (everything except the shared-element cover,
+        // which SharedTransitionLayout animates independently in its own overlay)
+        // shrinks + fades, instead of just fading in place — reads as "zooming out"
+        // rather than sliding away.
+        // Shrinks toward the top of the screen (roughly where the cover itself is
+        // heading back to) instead of the screen's center, and fades out quickly —
+        // reads as this screen collapsing away toward the cover rather than a
+        // generic center-anchored zoom.
+        popExitTransition = {
+            scaleOut(
+                animationSpec = tween(260),
+                targetScale = 0.82f,
+                transformOrigin = TransformOrigin(0.5f, 0.22f),
+            ) + fadeOut(tween(180))
+        },
     ) {
-        LocalPlaylistScreen(navController, scrollBehavior)
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            LocalPlaylistScreen(navController, scrollBehavior)
+        }
     }
 
     composable(
@@ -306,8 +436,28 @@ fun NavGraphBuilder.navigationBuilder(
                 type = NavType.StringType
             },
         ),
+        enterTransition = { fadeIn(tween(300)) },
+        exitTransition = { fadeOut(tween(200)) },
+        popEnterTransition = { fadeIn(tween(300)) },
+        // Closing: the whole screen (everything except the shared-element cover,
+        // which SharedTransitionLayout animates independently in its own overlay)
+        // shrinks + fades, instead of just fading in place — reads as "zooming out"
+        // rather than sliding away.
+        // Shrinks toward the top of the screen (roughly where the cover itself is
+        // heading back to) instead of the screen's center, and fades out quickly —
+        // reads as this screen collapsing away toward the cover rather than a
+        // generic center-anchored zoom.
+        popExitTransition = {
+            scaleOut(
+                animationSpec = tween(260),
+                targetScale = 0.82f,
+                transformOrigin = TransformOrigin(0.5f, 0.22f),
+            ) + fadeOut(tween(180))
+        },
     ) {
-        AutoPlaylistScreen(navController, scrollBehavior)
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            AutoPlaylistScreen(navController, scrollBehavior)
+        }
     }
 
     composable(

@@ -145,17 +145,20 @@ fun WelcomeStep(isHiding: Boolean = false) {
                 })
             }
         }
-        // Progressive Blur overlay at the bottom covering the text area
-        ProgressiveGlassBackground(
-            state = glassState,
-            maxBlurRadius = { 120f },
-            foundationColor = Color(0xFF121212),
-            tint = Color.Transparent,
-            direction = BlurDirection.TopToBottom,
+        // Progressive gradient overlay at the bottom covering the text area
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .fillMaxHeight(0.48f)
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.4f to Color(0xFF121212).copy(alpha = 0.8f),
+                        0.8f to Color(0xFF121212),
+                        1f to Color(0xFF121212)
+                    )
+                )
         )
         
         // The Text at bottom left - shifted up to avoid next button overlap

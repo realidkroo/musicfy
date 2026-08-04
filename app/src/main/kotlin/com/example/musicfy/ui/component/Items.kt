@@ -681,6 +681,10 @@ fun AlbumGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
+    // Opt-in key for the "expand into place" open transition (see
+    // ui/component/SharedElementTransition.kt) — null (the default) leaves every
+    // existing call site's behavior unchanged.
+    sharedElementKey: String? = null,
 ) = GridItem(
     title = {
         Text(
@@ -712,6 +716,7 @@ fun AlbumGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius),
+            modifier = Modifier.homeSharedElement(sharedElementKey),
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -797,6 +802,10 @@ fun PlaylistGridItem(
         }
     },
     fillMaxWidth: Boolean = false,
+    // Opt-in key for the "expand into place" open transition (see
+    // ui/component/SharedElementTransition.kt) — null (the default) leaves every
+    // existing call site's behavior unchanged.
+    sharedElementKey: String? = null,
 ) = GridItem(
     title = {
         Text(
@@ -838,11 +847,12 @@ fun PlaylistGridItem(
     thumbnailContent = {
         val width = maxWidth
         if (playlist.playlist.name == stringResource(R.string.liked)) {
-            LikedSongsThumbnail(size = width)
+            LikedSongsThumbnail(size = width, modifier = Modifier.homeSharedElement(sharedElementKey))
         } else {
             PlaylistThumbnail(
                 thumbnails = playlist.thumbnails,
                 size = width,
+                modifier = Modifier.homeSharedElement(sharedElementKey),
                 placeHolder = {
                 val painter = when (playlist.playlist.name) {
                     stringResource(R.string.liked) -> R.drawable.favorite_border
@@ -1003,6 +1013,11 @@ fun YouTubeGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
+    // Opt-in key for the "expand into place" open transition (see
+    // ui/component/SharedElementTransition.kt) — only meaningful for AlbumItem/
+    // PlaylistItem (matching AlbumScreen/OnlinePlaylistScreen's headers); null (the
+    // default) leaves every existing call site's behavior unchanged.
+    sharedElementKey: String? = null,
 ) = GridItem(
     title = {
         Text(
@@ -1043,6 +1058,9 @@ fun YouTubeGridItem(
             isActive = isActive,
             isPlaying = isPlaying,
             shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius),
+            modifier = Modifier.homeSharedElement(
+                if (item is AlbumItem || item is PlaylistItem) sharedElementKey else null
+            ),
         )
 
     },
@@ -1342,14 +1360,15 @@ fun PlaylistThumbnail(
     size: Dp,
     placeHolder: @Composable () -> Unit,
     shape: Shape,
-    cacheKey: String? = null
+    cacheKey: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     val cropAlbumArt = LocalCropAlbumArt.current
-    
+
     when (thumbnails.size) {
         0 -> Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier
+            modifier = modifier
                 .size(size)
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surfaceContainer)
@@ -1369,12 +1388,12 @@ fun PlaylistThumbnail(
             contentScale = ContentScale.Crop,
             placeholder = painterResource(R.drawable.queue_music),
             error = painterResource(R.drawable.queue_music),
-            modifier = Modifier
+            modifier = modifier
                 .size(size)
                 .clip(shape)
         )
         else -> Box(
-            modifier = Modifier
+            modifier = modifier
                 .size(size)
                 .clip(shape)
         ) {
@@ -1662,14 +1681,18 @@ object Icon {
 fun LikedSongsThumbnail(
     size: Dp,
     shape: Shape = RoundedCornerShape(com.example.musicfy.constants.ThumbnailCornerRadius),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Liked Songs' hero header (a bigger version of this same collage) caps at 8
+    // instead of this component's original 9 — parameterized rather than
+    // duplicating the whole composable for one different number.
+    maxCovers: Int = 9,
 ) {
     val database = LocalDatabase.current
     val likedSongs by database.likedSongs(SongSortType.CREATE_DATE, descending = true)
         .collectAsState(initial = emptyList())
-        
-    val topSongs = remember(likedSongs) {
-        likedSongs.filter { it.song.thumbnailUrl != null }.take(9)
+
+    val topSongs = remember(likedSongs, maxCovers) {
+        likedSongs.filter { it.song.thumbnailUrl != null }.take(maxCovers)
     }
 
     Box(
@@ -1680,7 +1703,7 @@ fun LikedSongsThumbnail(
         contentAlignment = Alignment.Center
     ) {
         if (topSongs.isNotEmpty()) {
-            val columns = if (topSongs.size >= 9) 3 else if (topSongs.size >= 4) 2 else 1
+            val columns = if (topSongs.size >= maxCovers) 3 else if (topSongs.size >= 4) 2 else 1
             Box(
                 modifier = Modifier
                     .fillMaxSize()

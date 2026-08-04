@@ -62,7 +62,7 @@ fun LibraryAlbumsScreen(
                             onLongClick = navController::backToMain
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.arrow_back),
+                                painter = painterResource(R.drawable.arrow_back_ios),
                                 contentDescription = null
                             )
                         }

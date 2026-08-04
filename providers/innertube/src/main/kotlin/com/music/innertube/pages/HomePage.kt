@@ -17,12 +17,15 @@ import com.music.innertube.models.YTItem
 import com.music.innertube.models.oddElements
 import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class HomePage(
     val chips: List<Chip>?,
     val sections: List<Section>,
     val continuation: String? = null,
 ) {
+    @Serializable
     data class Chip(
         val title: String,
         val endpoint: BrowseEndpoint?,
@@ -39,6 +42,7 @@ data class HomePage(
         }
     }
 
+    @Serializable
     data class Section(
         val title: String,
         val label: String?,

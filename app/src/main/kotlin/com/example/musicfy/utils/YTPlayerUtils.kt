@@ -529,13 +529,26 @@ object YTPlayerUtils {
         e.printStackTrace()
     }
     /**
+     * Clients tried, in order, by [resolveVideoStreamUrl]. Lighter than the full 11-client
+     * [STREAM_FALLBACK_CLIENTS] audio uses (no age-restriction/private-track special-casing),
+     * but still several clients deep — a single-client attempt was the cause of "loads
+     * sometimes, not others": whichever client happens to be flaky/region-restricted for a
+     * given video killed the whole lookup with nothing left to fall back to.
+     */
+    private val VIDEO_BACKGROUND_CLIENTS: Array<YouTubeClient> = arrayOf(
+        MAIN_CLIENT,
+        WEB_REMIX,
+        TVHTML5_SIMPLY_EMBEDDED_PLAYER,
+        ANDROID_VR_1_61_48,
+        WEB,
+    )
+
+    /**
      * Resolves a playable VIDEO stream URL for a YouTube video — used only by the optional
-     * video-background player, never for audio playback. Deliberately much simpler than
-     * [playerResponseForPlayback]: tries MAIN_CLIENT then a single WEB_REMIX fallback and gives
-     * up, rather than working through all 11 [STREAM_FALLBACK_CLIENTS] with age-restriction/
-     * private-track special-casing. This is a cosmetic feature — on failure the caller falls
-     * back to the static cover art, so it should fail fast rather than retry aggressively the
-     * way audio resolution must.
+     * video-background player, never for audio playback. This is a cosmetic feature — on
+     * failure the caller falls back to the static cover art — so it doesn't need audio's
+     * age-restriction/private-track special-casing, but it does need to actually try several
+     * clients rather than bail out on the first one that fails, same as audio does.
      *
      * Reuses the same cipher/PoToken-free resolution helpers ([findUrlOrNull],
      * [getSignatureTimestampOrNull]) as audio playback — no new stream-URL-resolution logic,
@@ -544,24 +557,46 @@ object YTPlayerUtils {
     suspend fun resolveVideoStreamUrl(videoId: String): Result<String> = runCatching {
         val signatureTimestamp = getSignatureTimestampOrNull(videoId)
 
-        var response = YouTube.player(videoId, null, MAIN_CLIENT, signatureTimestamp.timestamp, null).getOrThrow()
-        if (response.playabilityStatus.status != "OK") {
-            response = YouTube.player(videoId, null, WEB_REMIX, signatureTimestamp.timestamp, null).getOrThrow()
-        }
-        if (response.playabilityStatus.status != "OK") {
-            throw Exception("Video not playable: ${response.playabilityStatus.status}")
+        for (client in VIDEO_BACKGROUND_CLIENTS) {
+            val response = try {
+                YouTube.player(videoId, null, client, signatureTimestamp.timestamp, null).getOrNull()
+            } catch (e: Exception) {
+                Timber.tag(logTag).d("resolveVideoStreamUrl: client ${client.clientName} threw: ${e.message}")
+                null
+            } ?: continue
+
+            if (response.playabilityStatus.status != "OK") {
+                Timber.tag(logTag).d("resolveVideoStreamUrl: client ${client.clientName} not OK: ${response.playabilityStatus.status}")
+                continue
+            }
+
+            // Prefer a moderate resolution closest to 720p — it's a blurred/zoomed background,
+            // not a foreground video, so there's no benefit to 1080p+ and it costs more
+            // bandwidth/decode.
+            val format = response.streamingData?.adaptiveFormats
+                ?.filter { !it.isAudio && it.height != null }
+                ?.minByOrNull { kotlin.math.abs((it.height ?: 0) - 720) }
+                ?: response.streamingData?.formats?.firstOrNull { !it.isAudio }
+
+            if (format == null) {
+                Timber.tag(logTag).d("resolveVideoStreamUrl: client ${client.clientName} had no video format")
+                continue
+            }
+
+            val url = try {
+                findUrlOrNull(format, videoId, response, skipNewPipe = false)
+            } catch (e: Exception) {
+                Timber.tag(logTag).d("resolveVideoStreamUrl: client ${client.clientName} URL resolution threw: ${e.message}")
+                null
+            }
+
+            if (url != null) {
+                Timber.tag(logTag).d("resolveVideoStreamUrl: resolved via ${client.clientName}")
+                return@runCatching url
+            }
         }
 
-        // Prefer a moderate resolution closest to 720p — it's a blurred/zoomed background, not
-        // a foreground video, so there's no benefit to 1080p+ and it costs more bandwidth/decode.
-        val format = response.streamingData?.adaptiveFormats
-            ?.filter { !it.isAudio && it.height != null }
-            ?.minByOrNull { kotlin.math.abs((it.height ?: 0) - 720) }
-            ?: response.streamingData?.formats?.firstOrNull { !it.isAudio }
-            ?: throw Exception("No video format found for videoId=$videoId")
-
-        findUrlOrNull(format, videoId, response, skipNewPipe = false)
-            ?: throw Exception("Could not resolve video stream URL for videoId=$videoId")
+        throw Exception("Could not resolve a playable video stream for videoId=$videoId after trying ${VIDEO_BACKGROUND_CLIENTS.size} clients")
     }
 
     /**

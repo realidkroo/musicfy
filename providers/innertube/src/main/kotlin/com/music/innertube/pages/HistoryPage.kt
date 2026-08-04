@@ -9,6 +9,7 @@ import com.music.innertube.models.MusicResponsiveListItemRenderer
 import com.music.innertube.models.MusicShelfRenderer
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.getItems
+import com.music.innertube.models.looksLikeTimestamp
 import com.music.innertube.models.oddElements
 import com.music.innertube.models.splitBySeparator
 import com.music.innertube.utils.parseTime
@@ -53,7 +54,7 @@ data class HistoryPage(
                         name = it.text,
                         id = it.navigationEndpoint?.browseEndpoint?.browseId
                     )
-                } ?: emptyList(),
+                }?.filter { !it.name.looksLikeTimestamp() } ?: emptyList(),
                 album = renderer.flexColumns.getOrNull(3)?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.firstOrNull()?.let {
                     Album(
                         name = it.text,

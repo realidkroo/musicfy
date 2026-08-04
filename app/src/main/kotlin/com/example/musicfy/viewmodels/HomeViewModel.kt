@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.Artist
+import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.flow.combine
@@ -19,6 +20,7 @@ import com.music.innertube.models.YTItem
 import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
 import com.music.innertube.models.filterYoutubeShorts
+import com.music.innertube.pages.ChartsPage
 import com.music.innertube.pages.ExplorePage
 import com.music.innertube.pages.HomePage
 import com.music.innertube.utils.completed
@@ -37,6 +39,7 @@ import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.db.entities.SpeedDialItem
 import com.example.musicfy.extensions.filterVideoSongs
 import com.example.musicfy.extensions.toEnum
+import com.example.musicfy.models.ArtistGroup
 import com.example.musicfy.models.SimilarRecommendation
 import com.example.musicfy.utils.SyncUtils
 import com.example.musicfy.utils.dataStore
@@ -57,6 +60,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
@@ -68,6 +72,7 @@ data class DailyDiscoverItem(
     val relatedEndpoint: BrowseEndpoint?
 )
 
+@kotlinx.serialization.Serializable
 data class CommunityPlaylistItem(
     val playlist: PlaylistItem,
     val songs: List<SongItem>
@@ -79,6 +84,8 @@ class HomeViewModel @Inject constructor(
     val database: MusicDatabase,
     val syncUtils: SyncUtils,
 ) : ViewModel() {
+    private val homeFeedCache = HomeFeedCache(context)
+
     val isRefreshing = MutableStateFlow(false)
     val isLoading = MutableStateFlow(false)
     val isRandomizing = MutableStateFlow(false)
@@ -99,6 +106,23 @@ class HomeViewModel @Inject constructor(
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
     val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
     private val previousHomePage = MutableStateFlow<HomePage?>(null)
+
+    // Recently Played: songs/albums/playlists only (no artists), true chronological recency.
+    val recentlyPlayed = MutableStateFlow<List<LocalItem>?>(null)
+
+    // Most Played: songs only, ranked #1-#4 by position. Deliberately independent of the
+    // QuickPicksKey preference (which can switch `quickPicks` to a "last listen" mode) since
+    // this section must always mean genuine most-played, not whatever Quick Picks currently is.
+    val mostPlayedSongsForHome = MutableStateFlow<List<Song>?>(null)
+
+    // History: raw chronological songs, duplicates allowed (unlike HistoryScreen's day-grouped dedup).
+    val recentHistorySongs = MutableStateFlow<List<Song>?>(null)
+
+    // Artist List: all "similar to X artist" seeds flattened + deduped into one row.
+    val artistListItems = MutableStateFlow<List<ArtistGroup>?>(null)
+
+    // All Time Hits - sourced from YouTube's charts TOP section.
+    val allTimeHits = MutableStateFlow<List<YTItem>?>(null)
 
     val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
     val allYtItems = MutableStateFlow<List<YTItem>>(emptyList())
@@ -438,6 +462,73 @@ class HomeViewModel @Inject constructor(
         }
 
         communityPlaylists.value = playlists.shuffled()
+        homeFeedCache.saveCommunityPlaylists(communityPlaylists.value.orEmpty())
+    }
+
+    private suspend fun loadRecentlyPlayed() {
+        val songs = database.recentlyPlayedSongs(limit = 8).first()
+        val albums = database.recentlyPlayedAlbums(limit = 6).first()
+        val playlists = database.recentlyPlayedPlaylists(limit = 6).first()
+
+        // Each list is already recency-sorted individually; there's no timestamp carried
+        // through to this layer to do a true global sort across types, so a round-robin
+        // merge (song, album, playlist, ...) approximates "most recent first" well enough
+        // for a home-row preview without adding extra query plumbing.
+        val merged = mutableListOf<LocalItem>()
+        val maxLen = maxOf(songs.size, albums.size, playlists.size)
+        for (i in 0 until maxLen) {
+            songs.getOrNull(i)?.let { merged.add(it) }
+            albums.getOrNull(i)?.let { merged.add(it) }
+            playlists.getOrNull(i)?.let { merged.add(it) }
+        }
+
+        // Liked Songs is a synthetic playlist (a `song.liked` boolean, not a real row in
+        // the `playlist` table) so recentlyPlayedPlaylists()'s join can never surface it —
+        // same synthetic-injection approach already used for keepListening below.
+        val lastPlayedLikedSongs = context.dataStore.get(LastPlayedLikedSongsTimeKey, 0L)
+        if (System.currentTimeMillis() - lastPlayedLikedSongs < 86400000L * 7) {
+            val likedCount = database.likedSongsCount().first()
+            val likedPlaylistEntity = com.example.musicfy.db.entities.Playlist(
+                playlist = com.example.musicfy.db.entities.PlaylistEntity(id = "liked", name = context.getString(R.string.liked)),
+                songCount = likedCount,
+                songThumbnails = listOf()
+            )
+            merged.removeAll { it.id == "liked" }
+            merged.add(0, likedPlaylistEntity)
+        }
+
+        recentlyPlayed.value = merged.take(15)
+    }
+
+    private suspend fun loadMostPlayedForHome() {
+        val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val thirtyDaysAgo = System.currentTimeMillis() - 86400000L * 30L
+        mostPlayedSongsForHome.value = database.mostPlayedSongs(fromTimeStamp = thirtyDaysAgo, limit = 20)
+            .first()
+            .filterVideoSongs(hideVideoSongs)
+            .distinctBy { it.id }
+            .take(20)
+    }
+
+    private suspend fun loadRecentHistory() {
+        recentHistorySongs.value = database.events().first().map { it.song }.take(15)
+    }
+
+    private suspend fun loadAllTimeHits() {
+        // One retry before giving up for the session — this was a single one-shot call
+        // with no fallback, so any transient failure/empty response meant the section
+        // silently never showed up again until the next full reload.
+        var page = YouTube.getChartsPage().onFailure { reportException(it) }.getOrNull()
+        var section = page?.sections?.firstOrNull { it.chartType == ChartsPage.ChartType.TOP }
+            ?: page?.sections?.firstOrNull { it.items.isNotEmpty() }
+        if (section == null) {
+            delay(1500)
+            page = YouTube.getChartsPage().onFailure { reportException(it) }.getOrNull()
+            section = page?.sections?.firstOrNull { it.chartType == ChartsPage.ChartType.TOP }
+                ?: page?.sections?.firstOrNull { it.items.isNotEmpty() }
+        }
+        allTimeHits.value = section?.items?.distinctBy { it.id }?.take(20)
+        allTimeHits.value?.let { homeFeedCache.saveAllTimeHits(it) }
     }
 
     /**
@@ -448,6 +539,9 @@ class HomeViewModel @Inject constructor(
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
 
         getQuickPicks()
+        loadRecentlyPlayed()
+        loadMostPlayedForHome()
+        loadRecentHistory()
 
         forgottenFavorites.value = database.forgottenFavorites().first().distinctBy { it.id }
             .filterVideoSongs(hideVideoSongs).shuffled().take(20)
@@ -575,8 +669,66 @@ class HomeViewModel @Inject constructor(
                 }
 
             val results = (artistDeferreds + songDeferreds + albumDeferreds).awaitAll()
-            similarRecommendations.value = results.filterNotNull().shuffled()
+            val nonNullResults = results.filterNotNull()
+            similarRecommendations.value = nonNullResults.shuffled()
+
+            // Artist List: collapse every "similar to X" seed above into one card per artist
+            // (covers + artist avatar) instead of N separate per-seed rows.
+            data class GroupAccumulator(
+                var artistId: String?,
+                var artistName: String,
+                var artistThumbnailUrl: String?,
+                val items: MutableList<YTItem> = mutableListOf(),
+            )
+
+            val groups = linkedMapOf<String, GroupAccumulator>()
+            fun addToGroup(key: String, name: String, thumbnailUrl: String?, id: String?, item: YTItem?) {
+                val group = groups.getOrPut(key) { GroupAccumulator(id, name, thumbnailUrl) }
+                if (thumbnailUrl != null && group.artistThumbnailUrl == null) group.artistThumbnailUrl = thumbnailUrl
+                if (item != null && group.items.none { it.id == item.id }) group.items.add(item)
+            }
+
+            nonNullResults.forEach { rec ->
+                val seed = rec.title
+                rec.items.forEach { item ->
+                    when {
+                        item is ArtistItem -> addToGroup(item.id ?: item.title, item.title, item.thumbnail, item.id, null)
+                        seed is com.example.musicfy.db.entities.Artist -> addToGroup(seed.id, seed.title, seed.thumbnailUrl, seed.id, item)
+                        else -> {
+                            val itemArtist = when (item) {
+                                is SongItem -> item.artists.firstOrNull()
+                                is AlbumItem -> item.artists?.firstOrNull()
+                                else -> null
+                            }
+                            if (itemArtist?.name != null) {
+                                addToGroup(itemArtist.id ?: itemArtist.name, itemArtist.name, null, itemArtist.id, item)
+                            }
+                        }
+                    }
+                }
+            }
+
+            artistListItems.value = groups.values
+                .filter { it.items.isNotEmpty() }
+                .map {
+                    ArtistGroup(
+                        artistName = it.artistName,
+                        artistId = it.artistId,
+                        artistThumbnailUrl = it.artistThumbnailUrl,
+                        items = it.items.take(5)
+                    )
+                }
+                .shuffled()
+                .take(15)
         }
+    }
+
+    // Our own FromTheCommunity section (getCommunityPlaylists()) already covers this
+    // content — without dropping YouTube's own equivalent section here, it renders as
+    // a second, separate row showing overlapping playlists right alongside it.
+    private fun isCommunityOrTrendingSection(title: String): Boolean {
+        val titleLower = title.lowercase()
+        return "trending" in titleLower || "community" in titleLower
     }
 
     /**
@@ -595,15 +747,16 @@ class HomeViewModel @Inject constructor(
             launch(Dispatchers.IO) { loadSimilarRecommendations() }
             launch(Dispatchers.IO) {
                 YouTube.home().onSuccess { page ->
-                    homePage.value = page.copy(
-                        sections = page.sections.mapNotNull { section ->
-                            val filteredItems = section.items
-                                .filterExplicit(hideExplicit)
-                                .filterVideoSongs(hideVideoSongs)
-                                .filterYoutubeShorts(hideYoutubeShorts).distinctBy { it.id }
-                            if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
-                        }
-                    )
+                    val filteredSections = page.sections.mapNotNull { section ->
+                        if (isCommunityOrTrendingSection(section.title)) return@mapNotNull null
+                        val filteredItems = section.items
+                            .filterExplicit(hideExplicit)
+                            .filterVideoSongs(hideVideoSongs)
+                            .filterYoutubeShorts(hideYoutubeShorts).distinctBy { it.id }
+                        if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+                    }
+                    homePage.value = page.copy(sections = filteredSections)
+                    homeFeedCache.saveHomePage(homePage.value!!)
                 }.onFailure { reportException(it) }
             }
             launch(Dispatchers.IO) {
@@ -611,8 +764,10 @@ class HomeViewModel @Inject constructor(
                     explorePage.value = page.copy(
                         newReleaseAlbums = page.newReleaseAlbums.filterExplicit(hideExplicit)
                     )
+                    homeFeedCache.saveExplorePage(explorePage.value!!)
                 }.onFailure { reportException(it) }
             }
+            launch(Dispatchers.IO) { loadAllTimeHits() }
             if (YouTube.cookie != null) {
                 launch(Dispatchers.IO) { loadAccountPlaylists() }
             }
@@ -625,6 +780,13 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun load() {
         isLoading.value = true
+
+        // loadNetworkDataPhase() below unconditionally overwrites homePage with the
+        // fresh unfiltered feed — clearing the chip selection here keeps the chip pill
+        // in sync with what's actually on screen instead of staying visually
+        // "selected" over content that silently reverted to unfiltered.
+        selectedChip.value = null
+        previousHomePage.value = null
 
         // Phase 1: Local DB only — UI renders immediately after this
         loadLocalDataPhase()
@@ -651,6 +813,7 @@ class HomeViewModel @Inject constructor(
             homePage.value = nextSections.copy(
                 chips = homePage.value?.chips,
                 sections = (homePage.value?.sections.orEmpty() + nextSections.sections).mapNotNull { section ->
+                    if (isCommunityOrTrendingSection(section.title)) return@mapNotNull null
                     val filteredItems = section.items.filterExplicit(hideExplicit).filterVideoSongs(hideVideoSongs).filterYoutubeShorts(hideYoutubeShorts).distinctBy { it.id }
                     if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
                 }
@@ -715,6 +878,17 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+
+        // Show last session's cached feed instantly, before the network phase (below)
+        // even starts — this is what makes the algorithmic sections feel instant on a
+        // cold app start instead of blank until the network responds. The network
+        // phase always still runs and overwrites these with fresh data once it lands.
+        viewModelScope.launch(Dispatchers.IO) {
+            homeFeedCache.loadHomePage()?.let { homePage.value = it }
+            homeFeedCache.loadCommunityPlaylists()?.let { communityPlaylists.value = it }
+            homeFeedCache.loadAllTimeHits()?.let { allTimeHits.value = it }
+            homeFeedCache.loadExplorePage()?.let { explorePage.value = it }
+        }
 
         // Load home data
         viewModelScope.launch(Dispatchers.IO) {

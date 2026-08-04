@@ -18,8 +18,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,61 +53,82 @@ import com.example.musicfy.constants.PlayerHorizontalPadding
 import com.example.musicfy.extensions.togglePlayPause
 
 /**
- * Fullscreen transport row: previous / play-pause / next. Reads its own scoped
- * [com.example.musicfy.ui.player.PlayerUiState.transportState] rather than receiving a dozen
- * pre-collected params from a root composable.
+ * Fullscreen player controls: title/artist + like/repeat, seek slider + time, then the
+ * previous / play-pause / next transport row. Each row reads its own scoped slice of
+ * [com.example.musicfy.ui.player.PlayerUiState] rather than a dozen pre-collected params from a
+ * root composable — [PlayerProgressSlider] in particular collects the 15Hz position ticker
+ * itself, so that recomposition rate stays local to it instead of the whole column.
  */
 @Composable
 fun PlayerControls(modifier: Modifier = Modifier) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val transportState by playerConnection.uiState.transportState.collectAsState()
 
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(30.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = PlayerHorizontalPadding)
-    ) {
-        AnimatedPressScaleSkipButton(
-            icon = R.drawable.avd_skip_previous,
-            onClick = playerConnection::seekToPrevious,
-            enabled = transportState.canSkipPrevious,
-            tint = Color.White,
-            iconSize = 54.dp,
-            modifier = Modifier.size(74.dp)
-        )
+    Column(modifier = modifier.fillMaxWidth()) {
+        // Shifted up via offset (a draw-time transform), not extra layout space — offset()
+        // doesn't change how much room this group reserves in the Column, so the transport row
+        // below stays exactly where it was; only this group's drawn position moves, up into the
+        // cover art rather than leaving a dead gap below it.
+        Column(modifier = Modifier.offset(y = (-64).dp)) {
+            Spacer(modifier = Modifier.height(20.dp))
 
-        AnimatedPressScalePlayPauseButton(
-            isPlaying = transportState.isPlaying,
-            playbackState = transportState.playbackState,
-            onClick = {
-                if (transportState.playbackState == Player.STATE_ENDED) {
-                    playerConnection.player.seekTo(0, 0)
-                    playerConnection.player.playWhenReady = true
-                } else {
-                    playerConnection.togglePlayPause()
-                }
-            },
-            tint = Color.White,
-            iconSize = 54.dp,
-            modifier = Modifier.size(74.dp)
-        )
+            SongInfoRow()
 
-        AnimatedPressScaleSkipButton(
-            icon = R.drawable.avd_skip_next,
-            onClick = playerConnection::seekToNext,
-            enabled = transportState.canSkipNext,
-            tint = Color.White,
-            iconSize = 54.dp,
-            modifier = Modifier.size(74.dp)
-        )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            PlayerProgressSlider()
+        }
+
+        // Breathing room before the transport row — independent of the offset above.
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(30.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = PlayerHorizontalPadding)
+        ) {
+            AnimatedPressScaleSkipButton(
+                icon = R.drawable.avd_skip_previous,
+                onClick = playerConnection::seekToPrevious,
+                enabled = transportState.canSkipPrevious,
+                tint = Color.White,
+                iconSize = 54.dp,
+                modifier = Modifier.size(74.dp)
+            )
+
+            AnimatedPressScalePlayPauseButton(
+                isPlaying = transportState.isPlaying,
+                playbackState = transportState.playbackState,
+                onClick = {
+                    if (transportState.playbackState == Player.STATE_ENDED) {
+                        playerConnection.player.seekTo(0, 0)
+                        playerConnection.player.playWhenReady = true
+                    } else {
+                        playerConnection.togglePlayPause()
+                    }
+                },
+                tint = Color.White,
+                iconSize = 54.dp,
+                modifier = Modifier.size(74.dp)
+            )
+
+            AnimatedPressScaleSkipButton(
+                icon = R.drawable.avd_skip_next,
+                onClick = playerConnection::seekToNext,
+                enabled = transportState.canSkipNext,
+                tint = Color.White,
+                iconSize = 54.dp,
+                modifier = Modifier.size(74.dp)
+            )
+        }
     }
 }
 
 @OptIn(ExperimentalAnimationGraphicsApi::class)
 @Composable
-private fun AnimatedPressScaleSkipButton(
+internal fun AnimatedPressScaleSkipButton(
     icon: Int,
     tint: Color,
     onClick: () -> Unit,
@@ -160,7 +185,7 @@ private fun AnimatedPressScaleSkipButton(
 
 @OptIn(ExperimentalAnimationGraphicsApi::class)
 @Composable
-private fun AnimatedPressScalePlayPauseButton(
+internal fun AnimatedPressScalePlayPauseButton(
     isPlaying: Boolean,
     playbackState: Int,
     tint: Color,

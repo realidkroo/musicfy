@@ -7,11 +7,14 @@ import com.music.innertube.models.BrowseEndpoint
 import com.music.innertube.models.GridRenderer
 import com.music.innertube.models.MusicNavigationButtonRenderer
 import com.music.innertube.models.SectionListRenderer
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class MoodAndGenres(
     val title: String,
     val items: List<Item>,
 ) {
+    @Serializable
     data class Item(
         val title: String,
         val stripeColor: Long,

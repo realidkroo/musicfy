@@ -51,17 +51,23 @@ import androidx.compose.ui.graphics.RectangleShape
 import com.example.musicfy.playback.PlayerConnection
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
+import com.example.musicfy.db.entities.Album
 import com.example.musicfy.db.entities.Song
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.playback.queues.YouTubeQueue
+import com.example.musicfy.ui.component.AlbumListItem
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.PlaylistListItem
 import com.example.musicfy.ui.component.SongListItem
 import com.example.musicfy.ui.component.YouTubeListItem
 import com.example.musicfy.ui.menu.SongMenu
 import com.example.musicfy.ui.menu.YouTubeSongMenu
 import com.example.musicfy.viewmodels.HomeViewModel
+import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.Artist
+import com.music.innertube.models.ArtistItem
+import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
 
@@ -77,12 +83,20 @@ fun SectionDetailScreen(
     val forgottenFavorites by homeViewModel.forgottenFavorites.collectAsState()
     val keepListening by homeViewModel.keepListening.collectAsState()
     val accountName by homeViewModel.accountName.collectAsState()
+    val recentlyPlayed by homeViewModel.recentlyPlayed.collectAsState()
+    val mostPlayedSongsForHome by homeViewModel.mostPlayedSongsForHome.collectAsState()
+    val communityPlaylists by homeViewModel.communityPlaylists.collectAsState()
+    val allTimeHits by homeViewModel.allTimeHits.collectAsState()
 
     val title = when (sectionId) {
         "speed_dial" -> stringResource(R.string.speed_dial)
         "quick_picks" -> stringResource(R.string.quick_picks)
-        "forgotten_favorites" -> stringResource(R.string.forgotten_favorites)
+        "forgotten_favorites" -> stringResource(R.string.dont_forget_these_songs)
         "history" -> stringResource(R.string.vivi_on_heavy_rotation)
+        "recently_played" -> stringResource(R.string.recently_played)
+        "most_played" -> stringResource(R.string.vivi_quick_picks)
+        "from_the_community" -> stringResource(R.string.from_the_community)
+        "all_time_hits" -> stringResource(R.string.all_time_hits)
         else -> ""
     }
 
@@ -91,15 +105,27 @@ fun SectionDetailScreen(
         "quick_picks" -> R.drawable.speed
         "forgotten_favorites" -> R.drawable.favorite
         "history" -> R.drawable.history
+        "recently_played" -> R.drawable.history
+        "most_played" -> R.drawable.speed
+        "from_the_community" -> R.drawable.favorite
+        "all_time_hits" -> R.drawable.speed
         else -> R.drawable.history
     }
 
-    val items = remember(sectionId, speedDialItems, quickPicks, forgottenFavorites, keepListening) {
+    val items = remember(
+        sectionId, speedDialItems, quickPicks, forgottenFavorites, keepListening,
+        recentlyPlayed, mostPlayedSongsForHome, communityPlaylists,
+        allTimeHits,
+    ) {
         when (sectionId) {
             "speed_dial" -> speedDialItems.filterIsInstance<SongItem>()
             "quick_picks" -> quickPicks?.filterIsInstance<Song>() ?: emptyList()
             "forgotten_favorites" -> forgottenFavorites ?: emptyList()
             "history" -> keepListening?.filterIsInstance<Song>() ?: emptyList()
+            "recently_played" -> recentlyPlayed ?: emptyList()
+            "most_played" -> mostPlayedSongsForHome ?: emptyList()
+            "from_the_community" -> communityPlaylists?.map { it.playlist } ?: emptyList()
+            "all_time_hits" -> allTimeHits ?: emptyList()
             else -> emptyList()
         }
     }
@@ -146,7 +172,7 @@ fun SectionDetailScreen(
         ) {
             IconButton(onClick = { navController.navigateUp() }) {
                 Icon(
-                    painter = painterResource(R.drawable.arrow_back),
+                    painter = painterResource(R.drawable.arrow_back_ios),
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onBackground
                 )
@@ -257,6 +283,52 @@ fun SectionDetailScreen(
                                     )
                                 }
                             }
+                        )
+                    }
+                    is Album -> {
+                        AlbumListItem(
+                            album = item,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate("album/${item.id}") }
+                        )
+                    }
+                    is com.example.musicfy.db.entities.Playlist -> {
+                        PlaylistListItem(
+                            playlist = item,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (item.id == "liked") {
+                                        navController.navigate("auto_playlist/liked")
+                                    } else {
+                                        navController.navigate("local_playlist/${item.id}")
+                                    }
+                                }
+                        )
+                    }
+                    is AlbumItem -> {
+                        YouTubeListItem(
+                            item = item,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate("album/${item.id}") }
+                        )
+                    }
+                    is ArtistItem -> {
+                        YouTubeListItem(
+                            item = item,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate("artist/${item.id}") }
+                        )
+                    }
+                    is PlaylistItem -> {
+                        YouTubeListItem(
+                            item = item,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate("online_playlist/${item.id}") }
                         )
                     }
                 }

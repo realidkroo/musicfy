@@ -2,13 +2,20 @@ package com.example.musicfy.ui.screens.setup
 
 import android.net.Uri
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,10 +35,10 @@ import com.example.musicfy.utils.dataStore
 import com.example.musicfy.constants.SetupCompletedKey
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
 @Composable
 fun SetupWizardContainer(
     isVisible: Boolean,
+    isStacked: Boolean = false,
     onSetupCompleted: (String, Uri?) -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -39,6 +46,9 @@ fun SetupWizardContainer(
     val overlayProgress = remember { Animatable(0f) }
     var dragOffsetY by remember { mutableStateOf(0f) }
     var isFirstLaunch by remember { mutableStateOf(true) }
+    val topInset = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+
+    val smoothMotion = tween<Float>(durationMillis = 450, easing = FastOutSlowInEasing)
 
     LaunchedEffect(isVisible) {
         if (isVisible) {
@@ -46,10 +56,10 @@ fun SetupWizardContainer(
                 kotlinx.coroutines.delay(1000)
                 isFirstLaunch = false
             }
-            overlayProgress.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 220f))
+            overlayProgress.animateTo(1f, smoothMotion)
         } else {
             isFirstLaunch = false
-            overlayProgress.animateTo(0f, spring(dampingRatio = 0.82f, stiffness = 220f))
+            overlayProgress.animateTo(0f, smoothMotion)
         }
     }
 
@@ -57,7 +67,12 @@ fun SetupWizardContainer(
     val dragProgress = (1f - (dragOffsetY / 1200f)).coerceIn(0f, 1f)
     val effectiveProgress = overlayProgress.value * dragProgress
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenHeight = maxHeight
+        val backgroundTopEdge = topInset + 8.dp
+        // If stacked under another modal, remove padding so it peeks perfectly at backgroundTopEdge
+        val foregroundTopEdge = if (isStacked) 0.dp else backgroundTopEdge + 12.dp
+
         // Main App Content (shrinks dynamically based on setup wizard position)
         Box(
             modifier = Modifier
@@ -66,6 +81,9 @@ fun SetupWizardContainer(
                     val scale = 1f - 0.08f * effectiveProgress
                     scaleX = scale
                     scaleY = scale
+
+                    val targetTranslationY = topInset.toPx() + 8.dp.toPx() - (size.height * 0.04f)
+                    translationY = targetTranslationY * effectiveProgress
 
                     clip = true
                     val radius = (32f * effectiveProgress).coerceAtLeast(0f)
@@ -91,9 +109,13 @@ fun SetupWizardContainer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(top = foregroundTopEdge * effectiveProgress)
                     .graphicsLayer {
                         val inverseProgress = 1f - overlayProgress.value
-                        translationY = inverseProgress * 2000f + dragOffsetY
+                        // Travel a bit past the full layer height so the wizard is
+                        // fully off-screen before it unmounts, instead of getting cut
+                        // off mid-slide on taller screens.
+                        translationY = inverseProgress * (size.height * 1.15f) + dragOffsetY
                     }
             ) {
                 SetupWizardScreen(

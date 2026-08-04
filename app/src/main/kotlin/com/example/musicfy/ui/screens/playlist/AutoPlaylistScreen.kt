@@ -5,6 +5,7 @@ package com.example.musicfy.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +27,15 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -38,6 +50,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.pullToRefresh
@@ -76,6 +89,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachReversed
@@ -104,6 +118,11 @@ import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.DraggableScrollbar
 import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.ui.component.ExpandableText
+import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.glassRoot
+import com.example.musicfy.ui.component.detail.rememberDetailCollapseProgress
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.example.musicfy.ui.component.homeSharedElement
 import com.example.musicfy.ui.component.IconButton
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.SongListItem
@@ -197,6 +216,18 @@ fun AutoPlaylistScreen(
         }
     } else if (inSelectMode) {
         BackHandler(onBack = onExitSelectionMode)
+    }
+
+    var screenBackgroundColor by remember { mutableStateOf<Color?>(null) }
+    val animatedBgColor by animateColorAsState(
+        targetValue = screenBackgroundColor ?: MaterialTheme.colorScheme.background,
+        animationSpec = tween(durationMillis = 600)
+    )
+
+    val detailAccentColor = com.example.musicfy.LocalDetailAccentColor.current
+    androidx.compose.runtime.SideEffect { detailAccentColor.value = screenBackgroundColor }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { detailAccentColor.value = null }
     }
 
     val (sortType, onSortTypeChange) = rememberEnumPreference(
@@ -313,9 +344,18 @@ fun AutoPlaylistScreen(
     val pullRefreshState = rememberPullToRefreshState()
     val canRefresh = playlistType == PlaylistType.LIKE || playlistType == PlaylistType.UPLOADED
 
+    var headerHeightPx by remember { mutableStateOf(0f) }
+    var coverBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    val collapseState = rememberDetailCollapseProgress(state, headerHeightPx)
+    val glassState = remember { GlassState() }
+    val headerThumbnailUrl = remember(songs) {
+        songs?.firstOrNull { !it.song.thumbnailUrl.isNullOrEmpty() }?.song?.thumbnailUrl
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(animatedBgColor)
             .then(
                 if (canRefresh) {
                     Modifier.pullToRefresh(
@@ -330,7 +370,8 @@ fun AutoPlaylistScreen(
     ) {
         LazyColumn(
             state = state,
-            contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
+            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
+            modifier = Modifier.glassRoot(glassState, isActive = { collapseState.morphProgress > 0f }),
         ) {
             if (songs != null) {
                 if (songs!!.isEmpty()) {
@@ -345,12 +386,19 @@ fun AutoPlaylistScreen(
                         item(key = "playlist_header") {
                             AutoPlaylistHeader(
                                 name = playlist,
+                                playlistType = playlistType,
                                 songs = songs!!,
                                 likeLength = likeLength,
                                 downloadState = downloadState,
                                 onShowRemoveDownloadDialog = { showRemoveDownloadDialog = true },
                                 menuState = menuState,
-                                modifier = Modifier.animateItem()
+                                onColorExtracted = { screenBackgroundColor = it },
+                                onCoverPositioned = { coverBounds = it },
+                                headerContentAlpha = collapseState.headerContentAlpha,
+                                morphProgress = collapseState.morphProgress,
+                                modifier = Modifier
+                                    .animateItem()
+                                    .onGloballyPositioned { headerHeightPx = it.size.height.toFloat() }
                             )
                         }
                     }
@@ -392,70 +440,53 @@ fun AutoPlaylistScreen(
                             }
                         }
 
-                        SongListItem(
-                            song = song,
+                        com.example.musicfy.ui.component.detail.DetailTrackRow(
+                            thumbnailUrl = song.song.thumbnailUrl,
+                            title = song.song.title,
+                            subtitle = "${song.artists.joinToString { it.name }} • ${makeTimeString(song.song.duration * 1000L)}",
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
-                            showInLibraryIcon = true,
-                            shape = listItemShape(index, filteredSongs.size),
-                            trailingContent = {
+                            showDivider = index != filteredSongs.lastIndex,
+                            modifier = Modifier.animateItem(),
+                            onClick = {
                                 if (inSelectMode) {
-                                    Checkbox(
-                                        checked = song.id in selection,
-                                        onCheckedChange = onCheckedChange
-                                    )
+                                    onCheckedChange(song.id !in selection)
+                                } else if (song.song.id == mediaMetadata?.id) {
+                                    playerConnection.togglePlayPause()
                                 } else {
-                                    IconButton(
-                                        onClick = {
-                                            menuState.show {
-                                                SongMenu(
-                                                    originalSong = song,
-                                                    navController = navController,
-                                                    onDismiss = menuState::dismiss,
-                                                )
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.more_vert),
-                                            contentDescription = null,
-                                        )
+                                    coroutineScope.launch {
+                                        if (viewModel.playlist == "liked") {
+                                            context.dataStore.edit { it[LastPlayedLikedSongsTimeKey] = System.currentTimeMillis() }
+                                        }
                                     }
+                                    playerConnection.playQueue(
+                                        ListQueue(
+                                            title = playlist,
+                                            items = songs!!.map { it.toMediaItem() },
+                                            startIndex = songs!!.indexOfFirst { it.id == song.id }
+                                        ),
+                                    )
                                 }
                             },
-                            modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .combinedClickable(
-                                    onClick = {
-                                        if (inSelectMode) {
-                                            onCheckedChange(song.id !in selection)
-                                        } else if (song.song.id == mediaMetadata?.id) {
-                                            playerConnection.togglePlayPause()
-                                        } else {
-                                            coroutineScope.launch {
-                                                if (viewModel.playlist == "liked") {
-                                                    context.dataStore.edit { it[LastPlayedLikedSongsTimeKey] = System.currentTimeMillis() }
-                                                }
-                                            }
-                                            playerConnection.playQueue(
-                                                ListQueue(
-                                                    title = playlist,
-                                                    items = songs!!.map { it.toMediaItem() },
-                                                    startIndex = songs!!.indexOfFirst { it.id == song.id }
-                                                ),
-                                            )
-                                        }
-                                    },
-                                    onLongClick = {
-                                        if (!inSelectMode) {
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            inSelectMode = true
-                                            onCheckedChange(true)
-                                        }
-                                    },
-                                )
-                                .animateItem()
+                            onLongClick = {
+                                if (!inSelectMode) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    inSelectMode = true
+                                    onCheckedChange(true)
+                                }
+                            },
+                            onMenuClick = {
+                                menuState.show {
+                                    SongMenu(
+                                        originalSong = song,
+                                        navController = navController,
+                                        onDismiss = menuState::dismiss,
+                                    )
+                                }
+                            },
+                            trailing = if (inSelectMode) {
+                                { Checkbox(checked = song.id in selection, onCheckedChange = onCheckedChange) }
+                            } else null,
                         )
                     }
                 }
@@ -486,16 +517,15 @@ fun AutoPlaylistScreen(
             )
         }
 
-        TopAppBar(
-            title = {
-                when {
-                    inSelectMode -> {
+        if (inSelectMode || isSearching) {
+            TopAppBar(
+                title = {
+                    if (inSelectMode) {
                         Text(
                             text = pluralStringResource(R.plurals.n_song, selection.size, selection.size),
                             style = MaterialTheme.typography.titleLarge
                         )
-                    }
-                    isSearching -> {
+                    } else if (isSearching) {
                         TextField(
                             value = query,
                             onValueChange = { query = it },
@@ -520,359 +550,178 @@ fun AutoPlaylistScreen(
                                 .focusRequester(focusRequester)
                         )
                     }
-                    else -> {
-                        Text(
-                            text = playlist,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                    }
-                }
-            },
-            navigationIcon = {
-                IconButton(
-                    onClick = {
-                        when {
-                            isSearching -> {
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = {
+                            if (isSearching) {
                                 isSearching = false
                                 query = TextFieldValue()
-                                focusManager.clearFocus()
-                            }
-                            inSelectMode -> {
+                            } else if (inSelectMode) {
                                 onExitSelectionMode()
-                            }
-                            else -> {
+                            } else {
                                 navController.navigateUp()
                             }
-                        }
-                    },
-                    onLongClick = {
-                        if (!isSearching && !inSelectMode) {
-                            navController.backToMain()
-                        }
-                    }
-                ) {
-                    Icon(
-                        painter = painterResource(
-                            if (inSelectMode) R.drawable.close else R.drawable.arrow_back
-                        ),
-                        contentDescription = null
-                    )
-                }
-            },
-            actions = {
-                if (inSelectMode) {
-                    Checkbox(
-                        checked = selection.size == filteredSongs.size && selection.isNotEmpty(),
-                        onCheckedChange = {
-                            if (selection.size == filteredSongs.size) {
-                                selection.clear()
-                            } else {
-                                selection.clear()
-                                selection.addAll(filteredSongs.map { it.id })
-                            }
-                        }
-                    )
-                    IconButton(
-                        enabled = selection.isNotEmpty(),
-                        onClick = {
-                            menuState.show {
-                                SelectionSongMenu(
-                                    songSelection = filteredSongs.filter { it.id in selection },
-                                    onDismiss = menuState::dismiss,
-                                    clearAction = onExitSelectionMode,
-                                )
-                            }
                         },
+                        onLongClick = {
+                            if (!isSearching && !inSelectMode) {
+                                navController.backToMain()
+                            }
+                        }
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.more_vert),
+                            painter = painterResource(
+                                if (inSelectMode) R.drawable.close else R.drawable.arrow_back_ios
+                            ),
                             contentDescription = null
                         )
                     }
-                } else if (!isSearching) {
-                    IconButton(
-                        onClick = { isSearching = true }
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.search),
-                            contentDescription = null
+                },
+                actions = {
+                    if (inSelectMode) {
+                        Checkbox(
+                            checked = selection.size == filteredSongs.size && selection.isNotEmpty(),
+                            onCheckedChange = {
+                                if (selection.size == filteredSongs.size) {
+                                    selection.clear()
+                                } else {
+                                    selection.clear()
+                                    selection.addAll(filteredSongs.map { it.id })
+                                }
+                            }
                         )
+                        IconButton(
+                            enabled = selection.isNotEmpty(),
+                            onClick = {
+                                menuState.show {
+                                    SelectionSongMenu(
+                                        songSelection = filteredSongs.filter { it.id in selection },
+                                        onDismiss = menuState::dismiss,
+                                        clearAction = onExitSelectionMode,
+                                    )
+                                }
+                            },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.more_vert),
+                                contentDescription = null
+                            )
+                        }
+                    } else if (!isSearching) {
+                        IconButton(
+                            onClick = { isSearching = true }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.search),
+                                contentDescription = null
+                            )
+                        }
                     }
-                }
-            }
-        )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        } else {
+            com.example.musicfy.ui.component.detail.DetailCollapsingTopBar(
+                progress = collapseState.morphProgress,
+                glassState = glassState,
+                thumbnailUrl = headerThumbnailUrl,
+                title = playlist,
+                subtitle = null,
+                accentColor = screenBackgroundColor,
+                coverBoundsInWindow = coverBounds,
+                onBackClick = { navController.navigateUp() },
+                onBackLongClick = { navController.backToMain() },
+            )
+        }
     }
-}
-
-@Composable
+}@Composable
 private fun AutoPlaylistHeader(
     name: String,
+    playlistType: PlaylistType,
     songs: List<Song>,
     likeLength: Int,
     downloadState: Int,
     onShowRemoveDownloadDialog: () -> Unit,
     menuState: com.example.musicfy.ui.component.MenuState,
+    onColorExtracted: (Color) -> Unit,
+    onCoverPositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
+    headerContentAlpha: Float = 1f,
+    morphProgress: Float = 0f,
     modifier: Modifier = Modifier
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.height(50.dp))
+    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
 
-        // Playlist Thumbnail - Large centered
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 48.dp)
-        ) {
-            AsyncImage(
-                model = songs[0].song.thumbnailUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
-            )
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        // Playlist Name
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 32.dp)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.favorite_border),
-                contentDescription = null,
-                modifier = Modifier.size(30.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = name,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        // Action Buttons Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp),
-            horizontalArrangement = Arrangement.spacedBy(
-                12.dp,
-                Alignment.CenterHorizontally
-            ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Shuffle Button
-            androidx.compose.material3.Button(
-                onClick = {
-                    coroutineScope.launch {
-                        if (name == context.getString(R.string.liked)) {
-                            context.dataStore.edit { it[LastPlayedLikedSongsTimeKey] = System.currentTimeMillis() }
-                        }
-                    }
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = name,
-                            items = songs.shuffled().map { it.toMediaItem() },
-                        ),
-                    )
-                },
-                shape = androidx.compose.material3.ButtonDefaults.shape,
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    vertical = 12.dp
-                ),
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.shuffle),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.shuffle),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            }
-
-            // Play Button
-            androidx.compose.material3.Button(
-                onClick = {
-                    coroutineScope.launch {
-                        if (name == context.getString(R.string.liked)) {
-                            context.dataStore.edit { it[LastPlayedLikedSongsTimeKey] = System.currentTimeMillis() }
-                        }
-                    }
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = name,
-                            items = songs.map { it.toMediaItem() },
-                        ),
-                    )
-                },
-                shape = androidx.compose.material3.ButtonDefaults.shape,
-                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    vertical = 12.dp
-                ),
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.play),
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            }
-
-            // Menu Button
-           Surface(
-                onClick = {
-                    menuState.show {
-                        AutoPlaylistMenu(
-                            downloadState = downloadState,
-                            onQueue = {
-                                playerConnection.addToQueue(
-                                    songs.map { it.toMediaItem() }
-                                )
-                            },
-                            onDownload = {
-                                when (downloadState) {
-                                    Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
-                                    Download.STATE_DOWNLOADING -> {
-                                        songs.forEach { song ->
-                                            DownloadService.sendRemoveDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                song.song.id,
-                                                false,
-                                            )
-                                        }
-                                    }
-                                    else -> {
-                                        songs.forEach { song ->
-                                            val downloadRequest = DownloadRequest
-                                                .Builder(song.song.id, song.song.id.toUri())
-                                                .setCustomCacheKey(song.song.id)
-                                                .setData(song.song.title.toByteArray())
-                                                .build()
-                                            DownloadService.sendAddDownload(
-                                                context,
-                                                ExoDownloadService::class.java,
-                                                downloadRequest,
-                                                false,
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            onDismiss = { menuState.dismiss() }
-                        )
-                    }
-                },
-                shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // Metadata - Song Count • Duration
-        Text(
-            text = buildString {
-                append(pluralStringResource(R.plurals.n_song, songs.size, songs.size))
-                if (likeLength > 0) {
-                    append(" • ")
-                    append(makeTimeString(likeLength * 1000L))
-                }
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        val staticDescription = remember(name, songs.size, likeLength) {
-            val trackCountText = context.resources.getQuantityString(R.plurals.n_song, songs.size, songs.size)
-            "$name is a personalized collection featuring $trackCountText.${
-                if (likeLength > 0) " Total listening time is ${makeTimeString(likeLength * 1000L)}." else ""
-            } This playlist is automatically curated for your musical enjoyment."
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.about_album),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            ExpandableText(
-                text = staticDescription,
-                runs = null,
-                collapsedMaxLines = 3
-            )
-        }
+    val staticDescription = remember(name, songs.size, likeLength) {
+        val trackCountText = context.resources.getQuantityString(R.plurals.n_song, songs.size, songs.size)
+        "$name is a personalized collection featuring $trackCountText.${
+            if (likeLength > 0) " Total listening time is ${makeTimeString(likeLength * 1000L)}." else ""
+        }"
     }
+
+    com.example.musicfy.ui.component.detail.PlaylistScreenHeader(
+        thumbnailUrl = songs.firstOrNull { !it.song.thumbnailUrl.isNullOrEmpty() }?.song?.thumbnailUrl,
+        title = name,
+        // No creator name for these — Liked/Downloaded/Uploaded are auto-generated
+        // system views, not a "playlist you made" with a name worth attaching.
+        userName = "",
+        description = staticDescription,
+        isPlaying = isPlaying,
+        onColorExtracted = onColorExtracted,
+        onCoverPositioned = onCoverPositioned,
+        headerContentAlpha = headerContentAlpha,
+        morphProgress = morphProgress,
+        onPlayClick = {
+            coroutineScope.launch {
+                if (name == context.getString(R.string.liked)) {
+                    context.dataStore.edit { it[LastPlayedLikedSongsTimeKey] = System.currentTimeMillis() }
+                }
+            }
+            playerConnection.playQueue(ListQueue(title = name, items = songs.map { it.toMediaItem() }))
+        },
+        onShuffleClick = {
+            coroutineScope.launch {
+                if (name == context.getString(R.string.liked)) {
+                    context.dataStore.edit { it[LastPlayedLikedSongsTimeKey] = System.currentTimeMillis() }
+                }
+            }
+            playerConnection.playQueue(ListQueue(title = name, items = songs.shuffled().map { it.toMediaItem() }))
+        },
+        onMoreClick = {
+            menuState.show {
+                AutoPlaylistMenu(
+                    downloadState = downloadState,
+                    onQueue = { playerConnection.addToQueue(songs.map { it.toMediaItem() }) },
+                    onDownload = {
+                        when (downloadState) {
+                            Download.STATE_COMPLETED -> onShowRemoveDownloadDialog()
+                            Download.STATE_DOWNLOADING -> {
+                                songs.forEach { song ->
+                                    DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, song.song.id, false)
+                                }
+                            }
+                            else -> {
+                                songs.forEach { song ->
+                                    val downloadRequest = DownloadRequest
+                                        .Builder(song.song.id, song.song.id.toUri())
+                                        .setCustomCacheKey(song.song.id)
+                                        .setData(song.song.title.toByteArray())
+                                        .build()
+                                    DownloadService.sendAddDownload(context, ExoDownloadService::class.java, downloadRequest, false)
+                                }
+                            }
+                        }
+                    },
+                    onDismiss = { menuState.dismiss() }
+                )
+            }
+        },
+        modifier = modifier
+    )
 }
 
 

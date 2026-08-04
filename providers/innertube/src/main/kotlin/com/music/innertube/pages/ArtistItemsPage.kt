@@ -11,6 +11,7 @@ import com.music.innertube.models.MusicTwoRowItemRenderer
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
+import com.music.innertube.models.looksLikeTimestamp
 import com.music.innertube.models.oddElements
 import com.music.innertube.models.splitBySeparator
 import com.music.innertube.utils.parseTime
@@ -36,7 +37,7 @@ data class ArtistItemsPage(
                     name = it.text,
                     id = it.navigationEndpoint?.browseEndpoint?.browseId
                 )
-            }
+            }?.filter { !it.name.looksLikeTimestamp() }
 
             // Extract album from last flexColumn (like SimpMusic does)
             val album = renderer.flexColumns.lastOrNull()

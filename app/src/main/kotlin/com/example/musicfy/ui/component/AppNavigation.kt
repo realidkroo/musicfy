@@ -59,11 +59,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.size
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import com.example.musicfy.LocalHazeState
+import com.example.musicfy.LocalGlassState
 
 @Immutable
 private data class NavItemState(
@@ -177,7 +173,7 @@ fun AppNavigationBar(
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
         val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
         
-        val hazeState = LocalHazeState.current
+        val glassState = LocalGlassState.current ?: remember { GlassState() }
 
         androidx.compose.foundation.layout.Box(
             modifier = Modifier
@@ -187,22 +183,19 @@ fun AppNavigationBar(
                 .align(Alignment.TopCenter)
                 .height(64.dp)
                 .clip(RoundedCornerShape(32.dp))
-                .let {
-                    if (hazeState != null) {
-                        it.hazeEffect(
-                            state = hazeState, 
-                            style = HazeStyle(
-                                backgroundColor = containerColor,
-                                tint = HazeTint(containerColor.copy(alpha = 0.65f)),
-                                blurRadius = 24.dp
-                            )
-                        )
-                    } else {
-                        it.background(containerColor.copy(alpha = 0.85f))
-                    }
-                }
                 .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(32.dp))
         ) {
+            GlassPillBackground(
+                state = glassState,
+                blurRadius = { 24f },
+                tint = containerColor.copy(alpha = 0.65f),
+                foundationColor = containerColor,
+                // CLAMP, not the default DECAL — this pill's own bounds ARE the intended blur
+                // extent (no fade-out), so edges need to read as fully blurred right up to the
+                // border instead of washing to transparent near it.
+                tileMode = android.graphics.Shader.TileMode.CLAMP,
+                modifier = Modifier.fillMaxSize()
+            )
 
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),

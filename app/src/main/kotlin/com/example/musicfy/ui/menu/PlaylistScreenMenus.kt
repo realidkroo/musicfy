@@ -35,7 +35,10 @@ fun LocalPlaylistMenu(
     onDelete: () -> Unit,
     onDownload: () -> Unit,
     onQueue: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    locked: Boolean = true,
+    onToggleLock: () -> Unit = {},
+    onShowSortDialog: () -> Unit = {},
 ) {
 
     val downloadMenuItem = when (downloadState) {
@@ -98,6 +101,42 @@ fun LocalPlaylistMenu(
                 },
                 onClick = {
                     onEdit()
+                    onDismiss()
+                }
+            )
+        )
+
+        if (playlist.playlist.isEditable) {
+            add(
+                Material3MenuItemData(
+                    title = { Text(if (locked) "Unlock editing" else "Lock editing") },
+                    description = { Text(if (locked) "Enable reordering tracks" else "Lock track order") },
+                    icon = {
+                        Icon(
+                            painter = painterResource(if (locked) R.drawable.lock_open else R.drawable.lock),
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        onToggleLock()
+                        onDismiss()
+                    }
+                )
+            )
+        }
+
+        add(
+            Material3MenuItemData(
+                title = { Text("Sort order") },
+                description = { Text("Change song ordering in playlist") },
+                icon = {
+                    Icon(
+                        painter = painterResource(R.drawable.drag_handle),
+                        contentDescription = null
+                    )
+                },
+                onClick = {
+                    onShowSortDialog()
                     onDismiss()
                 }
             )

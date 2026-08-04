@@ -342,9 +342,11 @@ class MusicService :
     @Inject
     @DownloadCache
     lateinit var downloadCache: SimpleCache
-
-    private lateinit var customStreamFetcher: com.example.musicfy.playback.custom.CustomStreamFetcher
-
+    private lateinit var amazonStreamFetcher: com.example.musicfy.playback.custom.AmazonStreamFetcher
+    private lateinit var monochromeStreamFetcher: com.example.musicfy.playback.custom.MonochromeStreamFetcher
+    private lateinit var monochromePlaybackStreamFetcher: com.example.musicfy.playback.custom.MonochromePlaybackStreamFetcher
+    private val resolvedStreamSources = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private var lastAnnouncedSourceMediaId: String? = null
     lateinit var player: ExoPlayer
         private set
     private var secondaryPlayer: ExoPlayer? = null
@@ -496,10 +498,45 @@ class MusicService :
                     setSmallIcon(R.drawable.musicfy_notification)
                 },
         )
-        customStreamFetcher = com.example.musicfy.playback.custom.CustomStreamFetcher(
+        val turnstileSolver = com.example.musicfy.playback.custom.TurnstileSolver(this)
+        amazonStreamFetcher = com.example.musicfy.playback.custom.AmazonStreamFetcher(
             dataStore = dataStore,
             database = database,
-            httpClient = OkHttpClient.Builder().build()
+            httpClient = OkHttpClient.Builder()
+                .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .build(),
+            turnstileSolver = turnstileSolver,
+            onStatusUpdate = { message ->
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+        monochromeStreamFetcher = com.example.musicfy.playback.custom.MonochromeStreamFetcher(
+            dataStore = dataStore,
+            database = database,
+            httpClient = OkHttpClient.Builder()
+                .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
+        )
+        monochromePlaybackStreamFetcher = com.example.musicfy.playback.custom.MonochromePlaybackStreamFetcher(
+            dataStore = dataStore,
+            database = database,
+            httpClient = OkHttpClient.Builder()
+                .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                .build(),
+            turnstileSolver = turnstileSolver,
+            onStatusUpdate = { message ->
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+                }
+            }
         )
 
         player = createExoPlayer()
@@ -1949,6 +1986,8 @@ class MusicService :
         }
         previousMediaItemIndex = player.currentMediaItemIndex
 
+        mediaItem?.mediaId?.let { announceStreamSource(it) }
+
         lastPlaybackSpeed = -1.0f // force update song
 
         setupLoudnessEnhancer()
@@ -2823,15 +2862,6 @@ class MusicService :
                 Timber.tag("MusicService").i("BYPASSING CACHE for $mediaId due to quality change")
             }
             
-            // Try Custom Stream Fetcher first if enabled
-            val customStreamUrl = runBlocking(Dispatchers.IO) {
-                customStreamFetcher.fetchStreamUrl(mediaId)
-            }
-            if (customStreamUrl != null) {
-                Timber.tag("MusicService").i("Using Custom API Stream for $mediaId: $customStreamUrl")
-                return@Factory dataSpec.withUri(customStreamUrl.toUri())
-            }
-
             Timber.tag("MusicService").i("FETCHING STREAM: $mediaId | quality=$audioQuality")
             val playbackData = runBlocking(Dispatchers.IO) {
                 YTPlayerUtils.playerResponseForPlayback(
@@ -2912,11 +2942,93 @@ class MusicService :
         }
     }
 
-    private fun createMediaSourceFactory() =
-        DefaultMediaSourceFactory(
+    private fun announceStreamSource(mediaId: String) {
+        if (lastAnnouncedSourceMediaId == mediaId) return
+        val source = resolvedStreamSources[mediaId] ?: return
+        lastAnnouncedSourceMediaId = mediaId
+        Toast.makeText(this, "Playing from $source", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun createMediaSourceFactory(): androidx.media3.exoplayer.source.MediaSource.Factory {
+        val defaultFactory = DefaultMediaSourceFactory(
             createDataSourceFactory(),
             androidx.media3.extractor.DefaultExtractorsFactory(),
         )
+
+        return object : androidx.media3.exoplayer.source.MediaSource.Factory by defaultFactory {
+            override fun createMediaSource(mediaItem: androidx.media3.common.MediaItem): androidx.media3.exoplayer.source.MediaSource {
+                return com.example.musicfy.playback.custom.DynamicResolvingMediaSource(
+                    originalMediaItem = mediaItem,
+                    mediaSourceFactoryProvider = { drmManager ->
+                        val factory = DefaultMediaSourceFactory(
+                            createDataSourceFactory(),
+                            androidx.media3.extractor.DefaultExtractorsFactory(),
+                        )
+                        if (drmManager != null) {
+                            factory.setDrmSessionManagerProvider { drmManager }
+                        }
+                        factory
+                    },
+                    fetcherAction = { mediaId ->
+                        val enableMonochrome = kotlinx.coroutines.runBlocking {
+                            dataStore.data.first()[com.example.musicfy.constants.EnableMonochromeBackendKey] ?: false
+                        }
+                        Timber.tag("StreamFetch").d("fetcherAction entered for $mediaId, enableMonochrome=$enableMonochrome")
+                        if (!enableMonochrome) return@DynamicResolvingMediaSource null
+                        
+                        var result: com.example.musicfy.playback.custom.CustomStreamResult? = null
+                        try {
+                            val monochromePlaybackResult = monochromePlaybackStreamFetcher.fetchStreamUrl(mediaId)
+                            if (monochromePlaybackResult != null) {
+                                result = monochromePlaybackResult
+                                Timber.d("Found stream on Monochrome Playback")
+                            }
+                        } catch (e: Exception) {
+                            Timber.w(e, "Monochrome Playback fetch failed")
+                        }
+
+                        if (result == null) {
+                            try {
+                                val amazonResult = amazonStreamFetcher.fetchStreamUrl(mediaId)
+                                if (amazonResult != null) result = amazonResult
+                            } catch (e: Exception) {
+                                Timber.w(e, "Amazon fetch failed")
+                            }
+                        }
+
+                        if (result == null) {
+                            try {
+                                val monochromeResult = monochromeStreamFetcher.fetchStreamUrl(mediaId)
+                                if (monochromeResult != null) {
+                                    result = monochromeResult
+                                    Timber.d("Found stream on Monochrome")
+                                }
+                            } catch (e: Exception) {
+                                Timber.w(e, "Monochrome fetch failed")
+                            }
+                        }
+
+                        if (result == null) {
+                            throw androidx.media3.common.PlaybackException(
+                                "High-quality backend forced: Stream not found",
+                                null,
+                                androidx.media3.common.PlaybackException.ERROR_CODE_REMOTE_ERROR
+                            )
+                        }
+                        result
+                    },
+                    onSourceResolved = { mediaId, source ->
+                        resolvedStreamSources[mediaId] = source
+                        Handler(Looper.getMainLooper()).post {
+                            if (player.currentMediaItem?.mediaId == mediaId) {
+                                announceStreamSource(mediaId)
+                            }
+                        }
+                    }
+                )
+            }
+        }
+    }
 
     private fun createRenderersFactory(
         eqProcessor: CustomEqualizerAudioProcessor,

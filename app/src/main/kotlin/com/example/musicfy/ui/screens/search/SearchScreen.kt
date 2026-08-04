@@ -281,7 +281,7 @@ fun SearchScreen(
                             }
                         }) {
                             Icon(
-                                painter = painterResource(if (searchActive) R.drawable.arrow_back else R.drawable.search),
+                                painter = painterResource(if (searchActive) R.drawable.arrow_back_ios else R.drawable.search),
                                 contentDescription = if (searchActive) stringResource(R.string.dismiss) else null,
                                 tint = MaterialTheme.colorScheme.onSurface
                             )

@@ -20,6 +20,7 @@ data class TrackInfo(
     val title: String = "",
     val artist: String = "",
     val thumbnailUrl: String? = null,
+    val liked: Boolean = false,
 )
 
 @Immutable

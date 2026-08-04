@@ -140,6 +140,7 @@ fun LibraryAlbumGridItem(
     isPlaying = isPlaying,
     coroutineScope = coroutineScope,
     fillMaxWidth = true,
+    sharedElementKey = "album-${album.id}",
     modifier = modifier
         .fillMaxWidth()
         .combinedClickable(
@@ -238,6 +239,14 @@ fun LibraryPlaylistGridItem(
 ) = PlaylistGridItem(
     playlist = playlist,
     fillMaxWidth = true,
+    // Same id used for the actual navigate() call below, whichever branch it takes,
+    // so the key matches whichever destination (local or online playlist screen)
+    // ends up rendering.
+    sharedElementKey = if (!playlist.playlist.isEditable && playlist.songCount == 0 && playlist.playlist.remoteSongCount != 0) {
+        playlist.playlist.browseId?.let { "playlist-$it" }
+    } else {
+        "playlist-${playlist.id}"
+    },
     modifier = modifier
         .fillMaxWidth()
         .combinedClickable(

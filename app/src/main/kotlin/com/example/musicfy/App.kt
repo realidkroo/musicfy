@@ -68,6 +68,13 @@ class App : Application(), SingletonImageLoader.Factory {
 
         Timber.plant(Timber.DebugTree())
 
+        // Warm the DataStore file on a background thread as early as possible. DataStore shares
+        // its first read across concurrent callers, so this doesn't duplicate work — it just
+        // means the later blocking reads (rememberPreference's initial seed, Hilt's player/download
+        // cache providers, Coil's newImageLoader) resolve against an already-parsed file instead of
+        // each hitting cold disk I/O on the main thread during MainActivity's startup.
+        applicationScope.launch(Dispatchers.IO) { dataStore.data.first() }
+
         // تهيئة إعدادات التطبيق عند الإقلاع
         applicationScope.launch {
             initializeSettings()

@@ -18,12 +18,14 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import com.example.musicfy.ui.component.LocalSharedTransitionScope
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -109,7 +111,6 @@ import androidx.core.net.toUri
 import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
@@ -156,8 +157,8 @@ import com.example.musicfy.core.updater.getUpdateNotificationsSetting
 import com.example.musicfy.core.UpdateNotificationHelper
 import android.util.Log
 import androidx.compose.ui.platform.LocalContext
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.haze
+import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.constants.PauseListenHistoryKey
 import com.example.musicfy.constants.PauseSearchHistoryKey
 import com.example.musicfy.constants.PureBlackKey
@@ -192,6 +193,7 @@ import com.example.musicfy.ui.theme.MusicfyTheme
 import com.example.musicfy.ui.theme.extractThemeColor
 import com.example.musicfy.ui.utils.appBarScrollBehavior
 import com.example.musicfy.ui.utils.resetHeightOffset
+import com.example.musicfy.ui.utils.setZoomFadeExitAnimation
 import com.example.musicfy.LocalDatabase
 import com.example.musicfy.LocalDownloadUtil
 import com.example.musicfy.utils.SyncUtils
@@ -201,7 +203,6 @@ import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.utils.reportException
 import com.example.musicfy.utils.setAppLocale
-import com.example.musicfy.viewmodels.HomeViewModel
 import com.valentinilk.shimmer.LocalShimmerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import com.example.musicfy.ui.screens.setup.SetupWizardContainer
@@ -316,7 +317,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        installSplashScreen().setZoomFadeExitAnimation()
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -356,7 +357,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-    @OptIn(ExperimentalMaterial3Api::class)
+    @OptIn(ExperimentalMaterial3Api::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
     @Composable
     private fun musicfyApp(
         playerConnection: PlayerConnection?,
@@ -488,7 +489,8 @@ class MainActivity : ComponentActivity() {
                     .fillMaxSize()
                     .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
             ) {
-                val hazeState = remember { HazeState() }
+                val glassState = remember { GlassState() }
+                val detailAccentColor = remember { mutableStateOf<Color?>(null) }
                 val focusManager = LocalFocusManager.current
                 val density = LocalDensity.current
                 val configuration = LocalWindowInfo.current
@@ -498,8 +500,6 @@ class MainActivity : ComponentActivity() {
                 val bottomInsetDp = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
 
                 val navController = rememberNavController()
-                val homeViewModel: HomeViewModel = hiltViewModel()
-                val accountImageUrl by homeViewModel.accountImageUrl.collectAsState()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
@@ -563,7 +563,10 @@ class MainActivity : ComponentActivity() {
                 val shouldShowNavigationBar = remember(currentRoute, navigationItemRoutes) {
                     currentRoute == null ||
                         navigationItemRoutes.contains(currentRoute) ||
-                        currentRoute!!.startsWith("search/")
+                        currentRoute!!.startsWith("search/") ||
+                        currentRoute!!.startsWith("local_playlist/") ||
+                        currentRoute!!.startsWith("online_playlist/") ||
+                        currentRoute!!.startsWith("auto_playlist/")
                 }
 
                 val isLandscape = configuration.containerDpSize.width > configuration.containerDpSize.height
@@ -761,7 +764,8 @@ class MainActivity : ComponentActivity() {
                     com.example.musicfy.ui.component.LocalPlayerBottomSheetState provides playerBottomSheetState,
 
                     LocalPlayerConnection provides playerConnection,
-                    LocalHazeState provides hazeState,
+                    LocalGlassState provides glassState,
+                    LocalDetailAccentColor provides detailAccentColor,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
                     LocalDownloadUtil provides downloadUtil,
                     LocalShimmerTheme provides ShimmerTheme,
@@ -787,6 +791,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         SetupWizardContainer(
                             isVisible = !setupCompleted || forceShowSetup,
+                            isStacked = showBetaNotice,
                             onSetupCompleted = { username, uri ->
                                 coroutineScope.launch(Dispatchers.IO) {
                                     // Save URI to internal storage if not null
@@ -920,6 +925,18 @@ class MainActivity : ComponentActivity() {
                                 val navBarTotalHeight = bottomInset + NavigationBarHeight
 
                                 if (!showRail && currentRoute != "wrapped" && currentRoute != "update" && currentRoute != "listen_together/chat") {
+                                    // Detail screens (Album/Playlist/Liked) publish their cover-sampled
+                                    // accent color via LocalDetailAccentColor; the scrim tints toward it
+                                    // instead of always being flat black. Uses that color as-is (no extra
+                                    // darkening blend) so it matches the same accent color used for the
+                                    // rest of that screen's background instead of reading darker/muddier.
+                                    val detailAccent = LocalDetailAccentColor.current.value
+                                    val navScrimTint by androidx.compose.animation.animateColorAsState(
+                                        targetValue = detailAccent ?: Color.Black,
+                                        animationSpec = tween(500),
+                                        label = "navScrimTint"
+                                    )
+
                                     Box {
                                         Box(
                                             modifier = Modifier
@@ -930,9 +947,9 @@ class MainActivity : ComponentActivity() {
                                                     brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                                         colors = listOf(
                                                             Color.Transparent,
-                                                            Color.Black.copy(alpha = 0.5f),
-                                                            Color.Black.copy(alpha = 0.9f),
-                                                            Color.Black
+                                                            navScrimTint.copy(alpha = 0.5f),
+                                                            navScrimTint.copy(alpha = 0.9f),
+                                                            navScrimTint
                                                         )
                                                     )
                                                 )
@@ -1044,6 +1061,13 @@ class MainActivity : ComponentActivity() {
                                 }
                                 Box(Modifier.weight(1f)) {
                                     // NavHost with animations (Material 3 Expressive style)
+                                    // SharedTransitionLayout wraps the whole NavHost so the
+                                    // album/playlist cover "expand into place" open transition
+                                    // (see ui/component/SharedElementTransition.kt) can morph a
+                                    // tapped grid cover into the destination screen's header
+                                    // across the navigation change.
+                                    SharedTransitionLayout {
+                                    CompositionLocalProvider(LocalSharedTransitionScope provides this) {
                                     NavHost(
                                         navController = navController,
                                         startDestination = when (tabOpenedFromShortcut ?: defaultOpenTab) {
@@ -1108,7 +1132,7 @@ class MainActivity : ComponentActivity() {
                                                 slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         },
                                         modifier = Modifier
-                                            .haze(state = hazeState)
+                                            .glassRoot(glassState, isActive = { true })
                                             .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
                                     ) {
                                         navigationBuilder(
@@ -1118,6 +1142,8 @@ class MainActivity : ComponentActivity() {
                                             snackbarHostState = snackbarHostState
                                         )
                                     }
+                                    } // End CompositionLocalProvider(LocalSharedTransitionScope)
+                                    } // End SharedTransitionLayout
                                 }
                             }
                         } // End Scaffold
@@ -1269,7 +1295,7 @@ class MainActivity : ComponentActivity() {
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
 val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
-val LocalHazeState = staticCompositionLocalOf<HazeState?> { null }
+val LocalGlassState = staticCompositionLocalOf<GlassState?> { null }
 val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }
@@ -1277,3 +1303,10 @@ val LocalCropAlbumArt = compositionLocalOf { false }
 val LocalGridItemSize = compositionLocalOf { GridItemSize.BIG }
 val LocalSwipeToSong = compositionLocalOf { false }
 val LocalIsPlayerExpanded = compositionLocalOf { false }
+// Detail screens (Album/Playlist/Liked) publish their cover-sampled accent color here so the
+// floating bottom nav bar's scrim (drawn from MainActivity, well outside those screens) can
+// tint itself to match instead of always being a flat black gradient. null = no detail screen
+// is currently on top, so the scrim falls back to its original plain-black look.
+val LocalDetailAccentColor = staticCompositionLocalOf<androidx.compose.runtime.MutableState<Color?>> {
+    androidx.compose.runtime.mutableStateOf(null)
+}

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -90,6 +91,10 @@ import com.example.musicfy.ui.player.CanvasArtworkPlaybackCache
 import com.example.musicfy.ui.player.CanvasArtworkPlayer
 import com.example.musicfy.ui.player.normalizeCanvasSongTitle
 import com.example.musicfy.ui.player.normalizeCanvasArtistName
+import com.example.musicfy.constants.CanvasThumbnailAnimationKey
+import com.example.musicfy.constants.CanvasWifiOnlyKey
+import com.example.musicfy.utils.rememberPreference
+import androidx.core.content.getSystemService
 import java.util.Locale
 
 sealed interface HeroCarouselItem {
@@ -263,13 +268,20 @@ fun HeroCarousel(
                     if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
                 }
 
-                LaunchedEffect(targetItem.mediaId) {
+                val canvasEnabled by rememberPreference(CanvasThumbnailAnimationKey, defaultValue = true)
+                val canvasWifiOnly by rememberPreference(CanvasWifiOnlyKey, defaultValue = true)
+                LaunchedEffect(targetItem.mediaId, canvasEnabled, canvasWifiOnly) {
                     val id = targetItem.mediaId ?: return@LaunchedEffect
+                    if (!canvasEnabled) return@LaunchedEffect
+
+                    val connectivityManager = context.getSystemService<android.net.ConnectivityManager>()
+                    if (canvasWifiOnly && connectivityManager?.isActiveNetworkMetered == true) return@LaunchedEffect
+
                     CanvasArtworkPlaybackCache.get(id)?.let {
                         canvasArtwork = it
                         return@LaunchedEffect
                     }
-                    
+
                     val s = normalizeCanvasSongTitle(targetItem.songTitle ?: "")
                     val a = normalizeCanvasArtistName(targetItem.artistName ?: "")
                     if (s.isBlank() || a.isBlank()) return@LaunchedEffect
@@ -320,7 +332,7 @@ fun HeroCarousel(
                         modifier = Modifier.fillMaxSize().then(parallaxModifier)
                     )
 
-                    if (canvasArtwork?.preferredAnimationUrl != null) {
+                    if (canvasEnabled && canvasArtwork?.preferredAnimationUrl != null) {
                         val isVisible = heroScrollProgressProvider() < 0.5f
                         CanvasArtworkPlayer(
                             primaryUrl = canvasArtwork?.preferredAnimationUrl,
@@ -340,9 +352,10 @@ fun HeroCarousel(
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.4f), // top dark tint
+                            Color.Black.copy(alpha = 0.7f), // top dark tint
+                            Color.Black.copy(alpha = 0.2f),
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.7f),
+                            Color.Black.copy(alpha = 0.8f),
                             Color.Black // completely black at the bottom to blend with background
                         )
                     )
@@ -387,16 +400,18 @@ fun HeroCarousel(
                         }
                     },
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f)) // frosted glass look
+                        .background(Color.White.copy(alpha = 0.25f))
                 ) {
                     androidx.compose.animation.AnimatedContent(targetState = isMainPlaying, label = "PlayPause") { playing ->
                         Icon(
                             painter = painterResource(if (playing) R.drawable.ic_untitled_pause else R.drawable.ic_untitled_play),
                             contentDescription = if (playing) "Pause" else "Play",
                             tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .size(24.dp)
+                                .offset(x = if (playing) 0.dp else 2.dp) // Visually center the play triangle
                         )
                     }
                 }
@@ -437,19 +452,33 @@ fun HeroCarousel(
                                 Text(
                                     text = textLabel,
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = Color.White.copy(alpha = 0.8f),
+                                    color = Color.White.copy(alpha = 0.6f),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = if (item.subText.isNotEmpty()) "${item.mainText} • ${item.subText}" else item.mainText,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = item.mainText,
+                                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if (item.subText.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = item.subText,
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

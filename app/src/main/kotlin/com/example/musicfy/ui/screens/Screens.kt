@@ -31,15 +31,15 @@ sealed class Screens(
 
     object Library : Screens(
         titleId = R.string.your_library,
-        iconIdInactive = R.raw.library_music_outlined,
-        iconIdActive = R.raw.library_music_filled,
+        iconIdInactive = R.raw.lib,
+        iconIdActive = R.raw.lib_fill,
         route = "library"
     )
 
     object Settings : Screens(
         titleId = R.string.settings,
-        iconIdInactive = R.drawable.settings,
-        iconIdActive = R.drawable.settings,
+        iconIdInactive = R.drawable.settings_outline,
+        iconIdActive = R.drawable.settings_filled,
         route = "settings"
     )
 

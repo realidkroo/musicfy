@@ -95,7 +95,6 @@ fun SetupWizardScreen(
                         }
                     )
                 }
-                .padding(top = 48.dp) // Leave space at the top so the scaled background is visible
                 .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
                 .background(Color(0xFF121212)) // Dark gray/black surface
         ) {

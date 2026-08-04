@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.R
 import com.example.musicfy.constants.*
-import com.example.musicfy.ui.component.Material3SettingsGroup
-import com.example.musicfy.ui.component.Material3SettingsItem
+import com.example.musicfy.ui.component.SettingsGroup
+import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 
@@ -29,6 +29,7 @@ import com.example.musicfy.utils.rememberPreference
 @Composable
 fun AdvancedAudioSettingsScreen(navController: NavController) {
     val (enableCustomApi, onEnableCustomApiChange) = rememberPreference(EnableCustomApiKey, defaultValue = false)
+    val (enableMonochromeBackend, onEnableMonochromeBackendChange) = rememberPreference(EnableMonochromeBackendKey, defaultValue = false)
     val (enableSpatialAudio, onEnableSpatialAudioChange) = rememberPreference(EnableSpatialAudioKey, defaultValue = false)
     
     val (audioQuality, onAudioQualityChange) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
@@ -53,6 +54,20 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
         QobuzInstancesKey,
         defaultValue = "https://qobuz.kennyy.com.br"
     )
+    val (monochromeInstances, onMonochromeInstancesChange) = rememberPreference(
+        MonochromeInstancesKey,
+        defaultValue = "https://api.monochrome.tf,https://monochrome-api.samidy.com"
+    )
+
+    val (enableAmazonMusicBackend, onEnableAmazonMusicBackendChange) = rememberPreference(
+        EnableAmazonMusicBackendKey,
+        defaultValue = false
+    )
+    
+    val (amazonMusicInstances, onAmazonMusicInstancesChange) = rememberPreference(
+        AmazonMusicInstancesKey,
+        defaultValue = "https://amz.geeked.wtf"
+    )
 
     Scaffold(
         topBar = {
@@ -72,25 +87,25 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            Material3SettingsGroup(
+            SettingsGroup(
                 title = "Streaming APIs",
                 items = listOf(
-                    Material3SettingsItem(
-                        title = { Text("Turn on Custom API") },
-                        description = { Text("Use external instances to fetch lossless and high-res streams") },
+                    SettingsItem(
+                        title = { Text("Turn on Monochrome Backend (Includes Amazon)") },
+                        description = { Text("Use Monochrome instances for high quality audio. Disables YT Music fallback.") },
                         icon = painterResource(R.drawable.music_note),
-                        onClick = { onEnableCustomApiChange(!enableCustomApi) },
+                        onClick = { onEnableMonochromeBackendChange(!enableMonochromeBackend) },
                         trailingContent = {
                             Switch(
-                                checked = enableCustomApi,
-                                onCheckedChange = onEnableCustomApiChange
+                                checked = enableMonochromeBackend,
+                                onCheckedChange = onEnableMonochromeBackendChange
                             )
                         }
                     )
                 )
             )
 
-            if (enableCustomApi) {
+            if (enableMonochromeBackend) {
                 // Audio Quality (Override)
                 Text(
                     text = "Streaming Quality",
@@ -120,10 +135,10 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     onClick = { onAudioQualityChange(AudioQuality.LOW) }
                 )
 
-                Material3SettingsGroup(
+                SettingsGroup(
                     title = "Spatial Audio",
                     items = listOf(
-                        Material3SettingsItem(
+                        SettingsItem(
                             title = { Text("Enable Dolby Atmos") },
                             description = { Text("Request Spatial Audio from Custom APIs when available") },
                             icon = painterResource(R.drawable.album),
@@ -189,7 +204,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
-                Material3SettingsItem(
+                SettingsItem(
                     title = { Text("Enable Deezer Fallback") },
                     icon = painterResource(R.drawable.play),
                     onClick = { onDeezerFallbackEnabledChange(!deezerFallbackEnabled) },
@@ -215,9 +230,12 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 8.dp)
                 )
                 
-                InstanceListManager("API Instances", apiInstances, onApiInstancesChange)
-                InstanceListManager("Streaming Instances", streamingInstances, onStreamingInstancesChange)
-                InstanceListManager("Qobuz Instances", qobuzInstances, onQobuzInstancesChange)
+                if (enableMonochromeBackend) {
+                    InstanceListManager("Monochrome API Instances", monochromeInstances, onMonochromeInstancesChange)
+                    InstanceListManager("Streaming Instances", streamingInstances, onStreamingInstancesChange)
+                }
+
+                // Amazon music instances use the monochrome list
                 
                 Spacer(modifier = Modifier.height(40.dp))
             }
