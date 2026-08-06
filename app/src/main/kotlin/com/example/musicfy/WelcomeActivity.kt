@@ -122,12 +122,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.example.musicfy.constants.IsFirstRunKey
 import com.example.musicfy.ui.theme.MusicfyTheme
 import com.example.musicfy.ui.utils.safeOpenUri
-import com.example.musicfy.ui.utils.setZoomFadeExitAnimation
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.get
 import kotlinx.coroutines.flow.first
@@ -140,26 +138,21 @@ data class OnboardingPageInfo(
 
 class WelcomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
         val isFirstRun = dataStore.get(IsFirstRunKey, true)
         val forceShow = intent.getBooleanExtra("FORCE_SHOW", false)
 
+        // MainActivity is the app's actual launcher/splash owner now (see MainActivity.kt)
+        // and only ever starts this Activity when onboarding is actually needed — this is
+        // just a safety net in case it's ever reached without that being true. No splash API
+        // here: this activity's manifest theme is the plain app theme, not Theme.App.Starting,
+        // so there's nothing for the system to paint before content is ready anyway.
         if (!isFirstRun && !forceShow) {
-            // Just a pass-through to MainActivity: this activity's manifest theme
-            // (Theme.App.Starting) paints the splash background the instant its window is
-            // created — independent of whether installSplashScreen() is ever called — so
-            // skipping the call here isn't enough on its own. Swapping to the plain app
-            // theme *before* super.onCreate() stops that window from painting a splash frame
-            // at all, so only MainActivity's own splash+zoom-fade animation is ever seen,
-            // instead of this one flashing the same black icon a second time right before it.
-            setTheme(com.example.musicfy.R.style.Theme_musicfy)
-            super.onCreate(savedInstanceState)
             finishOnboarding()
             return
         }
 
-        val splashScreen = installSplashScreen()
-        super.onCreate(savedInstanceState)
-        splashScreen.setZoomFadeExitAnimation()
         enableEdgeToEdge()
         setContent {
             MusicfyTheme {
