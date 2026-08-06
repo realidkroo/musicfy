@@ -140,19 +140,25 @@ data class OnboardingPageInfo(
 
 class WelcomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        val splashScreen = installSplashScreen()
-        super.onCreate(savedInstanceState)
-
         val isFirstRun = dataStore.get(IsFirstRunKey, true)
         val forceShow = intent.getBooleanExtra("FORCE_SHOW", false)
 
         if (!isFirstRun && !forceShow) {
-            // Just a pass-through to MainActivity: let its own splash own the
-            // zoom/fade reveal instead of stacking two animations back to back.
+            // Just a pass-through to MainActivity: this activity's manifest theme
+            // (Theme.App.Starting) paints the splash background the instant its window is
+            // created — independent of whether installSplashScreen() is ever called — so
+            // skipping the call here isn't enough on its own. Swapping to the plain app
+            // theme *before* super.onCreate() stops that window from painting a splash frame
+            // at all, so only MainActivity's own splash+zoom-fade animation is ever seen,
+            // instead of this one flashing the same black icon a second time right before it.
+            setTheme(com.example.musicfy.R.style.Theme_musicfy)
+            super.onCreate(savedInstanceState)
             finishOnboarding()
             return
         }
 
+        val splashScreen = installSplashScreen()
+        super.onCreate(savedInstanceState)
         splashScreen.setZoomFadeExitAnimation()
         enableEdgeToEdge()
         setContent {
