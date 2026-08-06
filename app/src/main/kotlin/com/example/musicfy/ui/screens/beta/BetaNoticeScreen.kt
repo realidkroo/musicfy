@@ -1,5 +1,6 @@
 package com.example.musicfy.ui.screens.beta
 
+import android.os.Build
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -95,13 +96,13 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
             ) {
                 Column {
                     Text(
-                        text = "Musicfy Beta",
+                        text = "Musicfy DEV PREV",
                         fontSize = 14.sp,
                         color = Color(0xFFAAAAAA)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "1.0b",
+                        text = "6.0.1DEV",
                         fontSize = 32.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
@@ -113,12 +114,27 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "as you can see you are on beta version. please expect some bugs, stuttering. and any feedback is appreciated!",
+                text = "as you can see you are on DEV PREVIEW version. please expect some bugs, stuttering. and any feedback is appreciated!",
                 fontSize = 15.sp,
                 color = Color(0xFFE0E0E0),
                 lineHeight = 22.sp,
                 fontWeight = FontWeight.Medium
             )
+
+            // Musicfy targets Android 12 (API 31) and up — below that, be upfront that bugs
+            // are expected and likely won't get a real look, rather than silently misbehaving.
+            if (Build.VERSION.SDK_INT < 31) {
+                Spacer(modifier = Modifier.height(16.dp))
+                val androidVersionName = androidVersionNameFor(Build.VERSION.SDK_INT)
+                val androidYearsOld = androidYearsOldFor(Build.VERSION.SDK_INT)
+                Text(
+                    text = "and you are on Android version $androidVersionName which is not supported by this app developer, if you may find bug please either - report it or just... well just take it. your report may not be seen by the dev ( sorry! ) as this app were made for android 12 and up! please except some massive bugs, lags ( maybe ) or lack of working things! and your android is $androidYearsOld years old which still functional but its considered old. please update it.",
+                    fontSize = 15.sp,
+                    color = Color(0xFFE0E0E0),
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -201,4 +217,30 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+}
+
+// Android version name + the calendar year each one shipped, for the "you're on an old
+// version" notice above. Only covers minSdk (26) through the app's target floor (31) — this
+// notice never renders above that, so nothing newer needs an entry.
+private fun androidVersionNameFor(sdkInt: Int): String = when (sdkInt) {
+    26 -> "8.0 (Oreo)"
+    27 -> "8.1 (Oreo)"
+    28 -> "9"
+    29 -> "10"
+    30 -> "11"
+    else -> sdkInt.toString()
+}
+
+private val androidReleaseYearBySdkInt = mapOf(
+    26 to 2017,
+    27 to 2017,
+    28 to 2018,
+    29 to 2019,
+    30 to 2020,
+)
+
+private fun androidYearsOldFor(sdkInt: Int): Int {
+    val releaseYear = androidReleaseYearBySdkInt[sdkInt] ?: return 0
+    val currentYear = java.time.Year.now().value
+    return (currentYear - releaseYear).coerceAtLeast(0)
 }

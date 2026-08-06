@@ -722,6 +722,7 @@ val EnableSpatialAudioKey = booleanPreferencesKey("enableSpatialAudio")
 
 val EnableMonochromePlaybackBackendKey = booleanPreferencesKey("enableMonochromePlaybackBackend")
 val MonochromePlaybackApiUrlKey = stringPreferencesKey("monochromePlaybackApiUrl")
+val EnableStreamDebugToastsKey = booleanPreferencesKey("enableStreamDebugToasts")
 
 val AmazonMusicApiUrlKey = stringPreferencesKey("amazonMusicApiUrl")
 val TidalToAsinUrlKey = stringPreferencesKey("tidalToAsinUrl")
@@ -747,3 +748,8 @@ val HideAudioQualityBadgeKey = booleanPreferencesKey("hideAudioQualityBadge")
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
 val AudioQualityBadgeDevKey = booleanPreferencesKey("audioQualityBadgeDev")
 val YtVideoBackgroundLyricsSyncKey = booleanPreferencesKey("ytVideoBackgroundLyricsSync")
+
+// Setup wizard "would you like to" additions
+val OfflineModeKey = booleanPreferencesKey("offlineMode")
+val DisableAiFilterKey = booleanPreferencesKey("disableAiFilter")
+val SetupImportCompletedKey = booleanPreferencesKey("setupImportCompleted")

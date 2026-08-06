@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.R
 import com.example.musicfy.constants.*
+import com.example.musicfy.ui.component.LocalZoomOutOverlayState
 import com.example.musicfy.ui.component.SettingsGroup
 import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.utils.rememberEnumPreference
@@ -63,11 +64,26 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
         EnableAmazonMusicBackendKey,
         defaultValue = false
     )
-    
+
     val (amazonMusicInstances, onAmazonMusicInstancesChange) = rememberPreference(
         AmazonMusicInstancesKey,
         defaultValue = "https://amz.geeked.wtf"
     )
+
+    val (streamDebugToasts, onStreamDebugToastsChange) = rememberPreference(
+        EnableStreamDebugToastsKey,
+        defaultValue = true
+    )
+
+    val zoomOutOverlayState = LocalZoomOutOverlayState.current
+    val showMonochromeOnboarding = {
+        zoomOutOverlayState.show {
+            MonochromeOnboardingContent(
+                onEnabled = { onEnableMonochromeBackendChange(true) },
+                onDismiss = { zoomOutOverlayState.dismiss() },
+            )
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -94,11 +110,19 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                         title = { Text("Turn on Monochrome Backend (Includes Amazon)") },
                         description = { Text("Use Monochrome instances for high quality audio. Disables YT Music fallback.") },
                         icon = painterResource(R.drawable.music_note),
-                        onClick = { onEnableMonochromeBackendChange(!enableMonochromeBackend) },
+                        onClick = {
+                            if (enableMonochromeBackend) {
+                                onEnableMonochromeBackendChange(false)
+                            } else {
+                                showMonochromeOnboarding()
+                            }
+                        },
                         trailingContent = {
                             Switch(
                                 checked = enableMonochromeBackend,
-                                onCheckedChange = onEnableMonochromeBackendChange
+                                onCheckedChange = { checked ->
+                                    if (checked) showMonochromeOnboarding() else onEnableMonochromeBackendChange(false)
+                                }
                             )
                         }
                     )
@@ -106,6 +130,24 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
             )
 
             if (enableMonochromeBackend) {
+                SettingsGroup(
+                    title = "Debug",
+                    items = listOf(
+                        SettingsItem(
+                            title = { Text("Show stream status toasts") },
+                            description = { Text("Popup status messages while resolving a stream (Turnstile solving, source found, errors, etc).") },
+                            icon = painterResource(R.drawable.info),
+                            onClick = { onStreamDebugToastsChange(!streamDebugToasts) },
+                            trailingContent = {
+                                Switch(
+                                    checked = streamDebugToasts,
+                                    onCheckedChange = onStreamDebugToastsChange
+                                )
+                            }
+                        )
+                    )
+                )
+
                 // Audio Quality (Override)
                 Text(
                     text = "Streaming Quality",

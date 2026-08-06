@@ -2,6 +2,8 @@ package com.example.musicfy.ui.screens.setup
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -31,8 +34,26 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.musicfy.importer.ParsedImport
+import com.example.musicfy.importer.parseTuneMyMusicCsv
+import com.example.musicfy.viewmodels.SetupImportViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+
+private const val PAGE_WELCOME = 0
+private const val PAGE_PROFILE = 1
+private const val PAGE_GREETING = 2
+private const val PAGE_SETUP_FURTHER = 3
+private const val PAGE_IMPORT_PROVIDER = 4
+private const val PAGE_TMM_INSTRUCTIONS = 5
+private const val PAGE_SELECT_CSV = 6
+private const val PAGE_REVIEW_IMPORT = 7
+private const val PAGE_TOGGLES = 8
+private const val PAGE_THANK_YOU = 9
+private const val PAGE_COUNT = 10
 
 @Composable
 fun SetupWizardScreen(
@@ -40,24 +61,59 @@ fun SetupWizardScreen(
     onDrag: (Float) -> Unit,
     onDragRelease: () -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { 4 })
+    val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val coroutineScope = rememberCoroutineScope()
-    
+    val context = LocalContext.current
+    val importViewModel: SetupImportViewModel = hiltViewModel()
+
     var username by remember { mutableStateOf("") }
     var profilePicUri by remember { mutableStateOf<Uri?>(null) }
     var selectedUncroppedUri by remember { mutableStateOf<Uri?>(null) }
     var isLeavingWelcome by remember { mutableStateOf(false) }
 
-    LaunchedEffect(pagerState.settledPage) {
-        if (pagerState.settledPage == 0) {
-            isLeavingWelcome = false
-        }
-        if (pagerState.settledPage == 2) {
-            kotlinx.coroutines.delay(3000)
-            pagerState.animateScrollToPage(3)
+    var parsedImport by remember { mutableStateOf<ParsedImport?>(null) }
+    var csvLoading by remember { mutableStateOf(false) }
+    var csvError by remember { mutableStateOf<String?>(null) }
+
+    fun goTo(page: Int) {
+        coroutineScope.launch { pagerState.animateScrollToPage(page) }
+    }
+
+    val csvPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        csvLoading = true
+        csvError = null
+        coroutineScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                        ?: throw IllegalStateException("Couldn't open that file")
+                }.mapCatching { text -> parseTuneMyMusicCsv(text) }
+            }
+            csvLoading = false
+            result.onSuccess { parsed ->
+                if (parsed.totalSongs == 0) {
+                    csvError = "Couldn't find any songs in that file — make sure it's the CSV exported from tunemymusic.com."
+                } else {
+                    parsedImport = parsed
+                    goTo(PAGE_REVIEW_IMPORT)
+                }
+            }.onFailure {
+                csvError = "Couldn't read that file. Make sure it's a valid .csv export."
+            }
         }
     }
-    
+
+    LaunchedEffect(pagerState.settledPage) {
+        if (pagerState.settledPage == PAGE_WELCOME) {
+            isLeavingWelcome = false
+        }
+        if (pagerState.settledPage == PAGE_GREETING) {
+            kotlinx.coroutines.delay(3000)
+            pagerState.animateScrollToPage(PAGE_SETUP_FURTHER)
+        }
+    }
+
     BackHandler {
         if (selectedUncroppedUri != null) {
             selectedUncroppedUri = null
@@ -67,7 +123,7 @@ fun SetupWizardScreen(
             }
         }
     }
-    
+
     PhotoCropperContainer(
         uri = selectedUncroppedUri,
         onDone = { croppedUri ->
@@ -107,8 +163,8 @@ fun SetupWizardScreen(
                 // Pass content padding to non-welcome pages so they don't overlap with the top drag handle
                 val pageModifier = Modifier.fillMaxSize().padding(top = 56.dp)
                 when (page) {
-                    0 -> WelcomeStep(isHiding = isLeavingWelcome)
-                    1 -> Box(pageModifier) {
+                    PAGE_WELCOME -> WelcomeStep(isHiding = isLeavingWelcome)
+                    PAGE_PROFILE -> Box(pageModifier) {
                         ProfileSetupStep(
                             username = username,
                             onUsernameChange = { username = it },
@@ -116,49 +172,71 @@ fun SetupWizardScreen(
                             onProfilePicChange = { selectedUncroppedUri = it }
                         )
                     }
-                    2 -> Box(pageModifier) {
+                    PAGE_GREETING -> Box(pageModifier) {
                         GreetingStep(username = username, profilePicUri = profilePicUri)
                     }
-                    3 -> Box(pageModifier) {
+                    PAGE_SETUP_FURTHER -> Box(pageModifier) {
+                        SetupFurtherStep(profilePicUri = profilePicUri)
+                    }
+                    PAGE_IMPORT_PROVIDER -> Box(pageModifier) {
+                        ImportProviderStep()
+                    }
+                    PAGE_TMM_INSTRUCTIONS -> Box(pageModifier) {
+                        TuneMyMusicInstructionsStep()
+                    }
+                    PAGE_SELECT_CSV -> Box(pageModifier) {
+                        SelectCsvStep(
+                            isLoading = csvLoading,
+                            errorMessage = csvError,
+                            onPickFile = { csvPickerLauncher.launch("text/*") }
+                        )
+                    }
+                    PAGE_REVIEW_IMPORT -> Box(pageModifier) {
+                        parsedImport?.let { ReviewImportStep(parsed = it) }
+                    }
+                    PAGE_TOGGLES -> Box(pageModifier) {
+                        WouldYouLikeToggles()
+                    }
+                    PAGE_THANK_YOU -> Box(pageModifier) {
                         ThankYouStep()
                     }
                 }
             }
-            
+
             // Morphing Profile Picture Overlay
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val screenHeight = maxHeight
                 val screenWidth = maxWidth
-                
+
                 // Calculate the exact floating scroll position
                 val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
-                
+
                 // Show overlay between page 0 (transitioning out) and page 3 (transitioning in)
                 if (pageOffset > 0f && pageOffset < 3f) {
                     val progress = (pageOffset - 1f).coerceIn(0f, 1f)
-                    
+
                     val page1Y = 242.dp
                     val page1X = 32.dp // Fixed: left aligned to match hitbox
                     val page1Size = 140.dp
-                    
+
                     val page2Y = screenHeight - 333.dp
                     val page2X = 32.dp
                     val page2Size = 110.dp
-                    
+
                     val currentY = androidx.compose.ui.unit.lerp(page1Y, page2Y, progress)
                     val currentSize = androidx.compose.ui.unit.lerp(page1Size, page2Size, progress)
-                    
+
                     var currentX = androidx.compose.ui.unit.lerp(page1X, page2X, progress)
-                    
+
                     // Make it slide in with Page 1 when coming from Welcome screen
                     if (pageOffset < 1f) {
                         currentX += (screenWidth * (1f - pageOffset))
-                    } 
-                    // Make it slide out with Page 2 when going to Thank You screen
+                    }
+                    // Make it slide out with Page 2 when going to Setup Further screen
                     else if (pageOffset > 2f) {
                         currentX -= (screenWidth * (pageOffset - 2f))
                     }
-                    
+
                     Box(
                         modifier = Modifier
                             .offset(x = currentX, y = currentY)
@@ -185,7 +263,7 @@ fun SetupWizardScreen(
                     }
                 }
             }
-    
+
             // Drag Handle overlaid on top
             Box(
                 modifier = Modifier
@@ -201,7 +279,7 @@ fun SetupWizardScreen(
                         .background(Color.White.copy(alpha = 0.5f))
                 )
             }
-        
+
         // Bottom Action Bar overlaid on top
         Box(
             modifier = Modifier
@@ -211,55 +289,85 @@ fun SetupWizardScreen(
                 .navigationBarsPadding(),
             contentAlignment = Alignment.Center
         ) {
-            if (pagerState.currentPage == 3) {
-                Button(
-                    onClick = { onComplete(username, profilePicUri) },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                    shape = CircleShape
-                ) {
-                    Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
+            when (pagerState.currentPage) {
+                PAGE_THANK_YOU -> WizardButton(text = "Done", onClick = { onComplete(username, profilePicUri) })
+
+                PAGE_GREETING -> {
+                    // Auto-advances via the LaunchedEffect above — no button needed.
                 }
-            } else if (pagerState.currentPage == 1) {
-                Button(
-                    onClick = {
-                        if (username.isNotBlank()) {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(2)
-                            }
-                        }
-                    },
+
+                PAGE_PROFILE -> WizardButton(
+                    text = "Next",
                     enabled = username.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF333333),
-                        disabledContainerColor = Color(0xFF222222)
-                    ),
-                    shape = CircleShape
-                ) {
-                    Text(
-                        "Next", 
-                        color = if (username.isNotBlank()) Color.White else Color.Gray, 
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            } else if (pagerState.currentPage == 0) {
-                Button(
+                    onClick = { if (username.isNotBlank()) goTo(PAGE_GREETING) }
+                )
+
+                PAGE_WELCOME -> WizardButton(
+                    text = "Next",
                     onClick = {
                         isLeavingWelcome = true
                         coroutineScope.launch {
                             kotlinx.coroutines.delay(400)
-                            pagerState.animateScrollToPage(1)
+                            pagerState.animateScrollToPage(PAGE_PROFILE)
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
-                    shape = CircleShape
-                ) {
-                    Text("Next", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                )
+
+                PAGE_SETUP_FURTHER -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    WizardButton(text = "Continue", onClick = { goTo(PAGE_IMPORT_PROVIDER) })
+                    WizardButton(text = "Skip", secondary = true, onClick = { goTo(PAGE_THANK_YOU) })
                 }
+
+                PAGE_IMPORT_PROVIDER -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    WizardButton(text = "Continue", onClick = { goTo(PAGE_TMM_INSTRUCTIONS) })
+                    WizardButton(text = "Skip", secondary = true, onClick = { goTo(PAGE_TOGGLES) })
+                }
+
+                PAGE_TMM_INSTRUCTIONS -> WizardButton(text = "Next", onClick = { goTo(PAGE_SELECT_CSV) })
+
+                PAGE_SELECT_CSV -> WizardButton(text = "Skip Wizard", secondary = true, onClick = { goTo(PAGE_THANK_YOU) })
+
+                PAGE_REVIEW_IMPORT -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val songCount = parsedImport?.totalSongs ?: 0
+                    WizardButton(
+                        text = "Import $songCount song${if (songCount == 1) "" else "s"}",
+                        onClick = {
+                            parsedImport?.let { importViewModel.startImport(it) }
+                            goTo(PAGE_TOGGLES)
+                        }
+                    )
+                    WizardButton(text = "Skip Wizard", secondary = true, onClick = { goTo(PAGE_THANK_YOU) })
+                }
+
+                PAGE_TOGGLES -> WizardButton(text = "Continue", onClick = { goTo(PAGE_THANK_YOU) })
             }
         }
         }
+    }
+}
+
+@Composable
+private fun WizardButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    secondary: Boolean = false,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth().height(56.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (secondary) Color(0xFF2A2A2A) else Color(0xFF333333),
+            disabledContainerColor = Color(0xFF222222)
+        ),
+        shape = CircleShape
+    ) {
+        Text(
+            text,
+            color = if (enabled) Color.White else Color.Gray,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

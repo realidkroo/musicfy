@@ -345,6 +345,7 @@ class MusicService :
     private lateinit var amazonStreamFetcher: com.example.musicfy.playback.custom.AmazonStreamFetcher
     private lateinit var monochromeStreamFetcher: com.example.musicfy.playback.custom.MonochromeStreamFetcher
     private lateinit var monochromePlaybackStreamFetcher: com.example.musicfy.playback.custom.MonochromePlaybackStreamFetcher
+    @Volatile private var streamDebugToastsEnabled = true
     private val resolvedStreamSources = java.util.concurrent.ConcurrentHashMap<String, String>()
     private var lastAnnouncedSourceMediaId: String? = null
     lateinit var player: ExoPlayer
@@ -509,8 +510,10 @@ class MusicService :
                 .build(),
             turnstileSolver = turnstileSolver,
             onStatusUpdate = { message ->
-                Handler(Looper.getMainLooper()).post {
-                    Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+                if (streamDebugToastsEnabled) {
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         )
@@ -533,8 +536,10 @@ class MusicService :
                 .build(),
             turnstileSolver = turnstileSolver,
             onStatusUpdate = { message ->
-                Handler(Looper.getMainLooper()).post {
-                    Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+                if (streamDebugToastsEnabled) {
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(this@MusicService, message, Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         )
@@ -549,6 +554,14 @@ class MusicService :
                 .distinctUntilChanged()
                 .collect { enabled ->
                     hapticAudioProcessor.enabled = enabled
+                }
+        }
+
+        scope.launch {
+            dataStore.data.map { it[com.example.musicfy.constants.EnableStreamDebugToastsKey] ?: true }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    streamDebugToastsEnabled = enabled
                 }
         }
         

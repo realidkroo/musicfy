@@ -122,3 +122,14 @@ fun <T : YTItem> List<T>.filterYoutubeShorts(enabled: Boolean = false) =
     } else {
         this
     }
+
+private val AI_GENERATED_TITLE_PATTERN = Regex(
+    "(?i)\\b(ai\\s*cover|ai\\s*generated|ai\\s*music|ai\\s*remix|suno\\s*ai|udio|made\\s*with\\s*ai)\\b"
+)
+
+fun <T : YTItem> List<T>.filterAiGenerated(enabled: Boolean = false) =
+    if (enabled) {
+        filterNot { AI_GENERATED_TITLE_PATTERN.containsMatchIn(it.title) }
+    } else {
+        this
+    }

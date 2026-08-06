@@ -757,6 +757,7 @@ class MainActivity : ComponentActivity() {
                 
                 val betaDismissed by rememberPreference(com.example.musicfy.constants.BetaNoticeDismissedKey, false)
                 var showBetaNotice by remember { mutableStateOf(!betaDismissed) }
+                val zoomOutOverlayState = remember { com.example.musicfy.ui.component.ZoomOutOverlayState() }
 
                 CompositionLocalProvider(
                     LocalDatabase provides database,
@@ -773,7 +774,13 @@ class MainActivity : ComponentActivity() {
                     LocalCropAlbumArt provides cropAlbumArt,
                     LocalGridItemSize provides gridItemSize,
                     LocalSwipeToSong provides swipeToSong,
+                    com.example.musicfy.ui.component.LocalZoomOutOverlayState provides zoomOutOverlayState,
                 ) {
+                    com.example.musicfy.ui.component.ZoomOutPopupContainer(
+                        isVisible = zoomOutOverlayState.isVisible,
+                        onDismissRequest = { zoomOutOverlayState.dismiss() },
+                        popupContent = { zoomOutOverlayState.content() },
+                    ) {
                     com.example.musicfy.ui.screens.beta.BetaNoticeContainer(
                         isVisible = showBetaNotice,
                         onDismiss = { dontShowAgain ->
@@ -1149,6 +1156,7 @@ class MainActivity : ComponentActivity() {
                         } // End Scaffold
                     } // End SetupWizardContainer
                     } // End BetaNoticeContainer
+                    } // End ZoomOutPopupContainer
 
                     BottomSheetMenu(
                         state = LocalMenuState.current,

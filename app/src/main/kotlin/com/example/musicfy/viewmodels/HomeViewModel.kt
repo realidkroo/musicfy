@@ -20,13 +20,16 @@ import com.music.innertube.models.YTItem
 import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
 import com.music.innertube.models.filterYoutubeShorts
+import com.music.innertube.models.filterAiGenerated
 import com.music.innertube.pages.ChartsPage
 import com.music.innertube.pages.ExplorePage
 import com.music.innertube.pages.HomePage
 import com.music.innertube.utils.completed
+import com.example.musicfy.constants.DisableAiFilterKey
 import com.example.musicfy.constants.HideExplicitKey
 import com.example.musicfy.constants.HideVideoSongsKey
 import com.example.musicfy.constants.HideYoutubeShortsKey
+import com.example.musicfy.constants.OfflineModeKey
 import com.example.musicfy.constants.InnerTubeCookieKey
 import com.example.musicfy.constants.QuickPicks
 import com.example.musicfy.constants.QuickPicksKey
@@ -740,6 +743,7 @@ class HomeViewModel @Inject constructor(
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
+        val disableAiFilter = context.dataStore.get(DisableAiFilterKey, false)
 
         coroutineScope {
             launch(Dispatchers.IO) { getDailyDiscover() }
@@ -752,7 +756,8 @@ class HomeViewModel @Inject constructor(
                         val filteredItems = section.items
                             .filterExplicit(hideExplicit)
                             .filterVideoSongs(hideVideoSongs)
-                            .filterYoutubeShorts(hideYoutubeShorts).distinctBy { it.id }
+                            .filterYoutubeShorts(hideYoutubeShorts)
+                            .filterAiGenerated(disableAiFilter).distinctBy { it.id }
                         if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
                     }
                     homePage.value = page.copy(sections = filteredSections)
@@ -792,8 +797,12 @@ class HomeViewModel @Inject constructor(
         loadLocalDataPhase()
         isLoading.value = false
 
-        // Phase 2: All network sections in parallel — streams in progressively
-        loadNetworkDataPhase()
+        // Phase 2: All network sections in parallel — streams in progressively. Skipped
+        // entirely in Offline mode, so Home only ever shows what's already local/downloaded.
+        val offlineMode = context.dataStore.get(OfflineModeKey, false)
+        if (!offlineMode) {
+            loadNetworkDataPhase()
+        }
     }
 
     private val _isLoadingMore = MutableStateFlow(false)
