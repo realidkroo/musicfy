@@ -86,6 +86,7 @@ import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.ChipsRow
 import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.LocalShowWipRestricted
 import com.example.musicfy.ui.component.NavigationTitle
 import com.example.musicfy.ui.component.YouTubeListItem
 import com.example.musicfy.ui.component.shimmer.ListItemPlaceHolder
@@ -111,6 +112,7 @@ fun OnlineSearchResult(
 ) {
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
+    val showWipRestricted = LocalShowWipRestricted.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptic = LocalHapticFeedback.current
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
@@ -374,12 +376,16 @@ fun OnlineSearchResult(
                     FILTER_FEATURED_PLAYLIST to stringResource(R.string.filter_featured_playlists),
                 ),
                 currentValue = searchFilter,
-                onValueUpdate = {
-                    if (viewModel.filter.value != it) {
-                        viewModel.filter.value = it
-                    }
-                    coroutineScope.launch {
-                        lazyListState.animateScrollToItem(0)
+                onValueUpdate = { newFilter ->
+                    if (newFilter == null) {
+                        showWipRestricted()
+                    } else {
+                        if (viewModel.filter.value != newFilter) {
+                            viewModel.filter.value = newFilter
+                        }
+                        coroutineScope.launch {
+                            lazyListState.animateScrollToItem(0)
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()

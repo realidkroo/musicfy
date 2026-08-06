@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.LocalShowWipRestricted
 import com.example.musicfy.ui.component.homeSharedElement
 import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.ui.component.GlassPillBackground
@@ -603,6 +604,7 @@ fun HomeScreen(
     val playerBottomSheetState = com.example.musicfy.ui.component.LocalPlayerBottomSheetState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptic = LocalHapticFeedback.current
+    val showWipRestricted = LocalShowWipRestricted.current
 
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -1215,7 +1217,7 @@ fun HomeScreen(
                                     NavigationTitle(
                                         title = stringResource(R.string.speed_dial),
                                         modifier = Modifier.padding(horizontal = 12.dp),
-                                        onClick = { navController.navigate("section_detail/speed_dial") }
+                                        onClick = { showWipRestricted() }
                                     )
                                 }
 
@@ -1241,7 +1243,7 @@ fun HomeScreen(
                                     NavigationTitle(
                                         title = stringResource(R.string.recently_played),
                                         modifier = Modifier.padding(horizontal = 12.dp),
-                                        onClick = { navController.navigate("section_detail/recently_played") }
+                                        onClick = { showWipRestricted() }
                                     )
                                 }
 
@@ -1268,7 +1270,7 @@ fun HomeScreen(
                                     NavigationTitle(
                                         title = mostPlayedTitle,
                                         modifier = Modifier.padding(horizontal = 12.dp),
-                                        onClick = { navController.navigate("section_detail/most_played") },
+                                        onClick = { showWipRestricted() },
                                         onPlayAllClick = {
                                             playerConnection.playQueue(
                                                 ListQueue(
@@ -1382,7 +1384,7 @@ fun HomeScreen(
                                     NavigationTitle(
                                         title = stringResource(R.string.vivi_on_heavy_rotation),
                                         modifier = Modifier.padding(horizontal = 12.dp),
-                                        onClick = { navController.navigate("history") }
+                                        onClick = { showWipRestricted() }
                                     )
                                 }
 
@@ -1507,7 +1509,7 @@ fun HomeScreen(
                                     NavigationTitle(
                                         title = stringResource(R.string.artist_list),
                                         modifier = Modifier.padding(horizontal = 12.dp),
-                                        onClick = { navController.navigate("artist_list_detail") }
+                                        onClick = { showWipRestricted() }
                                     )
                                 }
 

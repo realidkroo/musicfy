@@ -34,6 +34,7 @@ import com.example.musicfy.R
 import com.example.musicfy.ui.component.BottomSheet
 import com.example.musicfy.ui.component.BottomSheetState
 import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.LocalShowWipRestricted
 
 @Composable
 fun BottomSheetPlayer(
@@ -50,6 +51,7 @@ fun BottomSheetPlayer(
     // and content (SeamBlur, which reads that same captured content) can share one instance.
     val morphingGlassState = remember { GlassState() }
     var showLyrics by remember { mutableStateOf(false) }
+    val showWipRestricted = LocalShowWipRestricted.current
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
@@ -110,7 +112,7 @@ fun BottomSheetPlayer(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.12f))
-                        .clickable { showLyrics = true },
+                        .clickable { showWipRestricted() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

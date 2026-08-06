@@ -758,6 +758,15 @@ class MainActivity : ComponentActivity() {
                 val betaDismissed by rememberPreference(com.example.musicfy.constants.BetaNoticeDismissedKey, false)
                 var showBetaNotice by remember { mutableStateOf(!betaDismissed) }
                 val zoomOutOverlayState = remember { com.example.musicfy.ui.component.ZoomOutOverlayState() }
+                val showWipRestricted: () -> Unit = remember(zoomOutOverlayState) {
+                    {
+                        zoomOutOverlayState.show {
+                            com.example.musicfy.ui.component.WipRestrictedContent(
+                                onDismiss = { zoomOutOverlayState.dismiss() }
+                            )
+                        }
+                    }
+                }
 
                 CompositionLocalProvider(
                     LocalDatabase provides database,
@@ -775,6 +784,7 @@ class MainActivity : ComponentActivity() {
                     LocalGridItemSize provides gridItemSize,
                     LocalSwipeToSong provides swipeToSong,
                     com.example.musicfy.ui.component.LocalZoomOutOverlayState provides zoomOutOverlayState,
+                    com.example.musicfy.ui.component.LocalShowWipRestricted provides showWipRestricted,
                 ) {
                     com.example.musicfy.ui.component.ZoomOutPopupContainer(
                         isVisible = zoomOutOverlayState.isVisible,
@@ -899,22 +909,26 @@ class MainActivity : ComponentActivity() {
                             bottomBar = {
                                 val onNavItemClick: (Screens, Boolean) -> Unit = remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
                                     { screen: Screens, isSelected: Boolean ->
-                                        if (playerBottomSheetState.isExpanded) {
-                                            playerBottomSheetState.collapseSoft()
-                                        }
-
-                                        if (isSelected) {
-                                            navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
-                                            coroutineScope.launch {
-                                                topAppBarScrollBehavior.state.resetHeightOffset()
-                                            }
+                                        if (screen == Screens.Library) {
+                                            showWipRestricted()
                                         } else {
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.startDestinationId) {
-                                                    saveState = true
+                                            if (playerBottomSheetState.isExpanded) {
+                                                playerBottomSheetState.collapseSoft()
+                                            }
+
+                                            if (isSelected) {
+                                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                                coroutineScope.launch {
+                                                    topAppBarScrollBehavior.state.resetHeightOffset()
                                                 }
-                                                launchSingleTop = true
-                                                restoreState = true
+                                            } else {
+                                                navController.navigate(screen.route) {
+                                                    popUpTo(navController.graph.startDestinationId) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
                                             }
                                         }
                                     }
@@ -1028,22 +1042,26 @@ class MainActivity : ComponentActivity() {
                             Row(Modifier.fillMaxSize()) {
                                 val onRailItemClick: (Screens, Boolean) -> Unit = remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
                                     { screen: Screens, isSelected: Boolean ->
-                                        if (playerBottomSheetState.isExpanded) {
-                                            playerBottomSheetState.collapseSoft()
-                                        }
-
-                                        if (isSelected) {
-                                            navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
-                                            coroutineScope.launch {
-                                                topAppBarScrollBehavior.state.resetHeightOffset()
-                                            }
+                                        if (screen == Screens.Library) {
+                                            showWipRestricted()
                                         } else {
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.startDestinationId) {
-                                                    saveState = true
+                                            if (playerBottomSheetState.isExpanded) {
+                                                playerBottomSheetState.collapseSoft()
+                                            }
+
+                                            if (isSelected) {
+                                                navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                                coroutineScope.launch {
+                                                    topAppBarScrollBehavior.state.resetHeightOffset()
                                                 }
-                                                launchSingleTop = true
-                                                restoreState = true
+                                            } else {
+                                                navController.navigate(screen.route) {
+                                                    popUpTo(navController.graph.startDestinationId) {
+                                                        saveState = true
+                                                    }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
                                             }
                                         }
                                     }

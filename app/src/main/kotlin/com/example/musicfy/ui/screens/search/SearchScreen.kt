@@ -86,6 +86,7 @@ import com.example.musicfy.constants.SearchSourceKey
 import com.example.musicfy.db.entities.SearchHistory
 import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.NavigationTitle
+import com.example.musicfy.ui.component.LocalShowWipRestricted
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.MoodAndGenresViewModel
@@ -130,6 +131,7 @@ fun SearchScreen(
     val isPlayerExpanded = LocalIsPlayerExpanded.current
     val playerConnection = LocalPlayerConnection.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val showWipRestricted = LocalShowWipRestricted.current
 
     var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
@@ -384,7 +386,7 @@ fun SearchScreen(
                             )
                             Tab(
                                 selected = selectedTabIndex == 1,
-                                onClick = { selectedTabIndex = 1 },
+                                onClick = { showWipRestricted() },
                                 selectedContentColor = MaterialTheme.colorScheme.primary,
                                 unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 text = { Text(stringResource(R.string.tab_album)) }
@@ -461,12 +463,14 @@ fun ExploreTabContent(
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     val moodAndGenresList by viewModel.moodAndGenres.collectAsState()
+    val showWipRestricted = LocalShowWipRestricted.current
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = contentPadding
     ) {
         moodAndGenresList?.forEach { section ->
+            val isMoodsSection = section.title.contains("mood", ignoreCase = true)
             item {
                 NavigationTitle(title = section.title)
             }
@@ -488,9 +492,13 @@ fun ExploreTabContent(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(MaterialTheme.colorScheme.surfaceContainer)
                                 .clickable {
-                                    navController.navigate(
-                                        "youtube_browse/${item.endpoint.browseId}?params=${item.endpoint.params}"
-                                    )
+                                    if (isMoodsSection) {
+                                        showWipRestricted()
+                                    } else {
+                                        navController.navigate(
+                                            "youtube_browse/${item.endpoint.browseId}?params=${item.endpoint.params}"
+                                        )
+                                    }
                                 }
                                 .padding(horizontal = 14.dp)
                         ) {
