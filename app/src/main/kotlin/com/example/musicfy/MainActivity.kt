@@ -132,6 +132,7 @@ import com.music.innertube.models.WatchEndpoint
 import com.example.musicfy.R
 import com.example.musicfy.constants.AppBarHeight
 import com.example.musicfy.constants.AppLanguageKey
+import com.example.musicfy.constants.IsFirstRunKey
 import com.example.musicfy.constants.DarkModeKey
 import com.example.musicfy.constants.DefaultOpenTabKey
 import com.example.musicfy.constants.CropAlbumArtKey
@@ -319,6 +320,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().setZoomFadeExitAnimation()
         super.onCreate(savedInstanceState)
+
+        // MainActivity is the app's launcher/splash owner — WelcomeActivity is a plain
+        // (non-splash-themed) activity started on top of it for first-run onboarding, so its
+        // window never repaints a second splash frame the way it used to when it was the
+        // launcher and stacked its own splash right before this one.
+        val isFirstRun = dataStore.get(IsFirstRunKey, true)
+        if (isFirstRun) {
+            startActivity(Intent(this, WelcomeActivity::class.java))
+        }
+
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
