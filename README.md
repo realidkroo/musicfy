@@ -1,5 +1,5 @@
 # musicfy
-Musicfy repos /n
+Musicfy repos \n
 fork from vivimusic
 thanks
 -cheklis priority
