@@ -1,6 +1,6 @@
 # musicfy
-Musicfy repos \n
-fork from vivimusic
+Musicfy repos\
+fork from vivimusic\
 thanks
 -cheklis priority
 > add more player styles [current]
