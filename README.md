@@ -10,4 +10,4 @@ thanks\ \
 > revamp the albums\
 > revamp the artist\
 > and other\
-bug will be main priority too on affected things\
+bug will be main priority too on affected things
