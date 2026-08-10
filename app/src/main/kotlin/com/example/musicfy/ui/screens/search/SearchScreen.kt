@@ -553,6 +553,9 @@ fun AlbumsTabContent(
             CircularWavyProgressIndicator()
         }
     } else {
+        val distinctNewReleaseAlbums = remember(newReleaseAlbums) {
+            newReleaseAlbums.distinctBy { it.id }
+        }
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
             contentPadding = PaddingValues(
@@ -564,7 +567,7 @@ fun AlbumsTabContent(
             modifier = Modifier.fillMaxSize()
         ) {
             items(
-                items = newReleaseAlbums.distinctBy { it.id },
+                items = distinctNewReleaseAlbums,
                 key = { it.id }
             ) { album ->
                 YouTubeGridItem(

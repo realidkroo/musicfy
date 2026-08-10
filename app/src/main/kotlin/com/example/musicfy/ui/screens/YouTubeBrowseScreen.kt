@@ -16,6 +16,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -66,7 +67,11 @@ fun YouTubeBrowseScreen(
     val coroutineScope = rememberCoroutineScope()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
-    val allItems = browseResult?.items?.flatMap { it.items } ?: emptyList()
+    // flatMap + distinctBy are O(n) allocations; without remember they re-ran on every
+    // recomposition of this screen and rebuilt the list handed to the grid.
+    val allItems = remember(browseResult) {
+        browseResult?.items?.flatMap { it.items }?.distinctBy { it.id } ?: emptyList()
+    }
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
@@ -81,8 +86,9 @@ fun YouTubeBrowseScreen(
         }
 
         items(
-            items = allItems.distinctBy { it.id },
-            key = { it.id }
+            items = allItems,
+            key = { it.id },
+            contentType = { it::class }
         ) { item ->
             YouTubeGridItem(
                 item = item,

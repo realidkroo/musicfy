@@ -12,6 +12,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.geometry.Offset
@@ -27,8 +30,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -37,9 +43,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +67,8 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.request.transformations
+import coil3.size.Precision
+import coil3.size.Size as CoilSize
 import com.example.musicfy.R
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.ThumbnailCornerRadius
@@ -97,6 +110,14 @@ private class MorphEndpoints(
     val miniPlayY: Dp,
     val miniSkipX: Dp,
     val miniSkipY: Dp,
+    val miniTextX: Dp,
+    val miniTextWidth: Dp,
+    val lyricsArtSize: Dp,
+    val lyricsArtX: Dp,
+    val lyricsArtY: Dp,
+    val fullTextX: Dp,
+    val fullTextY: Dp,
+    val fullTextWidth: Dp,
     val fullWidth: Dp,
     val fullArtHeight: Dp,
     val fullArtX: Dp,
@@ -116,6 +137,14 @@ private class MorphEndpointsPx(
     val miniPlayYPx: Float,
     val miniSkipXPx: Float,
     val miniSkipYPx: Float,
+    val miniTextXPx: Float,
+    val miniTextWidthPx: Float,
+    val lyricsArtSizePx: Float,
+    val lyricsArtXPx: Float,
+    val lyricsArtYPx: Float,
+    val fullTextXPx: Float,
+    val fullTextYPx: Float,
+    val fullTextWidthPx: Float,
     val fullWidthPx: Float,
     val fullArtHeightPx: Float,
     val fullArtXPx: Float,
@@ -126,13 +155,16 @@ private class MorphEndpointsPx(
     val fullHeightPx: Float,
 )
 
-private enum class MorphElement { ART, PLAY, SKIP, BACKDROP }
+private enum class MorphElement { ART, PLAY, SKIP, TEXT, BACKDROP }
 
 // The progress value at which the full-player backdrop reaches full opacity and the pill's own
 // blurred background reaches zero. Both the backdrop's and the pill's alpha are computed as
 // exact complements of this same constant (see MorphingCover below), so at every progress value
 // their combined coverage is ~1 — no gap, regardless of drag speed/direction.
 private const val PILL_FADE_END = 0.15f
+
+/** Corner radius of the shrunken cover once it's landed in the lyrics page's header. */
+private val LyricsHeaderCornerRadius = 12.dp
 
 private fun lerpF(start: Float, stop: Float, fraction: Float): Float =
     start + (stop - start) * fraction
@@ -147,6 +179,7 @@ private fun Modifier.morphLayout(
     horizontalOffsetProvider: () -> Float,
     endpointsPx: MorphEndpointsPx,
     element: MorphElement,
+    lyricsProgressProvider: () -> Float = { 0f },
 ) = this.layout { measurable, constraints ->
     val p = progressProvider()
     val hOffset = horizontalOffsetProvider()
@@ -157,7 +190,40 @@ private fun Modifier.morphLayout(
             val artH = lerpF(endpointsPx.miniArtSizePx, endpointsPx.fullArtHeightPx, p)
             val artX = lerpF(endpointsPx.miniArtXPx, endpointsPx.fullArtXPx, p) + hOffset
             val artY = lerpF(endpointsPx.miniArtYPx, endpointsPx.fullArtYPx, p)
-            floatArrayOf(artX, artY, artW, artH)
+
+            // Second stage, layered on top of the pill->fullscreen morph: as the lyrics page
+            // opens, that same rect continues shrinking into the header slot at the top-left.
+            val lp = lyricsProgressProvider()
+            if (lp <= 0f) {
+                floatArrayOf(artX, artY, artW, artH)
+            } else {
+                // The header slot is the lyrics endpoint only for as long as the sheet is
+                // actually expanded; `p` walks that endpoint back onto the mini-pill slot as the
+                // sheet collapses. At p = 0 BOTH sides of the outer lerp are the pill, so the
+                // cover has exactly ONE destination no matter what lp is doing.
+                //
+                // Without this, lp stays 1 for the whole of a swipe-down from the lyrics page
+                // (nothing tells lyricsProgress the sheet is collapsing — see BottomSheet's
+                // collapseSoft, which is the only thing that gesture calls), and at lp = 1 the
+                // lerps below ignore `p` entirely: the cover stayed pinned at
+                // statusBarTop + 28dp in the container's local space and simply rode the
+                // container's translationY down, landing ~44dp below the pill's own artwork slot
+                // and still 60dp wide instead of 48dp. That is the "ends up too low / doesn't
+                // land on the mini pill".
+                //
+                // hOffset applies to both terms so the cover still tracks a horizontal
+                // song-change swipe at p = 0 (state.horizontalOffset only ever moves while
+                // collapsed, so this is a no-op on the lyrics page itself).
+                val lyricsX = lerpF(endpointsPx.miniArtXPx, endpointsPx.lyricsArtXPx, p) + hOffset
+                val lyricsY = lerpF(endpointsPx.miniArtYPx, endpointsPx.lyricsArtYPx, p)
+                val lyricsSize = lerpF(endpointsPx.miniArtSizePx, endpointsPx.lyricsArtSizePx, p)
+                floatArrayOf(
+                    lerpF(artX, lyricsX, lp),
+                    lerpF(artY, lyricsY, lp),
+                    lerpF(artW, lyricsSize, lp),
+                    lerpF(artH, lyricsSize, lp),
+                )
+            }
         }
         MorphElement.PLAY -> {
             val playX = lerpF(endpointsPx.miniPlayXPx, endpointsPx.fullPlayXPx, p)
@@ -168,6 +234,17 @@ private fun Modifier.morphLayout(
             val skipX = lerpF(endpointsPx.miniSkipXPx, endpointsPx.fullPlayXPx + 80f, p)
             val skipY = lerpF(endpointsPx.miniSkipYPx, endpointsPx.fullPlayYPx, p)
             floatArrayOf(skipX, skipY, -1f, -1f)
+        }
+        MorphElement.TEXT -> {
+            // Interpolates position *and* width, the same way ART does, so the label tracks the
+            // cover's expansion rather than just fading in place. Height stays at the pill's own
+            // height throughout — the text column centres itself inside that box, and the block
+            // has faded out well before the full-player endpoint matters (SongInfoRow owns the
+            // title once expanded, so these two must never be legible at the same time).
+            val textX = lerpF(endpointsPx.miniTextXPx, endpointsPx.fullTextXPx, p) + hOffset
+            val textY = lerpF(0f, endpointsPx.fullTextYPx, p)
+            val textW = lerpF(endpointsPx.miniTextWidthPx, endpointsPx.fullTextWidthPx, p)
+            floatArrayOf(textX, textY, textW, endpointsPx.miniHeightPx)
         }
         MorphElement.BACKDROP -> {
             // Actually grows from the pill bar's own bounds up to fullscreen — a real
@@ -211,10 +288,18 @@ fun MorphingCover(
     pureBlack: Boolean,
     glassState: GlassState,
     modifier: Modifier = Modifier,
+    /**
+     * 0 = normal player, 1 = lyrics page. Drives the cover shrinking to the small top-left slot
+     * on the lyrics screen. This exists so there is exactly ONE cover image in the app: the
+     * lyrics page used to draw its own 48dp thumbnail while this full-size one stayed mounted
+     * behind it, which is why two covers were visible.
+     */
+    lyricsProgressProvider: () -> Float = { 0f },
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
     val density = LocalDensity.current
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     // Prefetch the next queue item's artwork as soon as the current track is known, so by the
     // time the song actually ends — or the user taps skip — the image is already in Coil's
@@ -226,12 +311,18 @@ fun MorphingCover(
             val nextUrl = queueState.items.getOrNull(queueState.currentIndex + 1)
                 ?.artworkUri?.toString()?.resize(1200, 1200)
                 ?: return@LaunchedEffect
-            val request = ImageRequest.Builder(context).data(nextUrl).build()
+            // Size/precision must match the display request below, or the prefetch lands under a
+            // different memory-cache key and the cover still decodes from disk on skip.
+            val request = ImageRequest.Builder(context)
+                .data(nextUrl)
+                .size(CoilSize(1200, 1200))
+                .precision(Precision.INEXACT)
+                .build()
             SingletonImageLoader.get(context).enqueue(request)
         }
     }
 
-    val endpoints = remember(maxWidth, maxHeight) {
+    val endpoints = remember(maxWidth, maxHeight, statusBarTop, 2) {
         val miniHeight = 64.dp
         val miniArtSize = 48.dp
         val miniArtX = 36.dp
@@ -244,6 +335,12 @@ fun MorphingCover(
         val miniPlayX = miniSkipX - 8.dp - miniPlaySize
         val miniPlayY = (miniHeight - miniPlaySize) / 2
 
+        // Text occupies the gap between the artwork and the play button. Width is derived from
+        // those two rather than hardcoded, so it can never run underneath the controls; the
+        // right-edge fade below then softens wherever a long title actually reaches.
+        val miniTextX = miniArtX + miniArtSize + 12.dp
+        val miniTextWidth = (miniPlayX - 10.dp - miniTextX).coerceAtLeast(0.dp)
+
         MorphEndpoints(
             miniArtSize = miniArtSize,
             miniArtX = miniArtX,
@@ -252,6 +349,18 @@ fun MorphingCover(
             miniPlayY = miniPlayY,
             miniSkipX = miniSkipX,
             miniSkipY = miniSkipY,
+            miniTextX = miniTextX,
+            miniTextWidth = miniTextWidth,
+            // Must match LyricsScreen's own header box exactly (36dp horizontal inset —
+            // matching the 36dp the lyrics list/timestamp use, statusBarsPadding +
+            // 28dp top, 60dp square) — that page no longer draws a thumbnail of its own, this
+            // cover lands in the hole where it used to be.
+            lyricsArtSize = 60.dp,
+            lyricsArtX = 36.dp,
+            lyricsArtY = statusBarTop + 28.dp,
+            fullTextX = 24.dp,
+            fullTextY = maxHeight * 0.63f + 24.dp,
+            fullTextWidth = (maxWidth - 48.dp).coerceAtLeast(0.dp),
             fullWidth = maxWidth,
             fullArtHeight = maxHeight * 0.63f,
             fullArtX = 0.dp,
@@ -273,6 +382,14 @@ fun MorphingCover(
                 miniPlayYPx = endpoints.miniPlayY.toPx(),
                 miniSkipXPx = endpoints.miniSkipX.toPx(),
                 miniSkipYPx = endpoints.miniSkipY.toPx(),
+                miniTextXPx = endpoints.miniTextX.toPx(),
+                miniTextWidthPx = endpoints.miniTextWidth.toPx(),
+                lyricsArtSizePx = endpoints.lyricsArtSize.toPx(),
+                lyricsArtXPx = endpoints.lyricsArtX.toPx(),
+                lyricsArtYPx = endpoints.lyricsArtY.toPx(),
+                fullTextXPx = endpoints.fullTextX.toPx(),
+                fullTextYPx = endpoints.fullTextY.toPx(),
+                fullTextWidthPx = endpoints.fullTextWidth.toPx(),
                 fullWidthPx = endpoints.fullWidth.toPx(),
                 fullArtHeightPx = endpoints.fullArtHeight.toPx(),
                 fullArtXPx = endpoints.fullArtX.toPx(),
@@ -340,7 +457,13 @@ fun MorphingCover(
     // object itself — on the same threshold that already gates the backdrop's composition below
     // stops that sustained wakeup cost while idle, without touching the AGSL recompile-avoidance
     // this comment block is about.
-    val warpClockActive by remember { derivedStateOf { progressProvider() > 0.02f } }
+    // Also off once the lyrics page has taken over. The warp is a full-screen RuntimeShader
+    // re-evaluated on an infinite frame clock; on the lyrics page it is almost entirely hidden
+    // behind the text and its fades, so it was burning a shader pass every frame for nothing —
+    // exactly the budget the karaoke sweep needs to hold 120Hz.
+    val warpClockActive by remember {
+        derivedStateOf { progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f }
+    }
     val warpTimeState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     LaunchedEffect(warpClockActive) {
         if (!warpClockActive) return@LaunchedEffect
@@ -416,7 +539,13 @@ fun MorphingCover(
     // same mechanism HomeScreen.kt already uses for its scroll-driven top bar blur, reused here
     // instead of the earlier hand-rolled "duplicate + stretch + blur a copy of the cover" attempt
     // that kept showing smeared-photo artifacts and a visible hard edge.
-    Box(modifier = modifier.glassRoot(glassState, isActive = { progressProvider() > 0.80f })) {
+    // Always record, never gate on a progress threshold — same fix applied earlier this session
+    // to SubSettingsScaffold's glassRoot for the identical symptom ("blur sometimes just doesn't
+    // appear"). Gating at > 0.80f left almost no margin before consumers like SeamBlur (fading in
+    // from 0.85) or PlayerBottomCardStack actually need a valid display list; if recording hadn't
+    // caught up yet on a given frame, they read a stale/empty node and rendered nothing. This
+    // subtree is cheap enough to double-draw continuously — reliability wins over the saved cost.
+    Box(modifier = modifier.glassRoot(glassState, isActive = { true })) {
         // Backdrop blur for the pill — blurs whatever's actually behind the mini player (the
         // real Haze "source" registered in MainActivity), not a copy of the cover art. Its own
         // alpha is the exact complement of the full backdrop's alpha below (both ramp across the
@@ -553,6 +682,16 @@ fun MorphingCover(
                                 .data(trackInfo.thumbnailUrl?.resize(48, 48))
                                 .allowHardware(false)
                                 .transformations(BackdropBlurTransformation(radiusPx = 4))
+                                // Decode at the source's own 48x48, not at the node's size.
+                                // This node is requiredSize(maxWidth, maxHeight), so Coil was
+                                // sizing the decode to the full screen and upscaling a 48px
+                                // image into a ~1080x2400 software bitmap (~10MB, since
+                                // allowHardware is false) — allocated on the first frame of the
+                                // drag, then blurred by the transformation at that full size.
+                                // Decoding small and letting ContentScale.FillBounds + the 1.6x
+                                // graphicsLayer stretch it on the GPU looks identical (it is a
+                                // blurred backdrop) for ~9KB and a fraction of the work.
+                                .size(CoilSize(48, 48))
                                 .build(),
                             contentDescription = null,
                             contentScale = ContentScale.FillBounds,
@@ -590,11 +729,17 @@ fun MorphingCover(
                         horizontalOffsetProvider = horizontalOffsetProvider,
                         endpointsPx = endpointsPx,
                         element = MorphElement.ART,
+                        lyricsProgressProvider = lyricsProgressProvider,
                     )
                     .graphicsLayer {
                         val p = progressProvider()
                         clip = true
-                        shape = RoundedCornerShape(lerp(ThumbnailCornerRadius, 0.dp, p))
+                        // Radius only ever accounted for the pill<->fullscreen stage (ending at a
+                        // flat 0.dp once fully expanded), with no second stage for the lyrics
+                        // shrink — so the small header cover was rendering perfectly square.
+                        // lyricsProgress interpolates it back up to LyricsHeaderCornerRadius.
+                        val base = lerp(ThumbnailCornerRadius, 0.dp, p)
+                        shape = RoundedCornerShape(lerp(base, LyricsHeaderCornerRadius, lyricsProgressProvider()))
                     }
             ) {
                 // crossfade: when trackInfo.thumbnailUrl changes (track change / manual skip),
@@ -609,6 +754,15 @@ fun MorphingCover(
                         .data(trackInfo.thumbnailUrl?.resize(1200, 1200))
                         .allowHardware(true)
                         .crossfade(300)
+                        // Pin the decode size instead of letting Coil infer it from the layout
+                        // node. This composable lives inside morphLayout(MorphElement.ART),
+                        // which measures it with Constraints.fixed(miniArtSizePx) while the
+                        // player is collapsed in the pill. Coil resolves its size once, so it
+                        // was decoding a ~150px bitmap and then keeping it as the sheet grew —
+                        // the full-screen cover was a mini-pill thumbnail scaled up ~7x.
+                        // The URL already asks the CDN for 1200px; this makes the decode match.
+                        .size(CoilSize(1200, 1200))
+                        .precision(Precision.INEXACT)
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
@@ -695,6 +849,65 @@ fun MorphingCover(
                         lyricVideoAnchors = lyricVideoAnchors,
                         glassState = videoGlassState,
                         modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+
+        // Title + artist/album — visible in the pill, morphing and fading on the same curve as
+        // the controls below so it never overlaps SongInfoRow's copy in the expanded player.
+        Box(
+            modifier = Modifier
+                .morphLayout(
+                    progressProvider = progressProvider,
+                    horizontalOffsetProvider = horizontalOffsetProvider,
+                    endpointsPx = endpointsPx,
+                    element = MorphElement.TEXT,
+                )
+                .graphicsLayer {
+                    alpha = (1f - (progressProvider() / 0.5f)).coerceIn(0f, 1f)
+                    // Offscreen so the DstIn fade below composites against this layer's own
+                    // pixels rather than punching a hole through the pill behind it.
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
+                .drawWithCache {
+                    // Right edge ramps to zero opacity, so an over-long title dissolves instead
+                    // of hard-clipping or showing an ellipsis.
+                    val fade = Brush.horizontalGradient(
+                        0f to Color.Black,
+                        0.82f to Color.Black,
+                        1f to Color.Transparent,
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(brush = fade, blendMode = BlendMode.DstIn)
+                    }
+                }
+        ) {
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = trackInfo.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    // No ellipsis and no wrapping: the gradient above is what terminates the
+                    // line, so the glyphs must be allowed to run to the edge and be faded.
+                    softWrap = false,
+                )
+                val subtitle = listOf(trackInfo.artist, trackInfo.album)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" — ")
+                if (subtitle.isNotBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
                     )
                 }
             }

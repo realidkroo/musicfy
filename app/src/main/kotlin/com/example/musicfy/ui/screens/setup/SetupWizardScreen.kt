@@ -35,7 +35,10 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.musicfy.constants.EnableMonochromeBackendKey
 import com.example.musicfy.importer.ParsedImport
+import com.example.musicfy.ui.screens.settings.MonochromeOnboardingContent
+import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.importer.parseTuneMyMusicCsv
 import com.example.musicfy.viewmodels.SetupImportViewModel
 import kotlinx.coroutines.Dispatchers
@@ -52,8 +55,10 @@ private const val PAGE_TMM_INSTRUCTIONS = 5
 private const val PAGE_SELECT_CSV = 6
 private const val PAGE_REVIEW_IMPORT = 7
 private const val PAGE_TOGGLES = 8
-private const val PAGE_THANK_YOU = 9
-private const val PAGE_COUNT = 10
+private const val PAGE_MONOCHROME_CHOICE = 9
+private const val PAGE_MONOCHROME_INFO = 10
+private const val PAGE_THANK_YOU = 11
+private const val PAGE_COUNT = 12
 
 @Composable
 fun SetupWizardScreen(
@@ -69,7 +74,15 @@ fun SetupWizardScreen(
     var username by remember { mutableStateOf("") }
     var profilePicUri by remember { mutableStateOf<Uri?>(null) }
     var selectedUncroppedUri by remember { mutableStateOf<Uri?>(null) }
+    // Kept so tapping the avatar again reopens the cropper on the original photo instead of
+    // forcing a re-pick.
+    var lastPickedUri by remember { mutableStateOf<Uri?>(null) }
     var isLeavingWelcome by remember { mutableStateOf(false) }
+
+    val (_, onEnableMonochromeBackendChange) = rememberPreference(
+        EnableMonochromeBackendKey,
+        defaultValue = false
+    )
 
     var parsedImport by remember { mutableStateOf<ParsedImport?>(null) }
     var csvLoading by remember { mutableStateOf(false) }
@@ -77,6 +90,23 @@ fun SetupWizardScreen(
 
     fun goTo(page: Int) {
         coroutineScope.launch { pagerState.animateScrollToPage(page) }
+    }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { picked: Uri? ->
+        if (picked != null) {
+            lastPickedUri = picked
+            selectedUncroppedUri = picked
+        }
+    }
+
+    fun openPhotoPicker() {
+        photoPickerLauncher.launch(
+            androidx.activity.result.PickVisualMediaRequest(
+                ActivityResultContracts.PickVisualMedia.ImageOnly
+            )
+        )
     }
 
     val csvPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -132,7 +162,8 @@ fun SetupWizardScreen(
         },
         onCancel = {
             selectedUncroppedUri = null
-        }
+        },
+        onSelectNewImage = { openPhotoPicker() }
     ) {
         Box(
             modifier = Modifier
@@ -169,7 +200,12 @@ fun SetupWizardScreen(
                             username = username,
                             onUsernameChange = { username = it },
                             profilePicUri = profilePicUri,
-                            onProfilePicChange = { selectedUncroppedUri = it }
+                            onProfileTap = {
+                                // Already have a photo? Go straight back to the adjust frame; the
+                                // cropper itself offers "Select new image".
+                                val existing = lastPickedUri
+                                if (existing != null) selectedUncroppedUri = existing else openPhotoPicker()
+                            }
                         )
                     }
                     PAGE_GREETING -> Box(pageModifier) {
@@ -197,6 +233,13 @@ fun SetupWizardScreen(
                     PAGE_TOGGLES -> Box(pageModifier) {
                         WouldYouLikeToggles()
                     }
+                    PAGE_MONOCHROME_CHOICE -> Box(pageModifier) {
+                        MonochromeChoiceStep()
+                    }
+                    PAGE_MONOCHROME_INFO -> MonochromeOnboardingContent(
+                        onEnabled = { onEnableMonochromeBackendChange(true) },
+                        onDismiss = { goTo(PAGE_THANK_YOU) }
+                    )
                     PAGE_THANK_YOU -> Box(pageModifier) {
                         ThankYouStep()
                     }
@@ -315,7 +358,7 @@ fun SetupWizardScreen(
 
                 PAGE_SETUP_FURTHER -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     WizardButton(text = "Continue", onClick = { goTo(PAGE_IMPORT_PROVIDER) })
-                    WizardButton(text = "Skip", secondary = true, onClick = { goTo(PAGE_THANK_YOU) })
+                    WizardButton(text = "Skip", secondary = true, onClick = { goTo(PAGE_TOGGLES) })
                 }
 
                 PAGE_IMPORT_PROVIDER -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -325,7 +368,7 @@ fun SetupWizardScreen(
 
                 PAGE_TMM_INSTRUCTIONS -> WizardButton(text = "Next", onClick = { goTo(PAGE_SELECT_CSV) })
 
-                PAGE_SELECT_CSV -> WizardButton(text = "Skip Wizard", secondary = true, onClick = { goTo(PAGE_THANK_YOU) })
+                PAGE_SELECT_CSV -> WizardButton(text = "Skip Wizard", secondary = true, onClick = { goTo(PAGE_TOGGLES) })
 
                 PAGE_REVIEW_IMPORT -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     val songCount = parsedImport?.totalSongs ?: 0
@@ -336,10 +379,19 @@ fun SetupWizardScreen(
                             goTo(PAGE_TOGGLES)
                         }
                     )
-                    WizardButton(text = "Skip Wizard", secondary = true, onClick = { goTo(PAGE_THANK_YOU) })
+                    WizardButton(text = "Skip Wizard", secondary = true, onClick = { goTo(PAGE_TOGGLES) })
                 }
 
-                PAGE_TOGGLES -> WizardButton(text = "Continue", onClick = { goTo(PAGE_THANK_YOU) })
+                PAGE_TOGGLES -> WizardButton(text = "Continue", onClick = { goTo(PAGE_MONOCHROME_CHOICE) })
+
+                PAGE_MONOCHROME_CHOICE -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    WizardButton(text = "this thing does not work rn go tap the no button", secondary = true, onClick = { goTo(PAGE_MONOCHROME_INFO) })//work- yes button
+                    WizardButton(text = "No (recommended)", highlighted = true, onClick = { goTo(PAGE_THANK_YOU) })
+                }
+
+                PAGE_MONOCHROME_INFO -> {
+                    // The Monochrome page carries its own Continue button (it runs the probe).
+                }
             }
         }
         }
@@ -353,20 +405,29 @@ private fun WizardButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     secondary: Boolean = false,
+    highlighted: Boolean = false,
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.fillMaxWidth().height(56.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (secondary) Color(0xFF2A2A2A) else Color(0xFF333333),
+            containerColor = when {
+                highlighted -> Color.White
+                secondary -> Color(0xFF2A2A2A)
+                else -> Color(0xFF333333)
+            },
             disabledContainerColor = Color(0xFF222222)
         ),
         shape = CircleShape
     ) {
         Text(
             text,
-            color = if (enabled) Color.White else Color.Gray,
+            color = when {
+                !enabled -> Color.Gray
+                highlighted -> Color.Black
+                else -> Color.White
+            },
             fontWeight = FontWeight.Bold
         )
     }

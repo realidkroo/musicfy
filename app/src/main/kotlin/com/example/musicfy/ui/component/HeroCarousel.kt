@@ -5,6 +5,9 @@ package com.example.musicfy.ui.component
 
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloat
+import com.example.musicfy.constants.UsernameKey
+import com.example.musicfy.ui.screens.Screens
+import com.example.musicfy.utils.rememberPreference
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -200,7 +203,18 @@ fun HeroCarousel(
     val carouselHeight = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
 
     if (carouselItems.isEmpty()) {
-        Box(modifier = modifier.fillMaxWidth().height(carouselHeight))
+        // Nothing to carousel means a clean setup: no last-played, no history, no Daily Discover.
+        // Onboard instead of showing an empty hole.
+        val (username) = rememberPreference(UsernameKey, defaultValue = "")
+        OnboardingHero(
+            username = username,
+            onGetStarted = {
+                navController.navigate(Screens.Search.route) {
+                    launchSingleTop = true
+                }
+            },
+            modifier = modifier.fillMaxWidth().height(carouselHeight)
+        )
         return
     }
 

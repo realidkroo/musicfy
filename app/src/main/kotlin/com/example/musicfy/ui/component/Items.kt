@@ -415,8 +415,14 @@ fun SongListItem(
             if (downloadState != null) {
                 Icon.Download(downloadState)
             } else {
-                val download by LocalDownloadUtil.current.getDownload(song.id)
-                    .collectAsState(initial = null)
+                // remember(song.id): getDownload() builds a new Flow per call, and
+                // collectAsState keys its collector on the flow instance. Without this every
+                // recomposition of this row cancels and relaunches a coroutine — once per
+                // visible row, continuously, while scrolling.
+                val downloadUtil = LocalDownloadUtil.current
+                val download by remember(downloadUtil, song.id) {
+                    downloadUtil.getDownload(song.id)
+                }.collectAsState(initial = null)
                 Icon.Download(download?.state)
             }
         }
@@ -495,7 +501,12 @@ fun SongGridItem(
             if (downloadState != null) {
                 Icon.Download(downloadState)
             } else {
-                val download by LocalDownloadUtil.current.getDownload(song.id).collectAsState(initial = null)
+                // See the note on the other download badge above: the flow must be remembered
+                // or collectAsState relaunches its coroutine on every recomposition.
+                val downloadUtil = LocalDownloadUtil.current
+                val download by remember(downloadUtil, song.id) {
+                    downloadUtil.getDownload(song.id)
+                }.collectAsState(initial = null)
                 Icon.Download(download?.state)
             }
         }
@@ -959,7 +970,8 @@ fun YouTubeListItem(
         ListItem(
             title = item.title,
             subtitle = when (item) {
-                is SongItem -> joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
+                is SongItem ->
+                    joinByBullet(item.artists.joinToString { it.name }, makeTimeString(item.duration?.times(1000L)))
                 is AlbumItem -> joinByBullet(item.artists?.joinToString { it.name }, item.year?.toString())
                 is ArtistItem -> null
                 is PlaylistItem -> joinByBullet(item.author?.name, item.songCountText)

@@ -110,6 +110,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
@@ -132,7 +134,6 @@ import com.music.innertube.models.WatchEndpoint
 import com.example.musicfy.R
 import com.example.musicfy.constants.AppBarHeight
 import com.example.musicfy.constants.AppLanguageKey
-import com.example.musicfy.constants.IsFirstRunKey
 import com.example.musicfy.constants.DarkModeKey
 import com.example.musicfy.constants.DefaultOpenTabKey
 import com.example.musicfy.constants.CropAlbumArtKey
@@ -320,15 +321,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().setZoomFadeExitAnimation()
         super.onCreate(savedInstanceState)
-
-        // MainActivity is the app's launcher/splash owner — WelcomeActivity is a plain
-        // (non-splash-themed) activity started on top of it for first-run onboarding, so its
-        // window never repaints a second splash frame the way it used to when it was the
-        // launcher and stacked its own splash right before this one.
-        val isFirstRun = dataStore.get(IsFirstRunKey, true)
-        if (isFirstRun) {
-            startActivity(Intent(this, WelcomeActivity::class.java))
-        }
 
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -577,7 +569,11 @@ class MainActivity : ComponentActivity() {
                         currentRoute!!.startsWith("search/") ||
                         currentRoute!!.startsWith("local_playlist/") ||
                         currentRoute!!.startsWith("online_playlist/") ||
-                        currentRoute!!.startsWith("auto_playlist/")
+                        currentRoute!!.startsWith("auto_playlist/") ||
+                        // Sub-settings pages keep the bottom bar: they're a drill-down from a
+                        // tab, not a separate mode, so hiding it made the app feel like it had
+                        // navigated somewhere else entirely.
+                        currentRoute in SubSettingsRoutes
                 }
 
                 val isLandscape = configuration.containerDpSize.width > configuration.containerDpSize.height
@@ -603,6 +599,22 @@ class MainActivity : ComponentActivity() {
                         MiniPlayerHeight,
                     expandedBound = maxHeight,
                 )
+
+                // The app's own AppNavigationBar composable already fades out as the player
+                // expands, but the OS's own gesture/3-button bar is a separate, system-drawn
+                // layer that no amount of alpha/translation on our composable can touch — it
+                // needs an explicit WindowInsetsController call. isExpanded (not raw progress)
+                // so this only fires once at each end of the transition, not every frame.
+                LaunchedEffect(playerBottomSheetState.isExpanded) {
+                    val controller = WindowCompat.getInsetsController(window, window.decorView.rootView)
+                    if (playerBottomSheetState.isExpanded) {
+                        controller.systemBarsBehavior =
+                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        controller.hide(WindowInsetsCompat.Type.navigationBars())
+                    } else {
+                        controller.show(WindowInsetsCompat.Type.navigationBars())
+                    }
+                }
 
                 val playerAwareWindowInsets = remember(
                     bottomInset,
@@ -1007,16 +1019,24 @@ class MainActivity : ComponentActivity() {
                                                 .graphicsLayer {
                                                     val navBarHeightPx = navigationBarHeight.toPx()
                                                     val totalHeightPx = navBarTotalHeight.toPx()
+                                                    // Read progress only during draw phase
+                                                    val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
 
                                                     translationY = if (navBarHeightPx == 0f) {
                                                         totalHeightPx
                                                     } else {
-                                                        // Read progress only during draw phase
-                                                        val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
                                                         val slideOffset = totalHeightPx * progress
                                                         val hideOffset = totalHeightPx * (1 - navBarHeightPx / NavigationBarHeight.toPx())
                                                         slideOffset + hideOffset
                                                     }
+
+                                                    // Belt-and-braces on top of the slide: translating by
+                                                    // navBarTotalHeight should already put this off-screen once the
+                                                    // player is up, but it was still showing through in practice, so
+                                                    // fade it out too. Reaches fully transparent at 60% expansion
+                                                    // rather than 100%, so it's gone before the player's own bottom
+                                                    // card comes into view instead of overlapping it.
+                                                    alpha = (1f - progress / 0.6f).coerceIn(0f, 1f)
                                                 }
                                         )
                                     }
@@ -1311,6 +1331,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+/**
+ * Drill-down settings pages. These share the collapsing-header treatment and, unlike a mode
+ * switch, keep the bottom navigation bar visible.
+ */
+val SubSettingsRoutes = setOf(
+    "appearance_settings",
+    "playback_settings",
+    "experimental_settings",
+    "advanced_audio_settings",
+)
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
 val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }

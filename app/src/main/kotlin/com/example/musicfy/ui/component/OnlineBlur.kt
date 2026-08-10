@@ -9,13 +9,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.request.transformations
+import com.example.musicfy.ui.player.BackdropBlurTransformation
 import com.example.musicfy.ui.utils.fadingEdge
+import com.example.musicfy.ui.utils.resize
 
 @Composable
 fun OnlineBlur(
@@ -24,13 +29,20 @@ fun OnlineBlur(
 ) {
     Box(modifier = modifier) {
         if (thumbnailUrl != null) {
+            // A 50dp Modifier.blur() re-blurs the full-resolution thumbnail on the GPU every
+            // frame. At this blur strength no source detail survives anyway, so the blur is
+            // instead baked once into a 48x48 downsample off the main thread and cached by
+            // Coil, then stretched back up — same soft wash, none of the per-frame cost.
             AsyncImage(
-                model = thumbnailUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(thumbnailUrl.resize(48, 48))
+                    .allowHardware(false)
+                    .transformations(BackdropBlurTransformation(radiusPx = 4))
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(50.dp)
                     .fadingEdge(bottom = 200.dp)
             )
         }

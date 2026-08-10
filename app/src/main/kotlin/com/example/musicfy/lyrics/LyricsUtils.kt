@@ -342,6 +342,56 @@ object LyricsUtils {
             .replace("&nbsp;", " ")
             .replace("&amp;", "&")
 
+    /**
+     * Whether a provider has returned lyrics broken into syllables rather than words —
+     * "Se men ta ra" instead of "Sementara", "Ki ta mes ra- mes ra an nya" instead of
+     * "Kita mesra-mesraannya".
+     *
+     * Some word-timed providers emit one timed token per syllable and separate them with real
+     * spaces, so there is nothing in the timing data itself that says where a word ends. Rather
+     * than trying to glue them back together — which cannot be done reliably, and would wreck
+     * legitimately short words — the result is rejected so the provider chain falls through to
+     * the next source.
+     *
+     * Deliberately conservative, because a false positive silently discards good lyrics:
+     *
+     *  - Only lines that are essentially all Latin letters are examined. CJK lines have no spaces
+     *    to count, and Hangul words are legitimately short, so both would confuse the ratios.
+     *  - A single line of genuinely short words ("I am not a Dere") trips the per-line test, so a
+     *    verdict needs most of the *song* to look that way, not one line.
+     */
+    fun isSyllableSplit(rawLyrics: String): Boolean {
+        if (rawLyrics.isBlank()) return false
+        val entries = try {
+            parseLyrics(rawLyrics)
+        } catch (_: Exception) {
+            return false
+        }
+        if (entries.size < 4) return false
+
+        var checked = 0
+        var flagged = 0
+        for (entry in entries) {
+            val text = entry.text.trim()
+            val letters = text.filter(Char::isLetter)
+            if (letters.isEmpty()) continue
+            // Basic Latin + Latin-1/Extended-A. Anything else and the heuristics don't apply.
+            val latin = letters.count { it.code < 0x250 }
+            if (latin.toDouble() / letters.length < 0.9) continue
+
+            val tokens = text.split(Regex("\\s+")).filter { it.any(Char::isLetter) }
+            if (tokens.size < 4) continue
+            checked++
+
+            val lengths = tokens.map { it.count(Char::isLetter) }
+            val shortRatio = lengths.count { it <= 3 }.toDouble() / lengths.size
+            val mean = lengths.sum().toDouble() / lengths.size
+            if (shortRatio >= 0.8 && mean < 2.8) flagged++
+        }
+
+        return checked >= 4 && flagged.toDouble() / checked >= 0.65
+    }
+
     fun parseLyrics(lyrics: String): List<LyricsEntry> {
         // Unescape JSON string if needed
         val unescapedLyrics = lyrics

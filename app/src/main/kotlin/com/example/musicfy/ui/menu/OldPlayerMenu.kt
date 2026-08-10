@@ -97,7 +97,12 @@ fun OldPlayerMenu(
     val castVolume by castHandler?.castVolume?.collectAsState() ?: remember { mutableFloatStateOf(1f) }
     val castDeviceName by castHandler?.castDeviceName?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
-    val download by LocalDownloadUtil.current.getDownload(mediaMetadata.id).collectAsState(initial = null)
+    val downloadUtil = LocalDownloadUtil.current
+    // remember(id): getDownload() returns a new Flow each call, so an
+    // unremembered collectAsState relaunches its coroutine every recomposition.
+    val download by remember(downloadUtil, mediaMetadata.id) {
+        downloadUtil.getDownload(mediaMetadata.id)
+    }.collectAsState(initial = null)
 
     val currentSong by playerConnection.currentSong.collectAsState(initial = null)
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)

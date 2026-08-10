@@ -1,9 +1,17 @@
 // SettingsGroup.kt
 // what is this for you ask its for material3settings group ofc
+//
+// Two looks live here. Classic is the original one-card-per-row treatment and is still what the
+// main SettingsScreen renders. Grouped is the drill-down sub-settings look: a single continuous
+// card with no dividers, where any option whose sub-options are currently showing gets pulled
+// into a nested pill together with them, so the parent/child relationship is visible without a
+// divider or an indent.
 
 package com.example.musicfy.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -32,23 +40,36 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+
+enum class SettingsGroupStyle {
+    /** Original look: one card per row, hairline gaps. Used by the main settings page. */
+    Classic,
+
+    /** Sub-settings look: one continuous card, no dividers, nested pills for sub-options. */
+    Grouped,
+}
 
 /**
  * A Material 3 Expressive style settings group component
  * @param title The title of the settings group
  * @param items List of settings items to display
+ * @param style Which visual treatment to render — see [SettingsGroupStyle]
  */
 @Composable
 fun SettingsGroup(
     title: String? = null,
-    items: List<SettingsItem>
+    items: List<SettingsItem>,
+    style: SettingsGroupStyle = SettingsGroupStyle.Classic,
 ) {
     Column(
         modifier = Modifier
@@ -64,43 +85,129 @@ fun SettingsGroup(
             )
         }
 
-        // Settings items
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(0.dp) // No separator!
-        ) {
-            val visibleItems = items.filter { it.isVisible }
-            items.forEachIndexed { index, item ->
+        when (style) {
+            SettingsGroupStyle.Classic -> ClassicItems(items)
+            SettingsGroupStyle.Grouped -> GroupedItems(items)
+        }
+    }
+}
+
+@Composable
+private fun ClassicItems(items: List<SettingsItem>) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(0.dp) // No separator!
+    ) {
+        val visibleItems = items.filter { it.isVisible }
+        items.forEach { item ->
+            AnimatedVisibility(
+                visible = item.isVisible,
+                enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+            ) {
+                // Concept style: fully rounded separate cards
+                val shape = RoundedCornerShape(20.dp)
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    shape = shape,
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF1C1C1E)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    SettingsItemRow(item = item, style = SettingsGroupStyle.Classic)
+                }
+            }
+        }
+    }
+}
+
+/** A parent option together with the sub-options that belong to it. */
+private class ItemCluster(
+    val parent: SettingsItem,
+    val subs: MutableList<SettingsItem> = mutableListOf(),
+)
+
+/**
+ * `isSubOption` items attach to the most recent non-sub item above them, which is exactly how the
+ * screens already declare them — so no call site has to describe the nesting twice.
+ */
+private fun clusterItems(items: List<SettingsItem>): List<ItemCluster> {
+    val clusters = mutableListOf<ItemCluster>()
+    items.forEach { item ->
+        if (item.isSubOption && clusters.isNotEmpty()) {
+            clusters.last().subs += item
+        } else {
+            clusters += ItemCluster(item)
+        }
+    }
+    return clusters
+}
+
+@Composable
+private fun GroupedItems(items: List<SettingsItem>) {
+    val clusters = clusterItems(items)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(vertical = 6.dp)) {
+            clusters.forEach { cluster ->
                 AnimatedVisibility(
-                    visible = item.isVisible,
+                    visible = cluster.parent.isVisible,
                     enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                     exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
                 ) {
-                    // Recompute shape based on visibility position
-                    val visibleIndex = visibleItems.indexOf(item)
-                    val shape = when {
-                        visibleItems.size == 1 -> RoundedCornerShape(24.dp)
-                        visibleIndex == 0 -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 2.dp, bottomEnd = 2.dp)
-                        visibleIndex == visibleItems.size - 1 -> RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp, bottomStart = 24.dp, bottomEnd = 24.dp)
-                        else -> RoundedCornerShape(2.dp)
-                    }
+                    ClusterRows(cluster)
+                }
+            }
+        }
+    }
+}
 
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = if (visibleIndex < visibleItems.size - 1) 1.dp else 0.dp), // Tiny separator gap or 0
-                        shape = shape,
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (item.isSubOption) {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                            }
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                    ) {
-                        SettingsItemRow(item = item)
-                    }
+@Composable
+private fun ClusterRows(cluster: ItemCluster) {
+    val hasVisibleSubs = cluster.subs.any { it.isVisible }
+
+    // Animated rather than branched so toggling a parent doesn't pop a hard-edged container in
+    // and out — the pill fades and insets in step with the sub-rows expanding.
+    val pillAlpha by animateFloatAsState(
+        targetValue = if (hasVisibleSubs) 1f else 0f,
+        animationSpec = tween(300),
+        label = "pillAlpha"
+    )
+    val pillInset by animateDpAsState(
+        targetValue = if (hasVisibleSubs) 6.dp else 0.dp,
+        animationSpec = tween(300),
+        label = "pillInset"
+    )
+
+    val pillColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f * pillAlpha)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = pillInset, vertical = pillInset / 2)
+            .clip(RoundedCornerShape(22.dp))
+            .background(pillColor)
+    ) {
+        Column {
+            SettingsItemRow(item = cluster.parent, style = SettingsGroupStyle.Grouped)
+            cluster.subs.forEach { sub ->
+                AnimatedVisibility(
+                    visible = sub.isVisible,
+                    enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+                    exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+                ) {
+                    SettingsItemRow(item = sub, style = SettingsGroupStyle.Grouped)
                 }
             }
         }
@@ -112,7 +219,8 @@ fun SettingsGroup(
  */
 @Composable
 private fun SettingsItemRow(
-    item: SettingsItem
+    item: SettingsItem,
+    style: SettingsGroupStyle,
 ) {
     Row(
         modifier = Modifier
@@ -121,22 +229,16 @@ private fun SettingsItemRow(
                 enabled = item.enabled && item.onClick != null,
                 onClick = { item.onClick?.invoke() }
             )
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Icon with background
         item.icon?.let { icon ->
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(item.iconShape ?: RoundedCornerShape(12.dp))
-                    .background(
-                        if (item.tintIcon) {
-                            androidx.compose.ui.graphics.Color(0xFF888888).copy(alpha = 0.3f)
-                        } else {
-                            androidx.compose.ui.graphics.Color.Transparent
-                        }
-                    ),
+                    .size(32.dp) // The circle in the concept is a bit smaller
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(Color(0xFFE5E5EA)),
                 contentAlignment = Alignment.Center
             ) {
                 if (item.showBadge) {
@@ -152,9 +254,9 @@ private fun SettingsItemRow(
                                 painter = icon,
                                 contentDescription = null,
                                 tint = if (!item.enabled)
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                    Color(0xFF1C1C1E).copy(alpha = 0.38f)
                                 else
-                                    MaterialTheme.colorScheme.onSurface,
+                                    Color(0xFF1C1C1E),
                                 modifier = Modifier.size(20.dp)
                             )
                         } else {
@@ -172,10 +274,10 @@ private fun SettingsItemRow(
                             painter = icon,
                             contentDescription = null,
                             tint = if (!item.enabled)
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                Color(0xFF1C1C1E).copy(alpha = 0.38f)
                             else
-                                MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp)
+                                Color(0xFF1C1C1E),
+                            modifier = Modifier.size(16.dp) // Slightly smaller icon to fit in the 32dp circle
                         )
                     } else {
                         Image(
@@ -195,30 +297,49 @@ private fun SettingsItemRow(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            // Title content
-            ProvideTextStyle(
-                MaterialTheme.typography.titleMedium.copy(
-                    color = if (!item.enabled) 
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    else
-                        MaterialTheme.colorScheme.onSurface
-                )
-            ) {
+            // Title content. Grouped (sub-settings) rows read smaller and greyer than Classic's
+            // full-strength white — the main settings page keeps its original weight untouched.
+            val titleBaseStyle = if (style == SettingsGroupStyle.Grouped) {
+                MaterialTheme.typography.titleSmall
+            } else {
+                MaterialTheme.typography.titleMedium
+            }
+            val titleColor = when {
+                !item.enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                style == SettingsGroupStyle.Grouped -> MaterialTheme.colorScheme.onSurfaceVariant
+                else -> MaterialTheme.colorScheme.onSurface
+            }
+            ProvideTextStyle(titleBaseStyle.copy(color = titleColor)) {
                 item.title()
             }
 
-            // Description if provided
-            item.description?.let { desc ->
-                Spacer(modifier = Modifier.height(2.dp))
-                ProvideTextStyle(
-                    MaterialTheme.typography.bodyMedium.copy(
-                        color = if (!item.enabled)
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    desc()
+            // Description. descriptionText is the preferred form: it is capped to a single line
+            // here so a long string can never grow the row to two or three lines.
+            val descColor = if (!item.enabled) {
+                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+
+            if (item.descriptionText != null) {
+                Spacer(modifier = Modifier.height(1.dp))
+                Text(
+                    text = item.descriptionText,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = descColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else {
+                item.description?.let { desc ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    ProvideTextStyle(
+                        MaterialTheme.typography.labelMedium.copy(color = descColor)
+                    ) {
+                        // Attempt to wrap in something that limits lines, or rely on desc() to do it.
+                        // We will just provide the smaller text style.
+                        desc()
+                    }
                 }
             }
         }
@@ -238,6 +359,8 @@ data class SettingsItem(
     val icon: Painter? = null,
     val title: @Composable () -> Unit,
     val description: (@Composable () -> Unit)? = null,
+    /** Single-line subtitle. Preferred over [description] — takes precedence when both are set. */
+    val descriptionText: String? = null,
     val trailingContent: (@Composable () -> Unit)? = null,
     val showBadge: Boolean = false,
     val isHighlighted: Boolean = false,

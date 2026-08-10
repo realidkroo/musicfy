@@ -108,8 +108,7 @@ object TTMLParser {
                                         
                                         if (wordText.isNotEmpty() && wordBegin.isNotEmpty() && wordEnd.isNotEmpty()) {
                                             val nextSibling = node.nextSibling
-                                            val hasTrailingSpace = nextSibling?.nodeType == Node.TEXT_NODE && 
-                                                nextSibling.textContent?.contains(Regex("\\s")) == true
+                                            val hasTrailingSpace = isWordBoundary(nextSibling)
                                             
                                             spanInfos.add(
                                                 SpanInfo(
@@ -240,6 +239,27 @@ object TTMLParser {
         return sb.toString()
     }
     
+    /**
+     * Whether the text node between two spans is a real word gap rather than XML indentation.
+     *
+     * Apple Music TTML times each *syllable* as its own span, and relies on the literal
+     * whitespace between spans to say where one word actually ends. The previous test was
+     * `contains(Regex("\\s"))`, which treats any whitespace as a gap — so as soon as the document
+     * arrives pretty-printed, the `"\n    "` indentation node sitting between every span reads as
+     * a word boundary and every syllable becomes its own word. That is what turned "dirancang
+     * lega" into "di ran cang le ga".
+     *
+     * A genuine separator is a space or tab on the same line. A run of whitespace containing a
+     * newline is formatting, and the spans it separates belong to the same word.
+     */
+    private fun isWordBoundary(node: Node?): Boolean {
+        if (node == null || node.nodeType != Node.TEXT_NODE) return false
+        val between = node.textContent ?: return false
+        if (between.isEmpty()) return false
+        if (between.contains('\n') || between.contains('\r')) return false
+        return between.any { it == ' ' || it == '\t' || it == ' ' }
+    }
+
     private fun mergeSpansIntoWords(spanInfos: List<SpanInfo>): List<ParsedWord> {
         if (spanInfos.isEmpty()) return emptyList()
         

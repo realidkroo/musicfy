@@ -99,7 +99,12 @@ fun YouTubeSongMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val librarySong by database.song(song.id).collectAsState(initial = null)
-    val download by LocalDownloadUtil.current.getDownload(song.id).collectAsState(initial = null)
+    val downloadUtil = LocalDownloadUtil.current
+    // remember(id): getDownload() returns a new Flow each call, so an
+    // unremembered collectAsState relaunches its coroutine every recomposition.
+    val download by remember(downloadUtil, song.id) {
+        downloadUtil.getDownload(song.id)
+    }.collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
     val isPinned by database.speedDialDao.isPinned(song.id).collectAsState(initial = false)

@@ -26,7 +26,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 70
-        versionName = "6.0.1"
+        versionName = "6.0.1 build#852"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -84,6 +84,15 @@ android {
         }
     }
 
+    // Release signing only works when the CI secrets are present. Locally they are not, which
+    // used to make `assembleRelease` unbuildable and left debug as the only variant anyone ever
+    // ran — and a debug Compose build is several times slower per frame than release, so all
+    // local performance impressions were being formed against the wrong binary.
+    val hasReleaseSigning = System.getenv("STORE_PASSWORD") != null &&
+        System.getenv("KEY_ALIAS") != null &&
+        System.getenv("KEY_PASSWORD") != null &&
+        file("keystore/release.keystore").exists()
+
     signingConfigs {
         create("persistentDebug") {
             storeFile = file("persistent-debug.keystore")
@@ -91,11 +100,13 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
-        create("release") {
-            storeFile = file("keystore/release.keystore")
-            storePassword = System.getenv("STORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file("keystore/release.keystore")
+                storePassword = System.getenv("STORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
         }
         getByName("debug") {
             keyAlias = "androiddebugkey"
@@ -116,12 +127,39 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("String", "ARCHITECTURE", "\"release\"")
+            // Fall back to the debug keystore locally so a release-quality build is always
+            // runnable on a dev machine. CI still signs with the real key when secrets exist.
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
         debug {
             applicationIdSuffix = ".debug"
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
             buildConfigField("String", "ARCHITECTURE", "\"debug\"")
+        }
+
+        // Release-identical performance with the profiler still attachable.
+        //
+        // `isDebuggable = false` is what makes release fast (ART will not JIT-deopt, R8 output
+        // runs as shipped), but it also locks out Studio's profiler and Perfetto's app-level
+        // tracks. `isProfileable` re-opens exactly those without turning debuggability back on,
+        // so frame timings measured here are the ones users actually get.
+        //
+        // Installs alongside debug and release under its own applicationId, so all three can sit
+        // on the device at once.
+        create("profileable") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".profileable"
+            isProfileable = true
+            signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "ARCHITECTURE", "\"profileable\"")
+            // The provider modules only publish debug/release variants; without this, resolving
+            // a "profileable" variant of :providers:* fails.
+            matchingFallbacks += listOf("release")
         }
     }
 
@@ -197,6 +235,45 @@ protobuf {
     }
 }
 
+// Compose compiler tuning.
+//
+// includeSourceInformation is what makes every composable group emit source-position metadata
+// and sourceInformationMarkerStart/End calls. That is required for the layout inspector and is
+// on by default, but in a shipping build it is pure per-composition overhead. Keeping it on for
+// debug preserves tooling; turning it off for release removes the cost where it matters.
+//
+// The metrics/reports destinations are opt-in via -PcomposeMetrics so normal builds are
+// unaffected. Run with:
+//   ./gradlew assembleUniversalFossRelease -PcomposeMetrics
+// then read build/compose-reports/*-composables.txt to see which composables are non-skippable
+// and which parameters are inferred unstable.
+composeCompiler {
+    // Computed eagerly at configuration time rather than in a provider: reading
+    // gradle.startParameter during task execution is a configuration-cache violation, and this
+    // project enables the configuration cache. The cache entry is keyed by task names anyway, so
+    // an eager read re-evaluates correctly when the requested tasks change.
+    //
+    // Both release and profileable must strip source info — profileable exists precisely to
+    // measure release performance, so it has to be compiled identically.
+    val buildingReleaseLike = gradle.startParameter.taskNames.any { name ->
+        name.contains("Release", ignoreCase = true) || name.contains("Profileable", ignoreCase = true)
+    }
+    includeSourceInformation.set(!buildingReleaseLike)
+
+    if (project.hasProperty("composeMetrics")) {
+        metricsDestination.set(layout.buildDirectory.dir("compose-metrics"))
+        reportsDestination.set(layout.buildDirectory.dir("compose-reports"))
+    }
+
+    // Treat these as @Immutable/@Stable without annotating them at every declaration site.
+    // Compose otherwise infers List/ImmutableCollection-typed parameters as unstable, which
+    // under strong skipping downgrades those composables to instance-equality comparison and
+    // makes them re-run whenever a caller rebuilds the list.
+    stabilityConfigurationFiles.add(
+        rootProject.layout.projectDirectory.file("compose_compiler_config.conf")
+    )
+}
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
@@ -223,7 +300,10 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.util)
-    implementation(libs.compose.ui.tooling)
+    // Tooling must not ship in release: it pulls in ui-tooling-data and the inspector, which
+    // keep composition inspection tables reachable. Nothing in main/ imports it and there are
+    // no @Preview functions, so debug-only costs us nothing.
+    debugImplementation(libs.compose.ui.tooling)
     implementation(libs.compose.animation)
     implementation(libs.compose.reorderable)
 

@@ -31,9 +31,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,7 +52,16 @@ import com.example.musicfy.constants.PlayerHorizontalPadding
 import com.example.musicfy.extensions.toggleRepeatMode
 
 @Composable
-fun SongInfoRow(modifier: Modifier = Modifier) {
+fun SongInfoRow(
+    modifier: Modifier = Modifier,
+    // Reports the title+artist column's position in root (screen) coordinates every time it's
+    // laid out. BottomSheetPlayer holds onto the last value even after this composable unmounts
+    // (which happens the instant lyrics opens, since PlayerControls is behind a hard if/else),
+    // and uses it as the starting rect for MorphingSongInfo's travel to the lyrics header — the
+    // "from" side of that shared-element move, captured live instead of hand-computed, since
+    // this row's own nested offsets/paddings make that math error-prone to reproduce by hand.
+    onTitlePositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
+) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val trackInfo by playerConnection.uiState.trackInfo.collectAsState()
     val transportState by playerConnection.uiState.transportState.collectAsState()
@@ -57,7 +72,29 @@ fun SongInfoRow(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .padding(horizontal = PlayerHorizontalPadding)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .onGloballyPositioned { onTitlePositioned(it.boundsInRoot()) }
+                // Both lines share one fade boundary at the edge nearest the repeat/like
+                // buttons — a long title/artist (or one still mid-marquee-scroll) dissolves
+                // into the icons instead of ending in a hard edge right up against them.
+                // Offscreen compositing is what lets the DstIn mask below erase from this
+                // Column's own already-drawn pixels rather than punching through to whatever
+                // is behind it.
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithCache {
+                    val fade = Brush.horizontalGradient(
+                        0f to Color.Black,
+                        0.82f to Color.Black,
+                        1f to Color.Transparent,
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(brush = fade, blendMode = BlendMode.DstIn)
+                    }
+                }
+        ) {
             Text(
                 text = trackInfo.title,
                 style = androidx.compose.material3.MaterialTheme.typography.titleLarge,

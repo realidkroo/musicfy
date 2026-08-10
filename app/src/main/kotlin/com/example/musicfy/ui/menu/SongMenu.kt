@@ -110,8 +110,12 @@ fun SongMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
     val song = songState.value ?: originalSong
-    val download by LocalDownloadUtil.current.getDownload(originalSong.id)
-        .collectAsState(initial = null)
+    val downloadUtil = LocalDownloadUtil.current
+    // remember(id): getDownload() returns a new Flow each call, so an
+    // unremembered collectAsState relaunches its coroutine every recomposition.
+    val download by remember(downloadUtil, originalSong.id) {
+        downloadUtil.getDownload(originalSong.id)
+    }.collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
     val scope = rememberCoroutineScope()

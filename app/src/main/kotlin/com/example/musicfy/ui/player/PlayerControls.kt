@@ -60,9 +60,11 @@ import com.example.musicfy.extensions.togglePlayPause
  * itself, so that recomposition rate stays local to it instead of the whole column.
  */
 @Composable
-fun PlayerControls(modifier: Modifier = Modifier) {
+fun PlayerControls(
+    modifier: Modifier = Modifier,
+    onTitlePositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
+) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val transportState by playerConnection.uiState.transportState.collectAsState()
 
     Column(modifier = modifier.fillMaxWidth()) {
         // Shifted up via offset (a draw-time transform), not extra layout space — offset()
@@ -72,7 +74,7 @@ fun PlayerControls(modifier: Modifier = Modifier) {
         Column(modifier = Modifier.offset(y = (-64).dp)) {
             Spacer(modifier = Modifier.height(20.dp))
 
-            SongInfoRow()
+            SongInfoRow(onTitlePositioned = onTitlePositioned)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -82,47 +84,63 @@ fun PlayerControls(modifier: Modifier = Modifier) {
         // Breathing room before the transport row — independent of the offset above.
         Spacer(modifier = Modifier.height(24.dp))
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(30.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = PlayerHorizontalPadding)
-        ) {
-            AnimatedPressScaleSkipButton(
-                icon = R.drawable.avd_skip_previous,
-                onClick = playerConnection::seekToPrevious,
-                enabled = transportState.canSkipPrevious,
-                tint = Color.White,
-                iconSize = 54.dp,
-                modifier = Modifier.size(74.dp)
-            )
+        PlayerTransportRow()
+    }
+}
 
-            AnimatedPressScalePlayPauseButton(
-                isPlaying = transportState.isPlaying,
-                playbackState = transportState.playbackState,
-                onClick = {
-                    if (transportState.playbackState == Player.STATE_ENDED) {
-                        playerConnection.player.seekTo(0, 0)
-                        playerConnection.player.playWhenReady = true
-                    } else {
-                        playerConnection.togglePlayPause()
-                    }
-                },
-                tint = Color.White,
-                iconSize = 54.dp,
-                modifier = Modifier.size(74.dp)
-            )
+/**
+ * Previous / play-pause / next — the ONE definition of this row's sizing and spacing. Used to
+ * exist a second time, hand-duplicated inside LyricsScreen with different numbers (56dp buttons
+ * instead of 74dp, 24dp horizontal padding instead of PlayerHorizontalPadding's 32dp) that had
+ * drifted from this one — re-matching those numbers by hand once already turned out to be
+ * error-prone (missed the padding difference), so this is now the single source both screens
+ * call, which makes another drift structurally impossible rather than just less likely.
+ */
+@Composable
+fun PlayerTransportRow(modifier: Modifier = Modifier) {
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val transportState by playerConnection.uiState.transportState.collectAsState()
 
-            AnimatedPressScaleSkipButton(
-                icon = R.drawable.avd_skip_next,
-                onClick = playerConnection::seekToNext,
-                enabled = transportState.canSkipNext,
-                tint = Color.White,
-                iconSize = 54.dp,
-                modifier = Modifier.size(74.dp)
-            )
-        }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(30.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = PlayerHorizontalPadding)
+    ) {
+        AnimatedPressScaleSkipButton(
+            icon = R.drawable.avd_skip_previous,
+            onClick = playerConnection::seekToPrevious,
+            enabled = transportState.canSkipPrevious,
+            tint = Color.White,
+            iconSize = 54.dp,
+            modifier = Modifier.size(74.dp)
+        )
+
+        AnimatedPressScalePlayPauseButton(
+            isPlaying = transportState.isPlaying,
+            playbackState = transportState.playbackState,
+            onClick = {
+                if (transportState.playbackState == Player.STATE_ENDED) {
+                    playerConnection.player.seekTo(0, 0)
+                    playerConnection.player.playWhenReady = true
+                } else {
+                    playerConnection.togglePlayPause()
+                }
+            },
+            tint = Color.White,
+            iconSize = 54.dp,
+            modifier = Modifier.size(74.dp)
+        )
+
+        AnimatedPressScaleSkipButton(
+            icon = R.drawable.avd_skip_next,
+            onClick = playerConnection::seekToNext,
+            enabled = transportState.canSkipNext,
+            tint = Color.White,
+            iconSize = 54.dp,
+            modifier = Modifier.size(74.dp)
+        )
     }
 }
 

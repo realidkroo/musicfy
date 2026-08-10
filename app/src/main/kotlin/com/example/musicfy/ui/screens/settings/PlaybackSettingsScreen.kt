@@ -19,7 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
+import com.example.musicfy.ui.component.AppSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -38,6 +38,8 @@ import com.example.musicfy.constants.CrossfadeGaplessKey
 import com.example.musicfy.constants.SkipSilenceInstantKey
 import com.example.musicfy.constants.SkipSilenceKey
 import com.example.musicfy.ui.component.SettingsGroup
+import com.example.musicfy.ui.component.SettingsGroupStyle
+import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
@@ -69,36 +71,22 @@ fun PlaybackSettingsScreen(navController: NavController) {
         AudioQuality.HI_RES_LOSSLESS -> AudioQuality.AUTO
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Playback") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(painterResource(R.drawable.arrow_back_ios), contentDescription = null)
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-        ) {
+    SubSettingsScaffold(
+        title = "Playback",
+        onBack = { navController.navigateUp() },
+    ) {
             SettingsGroup(
+                style = SettingsGroupStyle.Grouped,
                 items = buildList {
                     add(
                         SettingsItem(
                             title = { Text("Crossfade") },
-                            description = { Text("Smoothly blend the end of one track into the next") },
+                            descriptionText = "Blend one track into the next",
                             icon = painterResource(R.drawable.linear_scale),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onCrossfadeEnabledChange(!crossfadeEnabled) },
                             trailingContent = {
-                                Switch(checked = crossfadeEnabled, onCheckedChange = onCrossfadeEnabledChange)
+                                AppSwitch(checked = crossfadeEnabled, onCheckedChange = onCrossfadeEnabledChange)
                             }
                         )
                     )
@@ -123,12 +111,12 @@ fun PlaybackSettingsScreen(navController: NavController) {
                         add(
                             SettingsItem(
                                 title = { Text("Disable for gapless albums") },
-                                description = { Text("Don't crossfade between consecutive tracks of the same album") },
+                                descriptionText = "Skip within the same album",
                                 icon = painterResource(R.drawable.album),
                                 iconShape = androidx.compose.foundation.shape.CircleShape,
                                 onClick = { onCrossfadeGaplessChange(!crossfadeGapless) },
                                 trailingContent = {
-                                    Switch(checked = crossfadeGapless, onCheckedChange = onCrossfadeGaplessChange)
+                                    AppSwitch(checked = crossfadeGapless, onCheckedChange = onCrossfadeGaplessChange)
                                 }
                             )
                         )
@@ -136,7 +124,7 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Equalizer") },
-                            description = { Text("Adjust playback with a 10-band parametric equalizer") },
+                            descriptionText = "10-band parametric EQ",
                             icon = painterResource(R.drawable.equalizer),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { navController.navigate("equalizer") }
@@ -154,42 +142,41 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Skip silence") },
-                            description = { Text("Fast forward through silent parts of songs") },
+                            descriptionText = "Skip silent parts",
                             icon = painterResource(R.drawable.fast_forward),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onSkipSilenceChange(!skipSilence) },
                             trailingContent = {
-                                Switch(checked = skipSilence, onCheckedChange = onSkipSilenceChange)
+                                AppSwitch(checked = skipSilence, onCheckedChange = onSkipSilenceChange)
                             }
                         )
                     )
                     add(
                         SettingsItem(
                             title = { Text("Instantly skip silence") },
-                            description = { Text("Jump ahead during silent moments instead of speeding up playback") },
+                            descriptionText = "Jump instead of speeding up",
                             icon = painterResource(R.drawable.skip_next),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             enabled = skipSilence,
                             onClick = { onSkipSilenceInstantChange(!skipSilenceInstant) },
                             trailingContent = {
-                                Switch(checked = skipSilenceInstant, onCheckedChange = onSkipSilenceInstantChange, enabled = skipSilence)
+                                AppSwitch(checked = skipSilenceInstant, onCheckedChange = onSkipSilenceInstantChange, enabled = skipSilence)
                             }
                         )
                     )
                     add(
                         SettingsItem(
                             title = { Text("Audio normalization") },
-                            description = { Text("Even out loudness differences between tracks") },
+                            descriptionText = "Even out loudness between tracks",
                             icon = painterResource(R.drawable.volume_up),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onAudioNormalizationChange(!audioNormalization) },
                             trailingContent = {
-                                Switch(checked = audioNormalization, onCheckedChange = onAudioNormalizationChange)
+                                AppSwitch(checked = audioNormalization, onCheckedChange = onAudioNormalizationChange)
                             }
                         )
                     )
                 }
             )
-        }
     }
 }

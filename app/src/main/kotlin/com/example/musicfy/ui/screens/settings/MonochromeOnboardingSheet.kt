@@ -152,7 +152,7 @@ fun MonochromeOnboardingContent(
         when (val s = state) {
             MonochromeSheetState.Info -> {
                 title = "Powered by Monochrome"
-                description = "Thanks to the Monochrome dev, you can play FLAC music on your device. Please support the dev and their incredible passion for this project! You can also directly use Monochrome in your browser — visit their website and their GitHub for more!"
+                description = "[this currently doenst work. this currently doenst work.this currently doenst work.this currently doenst work.] Thanks to the Monochrome dev, you can play FLAC music on your device. Please support the dev and their incredible passion for this project! You can also directly use Monochrome in your browser — visit their website and their GitHub for more!"
                 code = null
             }
             MonochromeSheetState.Testing -> {

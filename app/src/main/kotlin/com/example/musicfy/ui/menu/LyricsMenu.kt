@@ -33,7 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
+import com.example.musicfy.ui.component.AppSwitch
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -469,7 +469,7 @@ fun LyricsMenu(
                                     }
                                 },
                                 trailingContent = {
-                                    Switch(
+                                    AppSwitch(
                                         checked = hasTranslations,
                                         onCheckedChange = { newCheckedState ->
                                             if (newCheckedState) {
@@ -533,7 +533,7 @@ fun LyricsMenu(
                                 }
                             },
                             trailingContent = {
-                                Switch(
+                                AppSwitch(
                                     checked = isChecked,
                                     onCheckedChange = { newCheckedState ->
                                         isChecked = newCheckedState
@@ -583,7 +583,7 @@ fun LyricsMenu(
                     text = stringResource(R.string.romanize_current_track),
                     modifier = Modifier.weight(1f)
                 )
-                Switch(
+                AppSwitch(
                     checked = isChecked,
                     onCheckedChange = { newCheckedState ->
                         isChecked = newCheckedState

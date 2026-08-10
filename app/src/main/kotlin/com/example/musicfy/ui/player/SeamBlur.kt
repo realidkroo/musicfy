@@ -57,15 +57,28 @@ fun SeamBlur(
     progressProvider: () -> Float,
     trackInfo: TrackInfo,
     maxHeight: Dp,
+    /**
+     * Extra 0..1 visibility factor, multiplied into the band's own alpha. Used to take the band
+     * away on the lyrics page: it exists to soften the seam under the cover art, and once the
+     * cover has shrunk into the header there is no seam left — only a dark bar sitting behind the
+     * timestamp row. Read in the draw phase, so changing it repaints without recomposing.
+     */
+    fadeProvider: () -> Float = { 1f },
 ) {
     if (trackInfo.thumbnailUrl == null) return
-    val showSeamBlur by remember { derivedStateOf { progressProvider() > 0.85f } }
-    if (!showSeamBlur) return
+    // Cheap bail-out only — this used to be the actual visibility gate (progress > 0.85f, a hard
+    // cutoff), which is exactly why the band popped in/out instantly right at that threshold
+    // instead of fading. The real fade now lives below as a continuous alpha ramp; this just
+    // skips composing the band at all while it's fully invisible anyway (progress == 0, i.e. the
+    // player isn't even open).
+    val shouldExist by remember { derivedStateOf { progressProvider() > 0f } }
+    if (!shouldExist) return
 
     val context = LocalContext.current
-    // Just above the cover's actual bottom edge (~0.56 of maxHeight — see MorphingCover.kt's
-    // fullArtHeight).
-    val bandTop = maxHeight * 0.55f
+    // Top pulled up further into the cover art (was 0.55) so the transition into the title/
+    // controls zone reads as one long soft blend instead of a short band right at the seam.
+    // Cover's actual bottom edge is ~0.63 of maxHeight — see MorphingCover.kt's fullArtHeight.
+    val bandTop = maxHeight * 0.52f
     val bandBottom = maxHeight * 0.74f
 
     // Theme-colored scrim (same Palette-extraction approach as AlbumGradient.kt) so the white
@@ -105,23 +118,16 @@ fun SeamBlur(
             .fillMaxWidth()
             .height(bandBottom - bandTop)
             .offset(y = bandTop)
+            .graphicsLayer {
+                // Ramp widened from (0.85 -> 1.0) to (0.5 -> 0.95): progress sits at a constant
+                // 1.0 for the entire time the player is just open and not being dragged, so the
+                // fade ONLY ever plays during the open/close gesture itself — a 0.15-wide window
+                // is maybe 40-60ms of a few-hundred-ms drag, imperceptible as a fade even though
+                // it technically isn't a hard cutoff anymore. This gives it real, visible length.
+                val p = progressProvider()
+                alpha = ((p - 0.5f) / 0.45f).coerceIn(0f, 1f) * fadeProvider().coerceIn(0f, 1f)
+            }
     ) {
-        // One continuous blur across the whole band (not split into two stacked halves) — the
-        // earlier top-half/bottom-half split each independently blurred its own bounded region,
-        // and right at the shared boundary between them the two separately-computed blurs didn't
-        // quite line up, showing as a visible seam in the middle. A single blur pass has nothing
-        // to seam against. The "fades in, solid, fades out" shape now comes entirely from the
-        // opacity mask below, not from varying the blur radius itself.
-        //
-        // TileMode.CLAMP (rather than GlassPillBackground's default DECAL) replicates the true
-        // left/right edge pixel outward instead of fading to transparent there — this box's own
-        // width IS the intended blur extent (edge-to-edge across the screen), so there's no
-        // "outside" for the blur to taper into. An earlier attempt widened the layer past the
-        // screen with DECAL still active, hoping to push the taper off-screen; that didn't work
-        // because the captured content itself (from MorphingCover's glassRoot) is only ever
-        // screen-width, so the widened layer was just transparent past the real edge — DECAL
-        // still faded the real content right where it met that transparency, at the exact same
-        // visible edge as before. CLAMP has no such transparent region to fade into.
         GlassPillBackground(
             state = glassState,
             blurRadius = { 130f },

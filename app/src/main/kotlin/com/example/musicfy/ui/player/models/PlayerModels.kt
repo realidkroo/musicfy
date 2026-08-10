@@ -19,6 +19,8 @@ data class TrackInfo(
     val mediaId: String = "",
     val title: String = "",
     val artist: String = "",
+    /** Album title, when the track has one. Used for the mini-player pill's subtitle. */
+    val album: String = "",
     val thumbnailUrl: String? = null,
     val liked: Boolean = false,
 )

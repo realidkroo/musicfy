@@ -331,10 +331,26 @@ fun BottomSheet(
                 ) {
                     // Box is now FIXED size (maxWidth x expandedBound), avoiding all recomposition!
                     
-                    val showBackground by remember { derivedStateOf { !state.isCollapsed } }
-                    // Keep full player controls composed while sheet is open to prevent
-                    // mid-swipe composition/uncomposition lag spikes at 0.55f progress threshold.
-                    val showControls by remember { derivedStateOf { !state.isCollapsed } }
+                    // Gated on isDismissed, NOT isCollapsed.
+                    //
+                    // isCollapsed is `value == collapsedBound`, so it flips false the instant the
+                    // finger moves the sheet by one pixel. Both of these then flipped true in the
+                    // same frame, which composed background() and the entire player subtree
+                    // (SeamBlur + PlayerControls + PlayerBottomCardStack) from scratch on the
+                    // first frame of the drag — a full build+measure+layout of the player while
+                    // the user was already expecting motion. That was the swipe-up stutter.
+                    //
+                    // Moving the gate to isDismissed mounts that subtree once, when a track loads
+                    // and the pill appears, so the drag itself only does draw-phase work.
+                    //
+                    // Safe with respect to touch and overdraw: this content lives inside the
+                    // expanding container above, which is expandedBound tall and translated down
+                    // by (expandedBound - value). While collapsed that puts everything below the
+                    // 64dp pill off-screen, and Compose hit-testing applies graphicsLayer
+                    // translation, so nothing here can intercept taps meant for the miniplayer or
+                    // the nav bar. clip = true keeps it from drawing, too.
+                    val showBackground by remember { derivedStateOf { !state.isDismissed } }
+                    val showControls by remember { derivedStateOf { !state.isDismissed } }
 
                     // Layer 2: Player background
                     if (showBackground) {

@@ -17,6 +17,7 @@ package com.example.musicfy.ui.screens
  import androidx.compose.runtime.Composable
  import androidx.compose.runtime.collectAsState
  import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.remember
  import androidx.compose.runtime.rememberCoroutineScope
  import androidx.compose.ui.Modifier
  import androidx.compose.ui.res.painterResource
@@ -62,15 +63,19 @@ package com.example.musicfy.ui.screens
  
      val coroutineScope = rememberCoroutineScope()
      val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
+
+     // Deduplicated once per emission instead of on every recomposition of this screen.
+     val distinctItems = remember(items) { items?.distinctBy { it.id } }
  
      LazyVerticalGrid(
          columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
          contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
      ) {
-         items?.let { items ->
+         distinctItems?.let { items ->
              items(
-                 items = items.distinctBy { it.id },
-                 key = { it.id }
+                 items = items,
+                 key = { it.id },
+                 contentType = { it::class }
              ) { item ->
                  YouTubeGridItem(
                      item = item,

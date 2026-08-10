@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -104,7 +103,7 @@ fun CreatePlaylistDialog(
                         modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        Switch(
+                        AppSwitch(
                             checked = syncedPlaylist,
                             onCheckedChange = {
                                 val isYtmSyncEnabled = context.isSyncEnabled()

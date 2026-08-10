@@ -30,6 +30,7 @@ import com.example.musicfy.di.ApplicationScope
 import com.example.musicfy.extensions.toEnum
 import com.example.musicfy.extensions.toInetSocketAddress
 import com.example.musicfy.utils.CrashHandler
+import com.example.musicfy.utils.PreferencesCache
 import com.example.musicfy.utils.cipher.CipherDeobfuscator
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.reportException
@@ -57,6 +58,9 @@ class App : Application(), SingletonImageLoader.Factory {
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
 
+    @Inject
+    lateinit var musicDatabase: com.example.musicfy.db.MusicDatabase
+
     override fun onCreate() {
         super.onCreate()
 
@@ -66,14 +70,29 @@ class App : Application(), SingletonImageLoader.Factory {
         // Initialize cipher deobfuscator for WEB_REMIX streaming
         CipherDeobfuscator.initialize(this)
 
-        Timber.plant(Timber.DebugTree())
+        // Only in debug: a planted tree makes every Timber call site actually format its
+        // message (string interpolation, stack-trace tag lookup) in release builds too.
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
 
-        // Warm the DataStore file on a background thread as early as possible. DataStore shares
-        // its first read across concurrent callers, so this doesn't duplicate work — it just
-        // means the later blocking reads (rememberPreference's initial seed, Hilt's player/download
-        // cache providers, Coil's newImageLoader) resolve against an already-parsed file instead of
-        // each hitting cold disk I/O on the main thread during MainActivity's startup.
-        applicationScope.launch(Dispatchers.IO) { dataStore.data.first() }
+        // Start the process-wide preference mirror as early as possible. This both warms the
+        // DataStore file off the main thread and installs the single collector that backs every
+        // subsequent `dataStore[key]` read and every `rememberPreference` observer, so none of
+        // them ever block on IO again. See PreferencesCache.
+        PreferencesCache.start(this, applicationScope)
+
+        // One-off repair: strip artist rows that are really track durations ("5:06"), left
+        // behind by subtitle parsers that mis-segmented "Song • Artist • 5:06". The guard in
+        // DatabaseDao.insert stops new ones being written, but rows already in the library would
+        // otherwise keep rendering as "5:06 • 5:06" forever. Cheap no-op once the table is clean.
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                musicDatabase.query { purgeTimestampArtists() }
+            } catch (e: Exception) {
+                reportException(e)
+            }
+        }
 
         // تهيئة إعدادات التطبيق عند الإقلاع
         applicationScope.launch {

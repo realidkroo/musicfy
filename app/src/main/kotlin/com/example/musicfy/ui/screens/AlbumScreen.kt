@@ -534,11 +534,14 @@ fun AlbumScreen(
                     )
                 }
                 item(key = "other_versions_list") {
+                    val distinctOtherVersions = remember(otherVersions) {
+                        otherVersions.distinctBy { it.id }
+                    }
                     LazyRow(
                         contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues(),
                     ) {
                         items(
-                            items = otherVersions.distinctBy { it.id },
+                            items = distinctOtherVersions,
                             key = { it.id },
                         ) { item ->
                             YouTubeGridItem(
@@ -576,11 +579,14 @@ fun AlbumScreen(
                     )
                 }
                 item(key = "releases_for_you_list") {
+                    val distinctReleasesForYou = remember(releasesForYou) {
+                        releasesForYou.distinctBy { it.id }
+                    }
                     LazyRow(
                         contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal).asPaddingValues(),
                     ) {
                         items(
-                            items = releasesForYou.distinctBy { it.id },
+                            items = distinctReleasesForYou,
                             key = { it.id },
                         ) { item ->
                             YouTubeGridItem(

@@ -130,8 +130,12 @@ fun PlayerMenu(
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
 
-    val download by LocalDownloadUtil.current.getDownload(mediaMetadata.id)
-        .collectAsState(initial = null)
+    val downloadUtil = LocalDownloadUtil.current
+    // remember(id): getDownload() returns a new Flow each call, so an
+    // unremembered collectAsState relaunches its coroutine every recomposition.
+    val download by remember(downloadUtil, mediaMetadata.id) {
+        downloadUtil.getDownload(mediaMetadata.id)
+    }.collectAsState(initial = null)
 
     val artists =
         remember(mediaMetadata.artists) {

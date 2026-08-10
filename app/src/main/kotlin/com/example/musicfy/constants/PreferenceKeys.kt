@@ -402,6 +402,22 @@ val SwipeLyricsKey = booleanPreferencesKey("swipeLyrics")
 val EnableLyricsThumbnailPlayPauseKey = booleanPreferencesKey("enableLyricsThumbnailPlayPause")
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
+
+/**
+ * Whether the active lyric line's letters lift, stretch and bloom as the sweep crosses them.
+ *
+ * Off leaves the same page and the same gradient sweep, only without the per-letter warp — the
+ * second of the two lyric styles. Also the automatic behaviour below API 33, where the AGSL shader
+ * the warp is built on doesn't exist.
+ */
+val LyricsWaveAnimationKey = booleanPreferencesKey("lyricsWaveAnimation")
+
+/**
+ * Eight-tap bloom on the sung word instead of four. On by default; off halves the bloom's
+ * fragment cost for a very slightly flatter halo. Only meaningful when [LyricsWaveAnimationKey]
+ * is on, since the bloom lives in the same shader as the warp.
+ */
+val LyricsHighBloomKey = booleanPreferencesKey("lyricsHighBloom")
 val LyricsScrollKey = booleanPreferencesKey("lyricsScrollKey")
 val LyricsRomanizeJapaneseKey = booleanPreferencesKey("lyricsRomanizeJapanese")
 val LyricsRomanizeKoreanKey = booleanPreferencesKey("lyricsRomanizeKorean")

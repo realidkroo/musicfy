@@ -45,6 +45,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -235,7 +236,20 @@ constructor(
         downloads.value = result
     }
 
-    fun getDownload(songId: String): Flow<Download?> = downloads.map { it[songId] }
+    /**
+     * Observes one song's download.
+     *
+     * `downloads` is a StateFlow of the whole download map, so without [distinctUntilChanged]
+     * every subscriber re-emits on each progress tick of *any* active download — in a song list
+     * that means every visible row recomposes several times a second while one unrelated song
+     * downloads.
+     *
+     * This returns a new Flow instance per call, and `collectAsState` keys its collector on the
+     * flow instance. Call sites must therefore wrap it in `remember(songId)`, otherwise every
+     * recomposition tears down and relaunches a coroutine. That was happening in every song row.
+     */
+    fun getDownload(songId: String): Flow<Download?> =
+        downloads.map { it[songId] }.distinctUntilChanged()
 
     fun release() {
         scope.cancel()

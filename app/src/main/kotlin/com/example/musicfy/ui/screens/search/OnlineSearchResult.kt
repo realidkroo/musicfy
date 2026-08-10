@@ -181,7 +181,15 @@ fun OnlineSearchResult(
             }
         }
     }
-    
+
+    // Deduplicated once per page change rather than per frame. This used to be computed inline
+    // in the `items = ...` argument *and* a second time inside the item lambda just to read
+    // .size — so scrolling allocated a fresh full-length list for every visible row, every frame.
+    val filteredItems by remember {
+        derivedStateOf { itemsPage?.items.orEmpty().distinctBy { it.id } }
+    }
+
+
     // Suggestion states
 
 
@@ -414,10 +422,11 @@ fun OnlineSearchResult(
                     }
                 } else {
                     itemsIndexed(
-                        items = itemsPage?.items.orEmpty().distinctBy { it.id },
+                        items = filteredItems,
                         key = { _, it -> "filtered_${it.id}" },
+                        contentType = { _, it -> it::class },
                     ) { index, item ->
-                        ytItemContent(item, index, itemsPage?.items.orEmpty().distinctBy { it.id }.size)
+                        ytItemContent(item, index, filteredItems.size)
                     }
 
                     if (itemsPage?.continuation != null) {

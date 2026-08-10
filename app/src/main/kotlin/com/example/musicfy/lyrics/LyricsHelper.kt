@@ -99,7 +99,12 @@ constructor(
                             val hasMovingLyrics = lyrics.contains("<") && lyrics.contains(">") && lyrics.contains(":")
                             val currentLyricsWithProvider = LyricsWithProvider(lyrics, provider.name)
 
-                            if (hasMovingLyrics) {
+                            // Word-timed lyrics are only worth preferring if the words are
+                            // actually words. Some providers time each syllable separately and
+                            // space them apart, which renders as "Se men ta ra". Those are passed
+                            // over so the next provider gets a chance — but still kept as a
+                            // last-resort fallback, since split lyrics beat no lyrics.
+                            if (hasMovingLyrics && !LyricsUtils.isSyllableSplit(lyrics)) {
                                 return@async currentLyricsWithProvider
                             } else if (fallbackLyrics == null) {
                                 // Save the first successful (but non-moving) lyrics as fallback

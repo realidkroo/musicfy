@@ -40,16 +40,26 @@ import java.util.UUID
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.platform.LocalDensity
+
+/** How far the photo is inset from the frame edges, and how round its corners are. */
+private val IMAGE_INSET = 20.dp
+private val IMAGE_CORNER = 28.dp
 
 @Composable
 fun PhotoCropperContainer(
     uri: Uri?,
     onDone: (Uri) -> Unit,
     onCancel: () -> Unit,
+    onSelectNewImage: () -> Unit,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val insetPx = with(LocalDensity.current) { IMAGE_INSET.toPx() }
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var androidBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
@@ -102,7 +112,10 @@ fun PhotoCropperContainer(
     LaunchedEffect(containerSize) {
         if (containerSize.width > 0 && cropRadius == 0f) {
             cropCenter = Offset(containerSize.width / 2f, containerSize.height / 2f)
-            cropRadius = containerSize.width * 0.4f
+            // Start close to the largest circle that fits, so the default selection isn't a tiny
+            // dot in the middle of the frame.
+            cropRadius = (minOf(containerSize.width, containerSize.height) / 2f - insetPx)
+                .coerceAtLeast(minRadius) * 0.92f
         }
     }
 
@@ -156,7 +169,7 @@ fun PhotoCropperContainer(
                     .fillMaxSize()
                     .padding(top = 48.dp)
                     .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                    .background(Color(0xFF161616))
+                    .background(Color(0xFF121212)) // Matches the setup popup surface
             ) {
                 // Drag Handle
                 Box(
@@ -177,14 +190,25 @@ fun PhotoCropperContainer(
                         .pointerInput(Unit) {
                             detectTransformGestures { _, pan, zoom, _ ->
                                 // Update scale/radius based on zoom
-                                val newRadius = (cropRadius * zoom).coerceIn(minRadius, minOf(containerSize.width / 2f, containerSize.height / 2f))
-                                
+                                val maxRadius = minOf(
+                                    containerSize.width / 2f - insetPx,
+                                    containerSize.height / 2f - insetPx
+                                ).coerceAtLeast(minRadius)
+                                val newRadius = (cropRadius * zoom).coerceIn(minRadius, maxRadius)
+
                                 // Update center based on pan
                                 val newCenter = cropCenter + pan
-                                
-                                // Keep circle inside container bounds
-                                val clampedX = newCenter.x.coerceIn(newRadius, containerSize.width - newRadius)
-                                val clampedY = newCenter.y.coerceIn(newRadius, containerSize.height - newRadius)
+
+                                // Keep circle inside the inset photo area. When the circle is as
+                                // wide as the area allows there's no slack left, so pin to centre.
+                                fun clamp(value: Float, extent: Int): Float {
+                                    val lo = insetPx + newRadius
+                                    val hi = extent - insetPx - newRadius
+                                    return if (lo >= hi) extent / 2f else value.coerceIn(lo, hi)
+                                }
+
+                                val clampedX = clamp(newCenter.x, containerSize.width)
+                                val clampedY = clamp(newCenter.y, containerSize.height)
                                 
                                 cropCenter = Offset(clampedX, clampedY)
                                 cropRadius = newRadius
@@ -193,24 +217,37 @@ fun PhotoCropperContainer(
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize().clipToBounds()) {
                         val bmp = bitmap!!
-                        
-                        // Calculate fit scale to avoid stretching
-                        val scaleX = size.width / bmp.width
-                        val scaleY = size.height / bmp.height
-                        val scale = minOf(scaleX, scaleY)
-                        
+
+                        // The photo sits inset inside the frame with rounded corners rather than
+                        // bleeding edge to edge.
+                        val inset = IMAGE_INSET.toPx()
+                        val availW = size.width - inset * 2f
+                        val availH = size.height - inset * 2f
+                        val scale = minOf(availW / bmp.width, availH / bmp.height)
+
                         val scaledW = bmp.width * scale
                         val scaledH = bmp.height * scale
-                        
-                        val offsetX = (size.width - scaledW) / 2f
-                        val offsetY = (size.height - scaledH) / 2f
-                        
-                        drawImage(
-                            image = bmp,
-                            dstOffset = androidx.compose.ui.unit.IntOffset(offsetX.toInt(), offsetY.toInt()),
-                            dstSize = IntSize(scaledW.toInt(), scaledH.toInt())
-                        )
-                        
+
+                        val offsetX = inset + (availW - scaledW) / 2f
+                        val offsetY = inset + (availH - scaledH) / 2f
+
+                        clipPath(
+                            Path().apply {
+                                addRoundRect(
+                                    RoundRect(
+                                        rect = Rect(offsetX, offsetY, offsetX + scaledW, offsetY + scaledH),
+                                        cornerRadius = CornerRadius(IMAGE_CORNER.toPx(), IMAGE_CORNER.toPx())
+                                    )
+                                )
+                            }
+                        ) {
+                            drawImage(
+                                image = bmp,
+                                dstOffset = androidx.compose.ui.unit.IntOffset(offsetX.toInt(), offsetY.toInt()),
+                                dstSize = IntSize(scaledW.toInt(), scaledH.toInt())
+                            )
+                        }
+
                         // Black semi-transparent overlay
                     drawPath(
                         path = Path().apply {
@@ -243,23 +280,43 @@ fun PhotoCropperContainer(
                 .padding(top = 80.dp)
         )
         
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 60.dp)
+                .fillMaxWidth(0.8f),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+        // Swap the photo without leaving the cropper.
+        Button(
+            onClick = onSelectNewImage,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222)),
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Text("Select new image", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+
         // Done button
         Button(
             onClick = {
                 coroutineScope.launch(Dispatchers.IO) {
                     val origBmp = androidBitmap ?: return@launch
-                    
-                    // Calculate fit scale (matching Canvas drawing logic)
-                    val scaleX = containerSize.width.toFloat() / origBmp.width
-                    val scaleY = containerSize.height.toFloat() / origBmp.height
-                    val scale = minOf(scaleX, scaleY)
-                    
+
+                    // Fit scale, matching the Canvas drawing logic (including the inset).
+                    val availW = containerSize.width - insetPx * 2f
+                    val availH = containerSize.height - insetPx * 2f
+                    val scale = minOf(availW / origBmp.width, availH / origBmp.height)
+
                     val scaledW = origBmp.width * scale
                     val scaledH = origBmp.height * scale
-                    
-                    val offsetX = (containerSize.width - scaledW) / 2f
-                    val offsetY = (containerSize.height - scaledH) / 2f
-                    
+
+                    val offsetX = insetPx + (availW - scaledW) / 2f
+                    val offsetY = insetPx + (availH - scaledH) / 2f
+
                     // Map from view coordinates to original bitmap coordinates
                     val normalizedCenterX = (cropCenter.x - offsetX) / scale
                     val normalizedCenterY = (cropCenter.y - offsetY) / scale
@@ -288,12 +345,11 @@ fun PhotoCropperContainer(
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 60.dp)
-                .fillMaxWidth(0.8f)
+                .fillMaxWidth()
                 .height(48.dp)
         ) {
             Text("Done", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
         }
     }
         }
