@@ -1,8 +1,8 @@
 # musicfy
 Musicfy repos\
 fork from vivimusic\
-thanks\ \
--cheklis priority\
+thanks\
+-cheklis priority
 > add more player styles [current]\
 > add the menu for the player\
 > adding ai translation\
