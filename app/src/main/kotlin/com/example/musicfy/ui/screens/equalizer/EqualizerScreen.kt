@@ -23,7 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Switch
+import com.example.musicfy.ui.component.AppSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -86,7 +86,7 @@ fun EqualizerScreen(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
-                Switch(checked = enabled, onCheckedChange = viewModel::setEnabled)
+                AppSwitch(checked = enabled, onCheckedChange = viewModel::setEnabled)
             }
 
             Row(

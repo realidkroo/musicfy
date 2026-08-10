@@ -1440,6 +1440,26 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(playCountEntity: PlayCountEntity): Long
 
+    /**
+     * Removes artist rows that are actually track durations, and unlinks them from their songs.
+     * One-off repair for libraries built before the guard in [insert] existed — the bad names are
+     * already persisted, so fixing the parsers alone would never clean them up.
+     *
+     * GLOB, not LIKE: SQLite's LIKE has no character-class syntax, so '[0-9]' would be matched
+     * literally. This targets m:ss / mm:ss / h:mm:ss.
+     */
+    @Query("DELETE FROM song_artist_map WHERE artistId IN (SELECT id FROM artist WHERE name GLOB '[0-9]*:[0-9][0-9]')")
+    fun unlinkTimestampArtists(): Int
+
+    @Query("DELETE FROM artist WHERE name GLOB '[0-9]*:[0-9][0-9]'")
+    fun deleteTimestampArtists(): Int
+
+    @Transaction
+    fun purgeTimestampArtists(): Int {
+        unlinkTimestampArtists()
+        return deleteTimestampArtists()
+    }
+
     @Transaction
     fun insert(
         mediaMetadata: MediaMetadata,
@@ -1447,7 +1467,15 @@ interface DatabaseDao {
     ) {
         if (insert(mediaMetadata.toSongEntity().let(block)) == -1L) return
 
-        mediaMetadata.artists.forEachIndexed { index, artist ->
+        // Single guard for every source of song metadata.
+        //
+        // Several InnerTube parsers pick the artist out of a bullet-separated subtitle
+        // ("Song • Artist • 5:06"). When a track has no artist run the segmentation slides and
+        // the *duration* lands in the artist slot, which then gets written here and persists —
+        // so the row keeps showing "5:06 • 5:06" (artist • duration) long after any parser is
+        // corrected. Filtering at the point of persistence covers all of those call sites at once
+        // instead of patching each parser and missing one.
+        mediaMetadata.artists.filterNot { it.name.looksLikeTimestampName() }.forEachIndexed { index, artist ->
             val artistId = artist.id ?: artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
 
             insert(
@@ -1725,3 +1753,8 @@ interface DatabaseDao {
         raw("PRAGMA wal_checkpoint(FULL)".toSQLiteQuery())
     }
 }
+
+/** m:ss, mm:ss or h:mm:ss — the shapes a duration run takes in a subtitle. */
+private val TIMESTAMP_NAME_REGEX = Regex("""^\d{1,2}:\d{2}(:\d{2})?$""")
+
+private fun String.looksLikeTimestampName(): Boolean = TIMESTAMP_NAME_REGEX.matches(trim())

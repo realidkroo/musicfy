@@ -96,13 +96,13 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
             ) {
                 Column {
                     Text(
-                        text = "Musicfy DEV PREV",
+                        text = "musicfy build #852 release",
                         fontSize = 14.sp,
                         color = Color(0xFFAAAAAA)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "6.0.1DEV",
+                        text = "6.0.1 build#852",
                         fontSize = 32.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
@@ -114,7 +114,7 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "as you can see you are on DEV PREVIEW version. please expect some bugs, stuttering. and any feedback is appreciated!",
+                text = "larp larp sahur, as you can see you are on DEV PREVIEW version, not the complete app. its still on development but in public testing. please expect some bugs, stuttering. and any feedback is appreciated!",
                 fontSize = 15.sp,
                 color = Color(0xFFE0E0E0),
                 lineHeight = 22.sp,

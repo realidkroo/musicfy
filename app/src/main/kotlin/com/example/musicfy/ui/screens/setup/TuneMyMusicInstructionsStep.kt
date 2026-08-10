@@ -1,5 +1,6 @@
 package com.example.musicfy.ui.screens.setup
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -42,21 +43,14 @@ fun TuneMyMusicInstructionsStep() {
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.Start
     ) {
-        Box(
+        Image(
+            painter = painterResource(R.drawable.tune_my_music),
+            contentDescription = "Open tunemymusic.com",
             modifier = Modifier
                 .size(56.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF6C5CE7))
-                .clickable { uriHandler.openUri(TUNE_MY_MUSIC_URL) },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.lib_outline),
-                contentDescription = "Open tunemymusic.com",
-                tint = Color.White,
-                modifier = Modifier.size(26.dp)
-            )
-        }
+                .clickable { uriHandler.openUri(TUNE_MY_MUSIC_URL) }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -87,20 +81,13 @@ fun TuneMyMusicInstructionsStep() {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            Image(
+                painter = painterResource(R.drawable.tune_my_music),
+                contentDescription = null,
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF3A3A3A)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.lib_outline),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            )
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(

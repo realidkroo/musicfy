@@ -24,7 +24,9 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -84,6 +86,13 @@ fun ArtistItemsScreen(
     val title by viewModel.title.collectAsState()
     val itemsPage by viewModel.itemsPage.collectAsState()
 
+    // Deduplicated once per page change. This was previously computed inline in `items = ...`
+    // and again inside the item lambda to read `.size`, so every visible row allocated a fresh
+    // full-length list on every frame while scrolling.
+    val distinctItems by remember {
+        derivedStateOf { itemsPage?.items.orEmpty().distinctBy { it.id } }
+    }
+
     LaunchedEffect(lazyListState) {
         snapshotFlow {
             lazyListState.layoutInfo.visibleItemsInfo.any { it.key == "loading" }
@@ -118,7 +127,7 @@ fun ArtistItemsScreen(
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues(),
         ) {
             itemsIndexed(
-                items = itemsPage?.items.orEmpty().distinctBy { it.id },
+                items = distinctItems,
                 key = { _, it -> it.id },
             ) { index, item ->
                 YouTubeListItem(
@@ -130,7 +139,7 @@ fun ArtistItemsScreen(
                         else -> false
                     },
                     isPlaying = isPlaying,
-                    shape = listItemShape(index, itemsPage?.items.orEmpty().distinctBy { it.id }.size),
+                    shape = listItemShape(index, distinctItems.size),
                     trailingContent = {
                         IconButton(
                             onClick = {
@@ -217,7 +226,7 @@ fun ArtistItemsScreen(
             contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
         ) {
             items(
-                items = itemsPage?.items.orEmpty().distinctBy { it.id },
+                items = distinctItems,
                 key = { it.id }
             ) { item ->
                 YouTubeGridItem(

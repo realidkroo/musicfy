@@ -237,7 +237,12 @@ sealed class HomeSection(val id: String) {
     // guarantee section order/content stays identical between fetches, and an
     // index-based key made a reload silently swap whatever content was in a given
     // visual slot, reading as the whole feed "resetting."
-    data class HomePageSection(val index: Int, val title: String) : HomeSection("home_page_section_$title")
+    // id includes index, not just title. YouTube regularly returns two sections with the same
+    // title (and continuations append more of them), which made this id collide — taking the
+    // spacer key and both section item keys down with it and crashing LazyColumn with
+    // "Key ... was already used". index is the section's position in the home page, so it is
+    // unique by construction.
+    data class HomePageSection(val index: Int, val title: String) : HomeSection("home_page_section_${index}_$title")
 }
 
 @Composable
@@ -630,6 +635,13 @@ fun HomeScreen(
     val selectedChip by viewModel.selectedChip.collectAsState()
 
     val isLoading: Boolean by viewModel.isLoading.collectAsState()
+
+    // Same emptiness test HeroCarousel uses to swap itself for OnboardingHero: while the user is
+    // being onboarded the "Musicfy"/"Home" titles stay out of the way.
+    val isFreshSetup = mediaMetadata == null &&
+        lastPlayedSong == null &&
+        dailyDiscover.isNullOrEmpty() &&
+        keepListening.orEmpty().filterIsInstance<Song>().isEmpty()
 
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val isRandomizing by viewModel.isRandomizing.collectAsState()
@@ -1850,7 +1862,7 @@ fun HomeScreen(
                                 val sectionSongs = sectionData.items.filterIsInstance<SongItem>()
                                 val hasPlayableSongs = sectionSongs.isNotEmpty()
 
-                                item(key = "home_section_title_${section.title}") {
+                                item(key = "home_section_title_${section.id}") {
                                     NavigationTitle(
                                         title = sectionData.title,
                                         label = sectionData.label,
@@ -1898,7 +1910,7 @@ fun HomeScreen(
                                 // Always a horizontal row of cover-forward grid cards - the old
                                 // songs-only branch rendered gray list rows here, which looked
                                 // out of place among the rest of Home's card-based sections.
-                                item(key = "home_section_list_${section.title}") {
+                                item(key = "home_section_list_${section.id}") {
                                     LazyRow(
                                         contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
                                         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -2033,13 +2045,21 @@ fun HomeScreen(
                         scaleY = scale
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }, contentAlignment = Alignment.CenterStart) {
+                        // Onboarding owns the top of the screen on a clean setup, so the wordmark
+                        // stays hidden until the user scrolls past the hero (where "Home" takes over).
+                        val wordmarkAlpha by animateFloatAsState(
+                            targetValue = if (isFreshSetup) 0f else 1f,
+                            animationSpec = tween(durationMillis = 400),
+                            label = "wordmarkAlpha"
+                        )
+
                         // "Musicfy" Text
                         Text(
                             text = "Musicfy",
                             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Normal),
                             color = Color.White,
                             modifier = Modifier.graphicsLayer {
-                                alpha = 1f - topBarProgress
+                                alpha = (1f - topBarProgress) * wordmarkAlpha
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                     val rawBlur = topBarProgress * 15f
                                     val blurRadius = (rawBlur / 3f).toInt() * 3

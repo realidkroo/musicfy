@@ -1,5 +1,6 @@
 // AdvancedAudioSettingsScreen.kt
 package com.example.musicfy.ui.screens.settings
+import com.example.musicfy.ui.component.AppSwitch
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +23,8 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.*
 import com.example.musicfy.ui.component.LocalZoomOutOverlayState
 import com.example.musicfy.ui.component.SettingsGroup
+import com.example.musicfy.ui.component.SettingsGroupStyle
+import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
@@ -85,30 +88,17 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Advanced Audio") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
+    SubSettingsScaffold(
+        title = "Advanced Audio",
+        onBack = { navController.navigateUp() },
+    ) {
             SettingsGroup(
                 title = "Streaming APIs",
+                style = SettingsGroupStyle.Grouped,
                 items = listOf(
                     SettingsItem(
                         title = { Text("Turn on Monochrome Backend (Includes Amazon)") },
-                        description = { Text("Use Monochrome instances for high quality audio. Disables YT Music fallback.") },
+                        descriptionText = "High quality — disables YT fallback",
                         icon = painterResource(R.drawable.music_note),
                         onClick = {
                             if (enableMonochromeBackend) {
@@ -118,7 +108,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                             }
                         },
                         trailingContent = {
-                            Switch(
+                            AppSwitch(
                                 checked = enableMonochromeBackend,
                                 onCheckedChange = { checked ->
                                     if (checked) showMonochromeOnboarding() else onEnableMonochromeBackendChange(false)
@@ -132,14 +122,15 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
             if (enableMonochromeBackend) {
                 SettingsGroup(
                     title = "Debug",
+                    style = SettingsGroupStyle.Grouped,
                     items = listOf(
                         SettingsItem(
                             title = { Text("Show stream status toasts") },
-                            description = { Text("Popup status messages while resolving a stream (Turnstile solving, source found, errors, etc).") },
+                            descriptionText = "Status popups while resolving",
                             icon = painterResource(R.drawable.info),
                             onClick = { onStreamDebugToastsChange(!streamDebugToasts) },
                             trailingContent = {
-                                Switch(
+                                AppSwitch(
                                     checked = streamDebugToasts,
                                     onCheckedChange = onStreamDebugToastsChange
                                 )
@@ -179,14 +170,15 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
 
                 SettingsGroup(
                     title = "Spatial Audio",
+                    style = SettingsGroupStyle.Grouped,
                     items = listOf(
                         SettingsItem(
                             title = { Text("Enable Dolby Atmos") },
-                            description = { Text("Request Spatial Audio from Custom APIs when available") },
+                            descriptionText = "Request Spatial Audio when available",
                             icon = painterResource(R.drawable.album),
                             onClick = { onEnableSpatialAudioChange(!enableSpatialAudio) },
                             trailingContent = {
-                                Switch(
+                                AppSwitch(
                                     checked = enableSpatialAudio,
                                     onCheckedChange = onEnableSpatialAudioChange
                                 )
@@ -251,7 +243,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     icon = painterResource(R.drawable.play),
                     onClick = { onDeezerFallbackEnabledChange(!deezerFallbackEnabled) },
                     trailingContent = {
-                        Switch(
+                        AppSwitch(
                             checked = deezerFallbackEnabled,
                             onCheckedChange = onDeezerFallbackEnabledChange
                         )
@@ -281,7 +273,6 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                 
                 Spacer(modifier = Modifier.height(40.dp))
             }
-        }
     }
 }
 

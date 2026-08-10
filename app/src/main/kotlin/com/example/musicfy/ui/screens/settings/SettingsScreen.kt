@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -167,22 +170,35 @@ fun SettingsScreen(
     val backgroundColor = if (isSystemInDarkTheme()) Color.Black else MaterialTheme.colorScheme.surface
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
-                    .padding(paddingValues)
+                    .padding(bottom = paddingValues.calculateBottomPadding())
                     .fillMaxSize()
                     .glassRoot(glassState, isActive = { scrollProgressProvider() > 0f })
                     .verticalScroll(scrollState)
-                    .padding(horizontal = 16.dp, vertical = 24.dp)
+                    // We manually add the status bar padding so the content doesn't get cut off at the very top
+                    .padding(
+                        top = androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+                        start = 24.dp,
+                        end = 24.dp,
+                        bottom = 24.dp
+                    )
             ) {
-            // Profile header
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Spacer(modifier = Modifier.height(32.dp)) // 30% more top padding
+            // Profile header (fades out to become the sticky top bar)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = (1f - scrollProgressProvider() * 2f).coerceIn(0f, 1f) }
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
+                        .size(84.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 ) {
@@ -201,10 +217,10 @@ fun SettingsScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "$greeting, ${accountName.ifBlank { "there" }}!",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Surface(
                         shape = RoundedCornerShape(50),
                         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -212,27 +228,10 @@ fun SettingsScreen(
                     ) {
                         Text(
                             text = "view profile",
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                         )
                     }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable { showWip() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.expand_less),
-                        contentDescription = "More",
-                        modifier = Modifier.size(22.dp)
-                    )
                 }
             }
 
@@ -250,21 +249,21 @@ fun SettingsScreen(
                 items = listOf(
                     SettingsItem(
                         title = { Text("Play music on my other device") },
-                        description = { Text("Make your device a remote, or the player, and stream your local music at original quality") },
+                        description = { Text("mdevice integrations") },
                         icon = painterResource(R.drawable.cast),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
                         onClick = { showWip() }
                     ),
                     SettingsItem(
                         title = { Text("Party mode") },
-                        description = { Text("Invite your friend to listen to the same song at same party session") },
+                        description = { Text("make a party room with your fren") },
                         icon = painterResource(R.drawable.group),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
                         onClick = { showWip() }
                     ),
                     SettingsItem(
                         title = { Text("Import data") },
-                        description = { Text("Import data from other music profiles/musicfy backup") },
+                        description = { Text("Import data from other music profider/backup") },
                         icon = painterResource(R.drawable.restore),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
                         onClick = { showWip() }
@@ -272,37 +271,7 @@ fun SettingsScreen(
                 )
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
 
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(painterResource(R.drawable.info), contentDescription = null)
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text("${BuildConfig.VERSION_NAME} DEV", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "Made with <3 by roo! this app is still in DEV stage",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
@@ -316,6 +285,19 @@ fun SettingsScreen(
             )
             SettingsGroup(
                 items = listOf(
+                    SettingsItem(
+                        title = { Text("${BuildConfig.VERSION_NAME}") },
+                        description = { Text("Made with <3 by roo! this app is still on DEV stage.") },
+                        icon = painterResource(R.drawable.info),
+                        iconShape = androidx.compose.foundation.shape.CircleShape,
+                        onClick = { showWip() }
+                    ),
+                    SettingsItem(
+                        title = { Text("General") },
+                        icon = painterResource(R.drawable.settings),
+                        iconShape = androidx.compose.foundation.shape.CircleShape,
+                        onClick = { showWip() }
+                    ),
                     SettingsItem(
                         title = { Text("Appearance") },
                         icon = painterResource(R.drawable.contrast),
@@ -336,7 +318,7 @@ fun SettingsScreen(
                     ),
                     SettingsItem(
                         title = { Text("Reset app data") },
-                        description = { Text("Wipes all local data and closes the app") },
+                        description = { Text("Wipe data and close app") },
                         icon = painterResource(R.drawable.delete_history),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
                         isHighlighted = true,
@@ -348,25 +330,70 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(180.dp)) // Ensures last item is not covered by mini player
             }
 
-            // Progressive glass blur, GlassKit (not Haze) — fades in once you scroll past the
-            // profile header, matching Home's top-bar treatment so it doesn't glow.
+            // Sticky Morphing Top Bar
             val showTopBlur by remember { derivedStateOf { scrollProgressProvider() > 0.01f } }
             if (showTopBlur) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp)
+                        .height(106.dp)
                         .align(Alignment.TopCenter)
                         .graphicsLayer { alpha = scrollProgressProvider() }
                 ) {
                     ProgressiveGlassBackground(
                         state = glassState,
                         maxBlurRadius = { 40f * scrollProgressProvider() },
-                        foundationColor = backgroundColor,
+                        foundationColor = Color.Transparent,
                         direction = BlurDirection.BottomToTop,
                         steps = 3,
                         modifier = Modifier.fillMaxSize()
                     )
+                    
+                    // Custom clean gradient overlay
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        backgroundColor.copy(alpha = 0.7f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+                    
+                    // Morphed sticky header content
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(horizontal = 24.dp, vertical = 16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            if (profilePicUri.isNotBlank()) {
+                                AsyncImage(
+                                    model = profilePicUri.takeIf { it.contains("://") } ?: "file://$profilePicUri",
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.width(12.dp))
+                        
+                        Text(
+                            text = "${accountName.ifBlank { "User" }} on musicfy",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }

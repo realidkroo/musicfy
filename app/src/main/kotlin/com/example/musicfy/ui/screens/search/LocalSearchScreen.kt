@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -105,6 +107,13 @@ fun LocalSearchScreen(
     val configuration = LocalWindowInfo.current
     val isLandscape = configuration.containerSize.width > configuration.containerSize.height
 
+    // Dedup once per result instead of once per recomposition per section. The lazy content
+    // lambda re-runs on every recomposition of this screen, so `items.distinctBy { }` inline in
+    // the `items = ...` argument rebuilt every section's list each time.
+    val distinctResultMap = remember(result) {
+        result.map.mapValues { (_, sectionItems) -> sectionItems.distinctBy { it.id } }
+    }
+
     LazyColumn(
         state = lazyListState,
         contentPadding = LocalPlayerAwareWindowInsets.current
@@ -141,7 +150,7 @@ fun LocalSearchScreen(
             }
         }
 
-        result.map.forEach { (filter, items) ->
+        distinctResultMap.forEach { (filter, items) ->
             if (result.filter == LocalFilter.ALL) {
                 item(key = filter) {
                     Row(
@@ -175,18 +184,18 @@ fun LocalSearchScreen(
                 }
             }
 
-            items(
-                items = items.distinctBy { it.id },
-                key = { it.id },
-                contentType = { CONTENT_TYPE_LIST },
-            ) { item ->
+            itemsIndexed(
+                items = items,
+                key = { _, it -> it.id },
+                contentType = { _, _ -> CONTENT_TYPE_LIST },
+            ) { index, item ->
                 when (item) {
                     is Song -> SongListItem(
                         song = item,
                         showInLibraryIcon = true,
                         isActive = item.id == mediaMetadata?.id,
                         isPlaying = isPlaying,
-                        shape = listItemShape(items.indexOfFirst { it.id == item.id }, items.size),
+                        shape = listItemShape(index, items.size),
                         trailingContent = {
                             IconButton(
                                 onClick = {

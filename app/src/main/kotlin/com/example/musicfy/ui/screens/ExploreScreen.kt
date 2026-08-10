@@ -229,6 +229,11 @@ fun ExploreScreen(
                         val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
                         val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
 
+                        // Hoisted: filterIsInstance + distinctBy are O(n) allocations that
+                        // otherwise re-ran on every recomposition of this screen.
+                        val sectionSongs = remember(section) {
+                            section.items.filterIsInstance<SongItem>().distinctBy { it.id }
+                        }
                         val lazyGridState = rememberLazyGridState()
                         val snapLayoutInfoProvider = remember(lazyGridState) {
                             SnapLayoutInfoProvider(
@@ -251,7 +256,7 @@ fun ExploreScreen(
                                 .height(ListItemHeight * 4),
                         ) {
                             itemsIndexed(
-                                items = section.items.filterIsInstance<SongItem>().distinctBy { it.id },
+                                items = sectionSongs,
                                 key = { _, it -> it.id },
                             ) { index, song ->
                                 YouTubeListItem(
@@ -311,6 +316,9 @@ fun ExploreScreen(
                 }
 
                 explorePage?.newReleaseAlbums?.let { newReleaseAlbums ->
+                    val distinctNewReleases = remember(newReleaseAlbums) {
+                        newReleaseAlbums.distinctBy { it.id }
+                    }
                     NavigationTitle(
                         title = stringResource(R.string.new_release_albums),
                         onClick = {
@@ -323,7 +331,7 @@ fun ExploreScreen(
                             .asPaddingValues(),
                     ) {
                         items(
-                            items = newReleaseAlbums.distinctBy { it.id },
+                            items = distinctNewReleases,
                             key = { it.id },
                         ) { album ->
                             YouTubeGridItem(
@@ -354,6 +362,9 @@ fun ExploreScreen(
                 }
 
                 chartsPage?.sections?.find { it.title == "Top music videos" }?.let { topVideosSection ->
+                    val topVideos = remember(topVideosSection) {
+                        topVideosSection.items.filterIsInstance<SongItem>().distinctBy { it.id }
+                    }
                     NavigationTitle(
                         title = stringResource(R.string.top_music_videos),
                     )
@@ -363,7 +374,7 @@ fun ExploreScreen(
                             .asPaddingValues(),
                     ) {
                         items(
-                            items = topVideosSection.items.filterIsInstance<SongItem>().distinctBy { it.id },
+                            items = topVideos,
                             key = { it.id },
                         ) { video ->
                             YouTubeGridItem(

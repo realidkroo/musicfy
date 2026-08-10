@@ -1,6 +1,7 @@
 package com.example.musicfy.ui.screens.setup
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
@@ -15,10 +16,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.musicfy.R
 import kotlinx.coroutines.delay
 
 @Composable
@@ -36,8 +39,8 @@ fun ThankYouStep() {
             .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Spacer(modifier = Modifier.height(100.dp))
-        
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text(
             text = "Thank you",
             fontSize = 48.sp,
@@ -57,21 +60,25 @@ fun ThankYouStep() {
             letterSpacing = (-0.5).sp
         )
         
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        AnimatedVisibility(
+        // Card sits centred in whatever space is left between the heading and the Done button.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(bottom = 120.dp), // Leave space for Done button
+            contentAlignment = Alignment.Center
+        ) {
+        androidx.compose.animation.AnimatedVisibility(
             visible = showCard,
             enter = slideInVertically(
                 initialOffsetY = { it }, // Slide from bottom
                 animationSpec = tween(durationMillis = 600)
-            ),
-            modifier = Modifier.weight(1f)
+            )
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
-                    .padding(bottom = 120.dp) // Leave space for Done button
                     .clip(RoundedCornerShape(32.dp))
                     .background(Color(0xFF222222))
             ) {
@@ -91,7 +98,7 @@ fun ThankYouStep() {
                         },
                     letterSpacing = 2.sp
                 )
-                
+
                 // Content
                 Column(
                     modifier = Modifier
@@ -105,18 +112,18 @@ fun ThankYouStep() {
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     Box(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF757575))
                     )
-                    
+
                     Spacer(modifier = Modifier.weight(1f))
-                    
+
                     Text(
                         text = "v6.7.5b",
                         fontSize = 32.sp,
@@ -136,6 +143,7 @@ fun ThankYouStep() {
                     )
                 }
             }
+        }
         }
     }
 }

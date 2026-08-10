@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,7 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,14 +31,8 @@ fun ProfileSetupStep(
     username: String,
     onUsernameChange: (String) -> Unit,
     profilePicUri: Uri?,
-    onProfilePicChange: (Uri) -> Unit
+    onProfileTap: () -> Unit
 ) {
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        uri?.let { onProfilePicChange(it) }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -69,13 +66,7 @@ fun ProfileSetupStep(
             modifier = Modifier
                 .size(140.dp)
                 .clip(CircleShape)
-                .clickable {
-                    launcher.launch(
-                        androidx.activity.result.PickVisualMediaRequest(
-                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                        )
-                    )
-                }
+                .clickable(onClick = onProfileTap)
         )
         
         Spacer(modifier = Modifier.height(48.dp))
@@ -89,23 +80,33 @@ fun ProfileSetupStep(
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        OutlinedTextField(
+        // A plain BasicTextField instead of OutlinedTextField: the material field reserves room
+        // for a label/placeholder, so squeezing it into 48dp clipped the typed text.
+        BasicTextField(
             value = username,
             onValueChange = onUsernameChange,
             singleLine = true,
-            shape = RoundedCornerShape(percent = 50), // Rounder
+            textStyle = TextStyle(
+                color = Color.White,
+                fontSize = 16.sp,
+                lineHeight = 20.sp
+            ),
+            cursorBrush = SolidColor(Color.White),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp), // Smaller
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFF2C2C2C),
-                unfocusedContainerColor = Color(0xFF2C2C2C),
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = Color.White
-            )
+                .height(48.dp)
+                .clip(RoundedCornerShape(percent = 50))
+                .background(Color(0xFF2C2C2C)),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    innerTextField()
+                }
+            }
         )
         
         Spacer(modifier = Modifier.weight(1f))

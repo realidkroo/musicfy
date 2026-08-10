@@ -22,7 +22,13 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.musicfy.ui.component.FadeInCover
 import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.utils.resize
+import com.music.innertube.YouTube
+import com.music.innertube.models.SongItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.ui.component.ProgressiveGlassBackground
 import com.example.musicfy.ui.component.BlurDirection
@@ -52,8 +58,26 @@ fun WelcomeStep(isHiding: Boolean = false) {
     var currentAnimation by remember { mutableStateOf(CurrentAnimation.Disc) }
     var thumbnails by remember { mutableStateOf<List<String>>(emptyList()) }
     
-    // Preloaded classic and popular song thumbnails to prevent lag on launch
+    // Square cover art from YouTube Music, fetched once. The hardcoded i.ytimg list below is only
+    // a fallback — those are 16:9 video thumbnails, which look wrong cropped into the grid.
     LaunchedEffect(Unit) {
+        val fetched = withContext(Dispatchers.IO) {
+            listOf("top hits", "classic rock", "j-pop", "pop hits 2020s")
+                .flatMap { query ->
+                    YouTube.search(query, YouTube.SearchFilter.FILTER_SONG)
+                        .getOrNull()
+                        ?.items
+                        ?.filterIsInstance<SongItem>()
+                        ?.map { it.thumbnail.resize(544, 544) }
+                        .orEmpty()
+                }
+                .distinct()
+        }
+        if (fetched.size >= 12) {
+            thumbnails = fetched.shuffled().take(21)
+            return@LaunchedEffect
+        }
+
         val predefinedCovers = listOf(
             "https://i.ytimg.com/vi/Zi_XLOBDo_Y/sddefault.jpg", // Michael Jackson - Billie Jean
             "https://i.ytimg.com/vi/fJ9rUzIMcZQ/sddefault.jpg", // Queen - Bohemian Rhapsody
@@ -520,12 +544,8 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
                     .background(Color(0xFF242424)) // Fallback/loading color
             ) {
                 if (url.isNotEmpty()) {
-                    AsyncImage(
-                        model = url,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    // Fades up as it decodes rather than snapping over the placeholder tile.
+                    FadeInCover(url = url, modifier = Modifier.fillMaxSize())
                 }
             }
         }

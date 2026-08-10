@@ -14,7 +14,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
+import com.example.musicfy.ui.component.AppSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -34,6 +34,8 @@ import com.example.musicfy.constants.MusicHapticsEnabledKey
 import com.example.musicfy.constants.MusicHapticsSensitivityKey
 import com.example.musicfy.constants.SetupCompletedKey
 import com.example.musicfy.ui.component.SettingsGroup
+import com.example.musicfy.ui.component.SettingsGroupStyle
+import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.rememberEnumPreference
@@ -50,36 +52,22 @@ fun ExperimentalSettingsScreen(navController: NavController) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Experimental") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(painterResource(R.drawable.arrow_back_ios), contentDescription = null)
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-        ) {
+    SubSettingsScaffold(
+        title = "Experimental",
+        onBack = { navController.navigateUp() },
+    ) {
             SettingsGroup(
+                style = SettingsGroupStyle.Grouped,
                 items = buildList {
                     add(
                         SettingsItem(
                             title = { Text("Music haptics") },
-                            description = { Text("Vibrate the device to the beat of the music (uses more battery)") },
+                            descriptionText = "Vibrate to the beat — uses battery",
                             icon = painterResource(R.drawable.music_note),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { onMusicHapticsEnabledChange(!musicHapticsEnabled) },
                             trailingContent = {
-                                Switch(checked = musicHapticsEnabled, onCheckedChange = onMusicHapticsEnabledChange)
+                                AppSwitch(checked = musicHapticsEnabled, onCheckedChange = onMusicHapticsEnabledChange)
                             }
                         )
                     )
@@ -140,7 +128,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Advanced audio settings") },
-                            description = { Text("Custom API endpoints, Lossless & Hi-Res streaming options, and Spatial Audio") },
+                            descriptionText = "Custom APIs, Hi-Res, Spatial Audio",
                             icon = painterResource(R.drawable.tune),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = { navController.navigate("advanced_audio_settings") }
@@ -149,7 +137,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Repeat initial setup") },
-                            description = { Text("Re-run the welcome and profile setup wizard") },
+                            descriptionText = "Re-run the setup wizard",
                             icon = painterResource(R.drawable.restore),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = {
@@ -166,7 +154,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Show beta warning on launch") },
-                            description = { Text("Re-enable the beta version popup when the app launches") },
+                            descriptionText = "Show the beta popup on launch",
                             icon = painterResource(R.drawable.warning),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
                             onClick = {
@@ -182,6 +170,5 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     )
                 }
             )
-        }
     }
 }

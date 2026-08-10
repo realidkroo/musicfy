@@ -48,6 +48,7 @@ class PlayerUiState(connection: PlayerConnection) {
             mediaId = metadata?.id.orEmpty(),
             title = metadata?.title.orEmpty(),
             artist = metadata?.artists?.joinToString { it.name }.orEmpty(),
+            album = metadata?.album?.title.orEmpty(),
             thumbnailUrl = metadata?.thumbnailUrl,
             liked = song?.song?.liked == true,
         )
