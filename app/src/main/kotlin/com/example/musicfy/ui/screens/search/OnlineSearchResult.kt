@@ -84,6 +84,7 @@ import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PauseSearchHistoryKey
+import com.example.musicfy.constants.ProfilePicUriKey
 import com.example.musicfy.db.entities.SearchHistory
 import com.example.musicfy.extensions.togglePlayPause
 import com.example.musicfy.models.toMediaMetadata
@@ -132,6 +133,7 @@ fun OnlineSearchResult(
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
+    val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
 
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
@@ -360,7 +362,7 @@ fun OnlineSearchResult(
             title = "Search",
             blurActive = blurActive,
             trailing = {
-                SearchAvatar(imageUrl = null, onClick = { navController.navigate("settings") })
+                SearchAvatar(imageUrl = profilePicStr.ifBlank { null }, onClick = { navController.navigate("settings") })
             },
             below = {
                 SearchCategoryRow(
