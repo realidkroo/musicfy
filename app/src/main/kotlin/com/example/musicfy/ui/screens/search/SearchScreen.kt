@@ -148,6 +148,13 @@ fun SearchScreen(
         { maxOf(collapse.value, activeProgress.value) }
     }
 
+    // Boolean, so it costs two recompositions per gesture rather than one per frame.
+    val blurActive by remember(browseListState, activeListState) {
+        derivedStateOf {
+            !browseListState.isScrollInProgress && !activeListState.isScrollInProgress
+        }
+    }
+
     val commit: (String) -> Unit = remember(navController, pauseSearchHistory) {
         { raw ->
             val text = raw.trim()
@@ -210,7 +217,7 @@ fun SearchScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .glassRoot(glassState, isActive = { progressProvider() > 0.01f })
+                .glassRoot(glassState, isActive = { blurActive && progressProvider() > 0.01f })
         ) {
             if (showBrowse) {
                 Box(
@@ -254,6 +261,7 @@ fun SearchScreen(
             progressProvider = progressProvider,
             pureBlack = pureBlack,
             title = "Search",
+            blurActive = blurActive,
             trailing = {
                 SearchAvatar(imageUrl = null, onClick = { navController.navigate("settings") })
             },

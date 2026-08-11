@@ -96,13 +96,13 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
             ) {
                 Column {
                     Text(
-                        text = "musicfy build #903 release",
+                        text = "musicfy build #905 release",
                         fontSize = 14.sp,
                         color = Color(0xFFAAAAAA)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "6.0.1 build#903",
+                        text = "6.0.1 build#905",
                         fontSize = 32.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
