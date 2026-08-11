@@ -145,6 +145,15 @@ fun LyricsScreen(
     onImmersiveChange: (Boolean) -> Unit = {},
     /** True when the bottom sheet is being dragged, used to suppress heavy visual effects. */
     isSheetDragging: Boolean = false,
+    /**
+     * True while this page is itself opening or closing.
+     *
+     * During that morph the whole page is being scaled, faded and translated — which already forces
+     * a full-screen offscreen composite every frame — and the sheet is fully expanded, so neither
+     * [isSheetDragging] nor `userScrolling` was true and every per-line blur and wave shader kept
+     * running straight through it. Measured at 29ms median frame time (a 120Hz frame is 8.3ms).
+     */
+    isMorphing: Boolean = false,
     /** Opens the shared player action sheet. */
     onOpenMenu: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -284,7 +293,7 @@ fun LyricsScreen(
         derivedStateOf { listState.isScrollInProgress && !isAutoScrolling }
     }
 
-    val suppressEffects = userScrolling || isSheetDragging
+    val suppressEffects = userScrolling || isSheetDragging || isMorphing
 
     LaunchedEffect(userScrolling) {
         if (userScrolling) followPlayback = false
@@ -633,6 +642,7 @@ fun LyricsScreen(
                             entry = entry,
                             state = state,
                             blurStage = blurStage,
+                            suppressEffects = suppressEffects,
                             positionProvider = positionProvider,
                             accentColor = accent,
                             subLine = romanized,

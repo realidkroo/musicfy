@@ -204,7 +204,14 @@ fun SearchScreen(
     ) {
         // Everything the top bar blurs has to be captured here, and the bar itself must sit
         // outside this subtree or it would blur its own output.
-        Box(modifier = Modifier.fillMaxSize().glassRoot(glassState)) {
+        // The capture only has a consumer once the bar has something to blur. Unconditional, it
+        // records the entire scrolling list into a RenderNode on every frame of every scroll for
+        // nothing.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassRoot(glassState, isActive = { progressProvider() > 0.01f })
+        ) {
             if (showBrowse) {
                 Box(
                     modifier = Modifier

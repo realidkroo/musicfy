@@ -145,6 +145,17 @@ fun LyricsGlowLine(
     waveEnabled: Boolean = true,
     /** Eight-tap bloom instead of four. Off trades a slightly flatter halo for fragment cost. */
     highBloom: Boolean = true,
+    /**
+     * Drops this line's blur RenderEffect outright rather than letting it ramp down.
+     *
+     * [blurStage] going to 0 only *retargets* the 350ms radius tween, so for most of a transition
+     * every visible line is still running a real Gaussian pass — which is precisely the frames
+     * where the page can least afford one. Suppression has to be immediate to be worth anything.
+     *
+     * Note this also stops [blurRadius] being read in the draw phase at all while suppressed, so
+     * the still-running tween cannot invalidate the layer either.
+     */
+    suppressEffects: Boolean = false,
 ) {
     val targetAlpha = when (state) {
         LyricsLineState.ACTIVE -> 1f
@@ -201,7 +212,7 @@ fun LyricsGlowLine(
                 scaleY = scale
                 transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
                 // Read here, in the draw phase, so the ramp repaints without recomposing the line.
-                renderEffect = blurEffectForRadius(blurRadius)
+                renderEffect = if (suppressEffects) null else blurEffectForRadius(blurRadius)
             }
     ) {
         // Bracketed asides — "Lift your head to the sky (Sky)", or a whole line of "(Ooh)" — are
