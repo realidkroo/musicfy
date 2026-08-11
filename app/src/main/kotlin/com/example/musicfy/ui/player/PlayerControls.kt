@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -172,8 +175,16 @@ internal fun AnimatedPressScaleSkipButton(
                 scaleY = scale
                 alpha = if (enabled) 1f else 0.36f
             }
-            .clip(RoundedCornerShape(50))
-            .background(containerColor)
+            // Clip and fill ONLY when there is actually a container to draw. These buttons are
+            // called with a transparent container, so the rounded clip was shaping nothing while
+            // still cropping every glyph wider than the button — which is what cut the skip icons.
+            .then(
+                if (containerColor == Color.Transparent) {
+                    Modifier
+                } else {
+                    Modifier.clip(RoundedCornerShape(50)).background(containerColor)
+                }
+            )
             .clickable(
                 enabled = enabled,
                 indication = null,
@@ -195,7 +206,25 @@ internal fun AnimatedPressScaleSkipButton(
                 painter = painter,
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(tint),
-                modifier = Modifier.size(iconSize).scale(2.0f)
+                // The skip vectors are 100x64, NOT square. Drawing them into a square
+                // size(iconSize) box letterboxed them, and the .scale(2f) that followed then blew
+                // the result out to roughly 108x69 — well past the 74dp rounded-rect clip on the
+                // Box above, which sheared the leading and trailing triangles off exactly while
+                // the animation slid them outward. That is the "cut".
+                //
+                // Sized by its real aspect instead, small enough to sit inside the clip with room
+                // for the animation's own travel, and with no post-hoc scale — a vector asked for
+                // the size it will actually occupy rasterises crisply, where a magnified one does
+                // not.
+                modifier = Modifier
+                    // requiredWidth, NOT width: the parent Box is size(74.dp), and a plain
+                    // width() is still clamped by the incoming max constraint, so asking for
+                    // 108dp there silently produced 74dp — smaller than the original. The old
+                    // .scale(2f) never hit this because a draw-time scale bypasses layout
+                    // entirely. requiredWidth ignores the parent's constraint the same way,
+                    // while still being a real layout size so the vector rasterises sharp.
+                    .requiredWidth(iconSize * SkipIconWidthFactor)
+                    .aspectRatio(SkipIconAspect)
             )
         }
     }
@@ -257,3 +286,22 @@ internal fun AnimatedPressScalePlayPauseButton(
         }
     }
 }
+
+/**
+ * Native aspect of avd_skip_next / avd_skip_previous (100x64 viewport).
+ *
+ * Kept as a constant because it is a property of the assets, not a design choice: forcing these
+ * into a square box is what letterboxed them before.
+ */
+private const val SkipIconAspect = 100f / 64f
+
+/**
+ * Skip glyph width as a multiple of the caller's iconSize.
+ *
+ * 2x reproduces exactly the size the old `.size(iconSize).scale(2f)` produced (108x69dp at the
+ * transport row's 54dp), because that is the size the design wants. The difference is that it is
+ * now the glyph's real layout size rather than a magnified small one, so it rasterises sharp — and
+ * the button no longer clips it (see below), so the animation's outward slide stays visible
+ * instead of being sheared off at the button's edge.
+ */
+private const val SkipIconWidthFactor = 2f

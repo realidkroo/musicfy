@@ -86,6 +86,7 @@ import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PauseSearchHistoryKey
+import com.example.musicfy.constants.ProfilePicUriKey
 import com.example.musicfy.db.entities.SearchHistory
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.YouTubeQueue

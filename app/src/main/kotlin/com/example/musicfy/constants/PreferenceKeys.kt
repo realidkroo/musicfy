@@ -215,6 +215,24 @@ val RandomizeHomeOrderKey = booleanPreferencesKey("randomizeHomeOrder")
 val AlbumCanvasEnabledKey = booleanPreferencesKey("albumCanvasEnabled")
 val BetaNoticeDismissedKey = booleanPreferencesKey("beta_notice_dismissed")
 
+/**
+ * When the user last chose "remind me in 24 hours" on the home update prompt.
+ *
+ * Epoch millis, 0 for never. Deliberately a snooze rather than a per-version dismissal: the prompt
+ * should come back for the same release if they simply were not ready, and a new release resets
+ * nothing — 24 hours after the snooze it asks again either way.
+ */
+val UpdatePromptSnoozedAtKey = longPreferencesKey("update_prompt_snoozed_at")
+
+/**
+ * Announce which provider a track resolved from ("Playing from …") as a toast on every song.
+ *
+ * Off by default — it fires on each track change, including automatic advances, which makes it a
+ * toast most people see constantly and nobody asked for. It stays available because it is
+ * genuinely useful when diagnosing which extractor a stream came from.
+ */
+val ShowStreamSourceToastKey = booleanPreferencesKey("show_stream_source_toast")
+
 val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
 val ShowDownloadedPlaylistKey = booleanPreferencesKey("show_downloaded_playlist")
 val ShowTopPlaylistKey = booleanPreferencesKey("show_top_playlist")

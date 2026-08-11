@@ -62,7 +62,7 @@ import com.example.musicfy.core.updater.GithubRepoUrl
 import com.example.musicfy.core.updater.InstagramUrl
 import com.example.musicfy.core.updater.UpdateState
 import com.example.musicfy.core.updater.downloadApk
-import com.example.musicfy.core.updater.fetchLatestRelease
+import com.example.musicfy.core.updater.getLatestRelease
 import com.example.musicfy.core.updater.formatBytes
 import com.example.musicfy.core.updater.installApk
 import com.example.musicfy.core.updater.isNewerThanInstalled
@@ -76,12 +76,16 @@ private val AccentGreen = Color(0xFF2E9E5B)
 /**
  * Resolves the update state once and keeps it — the sheet, and the settings row that opens it,
  * both read the same instance so they can never disagree about whether an update exists.
+ *
+ * Backed by [getLatestRelease], so this is a cache read rather than a network call on all but the
+ * first use in an hour. It previously called the network directly on every composition of the
+ * settings screen, i.e. once per visit to Settings.
  */
 @Composable
 fun rememberUpdateState(): androidx.compose.runtime.State<UpdateState> {
     val state = remember { mutableStateOf<UpdateState>(UpdateState.Checking) }
     LaunchedEffect(Unit) {
-        val result = fetchLatestRelease()
+        val result = getLatestRelease()
         state.value = result.fold(
             onSuccess = { release ->
                 when {
@@ -128,7 +132,7 @@ fun UpdateSheet(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.musicfy_icon),
+                    painter = painterResource(R.drawable.ic_musicfy_mark),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(30.dp),
@@ -176,7 +180,7 @@ fun UpdateSheet(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.musicfy_icon),
+                            painter = painterResource(R.drawable.ic_musicfy_mark),
                             contentDescription = null,
                             tint = Color.Black.copy(alpha = 0.8f),
                             modifier = Modifier.size(24.dp),
@@ -387,7 +391,7 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painter = painterResource(R.drawable.musicfy_icon),
+                    painter = painterResource(R.drawable.ic_musicfy_mark),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(22.dp),

@@ -105,6 +105,7 @@ import com.example.musicfy.ui.player.customize.isDisc
 import com.example.musicfy.ui.component.GlassPillBackground
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.glassRoot
+import com.example.musicfy.ui.component.press3D
 import com.example.musicfy.utils.rememberPreference
 import androidx.core.content.getSystemService
 
@@ -641,7 +642,37 @@ fun MorphingCover(
     // outright, with the card deck (the other consumer) already composed out. Measured entering
     // edit mode at 11.8ms of GPU per frame against an 8.3ms budget at 120Hz, with the render
     // thread stalled in swapBuffers; this is one of the passes making that up.
-    Box(modifier = modifier.glassRoot(glassState, isActive = { !editMode })) {
+    // Only while the pill is what the user is actually looking at. Hysteresis-free on purpose:
+    // this is a composition-time boolean that flips once per open/close, and press3D is inert
+    // when false, so there is nothing to be gained from a dead band here.
+    val isPillPressable by remember {
+        derivedStateOf { progressProvider() < 0.02f && !editMode }
+    }
+
+    // Pill press feedback. Applied to the whole morph root rather than to the pill's background
+    // Box, because the pill's artwork, label and transport buttons are SIBLINGS of that background
+    // (each absolutely positioned by morphLayout) — tilting the background alone would slide the
+    // glass out from under its own contents.
+    //
+    // The pivot is the pill's own centre, not this node's: the node is the full-screen morph
+    // container, and a centred pivot would rotate the pill about a point most of a screen below
+    // it. Only enabled while the pill is actually the thing on screen, so pressing anything in the
+    // expanded player never tilts the player.
+    val pillPressOrigin = remember(endpointsPx.fullHeightPx) {
+        val h = endpointsPx.fullHeightPx
+        TransformOrigin(0.5f, if (h > 0f) (endpointsPx.miniHeightPx / 2f) / h else 0f)
+    }
+
+    Box(
+        modifier = modifier
+            .glassRoot(glassState, isActive = { !editMode })
+            .press3D(
+                maxTilt = 6f,
+                pressedScale = 0.97f,
+                enabled = isPillPressable,
+                origin = pillPressOrigin,
+            )
+    ) {
         // Backdrop blur for the pill — blurs whatever's actually behind the mini player (the
         // real Haze "source" registered in MainActivity), not a copy of the cover art. Its own
         // alpha is the exact complement of the full backdrop's alpha below (both ramp across the
@@ -690,7 +721,22 @@ fun MorphingCover(
                     .height(64.dp)
                     .padding(horizontal = 24.dp)
                     .graphicsLayer {
-                        alpha = (1f - (progressProvider() / PILL_FADE_END)).coerceIn(0f, 1f)
+                        // Deliberately NOT faded against the backdrop's own ramp.
+                        //
+                        // The two alphas were exact complements, on the theory that they would
+                        // sum to full coverage at every progress. Alpha compositing does not work
+                        // that way: a 0.5 layer over a 0.5 layer resolves to 0.75, not 1, so for
+                        // the whole length of that crossfade the pair was ~25% transparent at its
+                        // worst and the home screen showed straight through the mini player. That
+                        // is the "transparent thing" on open and close.
+                        //
+                        // The pill instead stays fully opaque for as long as it is mounted and the
+                        // backdrop fades in ON TOP of it, so total coverage is 1 at every instant
+                        // and in both directions. The backdrop reaches full opacity at
+                        // PILL_FADE_END and this unmounts at 0.20, so the handover has margin
+                        // rather than a seam. Shape is not a concern either: BottomSheet's own
+                        // clip is still at the pill's inset and corner radius this early in the
+                        // drag, so the wider backdrop is clipped to the pill's silhouette.
                         translationY = progressProvider().coerceIn(0f, 1f) * (endpointsPx.fullHeightPx - collapsedBoundPx)
                     }
             ) {

@@ -274,6 +274,18 @@ fun PlayerCustomizeScreen(
     }
 
     val stageGlass = remember { GlassState() }
+    // True from the moment a drag starts until its settle animation has finished.
+    //
+    // The stage is GPU-bound, not CPU-bound: measured mid-swipe at 16ms of GPU work per frame
+    // with the render thread parked 12ms in swapBuffers, while measure/layout sat at 0.03ms. The
+    // three things making that up — the warp shader's per-frame uniform, the glassRoot capture's
+    // duplicate draw of the whole stage, and SeamBlur's 130px blur over it — are all effects
+    // nobody can resolve while the artwork is flying sideways under their thumb, so none of them
+    // run during the gesture. They come back the instant it settles.
+    //
+    // A plain Boolean: it flips twice per gesture, so the recomposition cost is nil, and the
+    // continuous values it gates stay draw-phase reads exactly as before.
+    var interacting by remember { mutableStateOf(false) }
     val sectionValue = remember { mutableFloatStateOf(0f) }
     val sectionProvider = remember { { sectionValue.floatValue } }
     val onBackgroundSection by remember { derivedStateOf { sectionValue.floatValue > 0.5f } }
@@ -326,7 +338,10 @@ fun PlayerCustomizeScreen(
                 .draggable(
                     state = carouselDragState,
                     orientation = Orientation.Horizontal,
-                    onDragStarted = { dragFromPage = activeCarousel.page },
+                    onDragStarted = {
+                        dragFromPage = activeCarousel.page
+                        interacting = true
+                    },
                     onDragStopped = { velocity ->
                         val target = activeCarousel.targetAfterDrag(dragFromPage, velocity)
                         animate(
@@ -334,11 +349,13 @@ fun PlayerCustomizeScreen(
                             targetValue = target.toFloat(),
                             animationSpec = tween(SwipeDurationMillis, easing = SwipeEasing),
                         ) { value, _ -> activeCarousel.position.floatValue = value }
+                        interacting = false
                     },
                 )
                 .draggable(
                     state = dragState,
                     orientation = Orientation.Vertical,
+                    onDragStarted = { interacting = true },
                     onDragStopped = { velocity ->
                         val target = when {
                             velocity < -SectionFlingVelocity -> 1f
@@ -353,6 +370,7 @@ fun PlayerCustomizeScreen(
                             targetValue = target,
                             animationSpec = tween(SwipeDurationMillis, easing = SwipeEasing),
                         ) { value, _ -> sectionValue.floatValue = value }
+                        interacting = false
                     },
                 )
         ) {
@@ -368,7 +386,7 @@ fun PlayerCustomizeScreen(
                     // and the header blur read it, and both have faded out by 0.5, so past
                     // there the recording is pure waste. Threshold sits well clear of that so a
                     // consumer never reads an empty node.
-                    .glassRoot(stageGlass, isActive = { sectionProvider() < 0.55f })
+                    .glassRoot(stageGlass, isActive = { !interacting && sectionProvider() < 0.55f })
             ) {
                 PreviewStage(
                     sectionProvider = sectionProvider,
@@ -379,6 +397,7 @@ fun PlayerCustomizeScreen(
                     backgroundStyles = backgroundStyles,
                     backgroundPage = backgroundCarousel.page,
                     showNeighbours = onBackgroundSection,
+                    animateBackdrop = !interacting,
                     trackInfo = trackInfo,
                     isPlaying = isPlaying,
                     queueIndex = queueIndex,
@@ -398,7 +417,9 @@ fun PlayerCustomizeScreen(
                 trackInfo = trackInfo,
                 maxHeight = screenHeight,
                 // There is no seam to soften once the stage has shrunk into the background slot.
-                fadeProvider = { (1f - sectionProvider() * 2f).coerceIn(0f, 1f) },
+                fadeProvider = {
+                    if (interacting) 0f else (1f - sectionProvider() * 2f).coerceIn(0f, 1f)
+                },
             )
 
             // Legibility wash over the artwork, so the captions and the option card stay
@@ -593,6 +614,8 @@ private fun PreviewStage(
     backgroundStyles: List<PlayerBackgroundStyle>,
     backgroundPage: Int,
     showNeighbours: Boolean,
+    /** False while a gesture is in flight — see `interacting` in PlayerCustomizeScreen. */
+    animateBackdrop: Boolean,
     trackInfo: TrackInfo,
     isPlaying: Boolean,
     queueIndex: Int,
@@ -673,7 +696,7 @@ private fun PreviewStage(
             // it. Re-measuring it every frame would reallocate its GPU buffer every frame.
             width = screenWidth,
             height = screenHeight,
-            animate = true,
+            animate = animateBackdrop,
             modifier = Modifier.fillMaxSize(),
         )
 

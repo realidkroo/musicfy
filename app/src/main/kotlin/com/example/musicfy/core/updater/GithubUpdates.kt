@@ -34,6 +34,7 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import com.example.musicfy.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.io.File
@@ -76,10 +77,69 @@ sealed interface UpdateState {
 }
 
 /**
+ * Process-wide cache for [fetchLatestRelease].
+ *
+ * The check used to run on a plain `LaunchedEffect(Unit)` inside the settings screen, which is
+ * created fresh on every navigation to it — so every visit to Settings was another GitHub round
+ * trip, and the home prompt added yet another. GitHub also rate-limits unauthenticated callers to
+ * 60 requests an hour per IP, which that was walking straight into.
+ *
+ * One in-flight request is shared by every caller (the Deferred is cached, not just its result),
+ * and a successful answer is reused for [CacheTtlMillis]. Failures are NOT cached — a check that
+ * failed because the user was on a train should be retried the next time something asks, not
+ * suppressed for an hour.
+ */
+private const val CacheTtlMillis = 60L * 60L * 1000L
+
+private val cacheLock = Any()
+private var cachedAt = 0L
+private var cachedResult: Result<GithubRelease?>? = null
+private var inFlight: kotlinx.coroutines.Deferred<Result<GithubRelease?>>? = null
+
+/** One long-lived scope so a shared request outlives whichever caller happened to start it. */
+private val updateScope = kotlinx.coroutines.CoroutineScope(
+    kotlinx.coroutines.SupervisorJob() + Dispatchers.IO
+)
+
+/**
+ * Cached wrapper around [fetchLatestRelease].
+ *
+ * @param force skips the cache — for an explicit "check now" action, which should always mean now.
+ */
+suspend fun getLatestRelease(force: Boolean = false): Result<GithubRelease?> {
+    val deferred = synchronized(cacheLock) {
+        if (!force) {
+            val cached = cachedResult
+            if (cached != null && System.currentTimeMillis() - cachedAt < CacheTtlMillis) {
+                // Non-local return out of the synchronized block: nothing to await, this call is
+                // answered entirely from cache.
+                return cached
+            }
+        }
+        // Join whatever is already running rather than starting a second identical request —
+        // the settings row, the sheet and the home prompt can all ask within the same frame.
+        inFlight ?: updateScope.async { fetchLatestRelease() }.also { inFlight = it }
+    }
+
+    val result = deferred.await()
+    synchronized(cacheLock) {
+        if (inFlight === deferred) inFlight = null
+        // Only a success is worth remembering; see the note above about transient failures.
+        if (result.isSuccess) {
+            cachedResult = result
+            cachedAt = System.currentTimeMillis()
+        }
+    }
+    return result
+}
+
+/**
  * Newest release that is actually newer than what's installed.
  *
  * "Newest" is the first entry the API returns — GitHub orders releases by creation date — after
  * skipping drafts. Prereleases are included: the dev channel publishes as one.
+ *
+ * Prefer [getLatestRelease] — this is the uncached network call underneath it.
  */
 suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatchers.IO) {
     runCatching {

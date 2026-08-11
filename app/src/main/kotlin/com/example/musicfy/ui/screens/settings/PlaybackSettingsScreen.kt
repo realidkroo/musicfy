@@ -24,6 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -54,6 +57,8 @@ fun PlaybackSettingsScreen(navController: NavController) {
     val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
     val (skipSilenceInstant, onSkipSilenceInstantChange) = rememberPreference(SkipSilenceInstantKey, defaultValue = false)
     val (audioNormalization, onAudioNormalizationChange) = rememberPreference(AudioNormalizationKey, defaultValue = true)
+
+    var showAudioQualityRestriction by remember { mutableStateOf(false) }
 
     fun qualityLabel(q: AudioQuality) = when (q) {
         AudioQuality.AUTO -> "Auto"
@@ -136,7 +141,7 @@ fun PlaybackSettingsScreen(navController: NavController) {
                             description = { Text(qualityLabel(audioQuality)) },
                             icon = painterResource(R.drawable.graphic_eq),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { onAudioQualityChange(nextQuality(audioQuality)) }
+                            onClick = { showAudioQualityRestriction = true }
                         )
                     )
                     add(
@@ -178,5 +183,12 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     )
                 }
             )
+    }
+
+    if (showAudioQualityRestriction) {
+        com.example.musicfy.ui.component.RestrictionPopup(
+            featureName = "Audio quality",
+            onDismiss = { showAudioQualityRestriction = false }
+        )
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -49,13 +50,11 @@ fun LyricsInterludeDots(
     val progress = ((positionMs - startMs).toFloat() / span).coerceIn(0f, 1f)
 
     Row(
-        // Bumped alongside the lyric font size increase (22sp -> 32sp) — at the old small text
-        // size 11dp dots with 12dp padding matched; against the current much bigger lines they
-        // read as a tiny, cramped afterthought.
-        // 36dp — same left edge as the lyric lines, timestamp, and header (PlayerHorizontalPadding + 4.dp).
-        modifier = modifier.padding(vertical = 20.dp, horizontal = 36.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.Center,
     ) {
         repeat(DotCount) { index ->
             // Each dot owns an equal slice of the gap and fills across its own slice, so the
