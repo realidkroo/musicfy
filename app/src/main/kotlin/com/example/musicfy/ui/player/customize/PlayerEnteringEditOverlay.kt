@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -90,7 +91,11 @@ fun PlayerEnteringEditOverlay(
                     }
                 }
             }
-            .background(Color.Black.copy(alpha = 0.52f * alpha))
+            // drawBehind, not background(): `background(Color.copy(alpha = ... * alpha))`
+            // evaluates the fade in COMPOSITION, so this full-screen overlay recomposed and
+            // rebuilt its whole modifier chain on every frame of the fade. Inside the lambda the
+            // same read happens in the draw phase and costs a repaint instead.
+            .drawBehind { drawRect(Color.Black.copy(alpha = 0.52f * alpha)) }
     ) {
         Text(
             text = "Entering edit mode....",

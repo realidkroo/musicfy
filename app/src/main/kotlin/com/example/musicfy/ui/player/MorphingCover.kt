@@ -482,8 +482,16 @@ fun MorphingCover(
     val longPressEnabled by remember {
         derivedStateOf { progressProvider() > 0.9f && lyricsProgressProvider() < 0.1f }
     }
-    val discSpinActive by remember {
-        derivedStateOf { progressProvider() > 0.9f && lyricsProgressProvider() < 0.6f }
+    // `!editMode` on both this and the warp clock below: while the editor is up the whole player
+    // is sitting under a full-screen Gaussian blur, and every one of these animations invalidates
+    // that blurred layer on every frame — which is exactly what stops HWUI caching it and why
+    // entering edit mode measured 62% of frames slow on draw-command issue. Nothing animating
+    // under a blur that heavy is legible, so freezing them costs nothing visually.
+    //
+    // Keyed on editMode: an unkeyed remember would capture the flag's first value and never see
+    // it change.
+    val discSpinActive by remember(editMode) {
+        derivedStateOf { !editMode && progressProvider() > 0.9f && lyricsProgressProvider() < 0.6f }
     }
 
     // Real collapsed-pill height, in px, as reported by BottomSheetState — used below to
@@ -543,8 +551,8 @@ fun MorphingCover(
     // re-evaluated on an infinite frame clock; on the lyrics page it is almost entirely hidden
     // behind the text and its fades, so it was burning a shader pass every frame for nothing —
     // exactly the budget the karaoke sweep needs to hold 120Hz.
-    val warpClockActive by remember {
-        derivedStateOf { progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f }
+    val warpClockActive by remember(editMode) {
+        derivedStateOf { !editMode && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f }
     }
     val warpTimeState = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     LaunchedEffect(warpClockActive) {
@@ -627,7 +635,13 @@ fun MorphingCover(
     // from 0.85) or PlayerBottomCardStack actually need a valid display list; if recording hadn't
     // caught up yet on a given frame, they read a stale/empty node and rendered nothing. This
     // subtree is cheap enough to double-draw continuously — reliability wins over the saved cost.
-    Box(modifier = modifier.glassRoot(glassState, isActive = { true })) {
+    // ...with one exception: edit mode. The capture is a second full-screen draw of this whole
+    // subtree every frame, and while the editor is up nothing can read anything useful from it —
+    // in ENTERING the player is behind a full-screen blur, and in CUSTOMIZING the stage covers it
+    // outright, with the card deck (the other consumer) already composed out. Measured entering
+    // edit mode at 11.8ms of GPU per frame against an 8.3ms budget at 120Hz, with the render
+    // thread stalled in swapBuffers; this is one of the passes making that up.
+    Box(modifier = modifier.glassRoot(glassState, isActive = { !editMode })) {
         // Backdrop blur for the pill — blurs whatever's actually behind the mini player (the
         // real Haze "source" registered in MainActivity), not a copy of the cover art. Its own
         // alpha is the exact complement of the full backdrop's alpha below (both ramp across the
@@ -947,10 +961,12 @@ fun MorphingCover(
                     CanvasArtworkPlayer(
                         primaryUrl = canvasArtwork?.preferredAnimationUrl,
                         fallbackUrl = null,
-                        // Always true: the animated cover keeps looping even when the music is
-                        // paused (unlike the YouTube video background below, which still pauses
-                        // with playback).
-                        isPlaying = true,
+                        // Loops even while the music is paused (unlike the YouTube video
+                        // background below, which pauses with playback) — but not while the editor
+                        // is up, where it would just be decoding video frames to feed a
+                        // full-screen blur. Paused rather than unmounted, so returning from the
+                        // editor does not re-create the player and re-buffer the clip.
+                        isPlaying = !editMode,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

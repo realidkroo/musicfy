@@ -63,7 +63,9 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
@@ -268,7 +270,12 @@ fun SearchGlassTopBar(
                     maxBlurRadius = { 42f * progressProvider().coerceIn(0f, 1f) },
                     foundationColor = pageColor,
                     direction = BlurDirection.BottomToTop,
-                    steps = 3,
+                    // Every step re-rasterises the captured content through its own Gaussian, so
+                    // this is a direct multiplier on GPU cost: measured at 30.7ms of GPU per frame
+                    // while scrolling (the whole 120Hz budget is 8.3ms). Two layers still read as
+                    // a graduated blur against the gradient beneath; three did not earn the third
+                    // full-screen pass.
+                    steps = 2,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -632,12 +639,26 @@ fun MoodTile(
             .background(SearchColors.Tile.copy(alpha = 0.55f))
             .clickable(onClick = onClick),
     ) {
-        // Drawn before the label so the text always sits on top of the artwork.
+        // Drawn before the label so the text always sits on top of the artwork, and faded to
+        // nothing at its left edge so a long title that wraps to two lines runs out over clean
+        // tile colour instead of over the covers. DstIn against a horizontal ramp, which needs its
+        // own offscreen layer to composite against.
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 2.dp)
-                .size(width = 84.dp, height = 76.dp),
+                .size(width = 84.dp, height = 76.dp)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithCache {
+                    val fade = Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        0.45f to Color.Black,
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(brush = fade, blendMode = BlendMode.DstIn)
+                    }
+                },
         ) {
             // Pulled apart along the diagonal and turned to clearly different angles — stacked
             // tighter, the back card only showed as a sliver and the pair read as one crooked
@@ -665,13 +686,16 @@ fun MoodTile(
             style = MaterialTheme.typography.titleMedium.copy(
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
+                // Tightened: at the default line height a wrapped two-line title reads as two
+                // separate labels rather than one that happens to run on.
+                lineHeight = 17.sp,
             ),
             color = SearchColors.Primary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 14.dp, end = 76.dp),
+                .padding(start = 14.dp, end = 70.dp),
         )
     }
 }
@@ -696,7 +720,10 @@ private fun BoxScope.LayeredCover(
                 translationX = with(density) { offsetX.toPx() }
                 translationY = with(density) { offsetY.toPx() }
                 this.alpha = alpha
-                shadowElevation = with(density) { 6.dp.toPx() }
+                // No shadowElevation. Two of these per tile and a dozen tiles on screen meant
+                // ~24 shadow-casting layers, each forcing its own RenderNode plus a shadow pass,
+                // on a grid that is constantly being scrolled. The cards already read as stacked
+                // from the rotation and the overlap; the shadow was costing far more than it said.
                 shape = RoundedCornerShape(8.dp)
                 clip = true
             }
@@ -704,7 +731,9 @@ private fun BoxScope.LayeredCover(
     ) {
         if (url != null) {
             AsyncImage(
-                model = url.resize(256, 256),
+                // 128px covers a 44-48dp card at this density; 256 was decoding four times the
+                // pixels for every tile in a grid the user scrolls through constantly.
+                model = url.resize(128, 128),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
@@ -868,6 +897,19 @@ fun SearchArtwork(
     circle: Boolean = false,
     corner: Dp = 6.dp,
 ) {
+    // Ask the CDN for roughly what we are actually going to draw, rounded up to a coarse grid.
+    //
+    // These were fixed 512px requests for rows barely 46dp (~138px) tall — a ~14x overdraw in
+    // pixels per thumbnail. The decodes themselves are wasted bandwidth, but the real damage is to
+    // the memory cache: oversized bitmaps evict each other, so scrolling back up finds nothing
+    // cached and every thumbnail decodes again. The grid (rather than the exact px) keeps the
+    // number of distinct cache keys small so different call sites can share entries.
+    val density = LocalDensity.current
+    val requestPx = remember(size, density) {
+        val px = with(density) { size.roundToPx() }
+        ((px + 127) / 128) * 128
+    }
+
     Box(
         modifier = modifier
             .size(size)
@@ -877,7 +919,7 @@ fun SearchArtwork(
     ) {
         if (url != null) {
             AsyncImage(
-                model = url.resize(512, 512),
+                model = url.resize(requestPx, requestPx),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),

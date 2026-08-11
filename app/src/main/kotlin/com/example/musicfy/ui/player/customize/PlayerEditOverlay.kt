@@ -45,6 +45,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -195,11 +196,16 @@ fun PlayerEditOverlay(
         }
 
         if (coverRect != null) {
+            // "Side to side": the artwork reaches both screen edges, so it has no left/right
+            // boundary of its own inside the viewport and a closed box would sit on top of it.
+            val coverIsFullBleed = coverRect.left <= bounds.left + 1f &&
+                coverRect.right >= bounds.right - 1f
             EditTargetOutline(
                 rect = coverRect,
                 bounds = bounds,
                 appear = { appear },
                 topLimitPx = headerBottomPx,
+                sideRailsOnly = coverIsFullBleed,
                 // The cover has no bottom edge of its own — it bleeds straight into the
                 // controls. A hard line across the middle of the artwork reads as a seam, so
                 // the stroke ramps to fully transparent over its lower portion instead.
@@ -278,6 +284,16 @@ private fun EditTargetOutline(
     fadeBottom: Boolean = false,
     /** When false the box may run past the bottom of the screen instead of closing above it. */
     clampBottom: Boolean = true,
+    /**
+     * Draws the two vertical rails only, with no top or bottom stroke.
+     *
+     * A cover that runs side to side has no edges of its own to trace: closing the box puts a hard
+     * horizontal line straight across the middle of the artwork at the top and bottom, which reads
+     * as a seam drawn ON the picture rather than as a boundary around a region. Dropping the
+     * horizontals leaves a continuous pair of rails running down the sides, so the artwork is never
+     * crossed.
+     */
+    sideRailsOnly: Boolean = false,
     onClick: () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -320,13 +336,34 @@ private fun EditTargetOutline(
                 }
                 onDrawWithContent {
                     drawContent()
-                    drawRoundRect(
-                        brush = brush,
-                        topLeft = Offset(strokePx / 2f, strokePx / 2f),
-                        size = Size(size.width - strokePx, size.height - strokePx),
-                        cornerRadius = CornerRadius(radiusPx, radiusPx),
-                        style = Stroke(width = strokePx),
-                    )
+                    if (sideRailsOnly) {
+                        val x0 = strokePx / 2f
+                        val x1 = size.width - strokePx / 2f
+                        // Rounded caps so each rail ends softly instead of stopping on a blunt
+                        // edge that would read as the corner of the box we just removed.
+                        drawLine(
+                            brush = brush,
+                            start = Offset(x0, 0f),
+                            end = Offset(x0, size.height),
+                            strokeWidth = strokePx,
+                            cap = StrokeCap.Round,
+                        )
+                        drawLine(
+                            brush = brush,
+                            start = Offset(x1, 0f),
+                            end = Offset(x1, size.height),
+                            strokeWidth = strokePx,
+                            cap = StrokeCap.Round,
+                        )
+                    } else {
+                        drawRoundRect(
+                            brush = brush,
+                            topLeft = Offset(strokePx / 2f, strokePx / 2f),
+                            size = Size(size.width - strokePx, size.height - strokePx),
+                            cornerRadius = CornerRadius(radiusPx, radiusPx),
+                            style = Stroke(width = strokePx),
+                        )
+                    }
                 }
             }
             .clickable(

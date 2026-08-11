@@ -71,6 +71,7 @@ import com.example.musicfy.ui.player.menu.PlayerActionMenu
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 /**
  * How far the title/slider sub-column is drawn above its own layout position.
@@ -208,6 +209,28 @@ fun BottomSheetPlayer(
         label = "lyricsCoverMorph",
     )
 
+    // Mount/unmount gates for everything below, as booleans.
+    //
+    // These conditions used to read the animating floats directly in composition
+    // (`if (lyricsProgress > 0.001f)`, `if (controlsHidden < 0.99f)`), which subscribes this whole
+    // content lambda to them: every frame of the 520ms lyrics morph and the 420ms chrome fade
+    // rebuilt the ENTIRE player subtree — MorphingCover, SeamBlur, the lyrics page, the card deck
+    // and the transport block — on top of the drawing those same frames were already doing. That
+    // is the stall when expanding the player and moving into lyrics: the work is a full
+    // recomposition per frame, not the animations themselves.
+    //
+    // Wrapped in derivedStateOf, the recomposition happens on the two frames where each boolean
+    // actually flips, and the continuous values stay where they belong — read inside graphicsLayer
+    // blocks in the draw phase. Same reasoning (and the same fix) as enterBlurActive above.
+    val lyricsMounted by remember { derivedStateOf { lyricsProgress > 0.001f } }
+    // Strictly in flight — not settled open, not settled closed.
+    val lyricsMorphing by remember {
+        derivedStateOf { lyricsProgress > 0.001f && lyricsProgress < 0.999f }
+    }
+    val lyricsButtonMounted by remember { derivedStateOf { lyricsProgress < 0.999f } }
+    val deckMounted by remember { derivedStateOf { controlsHidden < 0.99f } }
+    val controlsInert by remember { derivedStateOf { controlsHidden > 0.99f } }
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
         val screenHeight = maxHeight
@@ -252,21 +275,7 @@ fun BottomSheetPlayer(
                 .then(
                 if (enterBlurActive) {
                     Modifier.graphicsLayer {
-                        val radius = enterBlur.value
-                        renderEffect = if (
-                            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
-                            radius > 0.5f
-                        ) {
-                            android.graphics.RenderEffect.createBlurEffect(
-                                radius,
-                                radius,
-                                // CLAMP: the player's own bounds are the intended blur extent, so
-                                // edges must stay opaque rather than washing out to transparent.
-                                android.graphics.Shader.TileMode.CLAMP,
-                            ).asComposeRenderEffect()
-                        } else {
-                            null
-                        }
+                        renderEffect = enterBlurEffect(enterBlur.value)
                     }
                 } else Modifier
             ),
@@ -340,7 +349,7 @@ fun BottomSheetPlayer(
             // card's width ratio so the first thing you see is genuinely the card's footprint
             // widening into the page. Alpha ramps in over the first ~45% so it is already legible
             // well before the motion settles.
-            if (lyricsProgress > 0.001f) {
+            if (lyricsMounted) {
                 LyricsScreen(
                     onClose = { showLyrics = false },
                     screenHeight = screenHeight,
@@ -352,6 +361,7 @@ fun BottomSheetPlayer(
                     contentBottomInset = controlsInset,
                     onImmersiveChange = { lyricsImmersive = it },
                     isSheetDragging = isSheetInTransition,
+                    isMorphing = lyricsMorphing,
                     onOpenMenu = { showActionMenu = true },
                     modifier = Modifier
                         .fillMaxSize()
@@ -377,7 +387,7 @@ fun BottomSheetPlayer(
             // Composed out once the immersive fade completes, not merely faded: the deck sits above
             // the lyrics list and an alpha-0 card still hit-tests, so leaving it mounted swallowed
             // taps and scrolls along the bottom of the page.
-            if (showPlayerBottomCard && controlsHidden < 0.99f) {
+            if (showPlayerBottomCard && deckMounted) {
                 PlayerBottomCardStack(
                     glassState = morphingGlassState,
                     progressProvider = progressProvider,
@@ -407,7 +417,7 @@ fun BottomSheetPlayer(
 
             // Composed only while the player is showing — an alpha-0 button left in the tree
             // would still be hit-testable and would swallow taps meant for the lyrics page.
-            if (lyricsProgress < 0.999f && editPhase == PlayerEditPhase.NONE) {
+            if (lyricsButtonMounted && editPhase == PlayerEditPhase.NONE) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -466,7 +476,7 @@ fun BottomSheetPlayer(
                     // in the lower half of the page. alpha/graphicsLayer do NOT affect hit
                     // testing — the events have to be consumed explicitly.
                     .then(
-                        if (controlsHidden > 0.99f) {
+                        if (controlsInert) {
                             Modifier.pointerInput(Unit) {
                                 awaitPointerEventScope {
                                     while (true) {
@@ -591,5 +601,40 @@ fun BottomSheetPlayer(
                 modifier = Modifier.fillMaxSize(),
             )
         }
+    }
+}
+
+/** Quantisation grid for the edit-mode blur, in px. */
+private const val EnterBlurQuantPx = 6f
+
+/**
+ * Cached blur effects for the "entering edit mode" ramp, keyed by quantised radius.
+ *
+ * RenderEffect is immutable, so animating a radius mints a brand new one on every frame — roughly
+ * forty full-screen blur objects over the 360ms ramp, each of which forces HWUI to rebuild the blur
+ * setup for the entire player subtree. Snapping the radius to a 6px grid produces about six
+ * distinct effects for the whole animation, and most frames then hand HWUI the *same object* it saw
+ * last frame, which is what lets it reuse its cached layer instead of re-deriving one.
+ *
+ * Six pixels of Gaussian radius is far below what is visible at this blur strength. Exactly the
+ * trick LyricsGlowLine.blurEffectForRadius already uses per lyric line, applied to the one blur in
+ * the app that covers the whole screen.
+ *
+ * Only ever touched from the draw phase on the main thread, so the lazy fill needs no locking.
+ */
+private val EnterBlurCache = HashMap<Int, androidx.compose.ui.graphics.RenderEffect>()
+
+private fun enterBlurEffect(radius: Float): androidx.compose.ui.graphics.RenderEffect? {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S || radius <= 0.5f) {
+        return null
+    }
+    val step = (radius / EnterBlurQuantPx).roundToInt().coerceAtLeast(1)
+    return EnterBlurCache.getOrPut(step) {
+        val r = step * EnterBlurQuantPx
+        android.graphics.RenderEffect
+            // CLAMP: the player's own bounds are the intended blur extent, so edges must stay
+            // opaque rather than washing out to transparent.
+            .createBlurEffect(r, r, android.graphics.Shader.TileMode.CLAMP)
+            .asComposeRenderEffect()
     }
 }
