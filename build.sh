@@ -107,14 +107,14 @@ if [ "$SKIP_BUILD" = false ]; then
 
     if [ "$PACKAGE_STYLE" == "all" ]; then
         echo "Building ALL FOSS package styles for $VARIANT..."
-        TASK="assembleFoss${CAP_VARIANT}"
+        TASK=":app:assembleArm64Foss${CAP_VARIANT} :app:assembleArmeabiFoss${CAP_VARIANT} :app:assembleX86Foss${CAP_VARIANT} :app:assembleX86_64Foss${CAP_VARIANT} :app:assembleUniversalFoss${CAP_VARIANT}"
     else
         echo "Building universal FOSS package style for $VARIANT..."
         TASK="assembleUniversalFoss${CAP_VARIANT}"
     fi
 
     # Run Gradle Build
-    ./gradlew "$TASK"
+    ./gradlew $TASK
 
     # Copy generated FOSS APKs to apk-generated directory
     OUTPUT_DIR="apk-generated"
@@ -162,12 +162,12 @@ if [ "$PUBLISH_RELEASE" = true ]; then
     TITLE="musicfy $BASE_VERSION ($BUILD_ATTEMPT)"
     echo "Publishing GitHub release: '$TITLE'..."
 
-    gh release create dev \
-        "$OUTPUT_DIR"/musicfy-"$BASE_VERSION"-*.apk \
-        --title "$TITLE" \
-        --notes "$CHANGELOG_TEXT" \
-        --prerelease \
-        --clobber
+    if gh release view dev >/dev/null 2>&1; then
+        gh release edit dev --title "$TITLE" --notes "$CHANGELOG_TEXT" --prerelease
+        gh release upload dev "$OUTPUT_DIR"/musicfy-"$BASE_VERSION"-*.apk --clobber
+    else
+        gh release create dev "$OUTPUT_DIR"/musicfy-"$BASE_VERSION"-*.apk --title "$TITLE" --notes "$CHANGELOG_TEXT" --prerelease
+    fi
 
     echo "Release successfully published to https://github.com/realidkroo/musicfy/releases/tag/dev"
 fi
