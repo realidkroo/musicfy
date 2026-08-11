@@ -154,6 +154,7 @@ fun SettingsScreen(
     }
 
     var showResetConfirm by remember { mutableStateOf(false) }
+    var restrictedFeatureName by remember { mutableStateOf<String?>(null) }
 
     if (showResetConfirm) {
         AlertDialog(
@@ -277,21 +278,21 @@ fun SettingsScreen(
                         description = { Text("mdevice integrations") },
                         icon = painterResource(R.drawable.cast),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
-                        onClick = { showWip() }
+                        onClick = { restrictedFeatureName = "Play music on my other device" }
                     ),
                     SettingsItem(
                         title = { Text("Party mode") },
                         description = { Text("make a party room with your fren") },
                         icon = painterResource(R.drawable.group),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
-                        onClick = { showWip() }
+                        onClick = { restrictedFeatureName = "Party mode" }
                     ),
                     SettingsItem(
                         title = { Text("Import data") },
                         description = { Text("Import data from other music profider/backup") },
                         icon = painterResource(R.drawable.restore),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
-                        onClick = { showWip() }
+                        onClick = { restrictedFeatureName = "Import data" }
                     )
                 )
             )
@@ -322,7 +323,11 @@ fun SettingsScreen(
                                 }
                             )
                         },
-                        icon = painterResource(R.drawable.frame_51_3),
+                        // Was frame_51_3 (roo's own photo) — a tinted Icon() paints solid colour
+                        // wherever the source has any alpha, so a fully-opaque photo just rendered
+                        // as a plain dark square. The brand mark is a proper stroke glyph, so it
+                        // tints correctly like every other row's icon.
+                        icon = painterResource(R.drawable.ic_musicfy_mark),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
                         onClick = { showUpdateSheet = true }
                     ),
@@ -330,7 +335,7 @@ fun SettingsScreen(
                         title = { Text("General") },
                         icon = painterResource(R.drawable.settings),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
-                        onClick = { showWip() }
+                        onClick = { restrictedFeatureName = "General settings" }
                     ),
                     SettingsItem(
                         title = { Text("Appearance") },
@@ -444,6 +449,13 @@ fun SettingsScreen(
             },
             onReveal = { updateReveal.floatValue = it },
             modifier = Modifier.fillMaxSize(),
+        )
+    }
+
+    if (restrictedFeatureName != null) {
+        com.example.musicfy.ui.component.RestrictionPopup(
+            featureName = restrictedFeatureName!!,
+            onDismiss = { restrictedFeatureName = null }
         )
     }
 }

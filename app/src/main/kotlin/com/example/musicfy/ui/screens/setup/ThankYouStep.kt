@@ -115,12 +115,22 @@ fun ThankYouStep() {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // roo's own picture, not the app user's — this is a "made by" credit, not a
+                    // profile avatar, so it stays fixed rather than reading ProfilePicUriKey.
+                    // Same asset UpdateSheet's "Hello, I'm the main dev here" card uses.
                     Box(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF757575))
-                    )
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.frame_51_3),
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
                     Spacer(modifier = Modifier.weight(1f))
 

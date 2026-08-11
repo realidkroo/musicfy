@@ -110,6 +110,7 @@ import android.os.Build
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.graphics.TransformOrigin
 
@@ -2216,7 +2217,65 @@ fun HomeScreen(
                 onProfileClick = { profileMenuOpen = false },
                 items = profileMenuItems,
             )
+
+            HomeUpdatePrompt()
         }
     }
     }
 }
+
+
+/**
+ * The update invitation shown on Home.
+ *
+ * Only appears when there is genuinely a newer release AND the user has not snoozed within the
+ * last day. The check itself costs nothing here: [rememberUpdateState] reads the shared hourly
+ * cache in GithubUpdates, which the settings row already populates, so opening Home does not add a
+ * network request.
+ *
+ * Nav bar and mini player step aside while it is up, the same way the update sheet from Settings
+ * does — the prompt owns the window.
+ */
+@Composable
+private fun HomeUpdatePrompt() {
+    val updateState by com.example.musicfy.ui.screens.update.rememberUpdateState()
+    val (snoozedAt, setSnoozedAt) = rememberPreference(
+        com.example.musicfy.constants.UpdatePromptSnoozedAtKey,
+        defaultValue = 0L,
+    )
+    val (userName) = rememberPreference(com.example.musicfy.constants.UsernameKey, "")
+
+    // Evaluated once per state change rather than per recomposition — `now` is read here on
+    // purpose so the window is judged when the answer actually changes, not continuously.
+    val shouldOffer by remember(updateState, snoozedAt) {
+        derivedStateOf {
+            updateState is com.example.musicfy.core.updater.UpdateState.Available &&
+                System.currentTimeMillis() - snoozedAt > SnoozeWindowMillis
+        }
+    }
+
+    var dismissed by rememberSaveable { mutableStateOf(false) }
+    val visible = shouldOffer && !dismissed
+    val release = (updateState as? com.example.musicfy.core.updater.UpdateState.Available)?.release
+
+    val hideAppChrome = com.example.musicfy.LocalHideAppChrome.current
+    DisposableEffect(visible) {
+        hideAppChrome.value = visible
+        onDispose { hideAppChrome.value = false }
+    }
+
+    if (visible && release != null) {
+        com.example.musicfy.ui.screens.update.UpdatePromptSheet(
+            release = release,
+            userName = userName,
+            onSnooze = {
+                setSnoozedAt(System.currentTimeMillis())
+                dismissed = true
+            },
+            onDismiss = { dismissed = true },
+        )
+    }
+}
+
+/** How long "remind me in 24 hour" actually holds the prompt back. */
+private const val SnoozeWindowMillis = 24L * 60L * 60L * 1000L

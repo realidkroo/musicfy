@@ -1,5 +1,11 @@
 package com.example.musicfy.ui.screens.setup
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -16,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,7 +70,7 @@ fun ImportProviderStep() {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.musicfy_icon),
+                    painter = painterResource(R.drawable.ic_musicfy_mark),
                     contentDescription = "musicfy",
                     tint = Color.White,
                     modifier = Modifier.size(30.dp)
@@ -94,12 +101,39 @@ fun ImportProviderStep() {
  * The hand-drawn squiggle-with-arrowhead from the concept: a flat lead-in, two waves, then a
  * short straight run into the head. Drawn rather than shipped as a vector so it scales with the
  * row and picks up the text colour.
+ *
+ * The wave itself continuously ripples left-to-right, toward the musicfy icon it points at — a
+ * small bit of life that reinforces "your data is travelling this direction" instead of sitting
+ * as a static squiggle between the two app icons.
+ *
+ * Each of the four bumps gets its own amplitude driven by the SAME looping [phase], just sampled
+ * at a different offset — so the peaks swell and settle in sequence, left bump first, reading as
+ * one ripple travelling along the path rather than four things independently pulsing. Only the
+ * peak height (the cubic's control-point Y) is scaled; every segment's start/end point is always
+ * exactly (x, midY), so the curve can never show a seam no matter what the amplitude is doing —
+ * unlike shifting the wave's x-phase, which would fight the fixed start/end anchors instead.
+ *
+ * [phase] runs 0→1 on a plain linear loop (tween + RepeatMode.Restart): because the driving
+ * function is `sin(2*PI*phase - offset)`, phase 0 and phase 1 land on the exact same value, so the
+ * restart is invisible — the ripple reads as one continuous, endless flow rather than a
+ * cycle-and-snap-back.
  */
 @Composable
 private fun WiggleArrow(
     modifier: Modifier = Modifier,
     color: Color = Color.White,
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "wiggleArrow")
+    val phase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "wiggleArrowPhase",
+    )
+
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -109,17 +143,25 @@ private fun WiggleArrow(
         // Wave occupies the middle stretch; the tail and the head sit on the baseline.
         val waveStart = w * 0.05f
         val waveEnd = w * 0.72f
-        val amplitude = h * 0.42f
+        // A touch taller than the original static wave, and the per-bump travel below pushes it
+        // higher still at each bump's own peak moment — "more wiggle" without the baseline ever
+        // looking cramped.
+        val amplitude = h * 0.48f
         val waveWidth = waveEnd - waveStart
         val halfWave = waveWidth / 4f
+        val twoPi = (2.0 * Math.PI).toFloat()
 
         val path = Path().apply {
             moveTo(waveStart, midY)
             var x = waveStart
             var up = true
-            repeat(4) {
+            repeat(4) { bumpIndex ->
                 val nextX = x + halfWave
-                val peakY = if (up) midY - amplitude else midY + amplitude
+                // Never fully flat, never doubled — a smooth 0.55..1.15 envelope so the ripple is
+                // always visibly moving without any bump vanishing to a flat line or overshooting
+                // into a spike.
+                val travel = 0.55f + 0.60f * ((1f + kotlin.math.sin(twoPi * phase - bumpIndex * 0.9f)) / 2f)
+                val peakY = if (up) midY - amplitude * travel else midY + amplitude * travel
                 cubicTo(
                     x + halfWave * 0.5f, peakY,
                     nextX - halfWave * 0.5f, peakY,

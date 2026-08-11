@@ -180,6 +180,7 @@ import com.example.musicfy.utils.NetworkConnectivityObserver
 import com.example.musicfy.utils.ScrobbleManager
 import com.example.musicfy.utils.SyncUtils
 import com.example.musicfy.utils.YTPlayerUtils
+import com.example.musicfy.constants.ShowStreamSourceToastKey
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.utils.get
 import com.example.musicfy.utils.reportException
@@ -2956,6 +2957,9 @@ class MusicService :
     }
 
     private fun announceStreamSource(mediaId: String) {
+        // Off unless explicitly switched on. This fires on every track change, automatic advances
+        // included, so as a default it was a toast on screen for a second of every song.
+        if (!dataStore.get(ShowStreamSourceToastKey, false)) return
         if (lastAnnouncedSourceMediaId == mediaId) return
         val source = resolvedStreamSources[mediaId] ?: return
         lastAnnouncedSourceMediaId = mediaId

@@ -717,8 +717,8 @@ fun LyricsScreen(
 private fun LyricsLoadingDots(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "lyricsLoading")
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         repeat(3) { index ->

@@ -54,8 +54,23 @@ import kotlinx.coroutines.launch
 /** Sheet colours. Deliberately darker than the beta notice's #161616. */
 val MenuSurface = Color(0xFF0B0B0C)
 val MenuRowSurface = Color(0xFF161619)
-internal val MenuEasing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
-internal const val MenuAnimMillis = 380
+/**
+ * Menu open/close/back curve.
+ *
+ * cubic-bezier(0.57, 0.53, 0, 1) — the same curve the search bar's collapse uses, so the two
+ * biggest transitions in the app share one motion language instead of each having its own feel.
+ * It leaves the start briskly and then spends most of its time easing into the end, which is what
+ * makes the arrival read as "settling" rather than "stopping"; the Material standard curve it
+ * replaced (0.4, 0, 0.2, 1) is symmetric and lands comparatively flat.
+ */
+internal val MenuEasing = CubicBezierEasing(0.57f, 0.53f, 0f, 1f)
+
+/**
+ * Slightly longer than the old 380ms — the curve above spends its tail decelerating, and at 380 it
+ * arrived before that tail could be felt. Still far short of the 900ms the full-page search
+ * collapse uses: a menu is a smaller move and should not keep you waiting for it.
+ */
+internal const val MenuAnimMillis = 440
 
 /** Fling speed (px/s) past which a release overrides the nearest snap point. */
 private const val FlingThreshold = 700f

@@ -31,6 +31,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -71,8 +74,60 @@ private data class NavItemState(
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
     if (currentRoute == null) return false
     if (currentRoute == screenRoute) return true
-    return navigationItems.any { it.route == screenRoute } && 
+    return navigationItems.any { it.route == screenRoute } &&
            currentRoute.startsWith("$screenRoute/")
+}
+
+/**
+ * Routes that belong to a tab without being nested under its path.
+ *
+ * The prefix rule above only catches `library/albums`-shaped routes. Everything else a tab can
+ * open — the search results page (`search/{query}`), the genre pages, every sub-settings screen —
+ * has a route that shares no prefix with its tab, matched nothing, and left the bar with no
+ * highlighted item at all. That is the indicator "disappearing" on some pages.
+ */
+private val RouteOwners: List<Pair<String, String>> = listOf(
+    "search/" to "search_input",
+    "genre/" to "search_input",
+    "youtube_browse/" to "search_input",
+    "browse/" to "search_input",
+    "library/" to "library",
+    "advanced_audio_settings" to "settings",
+    "appearance_settings" to "settings",
+    "playback_settings" to "settings",
+    "experimental_settings" to "settings",
+    "player_customize" to "settings",
+    "equalizer" to "settings",
+)
+
+/** The tab route that owns [currentRoute], or null if nothing claims it. */
+private fun owningTabRoute(currentRoute: String?, navigationItems: List<Screens>): String? {
+    if (currentRoute == null) return null
+    navigationItems.firstOrNull { isRouteSelected(currentRoute, it.route, navigationItems) }
+        ?.let { return it.route }
+    return RouteOwners.firstOrNull { (prefix, _) ->
+        currentRoute == prefix || currentRoute.startsWith(prefix)
+    }?.second
+}
+
+/**
+ * Which tab the bar should light up.
+ *
+ * Falls back to whatever was last selected rather than to nothing: an album, artist or playlist
+ * page can be reached from any tab, so there is no static rule that could claim them, and going
+ * dark is worse than staying on the tab the user actually came from.
+ */
+@Composable
+private fun rememberSelectedTabRoute(
+    currentRoute: String?,
+    navigationItems: List<Screens>,
+): String {
+    val fallback = navigationItems.firstOrNull()?.route.orEmpty()
+    var selected by rememberSaveable { mutableStateOf(fallback) }
+    LaunchedEffect(currentRoute) {
+        owningTabRoute(currentRoute, navigationItems)?.let { selected = it }
+    }
+    return selected
 }
 
 @Composable
@@ -169,6 +224,8 @@ fun AppNavigationBar(
     val playerConnection = com.example.musicfy.LocalPlayerConnection.current
     val currentSong by playerConnection?.service?.currentMediaMetadata?.collectAsState(initial = null) ?: androidx.compose.runtime.mutableStateOf(null)
 
+    val selectedTabRoute = rememberSelectedTabRoute(currentRoute, navigationItems)
+
     androidx.compose.foundation.layout.Box(modifier = modifier) {
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
         val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
@@ -182,6 +239,10 @@ fun AppNavigationBar(
                 .padding(horizontal = 24.dp, vertical = 8.dp)
                 .align(Alignment.TopCenter)
                 .height(64.dp)
+                // Whole-bar tilt, applied before the clip so the rounded shape tilts with it.
+                // A smaller angle than the pill's: this is a wide surface, and the same degrees
+                // across that width would swing the far end much further.
+                .press3D(maxTilt = 4f, pressedScale = 0.985f)
                 .clip(RoundedCornerShape(32.dp))
                 .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(32.dp))
         ) {
@@ -203,9 +264,7 @@ fun AppNavigationBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 navigationItems.forEach { screen ->
-                    val isSelected = remember(currentRoute, screen.route) {
-                        isRouteSelected(currentRoute, screen.route, navigationItems)
-                    }
+                    val isSelected = screen.route == selectedTabRoute
                     val iconRes = remember(isSelected, screen) {
                         if (isSelected) screen.iconIdActive else screen.iconIdInactive
                     }
