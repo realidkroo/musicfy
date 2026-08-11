@@ -15,6 +15,7 @@ VERSION_NAME=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*
 TAG="dev"
 IS_PRERELEASE=true
 CHANGELOG_NOTES=""
+CHANGELOG_FILE=""
 SKIP_BUILD=false
 
 while [[ "$#" -gt 0 ]]; do
@@ -24,6 +25,7 @@ while [[ "$#" -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  -m, --message <text>   Set changelog body message for the release"
+            echo "  -f, --file <path>      Read changelog body from a Markdown file"
             echo "  -t, --tag <tag>        Set release tag (default: dev)"
             echo "  --stable               Mark as stable release (default is dev pre-release)"
             echo "  --no-compile, --no-build  Skip compilation and publish existing APKs"
@@ -32,6 +34,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         -m|--message)
             CHANGELOG_NOTES="$2"
+            shift
+            ;;
+        -f|--file)
+            CHANGELOG_FILE="$2"
             shift
             ;;
         -t|--tag)
@@ -50,12 +56,28 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-if [ -z "$CHANGELOG_NOTES" ]; then
-    # Default changelog summary from recent git commits
-    CHANGELOG_NOTES="Musicfy dev build #$BUILD_NUMBER ($VERSION_NAME)
+# Build changelog notes according to GithubUpdates.kt spec:
+# "first non-blank line becomes the one-line summary on the card"
+if [ -n "$CHANGELOG_FILE" ] && [ -f "$CHANGELOG_FILE" ]; then
+    CHANGELOG_NOTES=$(cat "$CHANGELOG_FILE")
+elif [ -z "$CHANGELOG_NOTES" ]; then
+    # Auto-generate changelog from recent git commit history
+    HEADLINE="Musicfy $VERSION_NAME build #$BUILD_NUMBER update"
+    
+    # Get last 7 commits, filtering out automated build commits
+    COMMITS=$(git log -n 7 --pretty=format:"- %s" | grep -v "bump build attempt" | grep -v "Merge" || true)
+    
+    if [ -z "$COMMITS" ]; then
+        COMMITS="- General performance improvements and bug fixes."
+    fi
 
-Changes in this release:
-$(git log -n 5 --pretty=format:"- %s")"
+    CHANGELOG_NOTES="$HEADLINE
+
+### 🚀 What's Changed
+$COMMITS
+
+---
+*Built with love for Musicfy dev channel.*"
 fi
 
 echo "=========================================="
@@ -66,6 +88,10 @@ echo "Tag:         $TAG"
 echo "Pre-release: $IS_PRERELEASE"
 echo "Skip build:  $SKIP_BUILD"
 echo "=========================================="
+echo "Changelog Body Preview:"
+echo "------------------------------------------"
+echo "$CHANGELOG_NOTES"
+echo "------------------------------------------"
 
 # 1. Build all FOSS release APKs if not skipped
 if [ "$SKIP_BUILD" = false ]; then
