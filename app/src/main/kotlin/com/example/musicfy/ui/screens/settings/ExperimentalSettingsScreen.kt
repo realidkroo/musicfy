@@ -48,6 +48,10 @@ fun ExperimentalSettingsScreen(navController: NavController) {
     val (musicHapticsEnabled, onMusicHapticsEnabledChange) = rememberPreference(MusicHapticsEnabledKey, defaultValue = false)
     val (musicHapticsSensitivity, onMusicHapticsSensitivityChange) = rememberEnumPreference(MusicHapticsSensitivityKey, defaultValue = HapticSensitivity.MEDIUM)
     val (hapticFocus, onHapticFocusChange) = rememberEnumPreference(HapticFocusKey, defaultValue = HapticFocus.VIBE)
+    val (showBigDiscStyles, onShowBigDiscStylesChange) = rememberPreference(
+        com.example.musicfy.constants.ShowBigDiscStylesKey,
+        defaultValue = false,
+    )
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -59,6 +63,21 @@ fun ExperimentalSettingsScreen(navController: NavController) {
             SettingsGroup(
                 style = SettingsGroupStyle.Grouped,
                 items = buildList {
+                    add(
+                        SettingsItem(
+                            title = { Text("Big disc cover styles") },
+                            descriptionText = "Unfinished — oversized discs that bleed off screen",
+                            icon = painterResource(R.drawable.album),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { onShowBigDiscStylesChange(!showBigDiscStyles) },
+                            trailingContent = {
+                                AppSwitch(
+                                    checked = showBigDiscStyles,
+                                    onCheckedChange = onShowBigDiscStylesChange,
+                                )
+                            }
+                        )
+                    )
                     add(
                         SettingsItem(
                             title = { Text("Music haptics") },

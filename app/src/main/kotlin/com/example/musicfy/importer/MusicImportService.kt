@@ -138,7 +138,7 @@ class MusicImportService @Inject constructor(
             return
         }
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.musicfy_notification)
             .setContentTitle("Import finished")
             .setContentText("Matched $matched of $total songs")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

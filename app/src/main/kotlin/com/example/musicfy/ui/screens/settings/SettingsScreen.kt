@@ -112,6 +112,13 @@ fun SettingsScreen(
     // actually collects), not the YouTube account name — most users never sign into a YouTube
     // account at all here. A live-fetched signed-in account name is only used as a fallback if
     // no local name was ever set (e.g. setup was skipped somehow).
+    // Checked once when Settings opens; the row's subtitle and the sheet read the same value.
+    val updateState by com.example.musicfy.ui.screens.update.rememberUpdateState()
+    var showUpdateSheet by remember { mutableStateOf(false) }
+    // 0..1 of the sheet's open animation, read in the draw phase so the page scales away behind
+    // it without the whole screen recomposing per frame.
+    val updateReveal = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+
     val (localUsername) = rememberPreference(UsernameKey, "")
     val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, "")
     val (profilePicUri) = rememberPreference(ProfilePicUriKey, "")
@@ -170,6 +177,17 @@ fun SettingsScreen(
     val backgroundColor = if (isSystemInDarkTheme()) Color.Black else MaterialTheme.colorScheme.surface
 
     Scaffold(
+        modifier = Modifier.graphicsLayer {
+            // Zoom-out behind the update sheet. Draw-phase read, identity while it's closed.
+            val r = updateReveal.floatValue
+            if (r > 0.001f) {
+                val scale = 1f - 0.08f * r
+                scaleX = scale
+                scaleY = scale
+                shape = RoundedCornerShape(28.dp * r)
+                clip = true
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
@@ -287,10 +305,19 @@ fun SettingsScreen(
                 items = listOf(
                     SettingsItem(
                         title = { Text("${BuildConfig.VERSION_NAME}") },
-                        description = { Text("Made with <3 by roo! this app is still on DEV stage.") },
-                        icon = painterResource(R.drawable.info),
+                        // The one line that changes when a release is waiting.
+                        description = {
+                            Text(
+                                if (updateState is com.example.musicfy.core.updater.UpdateState.Available) {
+                                    com.example.musicfy.ui.screens.update.UpdateHeadline
+                                } else {
+                                    "Made with <3 by roo! this app is still on DEV stage."
+                                }
+                            )
+                        },
+                        icon = painterResource(R.drawable.frame_51_3),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
-                        onClick = { showWip() }
+                        onClick = { showUpdateSheet = true }
                     ),
                     SettingsItem(
                         title = { Text("General") },
@@ -397,5 +424,19 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    // Declared outside the scaffold so it covers the whole screen. The zoom-out it drives is
+    // applied to the content above via updateReveal.
+    if (showUpdateSheet) {
+        com.example.musicfy.ui.screens.update.UpdateSheet(
+            state = updateState,
+            onDismiss = {
+                showUpdateSheet = false
+                updateReveal.floatValue = 0f
+            },
+            onReveal = { updateReveal.floatValue = it },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
