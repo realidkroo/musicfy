@@ -110,3 +110,7 @@ app/src/main/cpp/vibrafp/third_party/.build-fftw/
 # Cleanup rules
 *.py
 *concept*
+assetscon/
+apk-generated/
+.build_number
+plan.md

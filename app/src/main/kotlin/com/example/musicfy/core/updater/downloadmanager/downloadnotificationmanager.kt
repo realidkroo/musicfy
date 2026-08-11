@@ -125,7 +125,7 @@ object DownloadNotificationManager {
             .setProgress(0)
 
         val builder = Notification.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Your app icon
+            .setSmallIcon(R.drawable.musicfy_notification) // Your app icon
             .setContentTitle(appContext.getString(R.string.downloading_update))
             .setContentText(appContext.getString(R.string.version_file_size, version, fileSize))
             .setOngoing(true)
@@ -162,7 +162,7 @@ object DownloadNotificationManager {
             .setProgress(progress)
 
         val builder = Notification.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Your app icon
+            .setSmallIcon(R.drawable.musicfy_notification) // Your app icon
             .setContentTitle(appContext.getString(R.string.downloading_update))
             .setContentText(appContext.getString(R.string.version_progress, version, progress))
             .setOngoing(progress < 100)
@@ -265,7 +265,7 @@ object DownloadNotificationManager {
     // ============ Legacy Implementation (Pre-Android 16) ============
     private fun showDownloadStartingLegacy(version: String, fileSize: String) {
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Your app icon
+            .setSmallIcon(R.drawable.musicfy_notification) // Your app icon
             .setContentTitle(appContext.getString(R.string.downloading_update))
             .setContentText(appContext.getString(R.string.version_file_size, version, fileSize))
             .setProgress(100, 0, false)
@@ -280,7 +280,7 @@ object DownloadNotificationManager {
 
     private fun updateDownloadProgressLegacy(progress: Int, version: String) {
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher) // Your app icon
+            .setSmallIcon(R.drawable.musicfy_notification) // Your app icon
             .setContentTitle(appContext.getString(R.string.downloading_update))
             .setContentText(appContext.getString(R.string.version_progress, version, progress))
             .setProgress(100, progress, false)

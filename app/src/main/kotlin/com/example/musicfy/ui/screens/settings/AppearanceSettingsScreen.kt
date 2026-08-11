@@ -32,7 +32,6 @@ import com.example.musicfy.constants.LocalSongAutoMetadataKey
 import com.example.musicfy.constants.PlayVideoBackgroundKey
 import com.example.musicfy.constants.ShowPlayerBottomCardKey
 import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
-import com.example.musicfy.constants.UseNewPlayerDesignKey
 import com.example.musicfy.constants.YtVideoBackgroundLyricsSyncKey
 import com.example.musicfy.ui.component.SettingsGroup
 import com.example.musicfy.ui.component.SettingsGroupStyle
@@ -77,10 +76,6 @@ fun AppearanceSettingsScreen(navController: NavController) {
     )
 
     // Pre-existing toggles, kept working, just moved here from the old flat screen.
-    val (useNewPlayerDesign, onUseNewPlayerDesignChange) = rememberPreference(
-        UseNewPlayerDesignKey,
-        defaultValue = true
-    )
     val (showPlayerBottomCard, onShowPlayerBottomCardChange) = rememberPreference(
         ShowPlayerBottomCardKey,
         defaultValue = true
@@ -247,14 +242,11 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 )
                 add(
                     SettingsItem(
-                        title = { Text("Squared player design") },
-                        descriptionText = "Padded square art in the player",
+                        title = { Text("Player customization") },
+                        descriptionText = "Cover style, disc options and background",
                         icon = painterResource(R.drawable.crop),
                         iconShape = CircleShape,
-                        onClick = { onUseNewPlayerDesignChange(!useNewPlayerDesign) },
-                        trailingContent = {
-                            AppSwitch(checked = useNewPlayerDesign, onCheckedChange = onUseNewPlayerDesignChange)
-                        }
+                        onClick = { navController.navigate("player_customize") },
                     )
                 )
                 add(

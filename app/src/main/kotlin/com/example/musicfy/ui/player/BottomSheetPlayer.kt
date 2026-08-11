@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,9 +41,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
@@ -51,12 +54,35 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
+import com.example.musicfy.constants.PlayerBackgroundStyle
+import com.example.musicfy.constants.PlayerBackgroundStyleKey
+import com.example.musicfy.constants.PlayerCoverStyle
+import com.example.musicfy.constants.PlayerCoverStyleKey
 import com.example.musicfy.constants.ShowPlayerBottomCardKey
 import com.example.musicfy.ui.component.BottomSheet
 import com.example.musicfy.ui.component.BottomSheetState
 import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.player.customize.PlayerCustomizeScreen
+import com.example.musicfy.ui.player.customize.PlayerEditOverlay
+import com.example.musicfy.ui.player.customize.PlayerEditPhase
+import com.example.musicfy.ui.player.customize.PlayerEditTarget
+import com.example.musicfy.ui.player.customize.PlayerEnteringEditOverlay
+import com.example.musicfy.ui.player.menu.PlayerActionMenu
+import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import kotlin.math.absoluteValue
+
+/**
+ * How far the title/slider sub-column is drawn above its own layout position.
+ *
+ * Modifier.offset applied at draw/placement time reserves no layout space, which is what keeps
+ * the transport row's position independent of it. Shared as a constant so the edit overlay's
+ * outline can undo exactly the same shift when it measures this block.
+ */
+private val ControlsDrawShift = 64.dp
+
+/** Peak blur radius, in px, of the player behind the "Entering edit mode" message. */
+private const val EnterBlurRadius = 34f
 
 @Composable
 fun BottomSheetPlayer(
@@ -74,6 +100,67 @@ fun BottomSheetPlayer(
     val morphingGlassState = remember { GlassState() }
     var showLyrics by remember { mutableStateOf(false) }
     val (showPlayerBottomCard) = rememberPreference(ShowPlayerBottomCardKey, defaultValue = true)
+
+    // Player customization. NONE is the state the player is in essentially always; the other two
+    // are only reachable by long-pressing the artwork.
+    var editPhase by remember { mutableStateOf(PlayerEditPhase.NONE) }
+    // The ⋯ button now occupies the slot the lyrics shortcut used to. Lyrics are still reachable
+    // from the bottom card deck, which is the primary way in anyway.
+    var showActionMenu by remember { mutableStateOf(false) }
+    // 0..1 of the menu's own open animation, reported back so the player can scale away beneath
+    // it the way the app's other popups do. A plain float read in the draw phase, so the whole
+    // player is not recomposed on every frame of the sheet sliding up.
+    val menuReveal = remember { mutableFloatStateOf(0f) }
+    // Set when the customization page is opened from the menu rather than by long-pressing the
+    // artwork, so it can tell you the gesture exists.
+    var showEditHint by remember { mutableStateOf(false) }
+    val coverStyle by rememberEnumPreference(PlayerCoverStyleKey, PlayerCoverStyle.EDGE_TO_EDGE)
+    val backgroundStyle by rememberEnumPreference(
+        PlayerBackgroundStyleKey,
+        PlayerBackgroundStyle.COVER_GRADIENT,
+    )
+    // Rects of the three editable regions, captured live so the overlay can outline exactly where
+    // they really are rather than reproducing this file's nested layout arithmetic.
+    var coverArtRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    var controlsRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    var bottomCardRect by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+
+    // The lyrics page and the editor both want the whole screen; entering one leaves the other.
+    LaunchedEffect(editPhase) {
+        if (editPhase != PlayerEditPhase.NONE) showLyrics = false
+    }
+
+    // Blur applied to the entire player while the "Entering edit mode" beat plays. Held as an
+    // Animatable and read inside a graphicsLayer (draw phase) rather than as a composable-scope
+    // float, so ramping it costs redraws instead of a recomposition of the player every frame.
+    val enterBlur = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(editPhase) {
+        enterBlur.animateTo(
+            targetValue = if (editPhase == PlayerEditPhase.ENTERING) EnterBlurRadius else 0f,
+            animationSpec = tween(
+                durationMillis = 360,
+                easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f),
+            ),
+        )
+    }
+    // Boolean, so this only recomposes when the layer needs attaching or detaching — never once
+    // per frame of the ramp. The layer must outlive the ENTERING phase itself to let the blur
+    // animate back down instead of snapping off.
+    val enterBlurActive by remember {
+        derivedStateOf { editPhase == PlayerEditPhase.ENTERING || enterBlur.value > 0.01f }
+    }
+    // Collapsing or dismissing the player while editing must not leave the editor stranded on
+    // top of the mini pill.
+    LaunchedEffect(state.isExpanded) {
+        if (!state.isExpanded) {
+            editPhase = PlayerEditPhase.NONE
+            // The menu has to go with it, and its zoom-out has to be released — left set, the
+            // player would stay scaled down after collapsing, which is the shrunken-then-popping
+            // state you get when switching away with the sheet open.
+            showActionMenu = false
+            menuReveal.floatValue = 0f
+        }
+    }
 
     // Automatically transition out of lyrics mode when the user swipes down to dismiss the player
     LaunchedEffect(state.isExpanded) {
@@ -104,7 +191,10 @@ fun BottomSheetPlayer(
     // shared transport block away so the lyrics own the full page, Apple Music style.
     var lyricsImmersive by remember { mutableStateOf(false) }
     val controlsHidden by animateFloatAsState(
-        targetValue = if (lyricsImmersive) 1f else 0f,
+        // Only the customization page hides the chrome. The part-selection layer deliberately
+        // leaves the controls and the card deck on screen — they are two of the three things you
+        // can point at, so they have to be visible to be pointed at.
+        targetValue = if (lyricsImmersive || editPhase == PlayerEditPhase.CUSTOMIZING) 1f else 0f,
         animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)),
         label = "lyricsControlsHide",
     )
@@ -124,9 +214,67 @@ fun BottomSheetPlayer(
         val progressProvider = remember(state) { { state.progress.coerceIn(0f, 1f) } }
         val horizontalOffsetProvider = remember(state) { { state.horizontalOffset } }
 
+        // Black plate behind the player, revealed as the menu scales it down. Without it the
+        // margin the zoom-out opens up is simply transparent and you see straight through to
+        // whatever is behind the player — the same reason ZoomOutPopupContainer paints its own
+        // root black.
+        //
+        // Alpha is a draw-phase read of menuReveal, so this costs nothing while the menu is
+        // closed, and it carries no pointer input, so it never intercepts a touch.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = menuReveal.floatValue }
+                .background(Color.Black)
+        )
+
         BottomSheet(
             state = state,
-            modifier = modifier,
+            // The blur goes on the sheet as a whole — artwork, controls and card deck alike —
+            // which is why it is attached here rather than inside the content slot: the cover
+            // lives in BottomSheet's sharedContent, a sibling of that slot, so nothing inside
+            // content could have blurred it. The overlay that reads on top is composed further
+            // down as a sibling of this call, outside the blurred subtree, so its text stays
+            // sharp.
+            modifier = modifier
+                .graphicsLayer {
+                    // Zoom-out behind the sheet, matching ZoomOutPopupContainer elsewhere in the
+                    // app. Identity while the menu is closed.
+                    val r = menuReveal.floatValue
+                    if (r > 0.001f) {
+                        val scale = 1f - 0.08f * r
+                        scaleX = scale
+                        scaleY = scale
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp * r)
+                        clip = true
+                    }
+                }
+                .then(
+                if (enterBlurActive) {
+                    Modifier.graphicsLayer {
+                        val radius = enterBlur.value
+                        renderEffect = if (
+                            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
+                            radius > 0.5f
+                        ) {
+                            android.graphics.RenderEffect.createBlurEffect(
+                                radius,
+                                radius,
+                                // CLAMP: the player's own bounds are the intended blur extent, so
+                                // edges must stay opaque rather than washing out to transparent.
+                                android.graphics.Shader.TileMode.CLAMP,
+                            ).asComposeRenderEffect()
+                        } else {
+                            null
+                        }
+                    }
+                } else Modifier
+            ),
+            // Freezes the sheet's own drag handling for as long as the editor is up. That
+            // handler lives on an ancestor of everything the editor draws, so without this a
+            // swipe down collapsed the player and a swipe left ran the song-change gesture,
+            // both of which tore the editor off the screen mid-interaction.
+            isExpandable = editPhase == PlayerEditPhase.NONE,
             isPillTransition = true,
             pureBlack = pureBlack,
             background = {},
@@ -144,6 +292,11 @@ fun BottomSheetPlayer(
                     glassState = morphingGlassState,
                     lyricsProgressProvider = { lyricsProgress },
                     modifier = Modifier.fillMaxSize(),
+                    coverStyle = coverStyle,
+                    backgroundStyle = backgroundStyle,
+                    editMode = editPhase != PlayerEditPhase.NONE,
+                    onLongPressCover = { editPhase = PlayerEditPhase.ENTERING },
+                    onArtBoundsChanged = { coverArtRect = it },
                 )
                 MorphingSongInfo(
                     trackInfo = trackInfo,
@@ -199,6 +352,7 @@ fun BottomSheetPlayer(
                     contentBottomInset = controlsInset,
                     onImmersiveChange = { lyricsImmersive = it },
                     isSheetDragging = isSheetInTransition,
+                    onOpenMenu = { showActionMenu = true },
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
@@ -238,6 +392,9 @@ fun BottomSheetPlayer(
                     // gesture bar internally.
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        // Measured OUTSIDE the horizontal padding, so the outline spans the deck's
+                        // full width rather than hugging the card's inset body.
+                        .onGloballyPositioned { bottomCardRect = it.boundsInRoot() }
                         .padding(horizontal = 26.dp)
                         // Retreats off the bottom edge with the transport block, on the same
                         // curve, so the whole chrome leaves as one movement.
@@ -250,7 +407,7 @@ fun BottomSheetPlayer(
 
             // Composed only while the player is showing — an alpha-0 button left in the tree
             // would still be hit-testable and would swallow taps meant for the lyrics page.
-            if (lyricsProgress < 0.999f) {
+            if (lyricsProgress < 0.999f && editPhase == PlayerEditPhase.NONE) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -262,14 +419,17 @@ fun BottomSheetPlayer(
                         .graphicsLayer { alpha = (1f - lyricsProgress / 0.35f).coerceIn(0f, 1f) }
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.12f))
-                        .clickable { showLyrics = true },
+                        .clickable { showActionMenu = true },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.lyrics),
-                        contentDescription = "Lyrics",
+                        painter = painterResource(R.drawable.more_vert),
+                        contentDescription = "Menu",
                         tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                        // Same glyph the lyrics page uses, turned horizontal.
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer { rotationZ = 90f }
                     )
                 }
             }
@@ -327,9 +487,22 @@ fun BottomSheetPlayer(
                         if ((inset - controlsInset).value.absoluteValue > 0.5f) {
                             controlsInset = inset
                         }
+
+                        // Same node, second purpose: the edit overlay's outline for this block.
+                        // The title/slider sub-column is drawn ControlsDrawShift higher than this
+                        // node's own top (see the offset below, which reserves no layout space),
+                        // so the measured rect has to be raised by the identical amount or the
+                        // outline sits low over the transport row.
+                        val bounds = coords.boundsInRoot()
+                        controlsRect = androidx.compose.ui.geometry.Rect(
+                            left = bounds.left,
+                            top = bounds.top - with(density) { ControlsDrawShift.toPx() },
+                            right = bounds.right,
+                            bottom = bounds.bottom,
+                        )
                     }
             ) {
-                Column(modifier = Modifier.offset(y = (-64).dp)) {
+                Column(modifier = Modifier.offset(y = -ControlsDrawShift)) {
                     Spacer(modifier = Modifier.height(20.dp))
 
                     Box(
@@ -347,6 +520,76 @@ fun BottomSheetPlayer(
 
                 PlayerTransportRow()
             }
+
+            // Customization layers, declared last so they draw above everything else. Both are
+            // composed out entirely when not in use — an alpha-0 full-screen overlay would still
+            // hit-test and swallow every gesture the player depends on.
+            if (editPhase == PlayerEditPhase.SELECTING) {
+                PlayerEditOverlay(
+                    coverRect = coverArtRect,
+                    controlsRect = controlsRect,
+                    bottomCardRect = bottomCardRect,
+                    onSelect = { target ->
+                        // Only the cover leads anywhere yet. The other two targets are drawn and
+                        // routed so the text/controls editor can be added without reopening this
+                        // file, but they intentionally do nothing for now.
+                        if (target == PlayerEditTarget.COVER) {
+                            editPhase = PlayerEditPhase.CUSTOMIZING
+                        }
+                    },
+                    onDismiss = { editPhase = PlayerEditPhase.NONE },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            if (editPhase == PlayerEditPhase.CUSTOMIZING) {
+                PlayerCustomizeScreen(
+                    // Back goes to the part picker when that is where this page came from. Opened
+                    // straight from the menu there is no picker behind it, so back leaves.
+                    onBack = {
+                        editPhase = if (showEditHint) {
+                            showEditHint = false
+                            PlayerEditPhase.NONE
+                        } else {
+                            PlayerEditPhase.SELECTING
+                        }
+                    },
+                    showLongPressHint = showEditHint,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+
+        if (showActionMenu) {
+            PlayerActionMenu(
+                onDismiss = {
+                    showActionMenu = false
+                    menuReveal.floatValue = 0f
+                },
+                onEditPlayer = {
+                    showEditHint = true
+                    editPhase = PlayerEditPhase.CUSTOMIZING
+                },
+                onReveal = { menuReveal.floatValue = it },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        // Outside the BottomSheet call on purpose: everything above is inside the subtree the
+        // entering blur is applied to, and this message has to stay sharp over it.
+        if (editPhase == PlayerEditPhase.ENTERING) {
+            PlayerEnteringEditOverlay(
+                onFinished = {
+                    // Guarded: a long press that got cancelled (or the player collapsing) can
+                    // move the phase on before this timer fires, and it must not drag the user
+                    // back into the editor after that.
+                    if (editPhase == PlayerEditPhase.ENTERING) {
+                        editPhase = PlayerEditPhase.SELECTING
+                    }
+                },
+                onCancel = { editPhase = PlayerEditPhase.NONE },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

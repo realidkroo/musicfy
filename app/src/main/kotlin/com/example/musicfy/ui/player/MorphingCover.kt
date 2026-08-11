@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -50,9 +51,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -90,7 +94,14 @@ import com.example.musicfy.constants.CanvasThumbnailAnimationKey
 import com.example.musicfy.constants.CanvasWifiOnlyKey
 import com.example.musicfy.constants.DisableBlurKey
 import com.example.musicfy.constants.PlayVideoBackgroundKey
+import com.example.musicfy.constants.PlayerBackgroundStyle
+import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.constants.YtVideoBackgroundLyricsSyncKey
+import com.example.musicfy.ui.player.customize.DiscCoverStack
+import com.example.musicfy.ui.player.customize.PlayerBackgroundContent
+import com.example.musicfy.ui.player.customize.CoverGradientBackdrop
+import com.example.musicfy.ui.player.customize.coverArtBox
+import com.example.musicfy.ui.player.customize.isDisc
 import com.example.musicfy.ui.component.GlassPillBackground
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.glassRoot
@@ -119,6 +130,12 @@ private class MorphEndpoints(
     val fullTextY: Dp,
     val fullTextWidth: Dp,
     val fullWidth: Dp,
+    /**
+     * Width of the artwork box in the expanded player. Separate from [fullWidth] (which the
+     * backdrop still uses) purely so a cover style can inset the artwork without also shrinking
+     * the background behind it — [fullWidth] for every style except SQUARED.
+     */
+    val fullArtWidth: Dp,
     val fullArtHeight: Dp,
     val fullArtX: Dp,
     val fullArtY: Dp,
@@ -146,6 +163,7 @@ private class MorphEndpointsPx(
     val fullTextYPx: Float,
     val fullTextWidthPx: Float,
     val fullWidthPx: Float,
+    val fullArtWidthPx: Float,
     val fullArtHeightPx: Float,
     val fullArtXPx: Float,
     val fullArtYPx: Float,
@@ -166,8 +184,29 @@ private const val PILL_FADE_END = 0.15f
 /** Corner radius of the shrunken cover once it's landed in the lyrics page's header. */
 private val LyricsHeaderCornerRadius = 12.dp
 
+/** Corner radius the SQUARED style keeps once fully expanded (concept screen 83). */
+private val SquaredCoverCornerRadius = 22.dp
+
+
+
 private fun lerpF(start: Float, stop: Float, fraction: Float): Float =
     start + (stop - start) * fraction
+
+/**
+ * How present the vinyl is, 0..1 — a draw-phase read, never a state subscription.
+ *
+ * 1 only in the fully open player. It dissolves out over the last third of the collapse (well
+ * before the artwork reaches pill size, so you never see a shrunken platter) and again as the
+ * lyrics page takes over, revealing the plain square artwork underneath in both directions.
+ */
+private fun discWeight(
+    progressProvider: () -> Float,
+    lyricsProgressProvider: () -> Float,
+): Float {
+    val expanded = ((progressProvider() - 0.55f) / 0.30f).coerceIn(0f, 1f)
+    val lyrics = ((lyricsProgressProvider() - 0.10f) / 0.40f).coerceIn(0f, 1f)
+    return expanded * (1f - lyrics)
+}
 
 /**
  * Positions a morphing element by reading progressProvider()/horizontalOffsetProvider() in the
@@ -186,7 +225,7 @@ private fun Modifier.morphLayout(
 
     val (x, y, w, h) = when (element) {
         MorphElement.ART -> {
-            val artW = lerpF(endpointsPx.miniArtSizePx, endpointsPx.fullWidthPx, p)
+            val artW = lerpF(endpointsPx.miniArtSizePx, endpointsPx.fullArtWidthPx, p)
             val artH = lerpF(endpointsPx.miniArtSizePx, endpointsPx.fullArtHeightPx, p)
             val artX = lerpF(endpointsPx.miniArtXPx, endpointsPx.fullArtXPx, p) + hOffset
             val artY = lerpF(endpointsPx.miniArtYPx, endpointsPx.fullArtYPx, p)
@@ -295,6 +334,27 @@ fun MorphingCover(
      * behind it, which is why two covers were visible.
      */
     lyricsProgressProvider: () -> Float = { 0f },
+    /**
+     * How the artwork is presented. EDGE_TO_EDGE — the default — is the treatment this file has
+     * always drawn, and takes exactly the same code path it always did; every other style is an
+     * additional branch alongside it.
+     */
+    coverStyle: PlayerCoverStyle = PlayerCoverStyle.EDGE_TO_EDGE,
+    /**
+     * Which backdrop to draw. COVER_GRADIENT — the default — is the blurred-artwork + warp
+     * shader block below, left where it was; the other three come from PlayerBackgroundStyles.kt.
+     */
+    backgroundStyle: PlayerBackgroundStyle = PlayerBackgroundStyle.COVER_GRADIENT,
+    /** Shows the disc's name plate outline even when the user hasn't set a name yet. */
+    editMode: Boolean = false,
+    /** Long press on the artwork while fully expanded — opens the edit overlay. */
+    onLongPressCover: (() -> Unit)? = null,
+    /**
+     * Reports the artwork box's live rect in root coordinates, so the edit overlay can outline
+     * wherever the cover actually is for the current style instead of re-deriving the endpoint
+     * arithmetic above.
+     */
+    onArtBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current
@@ -305,8 +365,12 @@ fun MorphingCover(
     // time the song actually ends — or the user taps skip — the image is already in Coil's
     // cache and the crossfade above is effectively instant instead of loading over the network
     // while the old cover is held on screen.
+    // Hoisted out of the prefetch block below so the disc styles' skip choreography can also read
+    // currentIndex (it needs the direction of the move to know which way to slide the discs).
+    val emptyQueue = remember { kotlinx.coroutines.flow.MutableStateFlow(com.example.musicfy.ui.player.models.QueueState()) }
+    val queueState by (playerConnection?.uiState?.queueState ?: emptyQueue).collectAsState()
+
     if (playerConnection != null) {
-        val queueState by playerConnection.uiState.queueState.collectAsState()
         LaunchedEffect(queueState.currentIndex, queueState.items) {
             val nextUrl = queueState.items.getOrNull(queueState.currentIndex + 1)
                 ?.artworkUri?.toString()?.resize(1200, 1200)
@@ -322,7 +386,7 @@ fun MorphingCover(
         }
     }
 
-    val endpoints = remember(maxWidth, maxHeight, statusBarTop, 2) {
+    val endpoints = remember(maxWidth, maxHeight, statusBarTop, coverStyle, 2) {
         val miniHeight = 64.dp
         val miniArtSize = 48.dp
         val miniArtX = 36.dp
@@ -340,6 +404,10 @@ fun MorphingCover(
         // right-edge fade below then softens wherever a long title actually reaches.
         val miniTextX = miniArtX + miniArtSize + 12.dp
         val miniTextWidth = (miniPlayX - 10.dp - miniTextX).coerceAtLeast(0.dp)
+
+        // Expanded-player artwork rect, per style — shared with the customization page's preview
+        // so the two can't disagree. See PlayerCoverLayout.kt.
+        val artBox = coverArtBox(coverStyle, maxWidth, maxHeight, statusBarTop)
 
         MorphEndpoints(
             miniArtSize = miniArtSize,
@@ -362,9 +430,10 @@ fun MorphingCover(
             fullTextY = maxHeight * 0.63f + 24.dp,
             fullTextWidth = (maxWidth - 48.dp).coerceAtLeast(0.dp),
             fullWidth = maxWidth,
-            fullArtHeight = maxHeight * 0.63f,
-            fullArtX = 0.dp,
-            fullArtY = 0.dp,
+            fullArtWidth = artBox.width,
+            fullArtHeight = artBox.height,
+            fullArtX = artBox.x,
+            fullArtY = artBox.y,
             fullPlayX = (maxWidth / 2) - 18.dp,
             fullPlayY = maxHeight - 200.dp,
             miniHeight = miniHeight,
@@ -391,6 +460,7 @@ fun MorphingCover(
                 fullTextYPx = endpoints.fullTextY.toPx(),
                 fullTextWidthPx = endpoints.fullTextWidth.toPx(),
                 fullWidthPx = endpoints.fullWidth.toPx(),
+                fullArtWidthPx = endpoints.fullArtWidth.toPx(),
                 fullArtHeightPx = endpoints.fullArtHeight.toPx(),
                 fullArtXPx = endpoints.fullArtX.toPx(),
                 fullArtYPx = endpoints.fullArtY.toPx(),
@@ -403,6 +473,18 @@ fun MorphingCover(
     }
 
     val miniPlaySize = 36.dp
+
+    val isDiscStyle = coverStyle.isDisc
+
+    // Both of these are derivedStateOf over a draw-phase progress value on purpose: they only
+    // invalidate when the threshold is actually crossed, never once per drag frame. Same shape
+    // as isPillMounted / showBackdrop / warpClockActive elsewhere in this file.
+    val longPressEnabled by remember {
+        derivedStateOf { progressProvider() > 0.9f && lyricsProgressProvider() < 0.1f }
+    }
+    val discSpinActive by remember {
+        derivedStateOf { progressProvider() > 0.9f && lyricsProgressProvider() < 0.6f }
+    }
 
     // Real collapsed-pill height, in px, as reported by BottomSheetState — used below to
     // counteract the sweep the outer BottomSheet container applies to this whole composable as
@@ -626,7 +708,10 @@ fun MorphingCover(
         // visibly moving/warping every frame — that part is intentionally kept — but since it no
         // longer has a live Gaussian blur chained beneath it, the only per-frame GPU cost left is
         // the shader's own cheap coordinate distortion, not a full blur re-evaluation on top of it.
-        if (trackInfo.thumbnailUrl != null) {
+        // The artwork gate stays exactly as it was for the default backdrop; the two artwork-free
+        // styles (flat fill, static gradient) additionally have nothing to wait for, so they draw
+        // even on a track with no thumbnail.
+        if (trackInfo.thumbnailUrl != null || backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
             val showBackdrop by remember { derivedStateOf { progressProvider() > 0.02f } }
             if (showBackdrop) {
                 val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
@@ -671,57 +756,43 @@ fun MorphingCover(
                     // When the YouTube video background is on and resolved, the ambient backdrop
                     // becomes a blurred, mirrored copy of the video's own live frames instead of
                     // the usual blurred-cover-art + warp shader — see VideoBackdropBlur below.
-                    if (playVideoBackground && videoInfo != null) {
+                    if (backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
+                        // The three added backdrops. Deliberately a sibling branch rather than a
+                        // rewrite of the block below: COVER_GRADIENT is the default and still
+                        // runs through the original code, untouched.
+                        PlayerBackgroundContent(
+                            style = backgroundStyle,
+                            thumbnailUrl = trackInfo.thumbnailUrl,
+                            pureBlack = pureBlack,
+                            modifier = Modifier.requiredSize(maxWidth, maxHeight)
+                        )
+                    } else if (playVideoBackground && videoInfo != null) {
                         VideoBackdropBlur(
                             glassState = videoGlassState,
                             modifier = Modifier.requiredSize(maxWidth, maxHeight)
                         )
                     } else {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(trackInfo.thumbnailUrl?.resize(48, 48))
-                                .allowHardware(false)
-                                .transformations(BackdropBlurTransformation(radiusPx = 4))
-                                // Decode at the source's own 48x48, not at the node's size.
-                                // This node is requiredSize(maxWidth, maxHeight), so Coil was
-                                // sizing the decode to the full screen and upscaling a 48px
-                                // image into a ~1080x2400 software bitmap (~10MB, since
-                                // allowHardware is false) — allocated on the first frame of the
-                                // drag, then blurred by the transformation at that full size.
-                                // Decoding small and letting ContentScale.FillBounds + the 1.6x
-                                // graphicsLayer stretch it on the GPU looks identical (it is a
-                                // blurred backdrop) for ~9KB and a fraction of the work.
-                                .size(CoilSize(48, 48))
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.FillBounds,
-                            modifier = Modifier
-                                .requiredSize(maxWidth, maxHeight)
-                                .graphicsLayer {
-                                    scaleX = 1.6f
-                                    scaleY = 1.6f
-                                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                                }
-                                .let {
-                                    if (warpShader != null) {
-                                        it.liquidWarpEffect(warpShader) { warpTimeState.floatValue }
-                                    } else {
-                                        it
-                                    }
-                                }
+                        // Shared with the customization page's preview so the two can never
+                        // disagree — see CoverGradientBackdrop.kt. The shader instance and the
+                        // clock stay hoisted here, for the AGSL-compile and idle-wakeup reasons
+                        // documented above.
+                        CoverGradientBackdrop(
+                            thumbnailUrl = trackInfo.thumbnailUrl,
+                            width = maxWidth,
+                            height = maxHeight,
+                            animate = warpClockActive,
+                            shader = warpShader,
+                            timeProvider = { warpTimeState.floatValue },
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .requiredSize(maxWidth, maxHeight)
-                            .background(Color.Black.copy(alpha = 0.22f))
-                    )
                 }
             }
         }
 
         // Cover art
-        if (trackInfo.thumbnailUrl != null) {
+        // A disc still renders (black platter, empty label) with no artwork, so it isn't gated
+        // on the thumbnail the way the plain image styles have to be.
+        if (trackInfo.thumbnailUrl != null || isDiscStyle) {
             Box(
                 modifier = Modifier
                     .morphLayout(
@@ -733,15 +804,66 @@ fun MorphingCover(
                     )
                     .graphicsLayer {
                         val p = progressProvider()
-                        clip = true
+                        // A disc style's platter is deliberately larger than this box and hangs
+                        // off its edges (concept screens 84/87), so clipping is the one thing
+                        // that must not happen while the platter is what's on screen. Once it has
+                        // dissolved into the square — collapsing to the pill, or opening the
+                        // lyrics page — clipping has to come back or the square's rounded corners
+                        // stop being rounded. Every non-disc style clips exactly as before.
+                        clip = !isDiscStyle ||
+                            discWeight(progressProvider, lyricsProgressProvider) < 0.5f
                         // Radius only ever accounted for the pill<->fullscreen stage (ending at a
                         // flat 0.dp once fully expanded), with no second stage for the lyrics
                         // shrink — so the small header cover was rendering perfectly square.
                         // lyricsProgress interpolates it back up to LyricsHeaderCornerRadius.
-                        val base = lerp(ThumbnailCornerRadius, 0.dp, p)
+                        val expandedRadius = if (coverStyle == PlayerCoverStyle.SQUARED) {
+                            SquaredCoverCornerRadius
+                        } else {
+                            0.dp
+                        }
+                        val base = lerp(ThumbnailCornerRadius, expandedRadius, p)
                         shape = RoundedCornerShape(lerp(base, LyricsHeaderCornerRadius, lyricsProgressProvider()))
                     }
+                    .then(
+                        // Only mounted once the player is genuinely open. Left permanently
+                        // installed, this detector would consume the pointer-down on the mini
+                        // pill's 48dp thumbnail, and the pill's own tap-to-expand — which uses
+                        // the default requireUnconsumed = true — would stop firing there.
+                        if (longPressEnabled && onLongPressCover != null) {
+                            Modifier.pointerInput(onLongPressCover) {
+                                detectTapGestures(onLongPress = { onLongPressCover() })
+                            }
+                        } else Modifier
+                    )
+                    .then(
+                        if (onArtBoundsChanged != null) {
+                            Modifier.onGloballyPositioned { onArtBoundsChanged(it.boundsInRoot()) }
+                        } else Modifier
+                    )
             ) {
+                // The plain square artwork is the base layer for EVERY style, disc ones
+                // included. A disc has no sensible 48dp form and none at all in the lyrics
+                // header, so rather than shrinking a platter into the pill the disc dissolves
+                // and reveals this square underneath — the pill and the lyrics header keep the
+                // artwork they have always shown, and the transition is a morph rather than a
+                // swap because both layers occupy the identical, already-morphing box.
+                //
+                // The two are an exact crossfade: a platter is a circle inside a square box, so
+                // leaving this layer at full strength underneath one left the square artwork
+                // showing in the corners around the disc — the same image visible twice at once.
+                // The layer is only attached for disc styles, so every other style reaches this
+                // artwork through precisely the modifier chain it always did.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (isDiscStyle) {
+                                Modifier.graphicsLayer {
+                                    alpha = 1f - discWeight(progressProvider, lyricsProgressProvider)
+                                }
+                            } else Modifier
+                        )
+                ) {
                 // crossfade: when trackInfo.thumbnailUrl changes (track change / manual skip),
                 // Coil keeps showing the previous image and fades to the new one once it's
                 // decoded, instead of clearing to blank while the new image loads. Combined
@@ -817,7 +939,7 @@ fun MorphingCover(
                     derivedStateOf { canvasEnabled && canvasArtwork?.preferredAnimationUrl != null && progressProvider() > 0.92f }
                 }
                 AnimatedVisibility(
-                    visible = nearFullyExpanded,
+                    visible = !isDiscStyle && nearFullyExpanded,
                     enter = fadeIn(tween(300)),
                     exit = fadeOut(tween(300)),
                     modifier = Modifier.fillMaxSize()
@@ -841,7 +963,7 @@ fun MorphingCover(
                 // cover; YouTubeVideoBackground itself only fades in once ExoPlayer actually
                 // renders a first frame, so there's no blank gap — it just looks like the static
                 // cover until the video is ready.
-                if (playVideoBackground && videoInfo != null) {
+                if (!isDiscStyle && playVideoBackground && videoInfo != null) {
                     YouTubeVideoBackground(
                         streamUrl = videoInfo?.streamUrl,
                         isPlaying = isPlaying,
@@ -849,6 +971,22 @@ fun MorphingCover(
                         lyricVideoAnchors = lyricVideoAnchors,
                         glassState = videoGlassState,
                         modifier = Modifier.fillMaxSize()
+                    )
+                }
+                }
+
+                if (isDiscStyle) {
+                    DiscCoverStack(
+                        style = coverStyle,
+                        artworkUrl = trackInfo.thumbnailUrl,
+                        mediaId = trackInfo.mediaId,
+                        queueIndex = queueState.currentIndex,
+                        isPlaying = isPlaying,
+                        spinActive = discSpinActive,
+                        editMode = editMode,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = discWeight(progressProvider, lyricsProgressProvider) },
                     )
                 }
             }

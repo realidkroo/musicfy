@@ -33,14 +33,17 @@ object PlayerSliderColors {
         useDarkTheme: Boolean
     ): SliderColors {
         val inactiveTrackColor = when (playerBackground) {
-            PlayerBackgroundStyle.DEFAULT -> {
+            // The flat fill is the only backdrop that follows the app theme rather than always
+            // being a dark, image-derived surface, so it's the only one that needs the light
+            // theme's darker track.
+            PlayerBackgroundStyle.SOLID -> {
                 if (useDarkTheme) {
                     MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
                 } else {
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                 }
             }
-            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.GLOW_ANIMATED, PlayerBackgroundStyle.APPLE_MUSIC, PlayerBackgroundStyle.LIVE_MESH -> {
+            PlayerBackgroundStyle.COVER_GRADIENT, PlayerBackgroundStyle.DARK_GRADIENT, PlayerBackgroundStyle.APPLE_MUSIC -> {
                 Color.White.copy(alpha = 0.4f)
             }
         }

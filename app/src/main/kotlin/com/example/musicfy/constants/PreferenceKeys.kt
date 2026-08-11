@@ -382,14 +382,82 @@ enum class PlayerButtonsStyle {
     TERTIARY
 }
 
+/**
+ * The four player background treatments offered by the "Bg Style" section of the player
+ * customization page.
+ *
+ * [COVER_GRADIENT] is first — and therefore the default — because it is implemented by the
+ * blurred-cover + liquid-warp backdrop the player has always drawn, so an install that never
+ * opens the editor looks exactly as it did before this enum was read by anything.
+ */
 enum class PlayerBackgroundStyle {
-    DEFAULT,
-    GRADIENT,
-    BLUR,
-    GLOW_ANIMATED,
+    /** Blurred artwork + warp shader. The historical (and default) player backdrop. */
+    COVER_GRADIENT,
+
+    /** Flat surfaceContainer fill. */
+    SOLID,
+
+    /** Static dark vertical gradient, independent of the artwork. */
+    DARK_GRADIENT,
+
+    /** Apple-Music-style morphing colour mesh derived from the artwork's palette. */
     APPLE_MUSIC,
-    LIVE_MESH,
 }
+
+/**
+ * How the artwork is presented in the expanded player. [EDGE_TO_EDGE] is the default for the same
+ * reason as [PlayerBackgroundStyle.COVER_GRADIENT]: it is what the player already draws.
+ *
+ * Presentation metadata (display name, which toggles a style exposes, disc geometry) lives in
+ * ui/player/customize/PlayerCoverStyles.kt rather than here — this file stays a plain key/enum
+ * registry.
+ */
+enum class PlayerCoverStyle {
+    EDGE_TO_EDGE,
+    SQUARED,
+    DISC_SMALL_FULL,
+    DISC_SMALL_LABEL,
+    DISC_BIG_FULL,
+    DISC_BIG_LABEL,
+    DISC_ALBUM,
+}
+
+val PlayerCoverStyleKey = stringPreferencesKey("playerCoverStyle")
+
+/**
+ * Whether the two oversized disc styles appear in the cover carousel.
+ *
+ * Off by default — they bleed off the screen edges by design and aren't finished enough to ship,
+ * so they're hidden behind an Experimental switch rather than deleted.
+ */
+val ShowBigDiscStylesKey = booleanPreferencesKey("showBigDiscStyles")
+
+/** Spins the vinyl while the track is playing. Disc styles only. */
+val DiscRotatingAnimationKey = booleanPreferencesKey("discRotatingAnimation")
+
+/** Adds groove texture and a fixed specular sheen to the vinyl. Disc styles only. */
+val DiscRealisticModeKey = booleanPreferencesKey("discRealisticMode")
+
+/**
+ * The user's custom label printed on the vinyl's platter. One global string, not per-track.
+ * Empty (the default) hides the label on the real player; the editor still outlines where it
+ * would go so there is something to tap.
+ */
+val DiscNameKey = stringPreferencesKey("discName")
+
+/**
+ * What a player text slot displays. Persisted and settable, but nothing reads these yet — the
+ * text-slot editor is scaffolded (see PlayerEditTarget.TITLE / SUBTITLE) and not built.
+ */
+enum class PlayerTextContent {
+    MUSIC_NAME,
+    ALBUM_NAME,
+    ARTIST_NAME,
+    COMBINED,
+}
+
+val PlayerTitleSlotKey = stringPreferencesKey("playerTitleSlot")
+val PlayerSubtitleSlotKey = stringPreferencesKey("playerSubtitleSlot")
 
 val TopSize = stringPreferencesKey("topSize")
 val HistoryDuration = floatPreferencesKey("historyDuration")

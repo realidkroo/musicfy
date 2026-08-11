@@ -17,6 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -86,22 +92,63 @@ fun MorphingSongInfo(
                 translationY = androidx.compose.ui.util.lerp(source.top, targetYPx, lp)
             },
     ) {
-        Text(
-            text = trackInfo.title,
-            style = MaterialTheme.typography.titleLarge.copy(fontSize = titleSize),
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            color = Color.White,
-        )
-        if (trackInfo.artist.isNotBlank()) {
+        // No ellipsis: an over-long title scrolls, and whatever is still hanging past the right
+        // edge dissolves to nothing instead of being cut off with dots. The DstIn mask needs its
+        // own offscreen layer so it erases from these glyphs rather than punching a hole through
+        // the page behind them — the same treatment SongInfoRow gives its own copy.
+        Column(
+            modifier = Modifier
+                .widthIn(max = maxTextWidth)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithCache {
+                    val fade = Brush.horizontalGradient(
+                        0f to Color.Black,
+                        0.86f to Color.Black,
+                        1f to Color.Transparent,
+                    )
+                    onDrawWithContent {
+                        drawContent()
+                        drawRect(brush = fade, blendMode = BlendMode.DstIn)
+                    }
+                }
+        ) {
             Text(
-                text = trackInfo.artist,
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = artistSize),
+                text = trackInfo.title,
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = titleSize),
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = Color.White.copy(alpha = 0.7f),
+                // softWrap off so the glyphs are allowed to run past the edge and be faded;
+                // with it on the line breaks instead and the fade has nothing to work on.
+                softWrap = false,
+                color = Color.White,
+                modifier = Modifier.basicMarquee(
+                    iterations = Int.MAX_VALUE,
+                    initialDelayMillis = 2500,
+                    repeatDelayMillis = 2500,
+                    velocity = 26.dp,
+                ),
             )
+            if (trackInfo.artist.isNotBlank()) {
+                Text(
+                    text = trackInfo.artist,
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = artistSize),
+                    maxLines = 1,
+                    softWrap = false,
+                    color = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.basicMarquee(
+                        iterations = Int.MAX_VALUE,
+                        initialDelayMillis = 2500,
+                        repeatDelayMillis = 2500,
+                        velocity = 26.dp,
+                    ),
+                )
+            }
         }
     }
 }
+
+/**
+ * How wide the title block is allowed to be on the lyrics page: the full width less the artwork
+ * slot, its gap, and the menu button's own corner. Past this the marquee takes over.
+ */
+private val maxTextWidth = 210.dp

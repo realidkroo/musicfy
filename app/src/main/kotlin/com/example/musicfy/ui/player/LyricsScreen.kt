@@ -12,6 +12,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -144,6 +145,8 @@ fun LyricsScreen(
     onImmersiveChange: (Boolean) -> Unit = {},
     /** True when the bottom sheet is being dragged, used to suppress heavy visual effects. */
     isSheetDragging: Boolean = false,
+    /** Opens the shared player action sheet. */
+    onOpenMenu: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -477,12 +480,29 @@ fun LyricsScreen(
             // menu icon's space on the right.
             Spacer(modifier = Modifier.weight(1f))
 
-            Icon(
-                painter = painterResource(R.drawable.more_vert),
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
+            // Same slot and size as before, restyled to match the like/repeat buttons on the
+            // player: a filled circle with the dots turned horizontal.
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.15f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onOpenMenu,
+                    )
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.more_vert),
+                    contentDescription = "Menu",
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = 90f },
+                )
+            }
         }
 
         // The list stops at the top of the timestamp row rather than running to the bottom of the
