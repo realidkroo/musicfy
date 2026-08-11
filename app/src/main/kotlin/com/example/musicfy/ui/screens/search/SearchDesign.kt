@@ -448,6 +448,15 @@ fun SearchAvatar(
     modifier: Modifier = Modifier,
     size: Dp = 36.dp,
 ) {
+    val model = remember(imageUrl) {
+        val url = imageUrl?.trim().orEmpty()
+        when {
+            url.isEmpty() -> null
+            url.startsWith("content://") || url.startsWith("file://") || url.startsWith("http://") || url.startsWith("https://") -> url
+            else -> "file://$url"
+        }
+    }
+
     Box(
         modifier = modifier
             .size(size)
@@ -456,10 +465,10 @@ fun SearchAvatar(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        if (imageUrl != null) {
+        if (model != null) {
             AsyncImage(
-                model = imageUrl.resize(128, 128),
-                contentDescription = null,
+                model = model,
+                contentDescription = "Profile",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )

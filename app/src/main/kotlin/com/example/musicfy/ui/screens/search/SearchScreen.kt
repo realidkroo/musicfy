@@ -111,6 +111,7 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val playerConnection = LocalPlayerConnection.current
     val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
+    val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
 
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
@@ -263,7 +264,7 @@ fun SearchScreen(
             title = "Search",
             blurActive = blurActive,
             trailing = {
-                SearchAvatar(imageUrl = null, onClick = { navController.navigate("settings") })
+                SearchAvatar(imageUrl = profilePicStr.ifBlank { null }, onClick = { navController.navigate("settings") })
             },
         ) {
             SearchField(
