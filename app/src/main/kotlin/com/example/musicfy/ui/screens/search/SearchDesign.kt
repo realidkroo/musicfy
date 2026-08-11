@@ -650,8 +650,6 @@ fun MoodTile(
     // Set from the title's own layout below, so the fade is driven by what actually happened to
     // the text rather than by guessing at a character count.
     var titleWraps by remember(title) { mutableStateOf(false) }
-    // The tile's colour at the covers' left edge — what the scrim over the artwork fades from.
-    val tileEdge = remember(tint) { blendOver(tint.copy(alpha = 0.22f), SearchColors.Tile) }
     // Pre-blended once per tile rather than composited as two layers at draw time.
     val tileBrush = remember(tint) {
         Brush.linearGradient(
@@ -684,24 +682,35 @@ fun MoodTile(
                 // than a DstIn alpha mask. Identical result against an opaque tile, but DstIn
                 // needs its own offscreen layer per tile — a dozen of those per scrolled frame is
                 // exactly the kind of cost this grid cannot carry. This is one extra rect blend.
+                // Fades the ARTWORK'S OWN ALPHA to zero, rather than painting tile-coloured
+                // gradient over it.
+                //
+                // A colour scrim cannot work here: the tile underneath is itself a gradient, so a
+                // single flat colour only matches it at one x position and shows a hard vertical
+                // seam everywhere else — which is what the "cut, not continuous" edge was. DstIn
+                // multiplies the artwork's alpha instead, so whatever the tile is doing behind it
+                // simply shows through, and there is nothing to mismatch.
+                //
+                // The offscreen layer this needs is why it is gated on titleWraps: only the handful
+                // of categories with names long enough to take a second line pay for it.
+                .then(
+                    if (titleWraps) {
+                        Modifier.graphicsLayer {
+                            compositingStrategy = CompositingStrategy.Offscreen
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
                 .drawWithCache {
-                    // Many stops across the FULL width, not two stops ending at 55% — a two-stop
-                    // ramp that terminates part-way reads as a cut edge rather than a fade. These
-                    // follow a smoothstep so the falloff has no visible banding or hard start.
-                    val scrim = Brush.horizontalGradient(
-                        0.00f to tileEdge,
-                        0.18f to tileEdge.copy(alpha = 0.94f),
-                        0.36f to tileEdge.copy(alpha = 0.76f),
-                        0.54f to tileEdge.copy(alpha = 0.48f),
-                        0.72f to tileEdge.copy(alpha = 0.20f),
-                        0.88f to tileEdge.copy(alpha = 0.05f),
-                        1.00f to Color.Transparent,
+                    val fade = Brush.horizontalGradient(
+                        0.00f to Color.Transparent,
+                        0.42f to Color.Black.copy(alpha = 0.55f),
+                        0.70f to Color.Black,
                     )
                     onDrawWithContent {
                         drawContent()
-                        // Only where the title actually needed a second line. A short label never
-                        // reaches the artwork, so fading it there just dims the covers for nothing.
-                        if (titleWraps) drawRect(brush = scrim)
+                        if (titleWraps) drawRect(brush = fade, blendMode = BlendMode.DstIn)
                     }
                 },
         ) {
