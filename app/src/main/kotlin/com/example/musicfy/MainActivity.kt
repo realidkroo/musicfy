@@ -493,6 +493,7 @@ class MainActivity : ComponentActivity() {
                     .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
             ) {
                 val glassState = remember { GlassState() }
+                val hideAppChrome = remember { mutableStateOf(false) }
                 val detailAccentColor = remember { mutableStateOf<Color?>(null) }
                 val focusManager = LocalFocusManager.current
                 val density = LocalDensity.current
@@ -567,6 +568,9 @@ class MainActivity : ComponentActivity() {
                     currentRoute == null ||
                         navigationItemRoutes.contains(currentRoute) ||
                         currentRoute!!.startsWith("search/") ||
+                        // The mood/genre page is a browsing surface reached from the search tab,
+                        // not a modal detail view — it keeps the bar like the playlist pages do.
+                        currentRoute!!.startsWith("genre/") ||
                         currentRoute!!.startsWith("local_playlist/") ||
                         currentRoute!!.startsWith("online_playlist/") ||
                         currentRoute!!.startsWith("auto_playlist/") ||
@@ -725,6 +729,10 @@ class MainActivity : ComponentActivity() {
                     val currentRoute = navBackStackEntry?.destination?.route
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != "settings" &&
+                        // Search draws its own collapsing header (title + field + progressive
+                        // blur) inside the screen, the same way Home does. Leaving the shared
+                        // M3 TopAppBar mounted put a second, static "Search" title above it.
+                        currentRoute != Screens.Search.route &&
                         currentRoute != Screens.Home.route
                 }
 
@@ -789,6 +797,7 @@ class MainActivity : ComponentActivity() {
 
                     LocalPlayerConnection provides playerConnection,
                     LocalGlassState provides glassState,
+                    LocalHideAppChrome provides hideAppChrome,
                     LocalDetailAccentColor provides detailAccentColor,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
                     LocalDownloadUtil provides downloadUtil,
@@ -998,6 +1007,10 @@ class MainActivity : ComponentActivity() {
                                                 }
                                         )
 
+                                        // Composed out, not merely hidden: an alpha-0 nav bar and
+                                        // player still hit-test, and both sit above whatever
+                                        // overlay asked for the window.
+                                        if (!hideAppChrome.value) {
                                         BottomSheetPlayer(
                                             state = playerBottomSheetState,
                                             navController = navController,
@@ -1039,6 +1052,7 @@ class MainActivity : ComponentActivity() {
                                                     alpha = (1f - progress / 0.6f).coerceIn(0f, 1f)
                                                 }
                                         )
+                                        }
                                     }
                                 } else {
                                     if (currentRoute != "wrapped" && currentRoute != "update" && currentRoute != "listen_together/chat") {
@@ -1346,6 +1360,16 @@ val SubSettingsRoutes = setOf(
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
 val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
 val LocalGlassState = staticCompositionLocalOf<GlassState?> { null }
+
+/**
+ * Set by a full-screen overlay that owns the whole window — the update sheet, for one — so the
+ * nav bar and the mini player stop drawing on top of it.
+ *
+ * A CompositionLocal rather than a route check because these overlays are not destinations: they
+ * are composed inside whatever screen opened them, which puts them *under* the chrome MainActivity
+ * draws as a sibling of the NavHost.
+ */
+val LocalHideAppChrome = staticCompositionLocalOf { mutableStateOf(false) }
 val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }

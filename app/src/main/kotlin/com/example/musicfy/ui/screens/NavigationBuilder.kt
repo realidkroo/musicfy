@@ -94,6 +94,7 @@ import com.example.musicfy.ui.screens.playlist.CachePlaylistScreen
 import com.example.musicfy.ui.screens.playlist.LocalPlaylistScreen
 import com.example.musicfy.ui.screens.playlist.OnlinePlaylistScreen
 import com.example.musicfy.ui.screens.playlist.TopPlaylistScreen
+import com.example.musicfy.ui.screens.search.GenreScreen
 import com.example.musicfy.ui.screens.search.OnlineSearchResult
 import com.example.musicfy.ui.screens.search.SearchScreen
 import com.example.musicfy.utils.rememberEnumPreference
@@ -484,6 +485,34 @@ fun NavGraphBuilder.navigationBuilder(
         ),
     ) {
         TopPlaylistScreen(navController, scrollBehavior)
+    }
+
+    // The mood/genre page opened from the search grids. Distinct from `youtube_browse` below,
+    // which stays as the plain grid used by everything else that browses a YouTube endpoint.
+    composable(
+        route = "genre/{browseId}?params={params}",
+        arguments = listOf(
+            navArgument("browseId") {
+                type = NavType.StringType
+            },
+            navArgument("params") {
+                type = NavType.StringType
+                nullable = true
+            },
+        ),
+    ) {
+        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+        val isSystemInDarkTheme = isSystemInDarkTheme()
+        val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
+            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+        }
+        GenreScreen(
+            navController = navController,
+            pureBlack = remember(pureBlackEnabled, useDarkTheme) {
+                pureBlackEnabled && useDarkTheme
+            },
+        )
     }
 
     composable(

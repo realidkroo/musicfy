@@ -1,53 +1,54 @@
 // SearchScreen.kt
-// this thing is part of search screen
+// The search tab's landing page, rebuilt from scratch on the primitives in SearchDesign.kt.
+//
+// Three states live on this one screen, and the search field never moves between them — it is
+// declared once, in the shared top bar, so tapping it does not hand over to a second field the way
+// the old M3 `SearchBar` did (that component swapped its inline bar for a full-screen container,
+// which is what made the caret jump and the keyboard flicker on open):
+//
+//   browse   — moods and genres grids; scrolling collapses the "Search" title into the bar
+//   history  — field focused, nothing typed
+//   suggest  — field focused with a query: suggestions plus top results
+//
+// Nothing here uses Material 3 components. The old version was built on Scaffold + SearchBar +
+// SecondaryTabRow + Tab + CircularWavyProgressIndicator; all of it is gone.
 
 package com.example.musicfy.ui.screens.search
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabPosition
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,541 +60,518 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.music.innertube.models.AlbumItem
+import com.music.innertube.models.ArtistItem
+import com.music.innertube.models.PlaylistItem
+import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint
+import com.music.innertube.models.YTItem
 import com.music.innertube.utils.YouTubeUrlParser
 import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalIsPlayerExpanded
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PauseSearchHistoryKey
-import com.example.musicfy.constants.SearchSource
-import com.example.musicfy.constants.SearchSourceKey
 import com.example.musicfy.db.entities.SearchHistory
+import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.NavigationTitle
-import com.example.musicfy.utils.rememberEnumPreference
+import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.MoodAndGenresViewModel
-import com.example.musicfy.viewmodels.ExploreViewModel
-
+import com.example.musicfy.viewmodels.coverKey
+import com.example.musicfy.viewmodels.OnlineSearchSuggestionViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
-import androidx.compose.runtime.collectAsState
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.YouTubeGridItem
-import com.example.musicfy.ui.theme.InterFontFamily
-import com.example.musicfy.ui.menu.YouTubeAlbumMenu
-import com.example.musicfy.constants.GridThumbnailHeight
-import com.example.musicfy.constants.GridItemsSizeKey
-import com.example.musicfy.constants.GridItemSize
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     navController: NavController,
-    pureBlack: Boolean
+    pureBlack: Boolean,
 ) {
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val isPlayerExpanded = LocalIsPlayerExpanded.current
     val playerConnection = LocalPlayerConnection.current
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
 
-    var searchSource by rememberEnumPreference(SearchSourceKey, SearchSource.ONLINE)
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue())
     }
-    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
-    var isFirstLaunch by rememberSaveable { mutableStateOf(true) }
-    
-    var selectedTabIndex by rememberSaveable { mutableStateOf(0) }
-    var searchActive by rememberSaveable { mutableStateOf(false) }
-    var showSearchContent by remember { mutableStateOf(false) }
+    var active by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(searchActive) {
-        if (searchActive) {
-            // Small delay to let the initial expansion animation run smoothly
-            // before composing the potentially heavy search results/history
-            kotlinx.coroutines.delay(100)
-            showSearchContent = true
+    val suggestionViewModel: OnlineSearchSuggestionViewModel = hiltViewModel()
+    val suggestionState by suggestionViewModel.viewState.collectAsState()
+
+    // Only pushed while the field is open. Keeping it fed while browsing would run a suggestions
+    // request (and a history query) for text the user cannot even see.
+    LaunchedEffect(active, query.text) {
+        if (active) suggestionViewModel.query.value = query.text
+    }
+
+    val browseListState = rememberLazyListState()
+    val activeListState = rememberLazyListState()
+    val glassState = remember { GlassState() }
+
+    val collapse = rememberCollapseProgress(browseListState)
+    // Same curve and duration as the scroll collapse, so opening the field and scrolling the page
+    // move the bar identically — a shorter, different easing here made the two read as two
+    // unrelated animations depending on how the bar happened to get to the top.
+    val activeProgress = animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = SearchCollapseDurationMs,
+            easing = SearchCollapseEasing,
+        ),
+        label = "searchActive",
+    )
+    // One value drives the whole bar: scrolled-away OR opened-for-input both put the field at the
+    // top. Read through a lambda so every consumer resolves it in the draw/layout phase.
+    val progressProvider = remember(collapse, activeProgress) {
+        { maxOf(collapse.value, activeProgress.value) }
+    }
+
+    val commit: (String) -> Unit = remember(navController, pauseSearchHistory) {
+        { raw ->
+            val text = raw.trim()
+            if (text.isNotEmpty()) {
+                focusManager.clearFocus()
+                active = false
+                when (val parsed = YouTubeUrlParser.parse(text)) {
+                    is YouTubeUrlParser.ParsedUrl.Video ->
+                        playerConnection?.playQueue(YouTubeQueue(WatchEndpoint(videoId = parsed.id)))
+
+                    is YouTubeUrlParser.ParsedUrl.Artist ->
+                        navController.navigate("artist/${parsed.id}")
+
+                    null ->
+                        navController.navigate("search/${URLEncoder.encode(text, "UTF-8")}")
+                }
+                if (!pauseSearchHistory) {
+                    coroutineScope.launch(Dispatchers.IO) {
+                        database.query { insert(SearchHistory(query = text)) }
+                    }
+                }
+            }
+        }
+    }
+
+    BackHandler(enabled = active) {
+        active = false
+        focusManager.clearFocus()
+        keyboardController?.hide()
+    }
+
+    // Focus follows the state rather than the state following focus, so programmatic opens (tapping
+    // the field, back-navigating into an open field) all take the same path.
+    LaunchedEffect(active) {
+        if (active) {
+            runCatching { focusRequester.requestFocus() }
         } else {
-            showSearchContent = false
-        }
-    }
-
-    val searchBarHorizontalPadding by animateDpAsState(
-        targetValue = if (searchActive) 0.dp else 16.dp,
-        animationSpec = tween(durationMillis = 245, easing = FastOutSlowInEasing),
-        label = "SearchBarHorizontalPadding"
-    )
-    val searchBarTopPadding by animateDpAsState(
-        targetValue = if (searchActive) 0.dp else 8.dp,
-        animationSpec = tween(durationMillis = 245, easing = FastOutSlowInEasing),
-        label = "SearchBarTopPadding"
-    )
-
-    val onSearch: (String) -> Unit = remember {
-        { searchQuery ->
-            if (searchQuery.isNotEmpty()) {
-                focusManager.clearFocus()
-                println("[LINK_PARSE_DEBUG] onSearch initiated for: $searchQuery")
-                
-                when (val parsedUrl = YouTubeUrlParser.parse(searchQuery)) {
-                    is YouTubeUrlParser.ParsedUrl.Video -> {
-                        println("[LINK_PARSE_DEBUG] Performing direct playback for Video ID: ${parsedUrl.id}")
-                        playerConnection?.playQueue(
-                            YouTubeQueue(
-                                WatchEndpoint(videoId = parsedUrl.id),
-                            ),
-                        )
-                    }
-
-                    is YouTubeUrlParser.ParsedUrl.Artist -> {
-                        println("[LINK_PARSE_DEBUG] Navigating to Artist: ${parsedUrl.id}")
-                        navController.navigate("artist/${parsedUrl.id}")
-                    }
-
-                    null -> {
-                        println("[LINK_PARSE_DEBUG] No URL detected in search action")
-                        navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}")
-                    }
-                }
-
-                if (!pauseSearchHistory) {
-                    coroutineScope.launch(Dispatchers.IO) {
-                        database.query {
-                            insert(SearchHistory(query = searchQuery))
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    val onSearchFromSuggestion: (String) -> Unit = remember {
-        { searchQuery ->
-            if (searchQuery.isNotEmpty()) {
-                focusManager.clearFocus()
-                println("[LINK_PARSE_DEBUG] onSearchFromSuggestion initiated for: $searchQuery")
-                
-                when (val parsedUrl = YouTubeUrlParser.parse(searchQuery)) {
-                    is YouTubeUrlParser.ParsedUrl.Video -> {
-                        println("[LINK_PARSE_DEBUG] Performing direct playback from suggestion for Video ID: ${parsedUrl.id}")
-                        playerConnection?.playQueue(
-                            YouTubeQueue(
-                                WatchEndpoint(videoId = parsedUrl.id),
-                            ),
-                        )
-                    }
-
-                    is YouTubeUrlParser.ParsedUrl.Artist -> {
-                        println("[LINK_PARSE_DEBUG] Navigating to Artist from suggestion: ${parsedUrl.id}")
-                        navController.navigate("artist/${parsedUrl.id}")
-                    }
-
-                    null -> {
-                        println("[LINK_PARSE_DEBUG] No URL detected in suggestion action")
-                        navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}")
-                    }
-                }
-
-                if (!pauseSearchHistory) {
-                    coroutineScope.launch(Dispatchers.IO) {
-                        database.query {
-                            insert(SearchHistory(query = searchQuery))
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
-            ) {
-                @Suppress("DEPRECATION")
-                SearchBar(
-                    query = query.text,
-                    onQueryChange = { query = TextFieldValue(it) },
-                    onSearch = { 
-                        onSearch(it)
-                        searchActive = false
-                    },
-                    active = searchActive,
-                    onActiveChange = { searchActive = it },
-                    placeholder = {
-                        Text(
-                            text = stringResource(
-                                when (searchSource) {
-                                    SearchSource.LOCAL -> R.string.search_library
-                                    SearchSource.ONLINE -> R.string.search_yt_music
-                                }
-                            ),
-                            style = TextStyle(
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                fontFamily = InterFontFamily,
-                                fontSize = 16.sp
-                            )
-                        )
-                    },
-                    leadingIcon = {
-                        IconButton(onClick = {
-                            if (searchActive) {
-                                searchActive = false
-                                query = TextFieldValue("") // Clear text when dismissing search
-                            } else {
-                                searchActive = true // Focus search instead of navigating back
-                            }
-                        }) {
-                            Icon(
-                                painter = painterResource(if (searchActive) R.drawable.arrow_back_ios else R.drawable.search),
-                                contentDescription = if (searchActive) stringResource(R.string.dismiss) else null,
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    },
-                    trailingIcon = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (query.text.isNotEmpty()) {
-                                IconButton(onClick = { query = TextFieldValue("") }) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.close),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                            IconButton(
-                                onClick = {
-                                    searchSource = if (searchSource == SearchSource.ONLINE) 
-                                        SearchSource.LOCAL else SearchSource.ONLINE
-                                }
-                            ) {
-                                Icon(
-                                    painter = painterResource(
-                                        when (searchSource) {
-                                            SearchSource.LOCAL -> R.drawable.library_music
-                                            SearchSource.ONLINE -> R.drawable.globe_search
-                                        }
-                                    ),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    },
-                    colors = SearchBarDefaults.colors(
-                        containerColor = if (pureBlack) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = searchBarHorizontalPadding)
-                        .padding(top = searchBarTopPadding)
-                ) {
-                    if (showSearchContent) {
-                        when (searchSource) {
-                            SearchSource.LOCAL -> LocalSearchScreen(
-                                query = query.text,
-                                navController = navController,
-                                onDismiss = { searchActive = false },
-                                pureBlack = pureBlack
-                            )
-                            SearchSource.ONLINE -> OnlineSearchScreen(
-                                query = query.text,
-                                onQueryChange = { query = it },
-                                navController = navController,
-                                onSearch = {
-                                    onSearchFromSuggestion(it)
-                                    searchActive = false
-                                },
-                                onDismiss = { searchActive = false },
-                                pureBlack = pureBlack
-                            )
-                        }
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = !searchActive,
-                    enter = expandVertically(animationSpec = tween(durationMillis = 245, easing = FastOutSlowInEasing)) + fadeIn(),
-                    exit = shrinkVertically(animationSpec = tween(durationMillis = 245, easing = FastOutSlowInEasing)) + fadeOut()
-                ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        SecondaryTabRow(
-                            selectedTabIndex = selectedTabIndex,
-                            containerColor = Color.Transparent,
-                            indicator = {
-                                Box(
-                                    modifier = Modifier
-                                        .tabIndicatorOffset(selectedTabIndex)
-                                        .fillMaxWidth(),
-                                    contentAlignment = Alignment.BottomCenter
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(32.dp)
-                                            .height(3.dp)
-                                            .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                                            .background(MaterialTheme.colorScheme.primary)
-                                    )
-                                }
-                            }
-                        ) {
-                            Tab(
-                                selected = selectedTabIndex == 0,
-                                onClick = { selectedTabIndex = 0 },
-                                selectedContentColor = MaterialTheme.colorScheme.primary,
-                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                text = { Text(stringResource(R.string.tab_explore)) }
-                            )
-                            Tab(
-                                selected = selectedTabIndex == 1,
-                                onClick = { selectedTabIndex = 1 },
-                                selectedContentColor = MaterialTheme.colorScheme.primary,
-                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                text = { Text(stringResource(R.string.tab_album)) }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
-    ) { paddingValues ->
-        val bottomPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
-        
-        Box(
-            modifier = Modifier
-                .padding(top = paddingValues.calculateTopPadding())
-                .fillMaxSize()
-        ) {
-            if (!searchActive) {
-                val tabPadding = PaddingValues(bottom = bottomPadding)
-                when (selectedTabIndex) {
-                    0 -> ExploreTabContent(navController = navController, contentPadding = tabPadding)
-                    1 -> AlbumsTabContent(navController = navController, contentPadding = tabPadding)
-                }
-            }
-        }
-    }
-
-    // Handle lifecycle events to manage keyboard visibility
-    DisposableEffect(lifecycleOwner, isPlayerExpanded) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> {
-                    // Always hide keyboard when resuming if player is expanded
-                    if (isPlayerExpanded) {
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
-                    } else if (isFirstLaunch) {
-                        // Only request focus on first launch when player is not expanded
-                        try {
-                            focusRequester.requestFocus()
-                        } catch (e: Exception) {
-                            // Ignore focus request failures
-                        }
-                        isFirstLaunch = false
-                    }
-                }
-                Lifecycle.Event.ON_PAUSE -> {
-                    // Clear focus when pausing to prevent keyboard from showing on resume
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
-                }
-                else -> {}
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        
-        // Initial check - hide keyboard if player is expanded
-        if (isPlayerExpanded) {
             keyboardController?.hide()
-            focusManager.clearFocus()
-        }
-        
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
-}
 
-@Composable
-fun ExploreTabContent(
-    navController: NavController,
-    viewModel: MoodAndGenresViewModel = hiltViewModel(),
-    contentPadding: PaddingValues = PaddingValues(0.dp)
-) {
-    val moodAndGenresList by viewModel.moodAndGenres.collectAsState()
+    // Leaving the tab must not strand a keyboard over the next screen.
+    DisposableEffect(Unit) {
+        onDispose { focusManager.clearFocus() }
+    }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding
+    val showBrowse by remember { derivedStateOf { activeProgress.value < 0.995f } }
+    val showActive by remember { derivedStateOf { activeProgress.value > 0.005f } }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SearchColors.page(pureBlack))
     ) {
-        moodAndGenresList?.forEach { section ->
-            item {
-                NavigationTitle(title = section.title)
-            }
-            // chunk items into rows of 2
-            val rows = section.items.chunked(2)
-            items(rows) { row ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 6.dp)
-                ) {
-                    row.forEach { item ->
-                        Box(
-                            contentAlignment = Alignment.CenterStart,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(6.dp)
-                                .height(64.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainer)
-                                .clickable {
-                                    navController.navigate(
-                                        "youtube_browse/${item.endpoint.browseId}?params=${item.endpoint.params}"
-                                    )
-                                }
-                                .padding(horizontal = 14.dp)
-                        ) {
-                            Text(
-                                text = item.title,
-                                style = MaterialTheme.typography.labelLarge,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                    // fill empty slot if row has only 1 item
-                    repeat(2 - row.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-
-        if (moodAndGenresList == null) {
-            item {
+        // Everything the top bar blurs has to be captured here, and the bar itself must sit
+        // outside this subtree or it would blur its own output.
+        Box(modifier = Modifier.fillMaxSize().glassRoot(glassState)) {
+            if (showBrowse) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    contentAlignment = Alignment.Center
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = 1f - activeProgress.value }
                 ) {
-                    CircularWavyProgressIndicator()
+                    SearchBrowseContent(
+                        listState = browseListState,
+                        navController = navController,
+                    )
+                }
+            }
+            if (showActive) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = activeProgress.value }
+                ) {
+                    SearchActiveContent(
+                        listState = activeListState,
+                        query = query.text,
+                        state = suggestionState,
+                        onFill = { text ->
+                            query = TextFieldValue(text, TextRange(text.length))
+                        },
+                        onSubmit = commit,
+                        onDeleteHistory = { entry ->
+                            coroutineScope.launch(Dispatchers.IO) {
+                                database.query { delete(entry) }
+                            }
+                        },
+                        navController = navController,
+                    )
                 }
             }
         }
 
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+        SearchGlassTopBar(
+            glassState = glassState,
+            progressProvider = progressProvider,
+            pureBlack = pureBlack,
+            title = "Search",
+            trailing = {
+                SearchAvatar(imageUrl = null, onClick = { navController.navigate("settings") })
+            },
+        ) {
+            SearchField(
+                value = query,
+                onValueChange = { query = it },
+                onSearch = commit,
+                placeholder = "Search for any tracks, albums, lyrics...",
+                focused = active,
+                leading = if (active) {
+                    {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_back),
+                            contentDescription = null,
+                            tint = SearchColors.Secondary,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) {
+                                    active = false
+                                    focusManager.clearFocus()
+                                },
+                        )
+                    }
+                } else {
+                    null
+                },
+                trailing = if (query.text.isNotEmpty()) {
+                    {
+                        Icon(
+                            painter = painterResource(R.drawable.close),
+                            contentDescription = null,
+                            tint = SearchColors.Secondary,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { query = TextFieldValue("") },
+                        )
+                    }
+                } else {
+                    null
+                },
+                focusRequester = focusRequester,
+                onFocusChanged = { focused -> if (focused) active = true },
+                readOnlyClick = if (!active) {
+                    { active = true }
+                } else {
+                    null
+                },
+            )
+        }
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Browse state
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Moods and genres, two tiles to a row.
+ *
+ * Rows are pre-chunked into list items rather than handed to a `LazyVerticalGrid`: the grid cannot
+ * be nested in this scrolling column without a fixed height, and a chunked row of two fixed-height
+ * tiles measures in one pass with no intrinsics.
+ */
 @Composable
-fun AlbumsTabContent(
+private fun SearchBrowseContent(
+    listState: LazyListState,
     navController: NavController,
-    viewModel: ExploreViewModel = hiltViewModel(),
-    contentPadding: PaddingValues = PaddingValues(0.dp)
+    viewModel: MoodAndGenresViewModel = hiltViewModel(),
 ) {
-    val menuState = LocalMenuState.current
-    val haptic = LocalHapticFeedback.current
-    val playerConnection = LocalPlayerConnection.current
-    val mediaMetadata by (playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) })
-    val isPlaying by (playerConnection?.isEffectivelyPlaying?.collectAsState() ?: remember { mutableStateOf(false) })
-    val coroutineScope = rememberCoroutineScope()
-    
-    val explorePage by viewModel.explorePage.collectAsState()
-    val newReleaseAlbums = explorePage?.newReleaseAlbums
+    val sections by viewModel.moodAndGenres.collectAsState()
+    val bottomInset = LocalPlayerAwareWindowInsets.current
+        .asPaddingValues()
+        .calculateBottomPadding()
 
-    val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
-
-    if (newReleaseAlbums == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularWavyProgressIndicator()
-        }
-    } else {
-        val distinctNewReleaseAlbums = remember(newReleaseAlbums) {
-            newReleaseAlbums.distinctBy { it.id }
-        }
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
-            contentPadding = PaddingValues(
-                start = 12.dp,
-                top = 12.dp,
-                end = 12.dp,
-                bottom = 12.dp + contentPadding.calculateBottomPadding()
-            ),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(
-                items = distinctNewReleaseAlbums,
-                key = { it.id }
-            ) { album ->
-                YouTubeGridItem(
-                    item = album,
-                    isActive = mediaMetadata?.album?.id == album.id,
-                    isPlaying = isPlaying,
-                    coroutineScope = coroutineScope,
-                    fillMaxWidth = true,
-                    modifier = Modifier
-                        .combinedClickable(
-                            onClick = {
-                                navController.navigate("album/${album.id}")
-                            },
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                menuState.show {
-                                    YouTubeAlbumMenu(
-                                        albumItem = album,
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                }
-                            },
-                        )
-                )
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            top = searchTopBarHeight(withTitle = true),
+            bottom = bottomInset + 24.dp,
+        ),
+    ) {
+        val list = sections
+        if (list == null) {
+            item(key = "loading") {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(220.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SearchLoadingDots()
+                }
             }
+        } else {
+            list.forEachIndexed { sectionIndex, section ->
+                item(key = "header_${sectionIndex}_${section.title}") {
+                    SearchSectionHeader(
+                        title = section.title,
+                        ruleAbove = false,
+                        ruleBelow = true,
+                    )
+                }
+                val rows = section.items.chunked(2)
+                itemsIndexed(
+                    items = rows,
+                    key = { rowIndex, _ -> "row_${sectionIndex}_$rowIndex" },
+                    contentType = { _, _ -> "moodRow" },
+                ) { _, row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = SearchHorizontalPadding, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        row.forEach { item ->
+                            // Requested from composition, so only tiles the user actually brings on
+                            // screen ever cost a network round trip. The ViewModel dedupes.
+                            LaunchedEffect(item.endpoint.browseId, item.endpoint.params) {
+                                viewModel.requestCovers(item.endpoint.browseId, item.endpoint.params)
+                            }
+                            MoodTile(
+                                title = item.title,
+                                stripeColor = item.stripeColor,
+                                covers = viewModel.covers[
+                                    coverKey(item.endpoint.browseId, item.endpoint.params)
+                                ].orEmpty(),
+                                onClick = {
+                                    navController.navigate(
+                                        "genre/${item.endpoint.browseId}?params=${item.endpoint.params}"
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+                item(key = "gap_${sectionIndex}") { Spacer(modifier = Modifier.height(22.dp)) }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Active state: history, or suggestions + top results
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SearchActiveContent(
+    listState: LazyListState,
+    query: String,
+    state: com.example.musicfy.viewmodels.SearchSuggestionViewState,
+    onFill: (String) -> Unit,
+    onSubmit: (String) -> Unit,
+    onDeleteHistory: (SearchHistory) -> Unit,
+    navController: NavController,
+) {
+    val playerConnection = LocalPlayerConnection.current
+    val bottomInset = LocalPlayerAwareWindowInsets.current
+        .asPaddingValues()
+        .calculateBottomPadding()
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            top = searchTopBarHeight(withTitle = false),
+            bottom = bottomInset + 24.dp,
+        ),
+    ) {
+        if (query.isEmpty()) {
+            if (state.history.isNotEmpty()) {
+                item(key = "history_header") {
+                    SearchSectionHeader(title = "Search History")
+                }
+                items(
+                    items = state.history,
+                    key = { "history_${it.query}" },
+                    contentType = { "history" },
+                ) { entry ->
+                    SearchSimpleRow(
+                        text = entry.query,
+                        leadingIcon = R.drawable.history,
+                        onClick = { onSubmit(entry.query) },
+                        trailing = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RowGlyph(R.drawable.close) { onDeleteHistory(entry) }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                RowGlyph(R.drawable.arrow_top_left) { onFill(entry.query) }
+                            }
+                        },
+                    )
+                }
+            }
+        } else {
+            if (state.suggestions.isNotEmpty()) {
+                item(key = "suggestion_header") {
+                    SearchSectionHeader(title = "Suggestion")
+                }
+                items(
+                    items = state.suggestions,
+                    key = { "suggestion_$it" },
+                    contentType = { "suggestion" },
+                ) { suggestion ->
+                    SearchSimpleRow(
+                        text = suggestion,
+                        pill = true,
+                        onClick = { onSubmit(suggestion) },
+                        trailing = { RowGlyph(R.drawable.arrow_top_left) { onFill(suggestion) } },
+                    )
+                }
+            }
+
+            if (state.items.isNotEmpty()) {
+                item(key = "top_result_header") {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    SearchSectionHeader(title = "Top Result")
+                }
+                items(
+                    items = state.items,
+                    key = { "item_${it.id}" },
+                    contentType = { "ytItem" },
+                ) { item ->
+                    SuggestionResultRow(
+                        item = item,
+                        onClick = {
+                            when (item) {
+                                is SongItem -> playerConnection?.playQueue(
+                                    YouTubeQueue.radio(item.toMediaMetadata())
+                                )
+
+                                is AlbumItem -> navController.navigate("album/${item.id}")
+                                is ArtistItem -> navController.navigate("artist/${item.id}")
+                                is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+                            }
+                        },
+                    )
+                }
+            }
+
+            if (state.suggestions.isEmpty() && state.items.isEmpty()) {
+                item(key = "suggest_loading") {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(180.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SearchLoadingDots()
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Small tappable glyph used at the end of a suggestion/history row. */
+@Composable
+private fun RowGlyph(icon: Int, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = SearchColors.Secondary,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
+/** A recommended item under "Top Result" while typing: artwork, title, and what kind of thing it is. */
+@Composable
+private fun SuggestionResultRow(
+    item: YTItem,
+    onClick: () -> Unit,
+) {
+    val subtitle = when (item) {
+        is SongItem -> item.artists.joinToString { it.name }
+        is AlbumItem -> "Album" + (item.artists?.takeIf { it.isNotEmpty() }
+            ?.let { " • " + it.joinToString { a -> a.name } } ?: "")
+
+        is ArtistItem -> "Artist"
+        is PlaylistItem -> "Playlist" + (item.author?.name?.let { " • $it" } ?: "")
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = SearchHorizontalPadding, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SearchArtwork(
+            url = item.thumbnail,
+            size = 44.dp,
+            circle = item is ArtistItem,
+        )
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                color = SearchColors.Primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                color = SearchColors.Secondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
