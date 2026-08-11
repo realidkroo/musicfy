@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Default values
 BUILD_ATTEMPT_FILE=".build_number"
@@ -11,6 +12,8 @@ INSTALL_ON_DEVICES=false
 PACKAGE_STYLE="universal"
 CHANGE_VERSION=""
 SKIP_BUILD=false
+PUBLISH_RELEASE=false
+CHANGELOG_TEXT=""
 
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
@@ -19,23 +22,25 @@ while [[ "$#" -gt 0 ]]; do
             echo "Usage: ./build.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  -h, --help        Show this help message and exit"
-            echo "  --debug           Build the debug version of the app (default)"
-            echo "  --release         Build the release version of the app"
-            echo "  -i                Install the app on all connected devices via ADB and auto-launch"
-            echo "  -I, --install-only Install existing compiled APK without compiling/building"
-            echo "                    (Works with --debug or --release)"
-            echo "  -a                Build all package styles (arm64, armeabi, x86, x86_64, universal)."
-            echo "                    If omitted, defaults to building only the universal APK."
-            echo "  -c <version>      Change the base app version (e.g., -c 6.0.2)"
-            echo "  -k, --kill        Kill all active Gradle daemons and build processes and exit"
+            echo "  -h, --help               Show this help message and exit"
+            echo "  --debug                  Build the debug version of the app (default)"
+            echo "  --release                Build the release version of the app"
+            echo "  -i                       Install the app on all connected devices via ADB and auto-launch"
+            echo "  -I, --install-only       Install/publish existing compiled APK without compiling"
+            echo "                           (Works with --debug, --release, or -commit)"
+            echo "  -a                       Build all package styles (arm64, armeabi, x86, x86_64, universal)."
+            echo "                           If omitted, defaults to building only the universal APK."
+            echo "  -c <version>             Change the base app version (e.g., -c 6.0.2)"
+            echo "  -commit <changelog>,     Publish release to GitHub 'dev' tag with the given changelog"
+            echo "  --commit <changelog>"
+            echo "  -k, --kill               Kill all active Gradle daemons and build processes and exit"
             echo ""
             echo "Examples:"
-            echo "  ./build.sh --debug -i              # Build debug universal APK and install"
-            echo "  ./build.sh --release -a            # Build release for all architectures"
-            echo "  ./build.sh --install-only --debug   # Install existing debug APK without compile"
-            echo "  ./build.sh --install-only --release # Install existing release APK without compile"
-            echo "  ./build.sh -k                      # Kill all active build processes"
+            echo "  ./build.sh --debug -i                              # Build debug universal APK & install"
+            echo "  ./build.sh --release -a                            # Build release for all architectures"
+            echo "  ./build.sh --release -a -commit \"lyrics fix\"       # Build all & publish to GitHub dev tag"
+            echo "  ./build.sh --install-only --release -commit \"notes\" # Publish existing release APKs"
+            echo "  ./build.sh -k                                      # Kill all active build processes"
             exit 0
             ;;
         --debug) VARIANT="debug" ;;
@@ -43,12 +48,16 @@ while [[ "$#" -gt 0 ]]; do
         -i) INSTALL_ON_DEVICES=true ;;
         -I|--install-only|--no-compile|--no-build)
             SKIP_BUILD=true
-            INSTALL_ON_DEVICES=true
             ;;
         -a) PACKAGE_STYLE="all" ;;
-        -c) 
+        -c)
             CHANGE_VERSION="$2"
-            shift # Past argument
+            shift
+            ;;
+        -commit|--commit|-m|--publish)
+            PUBLISH_RELEASE=true
+            CHANGELOG_TEXT="$2"
+            shift
             ;;
         -k|--kill)
             echo "Stopping all Gradle daemons and killing active build processes..."
@@ -78,7 +87,7 @@ if [ "$SKIP_BUILD" = false ]; then
     fi
 
     # Extract current base version from build.gradle.kts
-    BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*//')
+    BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*//')
 
     # Update build.gradle.kts versionName to include the new build number for the settings page
     sed -i '' "s/versionName = \".*\"/versionName = \"$BASE_VERSION build#$BUILD_ATTEMPT\"/g" app/build.gradle.kts
@@ -113,12 +122,58 @@ if [ "$SKIP_BUILD" = false ]; then
     find app/build/outputs/apk -name "*foss*-$VARIANT.apk" -exec cp {} "$OUTPUT_DIR/" \;
     echo "Copied FOSS APKs to $OUTPUT_DIR/"
 else
-    echo "Skipping compilation (--install-only requested for $VARIANT variant)..."
+    echo "Skipping compilation (--install-only/--no-compile requested for $VARIANT variant)..."
+    BUILD_ATTEMPT=$(cat "$BUILD_ATTEMPT_FILE")
+    BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*//')
 fi
 
-# Install and Auto-open
+# Publish to GitHub Release if -commit was passed
+if [ "$PUBLISH_RELEASE" = true ]; then
+    echo "Preparing GitHub release on 'dev' tag..."
+    OUTPUT_DIR="apk-generated"
+    mkdir -p "$OUTPUT_DIR"
+
+    # Format APK asset names according to GithubUpdates.kt
+    format_apk() {
+        local src_pattern="$1"
+        local dest_name="$2"
+        local src_file=$(find app/build/outputs/apk "$OUTPUT_DIR" -name "$src_pattern" 2>/dev/null | head -n 1)
+        if [ -n "$src_file" ] && [ -f "$src_file" ]; then
+            cp "$src_file" "$OUTPUT_DIR/$dest_name"
+            echo "Prepared $dest_name"
+        fi
+    }
+
+    format_apk "*universal-foss-release.apk" "musicfy-$BASE_VERSION-universal.apk"
+    format_apk "*arm64-foss-release.apk" "musicfy-$BASE_VERSION-arm64-v8a.apk"
+    format_apk "*armeabi-foss-release.apk" "musicfy-$BASE_VERSION-armeabi-v7a.apk"
+    format_apk "*x86_64-foss-release.apk" "musicfy-$BASE_VERSION-x86_64.apk"
+    format_apk "*x86-foss-release.apk" "musicfy-$BASE_VERSION-x86.apk"
+
+    if [ -z "$CHANGELOG_TEXT" ]; then
+        CHANGELOG_TEXT="musicfy $BASE_VERSION ($BUILD_ATTEMPT)"
+    fi
+
+    # Update git tag 'dev' to point to current HEAD on main
+    echo "Updating git tag 'dev' on main..."
+    git tag -f dev main 2>/dev/null || true
+    git push -f origin dev 2>/dev/null || true
+
+    TITLE="musicfy $BASE_VERSION ($BUILD_ATTEMPT)"
+    echo "Publishing GitHub release: '$TITLE'..."
+
+    gh release create dev \
+        "$OUTPUT_DIR"/musicfy-"$BASE_VERSION"-*.apk \
+        --title "$TITLE" \
+        --notes "$CHANGELOG_TEXT" \
+        --prerelease \
+        --clobber
+
+    echo "Release successfully published to https://github.com/realidkroo/musicfy/releases/tag/dev"
+fi
+
+# Install and Auto-open if -i was passed
 if [ "$INSTALL_ON_DEVICES" = true ]; then
-    # Search in apk-generated first, then app/build/outputs/apk
     APK_PATH=$(find apk-generated app/build/outputs/apk -name "*-universal-foss-$VARIANT.apk" 2>/dev/null | head -n 1)
     
     if [ -z "$APK_PATH" ]; then
@@ -132,10 +187,8 @@ if [ "$INSTALL_ON_DEVICES" = true ]; then
     if [ -z "$APK_PATH" ]; then
         echo "Error: No existing $VARIANT APK found to install!"
     else
-        # Robust tab-separated device serial extraction
         DEVICES=$(adb devices | grep -v "^List" | grep -w "device" | cut -f1)
         
-        # Determine target package ID based on variant (.debug for debug builds)
         PACKAGE_NAME="com.example.musicfy"
         if [ "$VARIANT" == "debug" ]; then
             PACKAGE_NAME="com.example.musicfy.debug"
