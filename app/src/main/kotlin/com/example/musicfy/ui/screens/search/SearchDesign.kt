@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -35,12 +36,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +60,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -61,6 +70,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -88,16 +98,20 @@ val SearchHorizontalPadding = 24.dp
 /** Height of the search field pill. */
 val SearchFieldHeight = 48.dp
 
+/** Profile avatar in the top bar's trailing slot. */
+val AvatarSize = 36.dp
+
 /** Vertical room the big page title occupies above the field while expanded. */
 val SearchTitleBlockHeight = 62.dp
 
 /**
- * Scroll distance over which the title collapses into the bar.
+ * Clearance between the status bar and the first thing the bar draws.
  *
- * Short on purpose: the title only has to travel its own height, and a long ramp makes the bar
- * feel like it is lagging behind the finger.
+ * The collapsed bar previously started at the status-bar inset exactly, which put the search field
+ * hard against the clock and the notch cutout. This is applied both to the bar's own content and
+ * to the content padding derived from it, so expanded and collapsed keep the same breathing room.
  */
-private val CollapseTravel = 72.dp
+val SearchTopClearance = 18.dp
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Palette
@@ -109,43 +123,78 @@ private val CollapseTravel = 72.dp
  * dynamic-color source and were what made the field and the tiles read as two different greys.
  */
 object SearchColors {
-    val Field = Color(0xFF1B1B1D)
-    val FieldFocused = Color(0xFF242427)
-    val Tile = Color(0xFF19191B)
-    val TileHigh = Color(0xFF232326)
-    val Divider = Color(0xFF2A2A2D)
+    val Field = Color(0xFF141416)
+    val FieldFocused = Color(0xFF1E1E21)
+    val Tile = Color(0xFF121214)
+    val TileHigh = Color(0xFF1C1C1F)
+    val Divider = Color(0xFF232326)
     val Primary = Color.White
     val Secondary = Color(0xFF9A9AA0)
     val Placeholder = Color(0xFF77777D)
 
-    fun page(pureBlack: Boolean): Color = if (pureBlack) Color.Black else Color(0xFF0A0A0B)
+    /**
+     * Black, not a dark grey, in both theme modes. The near-black the surfaces used to sit on
+     * read as washed-out next to the (genuinely black) nav bar and mini player, so the page now
+     * matches them and the tiles are what provide the lift.
+     */
+    fun page(pureBlack: Boolean): Color = Color.Black
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Scroll collapse
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
+/** The collapse curve. cubic-bezier(0.57, 0.53, 0, 1) — slow out of the gate, long glide home. */
+val SearchCollapseEasing = CubicBezierEasing(0.57f, 0.53f, 0f, 1f)
+
+/** How long the bar takes to travel between its two states, in either direction. */
+const val SearchCollapseDurationMs = 900
+
 /**
- * 0 while the list is at rest, 1 once it has scrolled [CollapseTravel] — the single value every
- * top-bar transition on these screens is driven from.
+ * 0 when the bar is expanded, 1 when collapsed — the single value every top-bar transition on
+ * these screens is driven from.
  *
- * Returned as a [State] AND read through a provider lambda by callers: reading `.value` inside a
- * graphicsLayer/draw block keeps the whole collapse in the draw phase, so dragging the list never
- * recomposes the page. (Reading it in composition instead is what would put a full recompose of
- * the grid on every scroll frame.)
+ * This is an ANIMATION between two latched states, not a direct read of the scroll offset. Mapping
+ * it straight onto `firstVisibleItemScrollOffset` (as it did) meant the bar could only move as far
+ * as the finger did: a short flick left it stranded part-way, and the moment the first item scrolled
+ * out of view the value jumped from wherever it was to 1 in a single frame — the "instant cut".
+ * Latching to a boolean and animating on [SearchCollapseEasing] means the bar always plays the whole
+ * curve, at the same speed, however the list was thrown.
+ *
+ * The threshold has a dead band (collapse past 24dp, expand again only under 6dp) so a scroll that
+ * hovers around the trigger point cannot flip the bar back and forth.
+ *
+ * Still read through a provider lambda by callers: `.value` inside a graphicsLayer/draw block keeps
+ * the whole thing in the draw phase, so the 900ms of motion costs no recomposition — only the two
+ * boundary flips do.
  */
 @Composable
 fun rememberCollapseProgress(listState: LazyListState): State<Float> {
-    val travelPx = with(LocalDensity.current) { CollapseTravel.toPx() }
-    return remember(listState, travelPx) {
+    val density = LocalDensity.current
+    val enterPx = with(density) { 24.dp.toPx() }
+    val exitPx = with(density) { 6.dp.toPx() }
+    val latch = remember(listState) { booleanArrayOf(false) }
+    val collapsed by remember(listState, enterPx, exitPx) {
         derivedStateOf {
-            if (listState.firstVisibleItemIndex > 0) {
-                1f
-            } else {
-                (listState.firstVisibleItemScrollOffset / travelPx).coerceIn(0f, 1f)
+            val offset = listState.firstVisibleItemScrollOffset.toFloat()
+            val next = when {
+                listState.firstVisibleItemIndex > 0 -> true
+                offset > enterPx -> true
+                offset < exitPx -> false
+                else -> latch[0]
             }
+            latch[0] = next
+            next
         }
     }
+    return animateFloatAsState(
+        targetValue = if (collapsed) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = SearchCollapseDurationMs,
+            easing = SearchCollapseEasing,
+        ),
+        label = "searchCollapse",
+    )
 }
 
 /**
@@ -157,9 +206,11 @@ fun rememberCollapseProgress(listState: LazyListState): State<Float> {
  * children (draw phase only) while the content simply scrolls up underneath it.
  */
 @Composable
-fun searchTopBarHeight(withTitle: Boolean = true): Dp {
+fun searchTopBarHeight(withTitle: Boolean = true, extra: Dp = 0.dp): Dp {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    return statusBar + (if (withTitle) SearchTitleBlockHeight else 0.dp) + SearchFieldHeight + 24.dp
+    return statusBar + SearchTopClearance +
+        (if (withTitle) SearchTitleBlockHeight else 0.dp) +
+        SearchFieldHeight + extra + 32.dp
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -185,12 +236,18 @@ fun SearchGlassTopBar(
     title: String?,
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
+    /** Optional second row under the field (the results page's category selector). */
+    below: (@Composable () -> Unit)? = null,
     field: @Composable () -> Unit,
 ) {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val pageColor = SearchColors.page(pureBlack)
     val density = LocalDensity.current
     val titleTravelPx = with(density) { SearchTitleBlockHeight.toPx() }
+    // Lane the collapsed field gives up to the avatar, and the distance the avatar itself travels
+    // from the title row's centre to the field's. Both resolved once, not per frame.
+    val avatarReservePx = with(density) { (AvatarSize + 12.dp).toPx() }
+    val avatarDropPx = with(density) { (SearchFieldHeight / 2 - SearchTitleBlockHeight / 2).toPx() }
 
     // Cached per quantised radius: RenderEffect is immutable, so building one per frame of the
     // title's blur-out would allocate ~60 objects a second for a 300ms transition.
@@ -234,7 +291,7 @@ fun SearchGlassTopBar(
             )
         }
 
-        Column(modifier = Modifier.padding(top = statusBar)) {
+        Column(modifier = Modifier.padding(top = statusBar + SearchTopClearance)) {
             if (title != null) {
                 // Collapses in place: rises by its own height, shrinks slightly toward its left
                 // edge, and blurs out — the same wordmark treatment the home top bar uses, so the
@@ -287,25 +344,69 @@ fun SearchGlassTopBar(
                 }
             }
 
-            // Rides up into the space the title vacated. The trailing slot (profile avatar) sits
-            // beside it and only appears once collapsed, matching the mockup where the avatar
-            // moves from next to the title to next to the field.
-            Row(
+            // Rides up into the space the title vacated.
+            //
+            // The field's WIDTH is interpolated in the layout phase rather than by animating a
+            // padding: it has to give up room for the avatar as that avatar drops down beside it,
+            // and a padding/weight change would re-measure this subtree on every scroll frame.
+            // Measuring against a progress-derived width is the same layout-phase technique the
+            // player's morph uses, and costs one measure pass with no recomposition.
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = SearchHorizontalPadding)
                     .graphicsLayer {
                         if (title != null) {
                             translationY = -progressProvider().coerceIn(0f, 1f) * titleTravelPx
                         }
                     },
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(modifier = Modifier.weight(1f)) { field() }
-                if (trailing != null) {
-                    Spacer(modifier = Modifier.width(12.dp))
-                    trailing()
+              Box(modifier = Modifier.fillMaxWidth().padding(horizontal = SearchHorizontalPadding)) {
+                Box(
+                    modifier = if (trailing == null) {
+                        Modifier.fillMaxWidth()
+                    } else {
+                        Modifier.layout { measurable, constraints ->
+                            // Only reserve the avatar's lane once collapsed; expanded, the avatar
+                            // is up on the title row and the field owns the full width.
+                            val reserve = if (title == null) {
+                                avatarReservePx
+                            } else {
+                                avatarReservePx * progressProvider().coerceIn(0f, 1f)
+                            }
+                            val width = (constraints.maxWidth - reserve.toInt()).coerceAtLeast(0)
+                            val placeable = measurable.measure(
+                                constraints.copy(minWidth = width, maxWidth = width)
+                            )
+                            layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
+                        }
+                    },
+                ) {
+                    field()
                 }
+              }
+              if (below != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                below()
+              }
+            }
+        }
+
+        // Travels from the title row's centre line down to the field's, so it reads as one avatar
+        // settling beside the search box rather than two of them swapping over.
+        if (trailing != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = statusBar + SearchTopClearance, end = SearchHorizontalPadding)
+                    .height(if (title == null) SearchFieldHeight else SearchTitleBlockHeight)
+                    .graphicsLayer {
+                        if (title != null) {
+                            translationY = progressProvider().coerceIn(0f, 1f) * avatarDropPx
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                trailing()
             }
         }
     }
@@ -366,6 +467,13 @@ fun SearchField(
     trailing: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
     readOnlyClick: (() -> Unit)? = null,
+    /**
+     * Applied to the text field itself, not to the pill around it. A FocusRequester on the pill
+     * silently fails (a Row is not focusable), which is what would leave the caret placed but no
+     * keyboard raised when the screen opened the field programmatically.
+     */
+    focusRequester: FocusRequester? = null,
+    onFocusChanged: ((Boolean) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -412,7 +520,22 @@ fun SearchField(
                     cursorBrush = SolidColor(SearchColors.Primary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { onSearch(value.text) }),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (focusRequester != null) {
+                                Modifier.focusRequester(focusRequester)
+                            } else {
+                                Modifier
+                            }
+                        )
+                        .then(
+                            if (onFocusChanged != null) {
+                                Modifier.onFocusChanged { onFocusChanged(it.isFocused) }
+                            } else {
+                                Modifier
+                            }
+                        ),
                 )
             }
         }
@@ -436,17 +559,18 @@ fun SearchSectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     large: Boolean = true,
-    rule: Boolean = true,
+    ruleAbove: Boolean = true,
+    ruleBelow: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth().padding(horizontal = SearchHorizontalPadding)) {
-        if (rule) {
+        if (ruleAbove) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
                     .background(SearchColors.Divider)
             )
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(18.dp))
         }
         Text(
             text = title,
@@ -458,7 +582,16 @@ fun SearchSectionHeader(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(if (ruleBelow) 12.dp else 16.dp))
+        if (ruleBelow) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(SearchColors.Divider)
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+        }
     }
 }
 
@@ -506,20 +639,23 @@ fun MoodTile(
                 .padding(end = 2.dp)
                 .size(width = 84.dp, height = 76.dp),
         ) {
+            // Pulled apart along the diagonal and turned to clearly different angles — stacked
+            // tighter, the back card only showed as a sliver and the pair read as one crooked
+            // square rather than as a fanned stack.
             LayeredCover(
                 url = covers.getOrNull(1),
-                rotation = -20f,
-                offsetX = 4.dp,
-                offsetY = 10.dp,
-                size = 46.dp,
-                alpha = 0.7f,
+                rotation = -24f,
+                offsetX = (-2).dp,
+                offsetY = 2.dp,
+                size = 44.dp,
+                alpha = 0.85f,
             )
             LayeredCover(
                 url = covers.getOrNull(0),
-                rotation = -8f,
-                offsetX = 22.dp,
-                offsetY = 2.dp,
-                size = 50.dp,
+                rotation = -6f,
+                offsetX = 28.dp,
+                offsetY = 13.dp,
+                size = 48.dp,
                 alpha = 1f,
             )
         }
@@ -609,14 +745,12 @@ fun SearchCategoryRow(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    androidx.compose.foundation.lazy.LazyRow(
+    LazyRow(
         modifier = modifier.fillMaxWidth(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            horizontal = SearchHorizontalPadding
-        ),
+        contentPadding = PaddingValues(horizontal = SearchHorizontalPadding),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        androidx.compose.foundation.lazy.itemsIndexed(categories) { index, label ->
+        itemsIndexed(categories) { index, label ->
             val selected = index == selectedIndex
             Box(
                 modifier = Modifier
@@ -801,6 +935,15 @@ fun SearchLoadingDots(modifier: Modifier = Modifier) {
     }
 }
 
-/** Border helper for the card surfaces the mockups outline rather than fill. */
-fun Modifier.searchCardBorder(radius: Dp = 16.dp): Modifier =
-    this.border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(radius))
+/**
+ * Hairline outline for the card surfaces.
+ *
+ * Deliberately at the bottom of what renders: 1px (not 1dp — a dp line is 3px on this density and
+ * reads as a drawn frame) at 5% white, which separates the card from a black page without becoming
+ * an edge you actually look at.
+ */
+fun Modifier.searchCardBorder(radius: Dp = 16.dp): Modifier = this.border(
+    width = androidx.compose.ui.unit.Dp.Hairline,
+    color = Color.White.copy(alpha = 0.05f),
+    shape = RoundedCornerShape(radius),
+)

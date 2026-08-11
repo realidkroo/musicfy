@@ -119,6 +119,13 @@ fun SettingsScreen(
     // it without the whole screen recomposing per frame.
     val updateReveal = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
+    // The sheet owns the whole window while it is up, so the nav bar and mini player step aside.
+    val hideAppChrome = com.example.musicfy.LocalHideAppChrome.current
+    androidx.compose.runtime.DisposableEffect(showUpdateSheet) {
+        hideAppChrome.value = showUpdateSheet
+        onDispose { hideAppChrome.value = false }
+    }
+
     val (localUsername) = rememberPreference(UsernameKey, "")
     val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, "")
     val (profilePicUri) = rememberPreference(ProfilePicUriKey, "")

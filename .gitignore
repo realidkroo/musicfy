@@ -44,6 +44,7 @@ app/persistent-debug.keystore
 *.bin
 
 # Misc
+*.py
 .env
 output-metadata.json
 vcs.xml

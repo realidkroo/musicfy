@@ -1,38 +1,38 @@
 // OnlineSearchResult.kt
-// what is this for you ask its for online search result ofc
+// The results page, rebuilt on the same primitives (and the same collapsing top bar) as the search
+// landing screen, so scrolling results behaves exactly like scrolling the moods grid.
+//
+// No Material 3 components: the old version was OutlinedTextField + ChipsRow + NavigationTitle +
+// YouTubeListItem + IconButton. Rows, chips, the top-result card and the overflow affordance are
+// all drawn here.
 
 package com.example.musicfy.ui.screens.search
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyItemScope
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,22 +45,29 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import android.os.Build
 import androidx.navigation.NavController
+import coil3.compose.AsyncImage
+import com.music.innertube.YouTube
 import com.music.innertube.YouTube.SearchFilter.Companion.FILTER_ALBUM
 import com.music.innertube.YouTube.SearchFilter.Companion.FILTER_ARTIST
 import com.music.innertube.YouTube.SearchFilter.Companion.FILTER_COMMUNITY_PLAYLIST
@@ -71,413 +78,551 @@ import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
-import com.music.innertube.models.WatchEndpoint
 import com.music.innertube.models.YTItem
 import com.example.musicfy.LocalDatabase
+import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
-import com.example.musicfy.constants.MiniPlayerBottomSpacing
-import com.example.musicfy.constants.MiniPlayerHeight
-import com.example.musicfy.constants.NavigationBarHeight
 import com.example.musicfy.constants.PauseSearchHistoryKey
 import com.example.musicfy.db.entities.SearchHistory
+import com.example.musicfy.extensions.togglePlayPause
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.ChipsRow
-import com.example.musicfy.ui.component.EmptyPlaceholder
+import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.NavigationTitle
-import com.example.musicfy.ui.component.YouTubeListItem
-import com.example.musicfy.ui.component.shimmer.ListItemPlaceHolder
-import com.example.musicfy.ui.component.shimmer.ShimmerHost
+import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.ui.menu.YouTubeAlbumMenu
 import com.example.musicfy.ui.menu.YouTubeArtistMenu
 import com.example.musicfy.ui.menu.YouTubePlaylistMenu
 import com.example.musicfy.ui.menu.YouTubeSongMenu
-import com.example.musicfy.utils.listItemShape
+import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.OnlineSearchViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.net.URLDecoder
 import java.net.URLEncoder
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+/**
+ * The category selector. "All" is the summary page; the rest map onto a YouTube search filter.
+ *
+ * Every filter the old screen offered is still here, featured playlists included — they were the
+ * two entries most easily lost when the chip row was rebuilt, so they are listed explicitly rather
+ * than derived from an enum that might not carry them.
+ */
+private val SearchCategories = listOf(
+    "All" to null,
+    "Music" to FILTER_SONG,
+    "Artist" to FILTER_ARTIST,
+    "Video" to FILTER_VIDEO,
+    "Album" to FILTER_ALBUM,
+    "Playlist" to FILTER_COMMUNITY_PLAYLIST,
+    "Featured" to FILTER_FEATURED_PLAYLIST,
+)
+
 @Composable
 fun OnlineSearchResult(
     navController: NavController,
     viewModel: OnlineSearchViewModel = hiltViewModel(),
-    pureBlack: Boolean = false
+    pureBlack: Boolean = false,
 ) {
     val database = LocalDatabase.current
     val menuState = LocalMenuState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val haptic = LocalHapticFeedback.current
+    val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
+    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
+
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
 
-    val coroutineScope = rememberCoroutineScope()
-    val lazyListState = rememberLazyListState()
-    val focusManager = LocalFocusManager.current
-    val focusRequester = remember { FocusRequester() }
-
-    var isSearchFocused by remember { mutableStateOf(false) }
-
-    val pauseSearchHistory by rememberPreference(PauseSearchHistoryKey, defaultValue = false)
-
-    BackHandler(enabled = isSearchFocused) {
-        isSearchFocused = false
-        focusManager.clearFocus()
-    }
-
-    // Extract query from navigation arguments
-    val encodedQuery = navController.currentBackStackEntry?.arguments?.getString("query") ?: ""
-    val decodedQuery = remember(encodedQuery) {
-        try {
-            URLDecoder.decode(encodedQuery, "UTF-8")
-        } catch (e: Exception) {
-            encodedQuery
-        }
+    val searchFilter by viewModel.filter.collectAsState()
+    val summary = viewModel.summaryPage
+    val itemsPage by remember(searchFilter) {
+        derivedStateOf { searchFilter?.value?.let { viewModel.viewStateMap[it] } }
     }
 
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(decodedQuery, TextRange(decodedQuery.length)))
+        mutableStateOf(TextFieldValue(viewModel.query, TextRange(viewModel.query.length)))
     }
- 
-    val onSearch: (String) -> Unit = remember {
-        { searchQuery ->
-            if (searchQuery.isNotEmpty()) {
-                isSearchFocused = false
-                focusManager.clearFocus()
 
-                navController.navigate("search/${URLEncoder.encode(searchQuery, "UTF-8")}") {
-                    popUpTo("search/${URLEncoder.encode(decodedQuery, "UTF-8")}") {
+    val listState = rememberLazyListState()
+    val glassState = remember { GlassState() }
+    val collapse = rememberCollapseProgress(listState)
+    val progressProvider = remember(collapse) { { collapse.value } }
+
+    val selectedIndex = remember(searchFilter) {
+        SearchCategories.indexOfFirst { it.second?.value == searchFilter?.value }.coerceAtLeast(0)
+    }
+
+    // The list is per-category; leaving the previous category's scroll position in place made a
+    // freshly-selected chip open somewhere in the middle of its results.
+    LaunchedEffect(searchFilter) { listState.scrollToItem(0) }
+
+    // Continuation paging: fires once the tail is within a few rows of the viewport rather than
+    // exactly at the end, so the next page is usually already in by the time it is needed.
+    LaunchedEffect(listState, itemsPage) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= info.totalItemsCount - 4
+        }.collect { nearEnd ->
+            if (nearEnd && itemsPage?.continuation != null) viewModel.loadMore()
+        }
+    }
+
+    BackHandler { navController.navigateUp() }
+
+    val submit: (String) -> Unit = remember(navController, pauseSearchHistory) {
+        { raw ->
+            val text = raw.trim()
+            if (text.isNotEmpty() && text != viewModel.query) {
+                focusManager.clearFocus()
+                navController.navigate("search/${URLEncoder.encode(text, "UTF-8")}") {
+                    popUpTo("search/${URLEncoder.encode(viewModel.query, "UTF-8")}") {
                         inclusive = true
                     }
-
-                    if (!pauseSearchHistory) {
-                        coroutineScope.launch(Dispatchers.IO) {
-                            database.query {
-                                insert(SearchHistory(query = searchQuery))
-                            }
-                        }
+                }
+                if (!pauseSearchHistory) {
+                    coroutineScope.launch(Dispatchers.IO) {
+                        database.query { insert(SearchHistory(query = text)) }
                     }
                 }
             }
         }
     }
 
-    // Update query when decodedQuery changes
-    LaunchedEffect(decodedQuery) {
-        query = TextFieldValue(decodedQuery, TextRange(decodedQuery.length))
-    }
-
-    val searchFilter by viewModel.filter.collectAsState()
-    val searchSummary = viewModel.summaryPage
-    val itemsPage by remember(searchFilter) {
-        derivedStateOf {
-            searchFilter?.value?.let {
-                viewModel.viewStateMap[it]
-            }
-        }
-    }
-
-    // Deduplicated once per page change rather than per frame. This used to be computed inline
-    // in the `items = ...` argument *and* a second time inside the item lambda just to read
-    // .size — so scrolling allocated a fresh full-length list for every visible row, every frame.
-    val filteredItems by remember {
-        derivedStateOf { itemsPage?.items.orEmpty().distinctBy { it.id } }
-    }
-
-
-    // Suggestion states
-
-
-    LaunchedEffect(lazyListState) {
-        snapshotFlow {
-            lazyListState.layoutInfo.visibleItemsInfo.any { it.key == "loading" }
-        }.collect { shouldLoadMore ->
-            if (!shouldLoadMore) return@collect
-            viewModel.loadMore()
-        }
-    }
-
-    val ytItemContent: @Composable LazyItemScope.(YTItem, Int, Int) -> Unit = { item: YTItem, index: Int, size: Int ->
-        val longClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            menuState.show {
-                when (item) {
-                    is SongItem ->
-                        YouTubeSongMenu(
-                            song = item,
-                            navController = navController,
-                            onDismiss = menuState::dismiss,
-                        )
-
-                    is AlbumItem ->
-                        YouTubeAlbumMenu(
-                            albumItem = item,
-                            navController = navController,
-                            onDismiss = menuState::dismiss,
-                        )
-
-                    is ArtistItem ->
-                        YouTubeArtistMenu(
-                            artist = item,
-                            onDismiss = menuState::dismiss,
-                        )
-
-                    is PlaylistItem ->
-                        YouTubePlaylistMenu(
-                            playlist = item,
-                            coroutineScope = coroutineScope,
-                            onDismiss = menuState::dismiss,
-                            onImportedPlaylist = { playlistId ->
-                                navController.navigate("local_playlist/$playlistId")
-                            },
-                        )
+    val onItemClick: (YTItem) -> Unit = { item ->
+        when (item) {
+            is SongItem -> {
+                if (item.id == mediaMetadata?.id) {
+                    playerConnection.player.togglePlayPause()
+                } else {
+                    playerConnection.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
                 }
             }
+
+            is AlbumItem -> navController.navigate("album/${item.id}")
+            is ArtistItem -> navController.navigate("artist/${item.id}")
+            is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
         }
-        YouTubeListItem(
-            item = item,
-            isActive =
+    }
+
+    val onItemLongClick: (YTItem) -> Unit = { item ->
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        menuState.show {
             when (item) {
-                is SongItem -> mediaMetadata?.id == item.id
-                is AlbumItem -> mediaMetadata?.album?.id == item.id
-                else -> false
-            },
-            isPlaying = isPlaying,
-            shape = listItemShape(index, size),
-            trailingContent = {
-                IconButton(
-                    onClick = longClick,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = null,
-                    )
-                }
-            },
-            modifier =
-            Modifier
-                .combinedClickable(
-                    onClick = {
-                        when (item) {
-                            is SongItem -> {
-                                if (item.id == mediaMetadata?.id) {
-                                    playerConnection.togglePlayPause()
-                                } else {
-                                    playerConnection.playQueue(
-                                        YouTubeQueue(
-                                            WatchEndpoint(videoId = item.id),
-                                            item.toMediaMetadata()
-                                        )
-                                    )
-                                }
-                            }
-
-                            is AlbumItem -> navController.navigate("album/${item.id}")
-                            is ArtistItem -> navController.navigate("artist/${item.id}")
-                            is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
-                        }
-                    },
-                    onLongClick = longClick,
+                is SongItem -> YouTubeSongMenu(item, navController, menuState::dismiss)
+                is AlbumItem -> YouTubeAlbumMenu(item, navController, menuState::dismiss)
+                is ArtistItem -> YouTubeArtistMenu(item, menuState::dismiss)
+                is PlaylistItem -> YouTubePlaylistMenu(
+                    playlist = item,
+                    coroutineScope = coroutineScope,
+                    onDismiss = menuState::dismiss,
                 )
-                .animateItem(),
-        )
+            }
+        }
     }
 
-    Column(
+    val bottomInset = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
+
+    // Resolved here rather than inside the list builder: `remember` is composable-only, and the
+    // scan over every summary section should happen once per result set, not once per relayout.
+    val top = remember(summary, viewModel.query) {
+        summary?.let { pickTopResult(it.summaries.flatMap { section -> section.items }, viewModel.query) }
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
+            .background(SearchColors.page(pureBlack))
     ) {
-        // Google-style SearchBar with Material 3 design
-        OutlinedTextField(
-            value = query,
-            onValueChange = { newQuery ->
-                query = newQuery
-            },
-            placeholder = {
-                Text(
-                    text = stringResource(R.string.search_yt_music),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
-            leadingIcon = {
-                IconButton(
-                    onClick = { navController.navigateUp() }
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.arrow_back_ios),
-                        contentDescription = stringResource(R.string.dismiss),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            trailingIcon = {
-                if (query.text.isNotEmpty()) {
-                    IconButton(
-                        onClick = {
-                            query = TextFieldValue("")
-                        }
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.close),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            },
-            keyboardOptions = KeyboardOptions(
-                imeAction = ImeAction.Search
-            ),
-            keyboardActions = KeyboardActions(
-                onSearch = { 
-                    onSearch(query.text)
-                }
-            ),
-            singleLine = true,
-            shape = RoundedCornerShape(28.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = if (pureBlack) 
-                    MaterialTheme.colorScheme.surface 
-                else 
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = if (pureBlack) 
-                    MaterialTheme.colorScheme.surface 
-                else 
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .focusRequester(focusRequester)
-                .onFocusChanged { focusState ->
-                    if (focusState.isFocused) {
-                        isSearchFocused = true
-                    }
-                }
-        )
-
-        // Main content area below search bar
-        Box(modifier = Modifier.weight(1f)) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-            ChipsRow(
-                chips = listOf(
-                    null to stringResource(R.string.filter_all),
-                    FILTER_SONG to stringResource(R.string.filter_songs),
-                    FILTER_VIDEO to stringResource(R.string.filter_videos),
-                    FILTER_ALBUM to stringResource(R.string.filter_albums),
-                    FILTER_ARTIST to stringResource(R.string.filter_artists),
-                    FILTER_COMMUNITY_PLAYLIST to stringResource(R.string.filter_community_playlists),
-                    FILTER_FEATURED_PLAYLIST to stringResource(R.string.filter_featured_playlists),
-                ),
-                currentValue = searchFilter,
-                onValueUpdate = {
-                    if (viewModel.filter.value != it) {
-                        viewModel.filter.value = it
-                    }
-                    coroutineScope.launch {
-                        lazyListState.animateScrollToItem(0)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
+        Box(modifier = Modifier.fillMaxSize().glassRoot(glassState)) {
             LazyColumn(
-                state = lazyListState,
-                contentPadding = WindowInsets.systemBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
-                modifier = Modifier.fillMaxWidth()
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = searchTopBarHeight(withTitle = true, extra = 46.dp),
+                    bottom = bottomInset + 24.dp,
+                ),
             ) {
                 if (searchFilter == null) {
-                    searchSummary?.summaries?.forEach { summary ->
-                        item {
-                            NavigationTitle(summary.title)
+                    // "All": the summary page — a hero top result, then each of the server's own
+                    // grouped sections.
+                    val page = summary
+                    if (page == null) {
+                        item(key = "loading") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(220.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                SearchLoadingDots()
+                            }
+                        }
+                    } else {
+                        if (top != null) {
+                            item(key = "top_header") {
+                                SearchSectionHeader(title = "Top Results", ruleAbove = false)
+                            }
+                            item(key = "top_card") {
+                                TopResultCard(
+                                    item = top,
+                                    isActive = mediaMetadata?.id == top.id,
+                                    isPlaying = isPlaying,
+                                    onClick = { onItemClick(top) },
+                                    onLongClick = { onItemLongClick(top) },
+                                )
+                                Spacer(modifier = Modifier.height(22.dp))
+                            }
                         }
 
-                        itemsIndexed(
-                            items = summary.items,
-                            key = { index, item -> "${summary.title}/${item.id}/$index" },
-                        ) { index, item ->
-                            ytItemContent(item, index, summary.items.size)
-                        }
-                    }
-
-                    if (searchSummary?.summaries?.isEmpty() == true) {
-                        item {
-                            EmptyPlaceholder(
-                                icon = R.drawable.search,
-                                text = stringResource(R.string.no_results_found),
-                            )
+                        page.summaries.forEachIndexed { index, section ->
+                            val rows = section.items.filter { it.id != top?.id }
+                            if (rows.isNotEmpty()) {
+                                item(key = "summary_header_${index}_${section.title}") {
+                                    SearchSectionHeader(
+                                        title = if (index == 0) "Exact matches" else section.title,
+                                    )
+                                }
+                                items(
+                                    items = rows,
+                                    key = { "summary_${index}_${it.id}" },
+                                    contentType = { "resultRow" },
+                                ) { item ->
+                                    ResultRow(
+                                        item = item,
+                                        isActive = mediaMetadata?.id == item.id,
+                                        isPlaying = isPlaying,
+                                        onClick = { onItemClick(item) },
+                                        onLongClick = { onItemLongClick(item) },
+                                        onMenu = { onItemLongClick(item) },
+                                    )
+                                }
+                                item(key = "summary_gap_$index") {
+                                    Spacer(modifier = Modifier.height(18.dp))
+                                }
+                            }
                         }
                     }
                 } else {
-                    itemsIndexed(
-                        items = filteredItems,
-                        key = { _, it -> "filtered_${it.id}" },
-                        contentType = { _, it -> it::class },
-                    ) { index, item ->
-                        ytItemContent(item, index, filteredItems.size)
-                    }
-
-                    if (itemsPage?.continuation != null) {
-                        item(key = "loading") {
-                            ShimmerHost {
-                                repeat(3) {
-                                    ListItemPlaceHolder()
-                                }
+                    val page = itemsPage
+                    if (page == null) {
+                        item(key = "filter_loading") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(220.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                SearchLoadingDots()
                             }
                         }
-                    }
-
-                    if (itemsPage?.items?.isEmpty() == true) {
-                        item {
-                            EmptyPlaceholder(
-                                icon = R.drawable.search,
-                                text = stringResource(R.string.no_results_found),
+                    } else if (page.items.isEmpty()) {
+                        item(key = "filter_empty") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(220.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "No results",
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+                                    color = SearchColors.Secondary,
+                                )
+                            }
+                        }
+                    } else {
+                        items(
+                            items = page.items,
+                            key = { it.id },
+                            contentType = { "resultRow" },
+                        ) { item ->
+                            ResultRow(
+                                item = item,
+                                isActive = mediaMetadata?.id == item.id,
+                                isPlaying = isPlaying,
+                                onClick = { onItemClick(item) },
+                                onLongClick = { onItemLongClick(item) },
+                                onMenu = { onItemLongClick(item) },
                             )
                         }
                     }
                 }
-
-                if (searchFilter == null && searchSummary == null || searchFilter != null && itemsPage == null) {
-                    item {
-                        ShimmerHost {
-                            repeat(8) {
-                                ListItemPlaceHolder()
-                            }
-                        }
-                    }
-                }
-
-                item(key = "bottom_spacer") {
-                    Spacer(modifier = Modifier.height(MiniPlayerHeight + MiniPlayerBottomSpacing + NavigationBarHeight))
-                }
-
             }
         }
-            if (isSearchFocused) {
-                OnlineSearchScreen(
-                    query = query.text,
-                    onQueryChange = { query = it },
-                    navController = navController,
-                    onSearch = onSearch,
-                    onDismiss = {
-                        isSearchFocused = false
-                        focusManager.clearFocus()
-                    },
-                    pureBlack = pureBlack
+
+        SearchGlassTopBar(
+            glassState = glassState,
+            progressProvider = progressProvider,
+            pureBlack = pureBlack,
+            title = "Search",
+            trailing = {
+                SearchAvatar(imageUrl = null, onClick = { navController.navigate("settings") })
+            },
+            below = {
+                SearchCategoryRow(
+                    categories = SearchCategories.map { it.first },
+                    selectedIndex = selectedIndex,
+                    onSelect = { index -> viewModel.filter.value = SearchCategories[index].second },
                 )
-            }
+            },
+        ) {
+            SearchField(
+                value = query,
+                onValueChange = { query = it },
+                onSearch = submit,
+                placeholder = "Search for any tracks, albums, lyrics...",
+                leading = {
+                    Icon(
+                        painter = painterResource(R.drawable.arrow_back),
+                        contentDescription = null,
+                        tint = SearchColors.Secondary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { navController.navigateUp() },
+                    )
+                },
+            )
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Top result
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Chooses the single item to feature.
+ *
+ * Two rules, in order:
+ *
+ *  1. An artist whose name matches what was typed wins outright. Searching an artist should open on
+ *     that artist, not on whichever of their tracks the server happened to rank first.
+ *  2. Otherwise the highest-ranked SONG wins, and the *music* upload is preferred over the video
+ *     one. YouTube frequently returns the music video ahead of the track; [SongItem.isVideoSong] is
+ *     exactly that distinction (anything whose musicVideoType is not ATV), so video uploads are
+ *     only featured when there is no audio version in the results at all.
+ */
+private fun pickTopResult(items: List<YTItem>, query: String): YTItem? {
+    if (items.isEmpty()) return null
+    val normalised = query.trim().lowercase()
+
+    items.filterIsInstance<ArtistItem>()
+        .firstOrNull { it.title.trim().lowercase() == normalised }
+        ?.let { return it }
+
+    val songs = items.filterIsInstance<SongItem>()
+    songs.firstOrNull { !it.isVideoSong }?.let { return it }
+
+    // Nothing but video uploads (or no songs at all) — fall back to whatever ranked first.
+    return songs.firstOrNull() ?: items.first()
+}
+
+/** The featured result: large square artwork, the item's details, and a round play affordance. */
+@Composable
+private fun TopResultCard(
+    item: YTItem,
+    isActive: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val kind = when (item) {
+        is SongItem -> if (item.isVideoSong) "Video" else "Song"
+        is AlbumItem -> "Album"
+        is ArtistItem -> "Artist"
+        is PlaylistItem -> "Playlist"
+    }
+    val detail = when (item) {
+        is SongItem -> listOfNotNull(
+            kind,
+            item.artists.joinToString { it.name }.takeIf { it.isNotBlank() }?.let { "by $it" },
+            item.duration?.let { formatDuration(it) },
+        ).joinToString("  •  ")
+
+        is AlbumItem -> listOfNotNull(
+            kind,
+            item.artists?.joinToString { it.name }?.takeIf { it.isNotBlank() }?.let { "by $it" },
+            item.year?.toString(),
+        ).joinToString("  •  ")
+
+        is ArtistItem -> kind
+        is PlaylistItem -> listOfNotNull(kind, item.author?.name?.let { "by $it" }, item.songCountText)
+            .joinToString("  •  ")
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = SearchHorizontalPadding)
+            .clip(RoundedCornerShape(16.dp))
+            .background(SearchColors.Tile)
+            .searchCardBorder(16.dp)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+    ) {
+        // The card takes its colour from the record itself: the same artwork, blown up and
+        // blurred hard behind the content, then dimmed. It costs no extra network work (the
+        // thumbnail is already in Coil's cache for the foreground copy) and no palette pass —
+        // the blur IS the theme colour, and it tracks whatever is featured.
+        if (item.thumbnail != null) {
+            AsyncImage(
+                model = item.thumbnail?.resize(256, 256),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer {
+                        alpha = 0.55f
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            renderEffect = android.graphics.RenderEffect
+                                .createBlurEffect(70f, 70f, android.graphics.Shader.TileMode.CLAMP)
+                                .asComposeRenderEffect()
+                        }
+                    },
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(alpha = 0.35f),
+                            0.55f to Color.Black.copy(alpha = 0.62f),
+                            1f to Color.Black.copy(alpha = 0.88f),
+                        )
+                    )
+            )
+        }
+
+        Column(modifier = Modifier.padding(16.dp)) {
+        SearchArtwork(
+            url = item.thumbnail,
+            size = 108.dp,
+            circle = item is ArtistItem,
+            corner = 8.dp,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = SearchColors.Primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                    color = SearchColors.Secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            // No play affordance on an artist: tapping one opens their page, so a play button
+            // would promise something the card does not do.
+            if (item !is ArtistItem) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .clickable(onClick = onClick),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(
+                            if (isActive && isPlaying) R.drawable.ic_untitled_pause else R.drawable.play
+                        ),
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+        }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Result rows
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/** One result: artwork, title, subtitle, and the horizontal overflow dots. */
+@Composable
+private fun ResultRow(
+    item: YTItem,
+    isActive: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onMenu: () -> Unit,
+) {
+    val subtitle = when (item) {
+        is SongItem -> listOfNotNull(
+            item.artists.joinToString { it.name }.takeIf { it.isNotBlank() },
+            item.duration?.let { formatDuration(it) },
+        ).joinToString("  •  ")
+
+        is AlbumItem -> listOfNotNull(
+            "Album",
+            item.artists?.joinToString { it.name }?.takeIf { it.isNotBlank() },
+        ).joinToString("  •  ")
+
+        is ArtistItem -> "Artist"
+        is PlaylistItem -> listOfNotNull("Playlist", item.author?.name).joinToString("  •  ")
+    }
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .padding(horizontal = SearchHorizontalPadding, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SearchArtwork(
+                url = item.thumbnail,
+                size = 46.dp,
+                circle = item is ArtistItem,
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    // The row currently playing is the one thing that gets a colour of its own —
+                    // it replaces the old list item's animated playing-bars indicator.
+                    color = if (isActive) Color(0xFF7FD1FF) else SearchColors.Primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                    color = SearchColors.Secondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            SearchOverflowDots(onClick = onMenu)
+        }
+        SearchRule()
+    }
+}
+
+/** m:ss for a duration in seconds. */
+private fun formatDuration(seconds: Int): String {
+    val minutes = seconds / 60
+    val remainder = seconds % 60
+    return "$minutes:${remainder.toString().padStart(2, '0')}"
 }
