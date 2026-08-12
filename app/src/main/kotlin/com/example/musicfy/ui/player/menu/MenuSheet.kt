@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,6 +50,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** Sheet colours. Deliberately darker than the beta notice's #161616. */
@@ -71,6 +73,12 @@ internal val MenuEasing = CubicBezierEasing(0.57f, 0.53f, 0f, 1f)
  * collapse uses: a menu is a smaller move and should not keep you waiting for it.
  */
 internal const val MenuAnimMillis = 440
+
+/** How much of a drag a locked sheet actually follows. */
+private const val LockedDragResistance = 0.18f
+
+/** Furthest a locked sheet will travel before it stops moving at all, in px. */
+private const val LockedDragMaxPx = 90f
 
 /** Fling speed (px/s) past which a release overrides the nearest snap point. */
 private const val FlingThreshold = 700f
@@ -149,18 +157,36 @@ fun MenuSheetSurface(
             revealProvider?.invoke(revealFraction())
         }
 
-        // First frame: start off-screen, then run in to the resting detent. Keyed on the
-        // measured height and guarded on the sentinel, so returning from another app resumes the
-        // sheet where it was rather than replaying the entrance.
-        LaunchedEffect(fullHeightPx) {
-            if (offsetPx.floatValue == Float.MAX_VALUE) {
-                setOffset(fullHeightPx)
-                animate(
-                    initialValue = fullHeightPx,
-                    targetValue = restingOffsetPx,
-                    animationSpec = androidx.compose.animation.core.tween(MenuAnimMillis, easing = MenuEasing),
-                ) { value, _ -> setOffset(value) }
+        // First frame: start off-screen, then run in to the resting detent.
+        //
+        // Keyed on Unit, NOT on fullHeightPx. A wrap-height sheet does not know its own height on
+        // the first frame — onSizeChanged reports it a frame or two later — so fullHeightPx
+        // changes just after composition. Keyed on that value, the change CANCELLED this effect
+        // mid-animation, and the relaunch immediately no-opped because the sentinel guard below
+        // was already false. The sheet was left parked at whatever offset the aborted animation
+        // had reached, i.e. still translated off the bottom of the screen: composed and
+        // interactive (its BackHandler and clicks worked) but never visible. That is exactly what
+        // made the update detail sheet and the home update prompt "not open" while the
+        // fixed-height sheets in the same file were fine.
+        //
+        // Waiting for a real measurement instead means the entrance starts from the sheet's
+        // actual height, and nothing can interrupt it once it is running.
+        LaunchedEffect(Unit) {
+            if (offsetPx.floatValue != Float.MAX_VALUE) return@LaunchedEffect
+            val start = if (wrapHeight) {
+                // Suspends until the content has been measured at least once.
+                snapshotFlow { measuredHeightPx.floatValue }.first { it > 0f }
+            } else {
+                maxSheetPx
             }
+            // Wrap sheets open at their natural height, so their resting offset is simply 0.
+            val target = if (wrapHeight) 0f else start * (1f - halfDetent / fullDetent)
+            setOffset(start)
+            animate(
+                initialValue = start,
+                targetValue = target,
+                animationSpec = androidx.compose.animation.core.tween(MenuAnimMillis, easing = MenuEasing),
+            ) { value, _ -> setOffset(value) }
         }
 
         val animateTo: (Float, () -> Unit) -> Unit = { target, onEnd ->
@@ -232,7 +258,8 @@ fun MenuSheetSurface(
                     source: NestedScrollSource,
                 ): Offset {
                     // Leftover downward scroll means the body is at its top: push the sheet down,
-                    // all the way to dismissal if the drag keeps going.
+                    // all the way to dismissal if the drag keeps going. Not while locked.
+                    if (available.y > 0f && !dismissEnabled) return Offset.Zero
                     if (available.y > 0f) {
                         setOffset((offsetPx.floatValue + available.y).coerceAtMost(fullHeightPx))
                         return available
@@ -278,7 +305,17 @@ fun MenuSheetSurface(
         ) {
             val dragHandle = Modifier.draggable(
                 state = rememberDraggableState { delta ->
-                    setOffset((offsetPx.floatValue + delta).coerceIn(0f, fullHeightPx))
+                    if (dismissEnabled) {
+                        setOffset((offsetPx.floatValue + delta).coerceIn(0f, fullHeightPx))
+                    } else {
+                        // Locked (a download is in flight). Rather than ignoring the drag — which
+                        // reads as the sheet being broken — it gives a little, heavily damped and
+                        // capped, then springs back on release. The gesture is answered, and the
+                        // answer is visibly "no".
+                        val resisted = (offsetPx.floatValue + delta * LockedDragResistance)
+                            .coerceIn(0f, LockedDragMaxPx)
+                        setOffset(resisted)
+                    }
                 },
                 orientation = Orientation.Vertical,
                 onDragStopped = { velocity -> settle(velocity) },

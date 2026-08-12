@@ -2,8 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- F-Droid policy requires stripping package installation permissions -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+
     <application>
-        <!-- Remove Cast provider in FOSS build since GMS is not available -->
+        <!-- Remove Cast provider in F-Droid build since GMS is not available -->
         <meta-data
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
             tools:node="remove" />

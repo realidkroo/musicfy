@@ -1,31 +1,5 @@
 // GithubUpdates.kt
 // Update client for github.com/realidkroo/musicfy.
-//
-// Separate from musicfyupdater.kt, which targets the old musicfy-app org and carries a nightly
-// workflow channel this repo doesn't have. Nothing here touches that file.
-//
-// ─────────────────────────────────────────────────────────────────────────────
-// RELEASE FORMAT — what the repo has to publish for this to work
-// ─────────────────────────────────────────────────────────────────────────────
-//
-//   Tag        dev                     rolling dev channel; always force-moved to the newest
-//              v1.4.0                  stable, semver, "v" prefix
-//
-//   Title      musicfy 1.4.0 (881)     "musicfy <versionName> (<buildNumber>)"
-//                                      versionName is what gets compared against BuildConfig;
-//                                      the parenthesised build number is display only.
-//
-//   Body       markdown                shown verbatim as the changelog. First line is the
-//                                      headline, the rest is detail.
-//
-//   Assets     musicfy-1.4.0-universal.apk      ← this is the one the updater installs
-//              musicfy-1.4.0-arm64-v8a.apk
-//              musicfy-1.4.0-armeabi-v7a.apk
-//              musicfy-1.4.0-x86_64.apk
-//              musicfy-1.4.0-x86.apk
-//
-//              i.e. musicfy-<versionName>-<abi>.apk. The updater looks for "universal" and
-//              falls back to the first .apk asset if the repo only ships one.
 
 package com.example.musicfy.core.updater
 
@@ -51,9 +25,6 @@ const val InstagramUrl = "https://www.instagram.com/realidkroo/"
 private const val ReleasesApi =
     "https://api.github.com/repos/$GithubOwner/$GithubRepo/releases?per_page=20"
 
-/** Which ABI's asset to install. Universal, because that is what the repo always ships. */
-private const val PreferredAbi = "universal"
-
 data class GithubRelease(
     /** Release title, e.g. "musicfy 1.4.0 (881)". */
     val title: String,
@@ -77,26 +48,47 @@ sealed interface UpdateState {
 }
 
 /**
- * Process-wide cache for [fetchLatestRelease].
- *
- * The check used to run on a plain `LaunchedEffect(Unit)` inside the settings screen, which is
- * created fresh on every navigation to it — so every visit to Settings was another GitHub round
- * trip, and the home prompt added yet another. GitHub also rate-limits unauthenticated callers to
- * 60 requests an hour per IP, which that was walking straight into.
- *
- * One in-flight request is shared by every caller (the Deferred is cached, not just its result),
- * and a successful answer is reused for [CacheTtlMillis]. Failures are NOT cached — a check that
- * failed because the user was on a train should be retried the next time something asks, not
- * suppressed for an hour.
+ * Structured version representation for comparing SemVer + Build numbers.
  */
-private const val CacheTtlMillis = 60L * 60L * 1000L
+data class FullVersion(
+    val major: Int = 0,
+    val minor: Int = 0,
+    val patch: Int = 0,
+    val buildNumber: Int = 0
+) : Comparable<FullVersion> {
+    override fun compareTo(other: FullVersion): Int {
+        if (major != other.major) return major.compareTo(other.major)
+        if (minor != other.minor) return minor.compareTo(other.minor)
+        if (patch != other.patch) return patch.compareTo(other.patch)
+        return buildNumber.compareTo(other.buildNumber)
+    }
+}
+
+/**
+ * Parses full SemVer + build attempt out of text e.g. "musicfy 6.0.8 (944)" or "6.0.8 build#944".
+ */
+fun parseFullVersion(text: String): FullVersion {
+    val semverRegex = Regex("""(\d+)\.(\d+)(?:\.(\d+))?""")
+    val buildNumRegex = Regex("""(?:build#|\(#|#|\()(\d+)\)?""", RegexOption.IGNORE_CASE)
+
+    val semverMatch = semverRegex.find(text)
+    val major = semverMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
+    val minor = semverMatch?.groupValues?.get(2)?.toIntOrNull() ?: 0
+    val patch = semverMatch?.groupValues?.getOrNull(3)?.toIntOrNull() ?: 0
+
+    val buildMatch = buildNumRegex.find(text)
+    val buildNumber = buildMatch?.groupValues?.get(1)?.toIntOrNull() ?: 0
+
+    return FullVersion(major, minor, patch, buildNumber)
+}
+
+private const val CacheTtlMillis = 15L * 60L * 1000L // 15-minute TTL cache
 
 private val cacheLock = Any()
 private var cachedAt = 0L
 private var cachedResult: Result<GithubRelease?>? = null
 private var inFlight: kotlinx.coroutines.Deferred<Result<GithubRelease?>>? = null
 
-/** One long-lived scope so a shared request outlives whichever caller happened to start it. */
 private val updateScope = kotlinx.coroutines.CoroutineScope(
     kotlinx.coroutines.SupervisorJob() + Dispatchers.IO
 )
@@ -104,27 +96,22 @@ private val updateScope = kotlinx.coroutines.CoroutineScope(
 /**
  * Cached wrapper around [fetchLatestRelease].
  *
- * @param force skips the cache — for an explicit "check now" action, which should always mean now.
+ * @param force skips the cache for explicit user check requests.
  */
 suspend fun getLatestRelease(force: Boolean = false): Result<GithubRelease?> {
     val deferred = synchronized(cacheLock) {
         if (!force) {
             val cached = cachedResult
             if (cached != null && System.currentTimeMillis() - cachedAt < CacheTtlMillis) {
-                // Non-local return out of the synchronized block: nothing to await, this call is
-                // answered entirely from cache.
                 return cached
             }
         }
-        // Join whatever is already running rather than starting a second identical request —
-        // the settings row, the sheet and the home prompt can all ask within the same frame.
         inFlight ?: updateScope.async { fetchLatestRelease() }.also { inFlight = it }
     }
 
     val result = deferred.await()
     synchronized(cacheLock) {
         if (inFlight === deferred) inFlight = null
-        // Only a success is worth remembering; see the note above about transient failures.
         if (result.isSuccess) {
             cachedResult = result
             cachedAt = System.currentTimeMillis()
@@ -134,12 +121,7 @@ suspend fun getLatestRelease(force: Boolean = false): Result<GithubRelease?> {
 }
 
 /**
- * Newest release that is actually newer than what's installed.
- *
- * "Newest" is the first entry the API returns — GitHub orders releases by creation date — after
- * skipping drafts. Prereleases are included: the dev channel publishes as one.
- *
- * Prefer [getLatestRelease] — this is the uncached network call underneath it.
+ * Fetches all non-draft releases from GitHub and finds the release with the HIGHEST version.
  */
 suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatchers.IO) {
     runCatching {
@@ -147,11 +129,15 @@ suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatche
             connectTimeout = 12_000
             readTimeout = 12_000
             setRequestProperty("Accept", "application/vnd.github+json")
-            // GitHub rejects requests with no User-Agent outright.
             setRequestProperty("User-Agent", "musicfy-android")
         }
         val json = connection.inputStream.bufferedReader().use { it.readText() }
         val releases = JSONArray(json)
+
+        var bestRelease: GithubRelease? = null
+        var bestFullVersion: FullVersion? = null
+
+        val appArch = runCatching { BuildConfig.ARCHITECTURE }.getOrDefault("universal")
 
         for (i in 0 until releases.length()) {
             val release = releases.getJSONObject(i)
@@ -159,12 +145,25 @@ suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatche
 
             val tag = release.optString("tag_name").orEmpty()
             val title = release.optString("name").orEmpty().ifBlank { tag }
-            val version = parseVersion(title, tag) ?: continue
+            val fullVer = parseFullVersion("$title $tag")
+
+            if (fullVer.major == 0 && fullVer.minor == 0 && fullVer.patch == 0) continue
+
+            val displayVersion = if (fullVer.buildNumber > 0) {
+                "${fullVer.major}.${fullVer.minor}.${fullVer.patch} (${fullVer.buildNumber})"
+            } else {
+                "${fullVer.major}.${fullVer.minor}.${fullVer.patch}"
+            }
 
             val assets = release.optJSONArray("assets")
-            var apkUrl: String? = null
-            var apkName: String? = null
-            var apkSize = 0L
+            var selectedUrl: String? = null
+            var selectedName: String? = null
+            var selectedSize = 0L
+
+            var universalUrl: String? = null
+            var universalName: String? = null
+            var universalSize = 0L
+
             var fallbackUrl: String? = null
             var fallbackName: String? = null
             var fallbackSize = 0L
@@ -176,10 +175,15 @@ suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatche
                     if (!name.endsWith(".apk", ignoreCase = true)) continue
                     val url = asset.optString("browser_download_url").orEmpty()
                     val size = asset.optLong("size", 0L)
-                    if (name.contains(PreferredAbi, ignoreCase = true)) {
-                        apkUrl = url
-                        apkName = name
-                        apkSize = size
+
+                    if (appArch.isNotBlank() && appArch != "universal" && name.contains(appArch, ignoreCase = true)) {
+                        selectedUrl = url
+                        selectedName = name
+                        selectedSize = size
+                    } else if (name.contains("universal", ignoreCase = true)) {
+                        universalUrl = url
+                        universalName = name
+                        universalSize = size
                     } else if (fallbackUrl == null) {
                         fallbackUrl = url
                         fallbackName = name
@@ -188,54 +192,46 @@ suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatche
                 }
             }
 
-            return@runCatching GithubRelease(
+            val apkUrl = selectedUrl ?: universalUrl ?: fallbackUrl
+            val apkName = selectedName ?: universalName ?: fallbackName
+            val apkSize = when {
+                selectedUrl != null -> selectedSize
+                universalUrl != null -> universalSize
+                else -> fallbackSize
+            }
+
+            val currentRelease = GithubRelease(
                 title = title,
                 tag = tag,
-                version = version,
+                version = displayVersion,
                 body = release.optString("body").orEmpty(),
                 htmlUrl = release.optString("html_url").orEmpty().ifBlank { "$GithubRepoUrl/releases" },
-                apkUrl = apkUrl ?: fallbackUrl,
-                apkName = apkName ?: fallbackName,
-                apkSizeBytes = if (apkUrl != null) apkSize else fallbackSize,
+                apkUrl = apkUrl,
+                apkName = apkName,
+                apkSizeBytes = apkSize,
                 publishedAt = release.optString("published_at").orEmpty(),
             )
+
+            // Select the release with the HIGHEST version across all GitHub releases
+            if (bestFullVersion == null || fullVer > bestFullVersion) {
+                bestFullVersion = fullVer
+                bestRelease = currentRelease
+            }
         }
-        null
+
+        bestRelease
     }
 }
 
-/**
- * Pulls a version out of a release title or tag.
- *
- * Accepts "musicfy 1.4.0 (881)", "v1.4.0" and a bare "1.4.0". The rolling "dev" tag carries no
- * version of its own, so for that one the title is the only source.
- */
-internal fun parseVersion(title: String, tag: String): String? {
-    val pattern = Regex("""(\d+(?:\.\d+)+)""")
-    return pattern.find(title)?.groupValues?.get(1)
-        ?: pattern.find(tag)?.groupValues?.get(1)
-}
-
-/** True when [candidate] is a strictly higher version than what is installed. */
-fun isNewerThanInstalled(candidate: String): Boolean =
-    compareVersions(candidate, BuildConfig.VERSION_NAME) > 0
-
-internal fun compareVersions(a: String, b: String): Int {
-    // Trailing non-numeric junk ("1.4.0-beta") is dropped rather than making the whole compare
-    // fail — a suffixed build of a higher version is still a higher version.
-    val aParts = a.split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
-    val bParts = b.split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
-    for (i in 0 until maxOf(aParts.size, bParts.size)) {
-        val diff = (aParts.getOrElse(i) { 0 }) - (bParts.getOrElse(i) { 0 })
-        if (diff != 0) return diff
-    }
-    return 0
+/** True when candidate version is strictly higher than currently installed version. */
+fun isNewerThanInstalled(candidateVersionText: String): Boolean {
+    val candidate = parseFullVersion(candidateVersionText)
+    val installed = parseFullVersion(BuildConfig.VERSION_NAME)
+    return candidate > installed
 }
 
 /**
- * Downloads the release APK into the cache, reporting 0..1 as it goes.
- *
- * @return the downloaded file, or null if the release has no APK attached.
+ * Downloads the release APK into the cache, reporting progress 0..1.
  */
 suspend fun downloadApk(
     context: Context,
@@ -244,7 +240,12 @@ suspend fun downloadApk(
 ): Result<File> = withContext(Dispatchers.IO) {
     runCatching {
         val url = release.apkUrl ?: error("This release has no APK attached")
-        val target = File(context.cacheDir, release.apkName ?: "musicfy-update.apk")
+        val target = apkFileFor(context, release)
+
+        if (isDownloaded(context, release)) {
+            onProgress(1f)
+            return@runCatching target
+        }
         if (target.exists()) target.delete()
 
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -253,8 +254,6 @@ suspend fun downloadApk(
             instanceFollowRedirects = true
             setRequestProperty("User-Agent", "musicfy-android")
         }
-        // Content-Length can be absent behind the redirect to the CDN; the release metadata's
-        // size is the reliable one, so prefer it and only fall back to the header.
         val total = release.apkSizeBytes.takeIf { it > 0 }
             ?: connection.contentLengthLong.takeIf { it > 0 }
             ?: -1L
@@ -277,15 +276,42 @@ suspend fun downloadApk(
     }
 }
 
-/** Hands the downloaded APK to the system installer. */
-fun installApk(context: Context, apk: File) {
+fun apkFileFor(context: Context, release: GithubRelease): File =
+    File(context.cacheDir, release.apkName ?: "musicfy-update.apk")
+
+fun isDownloaded(context: Context, release: GithubRelease): Boolean {
+    val f = apkFileFor(context, release)
+    if (!f.exists() || f.length() <= 0L) return false
+    return release.apkSizeBytes <= 0L || f.length() == release.apkSizeBytes
+}
+
+fun canInstallPackages(context: Context): Boolean =
+    android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O ||
+        context.packageManager.canRequestPackageInstalls()
+
+fun requestInstallPermission(context: Context) {
+    runCatching {
+        context.startActivity(
+            Intent(
+                android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                android.net.Uri.parse("package:" + context.packageName),
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}
+
+fun installApk(context: Context, apk: File): Boolean {
+    if (!canInstallPackages(context)) {
+        requestInstallPermission(context)
+        return false
+    }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.FileProvider", apk)
     val intent = Intent(Intent.ACTION_VIEW).apply {
         setDataAndType(uri, "application/vnd.android.package-archive")
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
-    context.startActivity(intent)
+    return runCatching { context.startActivity(intent); true }.getOrDefault(false)
 }
 
 fun formatBytes(bytes: Long): String = when {

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -54,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.drawable.toBitmap
 import com.example.musicfy.BuildConfig
 import com.example.musicfy.R
 import com.example.musicfy.core.updater.GithubProfileUrl
@@ -62,9 +65,11 @@ import com.example.musicfy.core.updater.GithubRepoUrl
 import com.example.musicfy.core.updater.InstagramUrl
 import com.example.musicfy.core.updater.UpdateState
 import com.example.musicfy.core.updater.downloadApk
+import com.example.musicfy.core.updater.apkFileFor
 import com.example.musicfy.core.updater.getLatestRelease
 import com.example.musicfy.core.updater.formatBytes
 import com.example.musicfy.core.updater.installApk
+import com.example.musicfy.core.updater.isDownloaded
 import com.example.musicfy.core.updater.isNewerThanInstalled
 import com.example.musicfy.ui.player.menu.MenuRowSurface
 import com.example.musicfy.ui.player.menu.MenuSheetSurface
@@ -285,7 +290,7 @@ fun UpdateSheet(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(50))
                     .background(CardSurface)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -373,6 +378,18 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val progress = remember { mutableFloatStateOf(0f) }
 
+    // Same reasoning as UpdatePromptSheet: keep a finished download and offer a plain retry when
+    // the installer could not be shown, instead of fetching the whole APK a second time.
+    var needsPermission by remember { mutableStateOf(false) }
+    val startInstall: (java.io.File) -> Unit = { file ->
+        if (installApk(context, file)) {
+            needsPermission = false
+        } else {
+            needsPermission = true
+            error = "Allow \"Install unknown apps\" for musicfy, then tap Install here again."
+        }
+    }
+
     MenuSheetSurface(
         onDismiss = onDismiss,
         wrapHeight = true,
@@ -451,9 +468,7 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
                     .background(CardSurface)
                     .padding(14.dp)
             ) {
-                Image(
-                    painter = painterResource(R.mipmap.ic_launcher),
-                    contentDescription = null,
+                AppIconImage(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp)),
@@ -495,30 +510,37 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(50))
                     .background(CardSurface)
                     .clickable(
                         enabled = !downloading && release.apkUrl != null,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
-                            downloading = true
                             error = null
-                            progress.floatValue = 0f
-                            scope.launch {
-                                val result = downloadApk(context, release) { progress.floatValue = it }
-                                downloading = false
-                                result.fold(
-                                    onSuccess = { installApk(context, it) },
-                                    onFailure = { error = it.message ?: "Download failed" },
-                                )
+                            if (isDownloaded(context, release)) {
+                                startInstall(apkFileFor(context, release))
+                            } else {
+                                downloading = true
+                                progress.floatValue = 0f
+                                scope.launch {
+                                    val result = downloadApk(context, release) { progress.floatValue = it }
+                                    downloading = false
+                                    result.fold(
+                                        onSuccess = { startInstall(it) },
+                                        onFailure = { error = it.message ?: "Download failed" },
+                                    )
+                                }
                             }
                         },
                     )
             ) {
                 Box(
                     modifier = Modifier
+                        // See UpdatePromptSheet: without this the fill is centred by the parent's
+                        // contentAlignment and grows out of the middle instead of from the left.
+                        .align(Alignment.CenterStart)
                         .fillMaxHeight()
                         .fillMaxWidth(fraction = animatedProgress)
                         .background(Color(0xFF444444))
@@ -541,8 +563,8 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(50))
                     .background(CardSurface)
                     .clickable(
                         enabled = !downloading,
@@ -568,5 +590,53 @@ private fun android.content.Context.openUrl(url: String) {
             android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         )
+    }
+}
+
+
+/**
+ * The app's own launcher icon, as the system actually composites it.
+ *
+ * Deliberately NOT `painterResource(R.mipmap.ic_launcher)`. On API 26+ that id resolves to
+ * `mipmap-anydpi-v26/ic_launcher.xml`, which is an `<adaptive-icon>`; Compose's painterResource
+ * accepts only `<vector>` and bitmap assets and throws
+ * `IllegalArgumentException: Only VectorDrawables and rasterized asset types are supported` on
+ * anything else. That is precisely what crashed this sheet the moment an update existed and the
+ * "To Be Installed" row tried to draw. Every ic_launcher* alias in this project (including
+ * ic_launcher_static, via mipmap-anydpi) has an adaptive variant, so there is no drawable id that
+ * could simply be swapped in.
+ *
+ * Going through the PackageManager returns the real icon — background, foreground and mask already
+ * composited for whatever API level is running — as a Drawable, which cannot hit that restriction.
+ * Rasterised once and remembered, since it never changes for the life of the process.
+ */
+@Composable
+internal fun AppIconImage(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val icon = remember(context) {
+        runCatching {
+            context.packageManager
+                .getApplicationIcon(context.packageName)
+                .toBitmap(width = 192, height = 192)
+                .asImageBitmap()
+        }.getOrNull()
+    }
+
+    if (icon != null) {
+        Image(bitmap = icon, contentDescription = null, modifier = modifier)
+    } else {
+        // Only reachable if the PackageManager lookup fails outright. The brand mark is a plain
+        // vector, so this path can never re-trigger the crash above.
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = modifier.background(CardSurface),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_musicfy_mark),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.fillMaxSize(0.6f),
+            )
+        }
     }
 }
