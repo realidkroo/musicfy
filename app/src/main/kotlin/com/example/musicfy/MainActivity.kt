@@ -987,6 +987,13 @@ class MainActivity : ComponentActivity() {
                                     )
 
                                     Box {
+                                        // Gated with the rest of the chrome. This gradient exists
+                                        // to sit BEHIND the nav bar and mini player and blend them
+                                        // into the page; drawn while those are composed out it is
+                                        // just an unexplained dark band across the bottom of
+                                        // whatever full-screen surface asked for the window — most
+                                        // visibly under the update sheet opened from Settings.
+                                        if (!hideAppChrome.value) {
                                         Box(
                                             modifier = Modifier
                                                 .align(Alignment.BottomCenter)
@@ -1016,6 +1023,8 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 }
                                         )
+
+                                        }
 
                                         // Composed out, not merely hidden: an alpha-0 nav bar and
                                         // player still hit-test, and both sit above whatever
@@ -1257,6 +1266,23 @@ class MainActivity : ComponentActivity() {
                     } // End BetaNoticeContainer
                     } // End ZoomOutPopupContainer
 
+                    // Update prompt. Mounted HERE, at the top level beside the other overlays,
+                    // NOT inside HomeScreen.
+                    //
+                    // Inside HomeScreen it composed but never laid out: its BackHandler registered
+                    // (back dismissed it) while none of its content appeared in the view hierarchy
+                    // at all, because the nested box it landed in gave it no size to fill. The
+                    // visible result was the worst of both — the sheet hid the nav bar and mini
+                    // player via hideAppChrome, then failed to draw anything to interact with, so
+                    // the app looked frozen with no way to navigate.
+                    //
+                    // This slot is a plain full-screen Box (the same one BottomSheetMenu and
+                    // BottomSheetPage align themselves in), so the sheet gets real constraints and
+                    // draws above the Scaffold, nav bar included. It also no longer touches
+                    // hideAppChrome: the sheet is modal with its own scrim, and a global flag that
+                    // can strand navigation if the sheet fails to render is not worth the tidiness.
+                    HomeUpdatePrompt(currentRoute = currentRoute)
+
                     BottomSheetMenu(
                         state = LocalMenuState.current,
                         modifier = Modifier.align(Alignment.BottomCenter)
@@ -1424,6 +1450,47 @@ val LocalGlassState = staticCompositionLocalOf<GlassState?> { null }
  * draws as a sibling of the NavHost.
  */
 val LocalHideAppChrome = staticCompositionLocalOf { mutableStateOf(false) }
+
+/** How long "remind me in 24 hour" actually holds the prompt back. */
+private const val UpdateSnoozeWindowMillis = 24L * 60L * 60L * 1000L
+
+/**
+ * The "there's an update" prompt, shown once you land on Home.
+ *
+ * Gated on the home route so it behaves like a Home feature while living in a container that can
+ * actually render it. Costs no extra network call — rememberUpdateState reads the shared hourly
+ * cache in GithubUpdates that the settings row already populates.
+ */
+@Composable
+private fun HomeUpdatePrompt(currentRoute: String?) {
+    if (currentRoute != Screens.Home.route) return
+
+    val updateState by com.example.musicfy.ui.screens.update.rememberUpdateState()
+    val (snoozedAt, setSnoozedAt) = rememberPreference(
+        com.example.musicfy.constants.UpdatePromptSnoozedAtKey,
+        defaultValue = 0L,
+    )
+    val (userName) = rememberPreference(com.example.musicfy.constants.UsernameKey, "")
+
+    var dismissed by rememberSaveable { mutableStateOf(false) }
+
+    val release = (updateState as? com.example.musicfy.core.updater.UpdateState.Available)?.release
+    val snoozeExpired = System.currentTimeMillis() - snoozedAt > UpdateSnoozeWindowMillis
+
+    // Every condition, including the release itself, resolved in one place — the sheet is shown
+    // only when there is genuinely something to show it for.
+    if (release != null && snoozeExpired && !dismissed) {
+        com.example.musicfy.ui.screens.update.UpdatePromptSheet(
+            release = release,
+            userName = userName,
+            onSnooze = {
+                setSnoozedAt(System.currentTimeMillis())
+                dismissed = true
+            },
+            onDismiss = { dismissed = true },
+        )
+    }
+}
 val LocalPlayerAwareWindowInsets = staticCompositionLocalOf<WindowInsets> { error("No WindowInsets provided") }
 val LocalDownloadUtil = staticCompositionLocalOf<DownloadUtil> { error("No DownloadUtil provided") }
 val LocalSyncUtils = staticCompositionLocalOf<SyncUtils> { error("No SyncUtils provided") }

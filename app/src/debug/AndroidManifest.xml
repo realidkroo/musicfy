@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Puts REQUEST_INSTALL_PACKAGES back for debug builds.
+
+    app/src/foss/AndroidManifest.xml strips this permission with tools:node="remove", which is the
+    right thing for an F-Droid-targeted release build: their inclusion policy rules out apps that
+    can install packages themselves. The side effect is that it also stripped it from foss DEBUG
+    builds — and those are the ones published to GitHub and updated through the in-app updater.
+
+    Without the permission, canRequestPackageInstalls() does not merely return false, it throws
+    SecurityException("Need to declare android.permission.REQUEST_INSTALL_PACKAGES"), and firing the
+    install intent silently does nothing. That is why the installer never appeared, and then why it
+    crashed once the code started asking whether it was allowed.
+
+    The build-type manifest has higher merge priority than the flavour's, so declaring it here wins
+    over the removal for debug only. Release foss builds are untouched and stay F-Droid-clean.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+        tools:node="replace" />
+
+</manifest>

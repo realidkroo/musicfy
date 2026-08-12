@@ -85,6 +85,25 @@ fun UpdatePromptSheet(
     var error by remember { mutableStateOf<String?>(null) }
     val progress = remember { mutableFloatStateOf(0f) }
 
+    // Whether the APK is already on disk from a previous attempt. Recomputed whenever the sheet
+    // recomposes after an install attempt, so returning from the permission screen sees it.
+    var readyToInstall by remember(release.apkName) {
+        mutableStateOf(com.example.musicfy.core.updater.isDownloaded(context, release))
+    }
+    // Set when the installer could not be shown because "Install unknown apps" is off. The user
+    // has been sent to that settings screen; the file is kept so the retry is instant.
+    var needsPermission by remember { mutableStateOf(false) }
+
+    val startInstall: (java.io.File) -> Unit = { file ->
+        if (installApk(context, file)) {
+            needsPermission = false
+        } else {
+            needsPermission = true
+            readyToInstall = true
+            error = "Allow \"Install unknown apps\" for musicfy, then tap Install here again."
+        }
+    }
+
     MenuSheetSurface(
         onDismiss = onDismiss,
         modifier = modifier,
@@ -173,9 +192,9 @@ fun UpdatePromptSheet(
                     .background(CardSurface)
                     .padding(14.dp)
             ) {
-                Image(
-                    painter = painterResource(R.mipmap.ic_launcher),
-                    contentDescription = null,
+                // Shared with UpdateSheet — see AppIconImage for why this cannot be a
+                // painterResource(R.mipmap.ic_launcher).
+                AppIconImage(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(12.dp)),
@@ -218,20 +237,28 @@ fun UpdatePromptSheet(
                 label = when {
                     downloading -> "Downloading… ${(animatedProgress * 100).toInt()}%"
                     release.apkUrl == null -> "No APK in this release"
+                    needsPermission -> "Install here"
+                    readyToInstall -> "Install here"
                     else -> "Install here"
                 },
                 dimmed = release.apkUrl == null,
                 onClick = {
-                    downloading = true
                     error = null
-                    progress.floatValue = 0f
-                    scope.launch {
-                        val result = downloadApk(context, release) { progress.floatValue = it }
-                        downloading = false
-                        result.fold(
-                            onSuccess = { installApk(context, it) },
-                            onFailure = { error = it.message ?: "Download failed" },
-                        )
+                    val existing = com.example.musicfy.core.updater.apkFileFor(context, release)
+                    if (com.example.musicfy.core.updater.isDownloaded(context, release)) {
+                        // Nothing to fetch — this is the retry path after a failed install.
+                        startInstall(existing)
+                    } else {
+                        downloading = true
+                        progress.floatValue = 0f
+                        scope.launch {
+                            val result = downloadApk(context, release) { progress.floatValue = it }
+                            downloading = false
+                            result.fold(
+                                onSuccess = { startInstall(it) },
+                                onFailure = { error = it.message ?: "Download failed" },
+                            )
+                        }
                     }
                 },
             )
@@ -273,8 +300,9 @@ private fun PromptButton(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .height(56.dp)
+            // Fully rounded rather than a 16dp box.
+            .clip(RoundedCornerShape(50))
             .background(CardSurface)
             .clickable(
                 enabled = enabled,
@@ -286,6 +314,11 @@ private fun PromptButton(
         if (progress > 0f) {
             Box(
                 modifier = Modifier
+                    // CenterStart, not the parent's Center: the fill inherits the parent's
+                    // contentAlignment otherwise, so a half-finished download rendered as a bar
+                    // centred in the button growing outward from the middle instead of filling
+                    // from the left edge.
+                    .align(Alignment.CenterStart)
                     .fillMaxHeight()
                     .fillMaxWidth(fraction = progress)
                     .background(Color(0xFF444444))

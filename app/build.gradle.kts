@@ -26,7 +26,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 70
-        versionName = "6.0.1 build#928"
+        versionName = "6.0.8 build#944"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -49,10 +49,16 @@ android {
 
     flavorDimensions += listOf("abi", "variant")
     productFlavors {
-        // FOSS variant (default) - F-Droid compatible, no Google Play Services
+        // FOSS variant (default) - self-updating, no Google Play Services
         create("foss") {
             dimension = "variant"
             isDefault = true
+            buildConfigField("Boolean", "CAST_AVAILABLE", "false")
+        }
+
+        // F-Droid variant - F-Droid policy compliant (strips package install permissions)
+        create("fdroid") {
+            dimension = "variant"
             buildConfigField("Boolean", "CAST_AVAILABLE", "false")
         }
 
@@ -81,6 +87,13 @@ android {
         create("x86_64") {
             dimension = "abi"
             buildConfigField("String", "ARCHITECTURE", "\"x86_64\"")
+        }
+    }
+
+    sourceSets {
+        getByName("fdroid") {
+            java.srcDirs("src/foss/kotlin")
+            res.srcDirs("src/foss/res")
         }
     }
 
@@ -126,7 +139,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "ARCHITECTURE", "\"release\"")
             // Fall back to the debug keystore locally so a release-quality build is always
             // runnable on a dev machine. CI still signs with the real key when secrets exist.
             signingConfig = if (hasReleaseSigning) {
@@ -139,7 +151,6 @@ android {
             applicationIdSuffix = ".debug"
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
-            buildConfigField("String", "ARCHITECTURE", "\"debug\"")
         }
 
         // Release-identical performance with the profiler still attachable.
@@ -156,7 +167,6 @@ android {
             applicationIdSuffix = ".profileable"
             isProfileable = true
             signingConfig = signingConfigs.getByName("debug")
-            buildConfigField("String", "ARCHITECTURE", "\"profileable\"")
             // The provider modules only publish debug/release variants; without this, resolving
             // a "profileable" variant of :providers:* fails.
             matchingFallbacks += listOf("release")
