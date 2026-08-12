@@ -1,5 +1,4 @@
-// draggablelyricsproviderlistkt
-// this thing is part of draggable lyrics provider list
+// DraggableLyricsProviderList.kt
 
 package com.example.musicfy.ui.component
 

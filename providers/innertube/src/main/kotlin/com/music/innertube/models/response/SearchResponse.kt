@@ -1,5 +1,4 @@
-// searchresponse kt
-// what is this for you ask its for search response ofc
+// SearchResponse.kt
 
 package com.music.innertube.models.response
 

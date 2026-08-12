@@ -42,11 +42,10 @@ object ArtistImageResolver {
     }
 
     private fun fetchAppleArtwork(artistName: String): String? {
-        // try getting actual artist profile image first
+
         val artistImage = fetchAppleArtistProfile(artistName)
         if (artistImage != null) return artistImage
 
-        // fallback to album artwork via song search
         return fetchAppleAlbumArtwork(artistName)
     }
 
@@ -71,7 +70,7 @@ object ArtistImageResolver {
                     val item = results.optJSONObject(index) ?: continue
                     val resultArtist = item.optString("artistName").trim()
                     val artistLinkUrl = item.optString("artistLinkUrl").takeIf { it.isNotBlank() } ?: continue
-                    
+
                     val score = artistMatchScore(artistName, resultArtist)
                     if (score > bestScore) {
                         bestScore = score

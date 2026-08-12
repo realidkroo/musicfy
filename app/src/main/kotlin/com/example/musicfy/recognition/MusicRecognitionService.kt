@@ -1,7 +1,4 @@
-// musicrecognitionservicekt
-// this thing is part of music recognition service
-
-// music recognition feature this feature is based on the original musicrecognizer
+// MusicRecognitionService.kt
 
 package com.example.musicfy.recognition
 
@@ -24,82 +21,73 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.nio.ByteOrder
 
-// service for recognizing music using audio fingerprinting records audio from the
 object MusicRecognitionService {
-    
-    // recording parameters
+
     private const val RECORDING_SAMPLE_RATE = 44100
     private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
     private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-    // recording duration 10 seconds for better recognition accuracy
-    // original musicrecognizer uses 3s > 6s > 9s > 10s fallback
-    // we use 10s directly to match the fallback duration for maximum
+
     private const val RECORDING_DURATION_MS = 10000L
-    
+
     private val _recognitionStatus = MutableStateFlow<RecognitionStatus>(RecognitionStatus.Ready)
     val recognitionStatus: StateFlow<RecognitionStatus> = _recognitionStatus.asStateFlow()
-    
+
     fun hasRecordPermission(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(
-            context, 
+            context,
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
     }
-    
-    // start the music recognition process records audio generates fingerprint and
+
     @SuppressLint("MissingPermission")
     suspend fun recognize(context: Context): RecognitionStatus = withContext(Dispatchers.IO) {
         if (!hasRecordPermission(context)) {
             return@withContext RecognitionStatus.Error("Microphone permission not granted")
         }
-        
+
         _recognitionStatus.value = RecognitionStatus.Listening
-        
+
         try {
-            // step 1 record audio
+
             val audioData = recordAudio()
-            
+
             _recognitionStatus.value = RecognitionStatus.Processing
-            
-            // step 2 convert to mono if needed and resample to 16khz
+
             val decodedAudio = DecodedAudio(
                 data = audioData,
                 channelCount = 1,
                 sampleRate = RECORDING_SAMPLE_RATE,
                 pcmEncoding = AUDIO_FORMAT
             )
-            
+
             val resampledAudio = AudioResampler.resample(
-                decodedAudio, 
+                decodedAudio,
                 VibraSignature.REQUIRED_SAMPLE_RATE
             ).getOrElse { error ->
                 _recognitionStatus.value = RecognitionStatus.Error("Failed to resample audio: ${error.message}")
                 return@withContext _recognitionStatus.value
             }
-            
-            // verify format
+
             require(
                 resampledAudio.channelCount == 1 &&
                 resampledAudio.sampleRate == VibraSignature.REQUIRED_SAMPLE_RATE &&
                 resampledAudio.pcmEncoding == AudioFormat.ENCODING_PCM_16BIT &&
                 ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN &&
-                resampledAudio.data.isNotEmpty() && 
+                resampledAudio.data.isNotEmpty() &&
                 resampledAudio.data.size % 2 == 0
             ) { "Invalid audio format for fingerprint generation" }
-            
-            // step 3 generate fingerprint using native library
+
             val signature = try {
                 VibraSignature.fromI16(resampledAudio.data)
             } catch (e: Exception) {
                 _recognitionStatus.value = RecognitionStatus.Error("Failed to generate fingerprint: ${e.message}")
                 return@withContext _recognitionStatus.value
             }
-            
-            // step 4 send to shazam api
+
             val sampleDurationMs = (resampledAudio.data.size / 2) * 1000L / VibraSignature.REQUIRED_SAMPLE_RATE
-            
+
             val result = Shazam.recognize(signature, sampleDurationMs)
-            
+
             result.fold(
                 onSuccess = { recognitionResult ->
                     _recognitionStatus.value = RecognitionStatus.Success(recognitionResult)
@@ -113,22 +101,22 @@ object MusicRecognitionService {
                     }
                 }
             )
-            
+
             _recognitionStatus.value
         } catch (e: Exception) {
             _recognitionStatus.value = RecognitionStatus.Error(e.message ?: "Recognition failed")
             _recognitionStatus.value
         }
     }
-    
+
     @SuppressLint("MissingPermission")
     private suspend fun recordAudio(): ByteArray = withContext(Dispatchers.IO) {
         val bufferSize = AudioRecord.getMinBufferSize(
-            RECORDING_SAMPLE_RATE, 
-            CHANNEL_CONFIG, 
+            RECORDING_SAMPLE_RATE,
+            CHANNEL_CONFIG,
             AUDIO_FORMAT
         )
-        
+
         val audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
             RECORDING_SAMPLE_RATE,
@@ -136,14 +124,14 @@ object MusicRecognitionService {
             AUDIO_FORMAT,
             bufferSize
         )
-        
+
         val outputStream = ByteArrayOutputStream()
         val buffer = ByteArray(bufferSize)
         val startTime = System.currentTimeMillis()
-        
+
         try {
             audioRecord.startRecording()
-            
+
             while (System.currentTimeMillis() - startTime < RECORDING_DURATION_MS && isActive) {
                 val bytesRead = audioRecord.read(buffer, 0, bufferSize)
                 if (bytesRead > 0) {
@@ -154,10 +142,10 @@ object MusicRecognitionService {
             audioRecord.stop()
             audioRecord.release()
         }
-        
+
         outputStream.toByteArray()
     }
-    
+
     fun reset() {
         _recognitionStatus.value = RecognitionStatus.Ready
     }

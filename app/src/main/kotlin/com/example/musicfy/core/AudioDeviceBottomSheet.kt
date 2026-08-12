@@ -1,5 +1,4 @@
-// audiodevicebottomsheetkt
-// the file functioned as audio device bottom sheet
+// AudioDeviceBottomSheet.kt
 
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
@@ -374,7 +373,7 @@ fun AudioDeviceBottomSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier)
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         activeDevice?.let { device ->
-                            // tappable device row shows chevron hint when bluetooth is available
+
                             Surface(
                                 shape = MaterialTheme.shapes.large,
                                 color = androidx.compose.ui.graphics.Color.Transparent,
@@ -394,7 +393,7 @@ fun AudioDeviceBottomSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier)
                                         maxVolume = maxVolume,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    
+
                                     androidx.compose.animation.AnimatedVisibility(
                                         visible = hasBluetooth,
                                         enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandHorizontally(),
@@ -434,7 +433,6 @@ fun AudioDeviceBottomSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier)
                             }
                         }
 
-                        // animated in place device switcher panel
                         androidx.compose.animation.AnimatedVisibility(
                             visible = hasBluetooth && showDevicePopup,
                             enter = androidx.compose.animation.expandVertically(
@@ -471,7 +469,7 @@ fun AudioDeviceBottomSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier)
                                                 AudioDeviceType.EXTERNAL_SPEAKER -> Icons.Filled.Speaker
                                                 AudioDeviceType.PHONE_SPEAKER -> Icons.Filled.PhoneAndroid
                                             }
-                                            
+
                                             val itemShape = remember(index, audioDevices.size) {
                                                 when {
                                                     audioDevices.size == 1 -> RoundedCornerShape(24.dp)
@@ -668,7 +666,6 @@ fun VolumeControlRow(
 
     val interactionSource = remember { MutableInteractionSource() }
 
-    // android 15 style volume pill
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -678,7 +675,7 @@ fun VolumeControlRow(
         tonalElevation = 1.dp
     ) {
         Box(contentAlignment = Alignment.CenterStart) {
-            // smoothly animate the fill width for a high end feel
+
             val animatedVolumeFraction by animateFloatAsState(
                 targetValue = currentValue / maxVolume.toFloat(),
                 animationSpec = spring(
@@ -688,7 +685,6 @@ fun VolumeControlRow(
                 label = "VolumeFillAnimation"
             )
 
-            // custom pill slider for perfect 0 100% fill
             val widthState = remember { mutableFloatStateOf(0f) }
             Box(
                 modifier = Modifier
@@ -716,7 +712,7 @@ fun VolumeControlRow(
                         }
                     }
             ) {
-                // active track fill uses the animated fraction for smoothness
+
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -725,14 +721,13 @@ fun VolumeControlRow(
                 )
             }
 
-            // content overlay icon and label
             Row(
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically, 
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.padding(start = 24.dp)
                 ) {
@@ -749,8 +744,7 @@ fun VolumeControlRow(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
-                
-                // android 15 style max indicator dot placed at the absolute end
+
                 Box(
                     modifier = Modifier
                         .padding(end = 16.dp)
@@ -838,7 +832,7 @@ fun AudioQualitySelector(context: Context) {
 }
 
 fun applyAudioQuality(context: Context, quality: AudioQuality) {
-    // ported from alpha logic can be added here if needed
+
 }
 
 private fun loadDevices(
@@ -949,7 +943,6 @@ private fun loadDevices(
                 device.copy(isActive = device.deviceId == activeDevice?.id)
             }
 
-            // maintain a stable order phone speaker > wired > bluetooth > others
             val sortedDevices = updatedDevices.sortedWith(compareBy<AudioDevice> {
                 when (it.type) {
                     AudioDeviceType.PHONE_SPEAKER -> 0
@@ -1029,7 +1022,7 @@ private fun AudioDeviceRow(
     modifier: Modifier = Modifier
 ) {
     val isActiveDevice = device.isActive
-    
+
     val containerColor = if (isActiveDevice) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     val onContainer = if (isActiveDevice) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
 
@@ -1106,7 +1099,7 @@ private fun AudioDeviceRow(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 val statusText = if (isActiveDevice) "Connected" else "Available"
-                
+
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
@@ -1127,7 +1120,7 @@ private fun AudioDeviceRow(
 
             if (isActiveDevice) {
                 val value = ((currentVolume / maxVolume) * 100).toInt()
-                
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),

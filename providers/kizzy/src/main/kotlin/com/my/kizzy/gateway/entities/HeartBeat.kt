@@ -1,17 +1,4 @@
-// heartbeat kt
-// this thing is for heart beat
-
-/*
- *
- *  ******************************************************************
- *  *  * Copyright (C) 2022
- *  *  * HeartBeat.kt is part of Kizzy
- *  *  *  and can not be copied and/or distributed without the express
- *  *  * permission of yzziK(Vaibhav)
- *  *  *****************************************************************
- *
- *
- */
+// HeartBeat.kt
 
 package com.my.kizzy.gateway.entities
 

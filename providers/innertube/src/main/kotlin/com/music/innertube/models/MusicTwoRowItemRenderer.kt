@@ -1,5 +1,4 @@
-// musictworowitemrenderer kt
-// this thing is part of music two row item renderer
+// MusicTwoRowItemRenderer.kt
 
 package com.music.innertube.models
 
@@ -9,7 +8,6 @@ import com.music.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedC
 import com.music.innertube.models.BrowseEndpoint.BrowseEndpointContextSupportedConfigs.BrowseEndpointContextMusicConfig.Companion.MUSIC_PAGE_TYPE_PLAYLIST
 import kotlinx.serialization.Serializable
 
-// two row a big thumbnail a title and a subtitle used in gridrenderer and musiccarouselshelfrenderer item type song video album playlist artist
 @Serializable
 data class MusicTwoRowItemRenderer(
     val title: Runs,

@@ -1,5 +1,4 @@
-// localitemkt
-// this thing is for local item
+// LocalItem.kt
 
 package com.example.musicfy.db.entities
 

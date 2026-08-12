@@ -1,20 +1,6 @@
-// ready kt
-// this thing is for ready
-
-/*
- *
- *  ******************************************************************
- *  *  * Copyright (C) 2022
- *  *  * Ready.kt is part of Kizzy
- *  *  *  and can not be copied and/or distributed without the express
- *  *  * permission of yzziK(Vaibhav)
- *  *  *****************************************************************
- *
- *
- */
+// Ready.kt
 
 package com.my.kizzy.gateway.entities
-
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

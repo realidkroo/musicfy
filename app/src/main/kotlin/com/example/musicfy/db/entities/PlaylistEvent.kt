@@ -1,5 +1,4 @@
-// playlisteventkt
-// the file functioned as playlist event
+// PlaylistEvent.kt
 
 package com.example.musicfy.db.entities
 

@@ -1,5 +1,4 @@
-// dimensionskt
-// the file functioned as dimensions
+// Dimensions.kt
 
 package com.example.musicfy.constants
 
@@ -19,7 +18,7 @@ val NavigationBarHeight = 80.dp
 val SlimNavBarHeight = 64.dp
 val MiniPlayerHeight = 64.dp
 val MinMiniPlayerHeight = 16.dp
-val MiniPlayerBottomSpacing = 4.dp // space between miniplayer and navigationbar
+val MiniPlayerBottomSpacing = 4.dp
 val QueuePeekHeight = 64.dp
 val AppBarHeight = 64.dp
 
@@ -31,7 +30,7 @@ val SmallGridThumbnailHeight = 104.dp
 val GridThumbnailHeight = 164.dp
 val AlbumThumbnailSize = 144.dp
 
-val ThumbnailCornerRadius = 6.dp // from 3 to 6
+val ThumbnailCornerRadius = 6.dp
 val GridThumbnailCornerRadius = 12.dp
 
 val PlayerHorizontalPadding = 32.dp

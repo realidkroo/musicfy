@@ -1,5 +1,4 @@
-// utilskt
-// this thing is part of utils
+// Utils.kt
 
 package com.example.musicfy.utils
 

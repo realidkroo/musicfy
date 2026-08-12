@@ -1,8 +1,4 @@
-// zoomoutpopupcontainerkt
-// generic version of the whole screen shrinks into a rounded card behind a
-// used by betanoticecontainer betanoticescreen same animation math but
-// as a slot instead of being hardcoded to the beta notice so any full screen
-// same background zooms out motion for its own popup
+// ZoomOutPopupContainer.kt
 
 package com.example.musicfy.ui.component
 
@@ -33,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 
-// global trigger for zoomoutpopupcontainer mounted once at the app root see
 @Stable
 class ZoomOutOverlayState {
     var isVisible by mutableStateOf(false)

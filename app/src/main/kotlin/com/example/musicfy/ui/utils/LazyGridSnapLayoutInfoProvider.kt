@@ -1,5 +1,4 @@
-// lazygridsnaplayoutinfoproviderkt
-// this thing is for lazy grid snap layout info provider
+// LazyGridSnapLayoutInfoProvider.kt
 
 package com.example.musicfy.ui.utils
 

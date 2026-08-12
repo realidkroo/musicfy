@@ -1,5 +1,4 @@
-// cipherdeobfuscatorkt
-// this thing is for cipher deobfuscator
+// CipherDeobfuscator.kt
 
 package com.example.musicfy.utils.cipher
 
@@ -27,7 +26,7 @@ object CipherDeobfuscator {
             deobfuscateInternal(signatureCipher, videoId, isRetry = false)
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Cipher deobfuscation failed, retrying with fresh JS: ${e.message}")
-            // invalidate cache and retry once with fresh player js
+
             try {
                 PlayerJsFetcher.invalidateCache()
                 closeWebView()
@@ -40,7 +39,7 @@ object CipherDeobfuscator {
     }
 
     private suspend fun deobfuscateInternal(signatureCipher: String, videoId: String, isRetry: Boolean): String? {
-        // parse the signaturecipher query string
+
         val params = parseQueryParams(signatureCipher)
         val obfuscatedSig = params["s"]
         val sigParam = params["sp"] ?: "signature"
@@ -56,10 +55,8 @@ object CipherDeobfuscator {
         val webView = getOrCreateWebView(forceRefresh = isRetry)
             ?: return null
 
-        // deobfuscate signature
         val deobfuscatedSig = webView.deobfuscateSignature(obfuscatedSig)
 
-        // build the url with deobfuscated signature
         val separator = if ("?" in baseUrl) "&" else "?"
         val finalUrl = "$baseUrl${separator}${sigParam}=${Uri.encode(deobfuscatedSig)}"
 
@@ -67,7 +64,6 @@ object CipherDeobfuscator {
         return finalUrl
     }
 
-    // transform the n parameter in a streaming url to avoid throttling 403 uses the
     suspend fun transformNParamInUrl(url: String): String {
         return try {
             transformNInternal(url)
@@ -78,7 +74,7 @@ object CipherDeobfuscator {
     }
 
     private suspend fun transformNInternal(url: String): String {
-        // extract the n parameter value from the url
+
         val nMatch = Regex("[?&]n=([^&]+)").find(url)
         if (nMatch == null) {
             Timber.tag(TAG).d("No 'n' parameter found in URL, skipping transform")
@@ -97,7 +93,6 @@ object CipherDeobfuscator {
         val transformedN = webView.transformN(nValue)
         Timber.tag(TAG).d("N-param transformed: $nValue -> $transformedN")
 
-        // replace n= parameter in url
         return url.replaceFirst(
             Regex("([?&])n=[^&]+"),
             "$1n=${Uri.encode(transformedN)}"
@@ -109,12 +104,10 @@ object CipherDeobfuscator {
             return cipherWebView
         }
 
-        // close existing webview if any
         if (cipherWebView != null) {
             closeWebView()
         }
 
-        // fetch player js
         val result = PlayerJsFetcher.getPlayerJs(forceRefresh = forceRefresh)
         if (result == null) {
             Timber.tag(TAG).e("Failed to get player JS")
@@ -122,7 +115,6 @@ object CipherDeobfuscator {
         }
         val (playerJs, hash) = result
 
-        // extract signature function info
         val sigInfo = FunctionNameExtractor.extractSigFunctionInfo(playerJs)
 
         if (sigInfo == null) {
@@ -130,7 +122,6 @@ object CipherDeobfuscator {
             return null
         }
 
-        // extract n transform function info for throttle avoidance 403 fix
         val nFuncInfo = FunctionNameExtractor.extractNFunctionInfo(playerJs)
         if (nFuncInfo == null) {
             Timber.tag(TAG).e("Could not extract n-function info from player JS (will try brute-force)")
@@ -138,7 +129,6 @@ object CipherDeobfuscator {
 
         Timber.tag(TAG).d("Creating CipherWebView with sig=${sigInfo.name}, constantArg=${sigInfo.constantArg}, nFunc=${nFuncInfo?.name}[${nFuncInfo?.arrayIndex}]")
 
-        // create webview n function is exported to window if found with
         val webView = CipherWebView.create(
             context = appContext,
             playerJs = playerJs,

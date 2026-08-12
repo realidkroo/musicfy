@@ -1,5 +1,4 @@
-// enumdialogkt
-// this thing is for enum dialog
+// EnumDialog.kt
 
 package com.example.musicfy.ui.component
 

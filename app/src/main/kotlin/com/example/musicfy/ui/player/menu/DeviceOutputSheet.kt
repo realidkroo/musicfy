@@ -1,10 +1,4 @@
-// deviceoutputsheetkt
-// change device output concept screen 2 the two volumes that actually
-// things then everything you could route playback to
-
-// device volume the android stream_music level shared with the hardware
-// music volume this player s own gain applied on top turning the app
-// touching what every other app on the phone plays at is the point
+// DeviceOutputSheet.kt
 
 package com.example.musicfy.ui.player.menu
 
@@ -67,8 +61,6 @@ fun DeviceOutputSheet(onDismiss: () -> Unit) {
         mutableFloatStateOf(playerConnection?.player?.volume ?: 1f)
     }
 
-    // outputs the system will actually route to queried once when the sheet
-    // callback would be nicer but a sheet is short lived enough that a snapshot
     val devices = remember {
         runCatching {
             audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
@@ -142,7 +134,6 @@ fun DeviceOutputSheet(onDismiss: () -> Unit) {
     }
 }
 
-// output types worth offering deliberately not every constant the platform
 private val RoutableTypes = setOf(
     AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
     AudioDeviceInfo.TYPE_BLUETOOTH_SCO,

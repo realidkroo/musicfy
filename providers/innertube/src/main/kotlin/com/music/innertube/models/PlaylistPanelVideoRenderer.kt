@@ -1,5 +1,4 @@
-// playlistpanelvideorenderer kt
-// this thing is for playlist panel video renderer
+// PlaylistPanelVideoRenderer.kt
 
 package com.music.innertube.models
 

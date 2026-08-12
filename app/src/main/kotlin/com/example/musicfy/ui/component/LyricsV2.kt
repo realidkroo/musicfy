@@ -1,7 +1,4 @@
-// lyricsv2kt
-// the file functioned as lyrics v2
-
-// musicfy project c 2026 licensed under gpl 30 | see git history for
+// LyricsV2.kt
 
 package com.example.musicfy.ui.component
 
@@ -68,7 +65,7 @@ fun LyricsLineV2(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = arrangement,
             verticalArrangement = Arrangement.spacedBy(
-                // use a capped spacing for internal wrapping to prevent sentence break off
+
                 with(LocalDensity.current) { (baseFontSize * ( (lineHeight / baseFontSize).coerceAtMost(1.3f) - 1f)).sp.toDp() }
             )
         ) {
@@ -94,7 +91,7 @@ fun LyricsLineV2(
             }
         }
     } else {
-        // fallback for lines without word timings eg standard lrc without word sync
+
         Text(
             text = entry.text,
             style = MaterialTheme.typography.headlineMedium.copy(
@@ -109,7 +106,6 @@ fun LyricsLineV2(
         )
     }
 
-    // translated text support
     if (showTranslated) {
         val translatedText by entry.translatedTextFlow.collectAsState()
         translatedText?.let { translated ->
@@ -145,17 +141,15 @@ fun AnimatedWordV2(
     val isWordComplete = isLinePast || effectivePlaybackPosition >= wordEndMs
     val isWordActive = isLineActive && effectivePlaybackPosition in wordStartMs until wordEndMs
 
-    // perfect linear progress 01
     val progress = when {
         isWordComplete -> 1f
         !isLineActive || effectivePlaybackPosition <= wordStartMs -> 0f
         else -> ((effectivePlaybackPosition - wordStartMs).toFloat() / wordDuration).coerceIn(0f, 1f)
     }
 
-    // bounce and float animation
     val sinProgress = sin(progress * PI).toFloat()
     val wordScale = 1f + (0.015f * sinProgress)
-    
+
     val targetFloat = if (isWordActive) -4f * sinProgress else 0f
     val floatOffset by animateFloatAsState(
         targetValue = targetFloat,
@@ -166,7 +160,6 @@ fun AnimatedWordV2(
         label = "WordFloatOffset"
     )
 
-    // glow intensity
     val glowProgress = (progress * 2f).coerceAtMost(1f)
     val glowAlpha = if (isWordActive) glowProgress * 0.45f else 0f
     val glowRadius = if (isWordActive) glowProgress * 12f else 0f
@@ -182,7 +175,7 @@ fun AnimatedWordV2(
                 scaleY = wordScale
             }
     ) {
-        // layer 1 base text always dimmed
+
         Text(
             text = word.text,
             style = MaterialTheme.typography.headlineMedium.copy(
@@ -194,7 +187,6 @@ fun AnimatedWordV2(
             color = expressiveAccent.copy(alpha = if (isBackground) inactiveAlpha * 0.7f else inactiveAlpha),
         )
 
-        // layer 2 filled overlay with liquid sweep mask + glow
         if (isWordComplete || isWordActive) {
             Text(
                 text = word.text,

@@ -1,5 +1,4 @@
-// thumbnails kt
-// this thing is for thumbnails
+// Thumbnails.kt
 
 package com.music.innertube.models
 

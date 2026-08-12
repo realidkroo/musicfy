@@ -1,5 +1,4 @@
-// themekt
-// this thing is for theme
+// Theme.kt
 
 package com.example.musicfy.ui.theme
 
@@ -27,7 +26,7 @@ import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
 
-val DefaultThemeColor = Color(0xFF8E8E8E) // gray
+val DefaultThemeColor = Color(0xFF8E8E8E)
 
 @Composable
 fun MusicfyTheme(
@@ -37,22 +36,14 @@ fun MusicfyTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    // determine if system dynamic colors should be used android s+ and default
+
     val useSystemDynamicColor = false
 
-    // select the appropriate color scheme generation method
     val baseColorScheme = if (useSystemDynamicColor) {
-        // use standard material 3 dynamic color functions for system wallpaper colors
+
         if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
-        /*
-        // use materialkolor only when a specific seed color is provided
-        rememberDynamicColorScheme(
-            seedColor = themeColor, // themecolor is guaranteed non default here
-            isDark = darkTheme,
-            style = PaletteStyle.TonalSpot // keep existing style
-        )
-        */
+
         if (darkTheme) {
             darkColorScheme(
                 primary = Color(0xFFE0E0E0),
@@ -92,7 +83,6 @@ fun MusicfyTheme(
         }
     }
 
-    // apply pureblack modification if needed similar to original logic
     val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
         if (darkTheme && pureBlack) {
             baseColorScheme.pureBlack(true)
@@ -101,10 +91,9 @@ fun MusicfyTheme(
         }
     }
 
-    // use standard materialtheme instead of materialexpressivetheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography, // use the defined apptypography
+        typography = AppTypography,
     ) {
         ProvideTextStyle(
             value = AppTypography.bodyLarge,

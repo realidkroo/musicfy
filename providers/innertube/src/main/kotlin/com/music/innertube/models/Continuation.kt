@@ -1,5 +1,4 @@
-// continuation kt
-// this thing is for continuation
+// Continuation.kt
 
 package com.music.innertube.models
 

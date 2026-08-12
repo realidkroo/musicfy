@@ -1,5 +1,4 @@
-// itemwrapperkt
-// this thing is part of item wrapper
+// ItemWrapper.kt
 
 package com.example.musicfy.ui.utils
 

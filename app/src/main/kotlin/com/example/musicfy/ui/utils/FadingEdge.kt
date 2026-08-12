@@ -1,5 +1,4 @@
-// fadingedgekt
-// what is this for you ask its for fading edge ofc
+// FadingEdge.kt
 
 package com.example.musicfy.ui.utils
 

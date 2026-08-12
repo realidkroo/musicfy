@@ -1,5 +1,4 @@
-// feedbackresponse kt
-// this thing is part of feedback response
+// FeedbackResponse.kt
 
 package com.music.innertube.models.response
 

@@ -1,5 +1,4 @@
-// betterlyrics kt
-// the file functioned as better lyrics
+// BetterLyrics.kt
 
 package com.example.musicfy.betterlyrics
 
@@ -71,16 +70,15 @@ object BetterLyrics {
         duration: Int,
         album: String? = null,
     ) = runCatching {
-        // use exact title and artist no normalization to ensure correct sync
-        // normalizing can return wrong lyrics e g radio edit vs original
+
         val ttml = fetchTTML(artist, title, duration, album)
             ?: throw IllegalStateException("Lyrics unavailable")
-        
+
         val parsedLines = TTMLParser.parseTTML(ttml)
         if (parsedLines.isEmpty()) {
             throw IllegalStateException("Failed to parse lyrics")
         }
-        
+
         TTMLParser.toLRC(parsedLines)
     }
 

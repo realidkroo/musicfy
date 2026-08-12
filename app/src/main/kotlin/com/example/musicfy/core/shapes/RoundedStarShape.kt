@@ -1,5 +1,4 @@
-// roundedstarshapekt
-// this thing is part of rounded star shape
+// RoundedStarShape.kt
 
 package com.example.musicfy.core.shapes
 
@@ -14,7 +13,6 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-// shape describing star with rounded corners note the shape draws within the
 class RoundedStarShape(
     private val sides: Int,
     private val curve: Double = 0.09,
@@ -58,7 +56,6 @@ class RoundedStarShape(
 
         close()
     })
-
 
     private fun mapRange(a: Double, b: Double, c: Double, d: Double, x: Double): Double {
         return (x - a) / (b - a) * (d - c) + c

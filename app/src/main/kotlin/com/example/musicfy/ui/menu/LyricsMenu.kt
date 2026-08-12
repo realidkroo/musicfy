@@ -1,5 +1,4 @@
-// lyricsmenukt
-// what is this for you ask its for lyrics menu ofc
+// LyricsMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -94,7 +93,7 @@ fun LyricsMenu(
 ) {
     val context = LocalContext.current
     val database = LocalDatabase.current
-    
+
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val deeplApiKey by rememberPreference(DeeplApiKey, "")
     val aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
@@ -106,8 +105,6 @@ fun LyricsMenu(
 
     val hasApiKey = if (aiProvider == "DeepL") deeplApiKey.isNotBlank() else openRouterApiKey.isNotBlank()
 
-    // observe the authoritative translation active state from the singleton
-    // correctly across menu open close cycles and avoids the lyricsprovider
     val hasTranslations by LyricsTranslationHelper.hasActiveTranslations.collectAsState()
 
     var showEditDialog by rememberSaveable {
@@ -209,8 +206,7 @@ fun LyricsMenu(
 
                 TextButton(
                     onClick = {
-                        // try search regardless of network status indicator
-                        // as it might be a false negative
+
                         viewModel.search(
                             searchMediaMetadata.id,
                             titleField.text,
@@ -219,8 +215,7 @@ fun LyricsMenu(
                             searchMediaMetadata.album?.title
                         )
                         showSearchResultDialog = true
-                        
-                        // show warning only if network is definitely unavailable
+
                         if (!isNetworkAvailable) {
                             Toast.makeText(context, context.getString(R.string.error_no_internet), Toast.LENGTH_SHORT).show()
                         }
@@ -367,7 +362,6 @@ fun LyricsMenu(
 
     var lyricsOffset by rememberSaveable { mutableIntStateOf(songProvider()?.lyricsOffset ?: 0) }
 
-    // sync ischecked with song changes
     LaunchedEffect(songProvider()) {
         isChecked = songProvider()?.romanizeLyrics ?: true
     }
@@ -441,7 +435,7 @@ fun LyricsMenu(
         item {
             Material3MenuGroup(
                 items = buildList {
-                    // add translate with ai option if api key is configured
+
                     if (hasApiKey) {
                         add(
                             Material3MenuItemData(
@@ -454,17 +448,17 @@ fun LyricsMenu(
                                 },
                                 onClick = {
                                     if (hasTranslations) {
-                                        // remove translations
+
                                         lyricsProvider()?.let { lyrics ->
                                             val clearedLyrics = LyricsTranslationHelper.clearTranslations(lyrics)
                                             database.query {
                                                 upsert(clearedLyrics)
                                             }
-                                            // resets hasactivetranslations and clears in memory translations
+
                                             LyricsTranslationHelper.triggerClearTranslations()
                                         }
                                     } else {
-                                        // trigger translation
+
                                         LyricsTranslationHelper.triggerManualTranslation()
                                     }
                                 },
@@ -473,10 +467,10 @@ fun LyricsMenu(
                                         checked = hasTranslations,
                                         onCheckedChange = { newCheckedState ->
                                             if (newCheckedState) {
-                                                // enable translations – hasactivetranslations updates when done
+
                                                 LyricsTranslationHelper.triggerManualTranslation()
                                             } else {
-                                                // disable translations – triggercleartranslations resets
+
                                                 lyricsProvider()?.let { lyrics ->
                                                     val clearedLyrics = LyricsTranslationHelper.clearTranslations(lyrics)
                                                     database.query {
@@ -491,7 +485,7 @@ fun LyricsMenu(
                             )
                         )
                     }
-                    
+
                     add(
                         Material3MenuItemData(
                             title = { Text(stringResource(R.string.lyrics_offset)) },
@@ -514,7 +508,7 @@ fun LyricsMenu(
                             }
                         )
                     )
-                    
+
                     add(
                         Material3MenuItemData(
                             title = { Text(text = stringResource(R.string.romanize_current_track)) },
@@ -551,50 +545,5 @@ fun LyricsMenu(
             )
         }
     }
-    
-    /* if (showRomanizationDialog) {
-        var isChecked by remember { mutableStateOf(songProvider()?.romanizeLyrics ?: true) }
 
-        // sync with song changes
-        LaunchedEffect(songProvider()) {
-            isChecked = songProvider()?.romanizeLyrics ?: true
-        }
-
-        DefaultDialog(
-            onDismiss = { showRomanizationDialog = false },
-            title = { Text(stringResource(R.string.romanization)) }
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        // toggle ischecked when the row is clicked
-                        isChecked = !isChecked
-                        songProvider()?.let { song ->
-                            database.query {
-                                upsert(song.copy(romanizeLyrics = isChecked))
-                            }
-                        }
-                    }
-                    .padding(vertical = 8.dp, horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.romanize_current_track),
-                    modifier = Modifier.weight(1f)
-                )
-                AppSwitch(
-                    checked = isChecked,
-                    onCheckedChange = { newCheckedState ->
-                        isChecked = newCheckedState
-                        songProvider()?.let { song ->
-                            database.query {
-                                upsert(song.copy(romanizeLyrics = newCheckedState))
-                            }
-                        }
-                    }
-                )
-            }
-        }
-    } */
 }

@@ -1,5 +1,4 @@
-// youtubelocale kt
-// the file functioned as you tube locale
+// YouTubeLocale.kt
 
 package com.music.innertube.models
 
@@ -7,6 +6,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class YouTubeLocale(
-    val gl: String, // geolocation
-    val hl: String, // host language
+    val gl: String,
+    val hl: String,
 )

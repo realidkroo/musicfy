@@ -1,5 +1,4 @@
-// shapeutilskt
-// what is this for you ask its for shape utils ofc
+// ShapeUtils.kt
 
 package com.example.musicfy.ui.utils
 

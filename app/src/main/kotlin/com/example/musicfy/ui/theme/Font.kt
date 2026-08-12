@@ -1,5 +1,4 @@
-// fontkt
-// what is this for you ask its for font ofc
+// Font.kt
 
 package com.example.musicfy.ui.theme
 

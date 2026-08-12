@@ -1,5 +1,4 @@
-// artistvideo kt
-// the file functioned as artist video
+// ArtistVideo.kt
 
 package com.example.musicfy.artistvideo
 

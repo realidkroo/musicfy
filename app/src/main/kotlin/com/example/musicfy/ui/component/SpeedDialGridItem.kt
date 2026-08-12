@@ -1,5 +1,4 @@
-// speeddialgriditemkt
-// this thing is part of speed dial grid item
+// SpeedDialGridItem.kt
 
 package com.example.musicfy.ui.component
 
@@ -43,10 +42,10 @@ fun SpeedDialGridItem(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1f) // square aspect ratio
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(ThumbnailCornerRadius))
     ) {
-        // thumbnail
+
         ItemThumbnail(
             thumbnailUrl = item.thumbnail,
             isActive = isActive,
@@ -55,14 +54,13 @@ fun SpeedDialGridItem(
             modifier = Modifier.fillMaxSize()
         )
 
-        // gradient overlay for text readability and icon contrast
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.4f), // top scrim for icon visibility on bright covers
+                            Color.Black.copy(alpha = 0.4f),
                             Color.Transparent,
                             Color.Black.copy(alpha = 0.6f),
                             Color.Black.copy(alpha = 0.9f)
@@ -71,25 +69,23 @@ fun SpeedDialGridItem(
                 )
         )
 
-        // title and chevron
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(8.dp) // reduced padding for tighter layout
+                .padding(8.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = item.title,
-                style = MaterialTheme.typography.titleSmall, // smaller punchier font
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            
-            // navigation chevron for browsable items album playlist artist
+
             if (item !is SongItem) {
                 Icon(
                     painter = painterResource(R.drawable.navigate_next),
@@ -99,7 +95,7 @@ fun SpeedDialGridItem(
                 )
         }
     }
-        // pinned icon
+
         if (isPinned) {
             Icon(
                 painter = painterResource(R.drawable.ic_push_pin),
@@ -111,7 +107,6 @@ fun SpeedDialGridItem(
                     .size(16.dp)
             )
         }
-
 
     }
 }

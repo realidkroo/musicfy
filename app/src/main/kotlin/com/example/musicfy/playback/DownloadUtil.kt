@@ -1,5 +1,4 @@
-// downloadutilkt
-// this thing is part of download util
+// DownloadUtil.kt
 
 package com.example.musicfy.playback
 
@@ -163,7 +162,6 @@ constructor(
 
                 upsert(updatedSong)
 
-                // pre cache the high res thumbnail immediately when download starts
                 updatedSong.thumbnailUrl?.let { url ->
                     val request = ImageRequest.Builder(context)
                         .data(url)
@@ -236,7 +234,6 @@ constructor(
         downloads.value = result
     }
 
-    // observes one song s download downloads is a stateflow of the whole download
     fun getDownload(songId: String): Flow<Download?> =
         downloads.map { it[songId] }.distinctUntilChanged()
 

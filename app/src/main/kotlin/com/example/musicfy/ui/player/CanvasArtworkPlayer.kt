@@ -1,5 +1,4 @@
-// canvasartworkplayerkt
-// this thing is for canvas artwork player
+// CanvasArtworkPlayer.kt
 
 package com.example.musicfy.ui.player
 
@@ -40,7 +39,6 @@ import android.view.ViewGroup
 import android.view.TextureView
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 
-// disk cache for canvas video bytes separate from the main song player cache
 private object CanvasVideoCache {
     @Volatile private var cache: SimpleCache? = null
 
@@ -179,7 +177,7 @@ fun CanvasArtworkPlayer(
                         }
                     if (!next.isNullOrBlank()) {
                         currentUrl = next
-                        isVideoReady = false 
+                        isVideoReady = false
                     }
                 }
 
@@ -201,12 +199,11 @@ fun CanvasArtworkPlayer(
         val normalized = currentUrl.trim()
         val mimeType =
             when {
-                normalized.contains(".m3u8", ignoreCase = true) || 
+                normalized.contains(".m3u8", ignoreCase = true) ||
                 normalized.lowercase(Locale.ROOT).split('?').first().endsWith(".m3u8") -> MimeTypes.APPLICATION_M3U8
                 normalized.lowercase(Locale.ROOT).contains(".mp4") -> MimeTypes.VIDEO_MP4
                 primary != null && currentUrl == primary -> {
-                    // fallback if it s the primary url and we can t tell from extension
-                    // check if its a known hls provider or default to hls for apple music
+
                     if (normalized.contains("apple.com") || normalized.contains("music.apple") || !normalized.contains(".mp4")) {
                         MimeTypes.APPLICATION_M3U8
                     } else {
@@ -255,14 +252,14 @@ fun CanvasArtworkPlayer(
             }
         },
         update = { view ->
-            // apply native rendereffect for hardware accelerated blur on android 12+
+
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 val clampedBlur = if (blurRadiusPx > 0f) blurRadiusPx.coerceAtMost(96f) else 0f
                 if (blurRadiusPx > 0f) {
                     view.setRenderEffect(
                         android.graphics.RenderEffect.createBlurEffect(
-                            clampedBlur, 
-                            clampedBlur, 
+                            clampedBlur,
+                            clampedBlur,
                             android.graphics.Shader.TileMode.CLAMP
                         )
                     )

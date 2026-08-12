@@ -1,13 +1,4 @@
-// appswitchkt
-// flat no elevation replacement for material3 s switch used app wide
-
-// m3 s switch draws its checked thumb with a small built in shadow part of
-// on thumb is meant to look slightly lifted on this app s near black
-// lift renders as a visible bright halo around every enabled toggle
-// screen that uses switch not something introduced by any one screen s own
-// public api to strip just the shadow from m3 s switch so this reimplements
-// same track thumb shape and the same on value change semantics but the
-// elevation anywhere colour and thumb position are the only signals of
+// AppSwitch.kt
 
 package com.example.musicfy.ui.component
 

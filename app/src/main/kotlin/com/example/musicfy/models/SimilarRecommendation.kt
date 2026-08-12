@@ -1,5 +1,4 @@
-// similarrecommendationkt
-// this thing is for similar recommendation
+// SimilarRecommendation.kt
 
 package com.example.musicfy.models
 

@@ -1,5 +1,4 @@
-// bbh_bartlekt
-// what is this for you ask its for bbh_bartle ofc
+// bbh_bartle.kt
 
 package com.example.musicfy.ui.theme
 

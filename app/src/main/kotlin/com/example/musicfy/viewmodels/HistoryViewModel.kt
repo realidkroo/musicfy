@@ -1,5 +1,4 @@
-// historyviewmodelkt
-// what is this for you ask its for history view model ofc
+// HistoryViewModel.kt
 
 package com.example.musicfy.viewmodels
 

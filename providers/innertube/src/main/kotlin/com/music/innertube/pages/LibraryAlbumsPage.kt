@@ -1,5 +1,4 @@
-// libraryalbumspage kt
-// this thing is for library albums page
+// LibraryAlbumsPage.kt
 
 package com.music.innertube.pages
 

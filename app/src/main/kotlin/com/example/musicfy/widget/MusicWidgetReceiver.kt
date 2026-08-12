@@ -1,5 +1,4 @@
-// musicwidgetreceiverkt
-// the file functioned as music widget receiver
+// MusicWidgetReceiver.kt
 
 package com.example.musicfy.widget
 
@@ -18,8 +17,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // only trigger update through musicservice if it s already running
-        // this prevents backgroundservicestartnotallowedexception on android 14+
+
         if (MusicService.isRunning) {
             val intent = Intent(context, MusicService::class.java).apply {
                 action = ACTION_UPDATE_WIDGET
@@ -27,10 +25,10 @@ class MusicWidgetReceiver : AppWidgetProvider() {
             try {
                 androidx.core.content.ContextCompat.startForegroundService(context, intent)
             } catch (e: Exception) {
-                // service might be restricted in background
+
             }
         }
-        // if service is not running widget shows default layout until user opens app
+
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -40,7 +38,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
         newOptions: Bundle
     ) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
-        // trigger widget update when size changes
+
         if (MusicService.isRunning) {
             val intent = Intent(context, MusicService::class.java).apply {
                 action = ACTION_UPDATE_WIDGET
@@ -48,7 +46,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
             try {
                 androidx.core.content.ContextCompat.startForegroundService(context, intent)
             } catch (e: Exception) {
-                // service might be restricted in background
+
             }
         }
     }
@@ -58,8 +56,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
 
         when (intent.action) {
             ACTION_PLAY_PAUSE, ACTION_LIKE, ACTION_NEXT, ACTION_PREVIOUS -> {
-                // user interactions from widget buttons can start the service
-                // android allows starting fgs from widget pendingintent clicks
+
                 val serviceIntent = Intent(context, MusicService::class.java).apply {
                     action = intent.action
                     putExtras(intent)
@@ -67,7 +64,7 @@ class MusicWidgetReceiver : AppWidgetProvider() {
                 try {
                     androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
                 } catch (e: Exception) {
-                    // service might be restricted in background
+
                 }
             }
         }

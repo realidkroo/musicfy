@@ -1,5 +1,4 @@
-// icon kt
-// this thing is part of icon
+// Icon.kt
 
 package com.music.innertube.models
 

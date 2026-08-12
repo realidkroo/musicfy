@@ -1,7 +1,4 @@
-// playercontrolskt
-// v0 minimal replacement for the old 545 line extraction just the
-// previous play pause next no volume no bluetooth row no cast
-// variant old file kept for reference at old player playercontrolskt
+// PlayerControls.kt
 
 package com.example.musicfy.ui.player
 
@@ -55,7 +52,6 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerHorizontalPadding
 import com.example.musicfy.extensions.togglePlayPause
 
-// fullscreen player controls title artist + like repeat seek slider + time then
 @Composable
 fun PlayerControls(
     modifier: Modifier = Modifier,
@@ -64,10 +60,7 @@ fun PlayerControls(
     val playerConnection = LocalPlayerConnection.current ?: return
 
     Column(modifier = modifier.fillMaxWidth()) {
-        // shifted up via offset a draw time transform not extra layout space
-        // doesn t change how much room this group reserves in the column so the
-        // below stays exactly where it was only this group s drawn position moves
-        // cover art rather than leaving a dead gap below it
+
         Column(modifier = Modifier.offset(y = (-64).dp)) {
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -78,14 +71,12 @@ fun PlayerControls(
             PlayerProgressSlider()
         }
 
-        // breathing room before the transport row independent of the offset above
         Spacer(modifier = Modifier.height(24.dp))
 
         PlayerTransportRow()
     }
 }
 
-// previous play pause next the one definition of this row s sizing and
 @Composable
 fun PlayerTransportRow(modifier: Modifier = Modifier) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -162,9 +153,7 @@ internal fun AnimatedPressScaleSkipButton(
                 scaleY = scale
                 alpha = if (enabled) 1f else 0.36f
             }
-            // clip and fill only when there is actually a container to draw these
-            // called with a transparent container so the rounded clip was shaping
-            // still cropping every glyph wider than the button which is what cut the
+
             .then(
                 if (containerColor == Color.Transparent) {
                     Modifier
@@ -193,23 +182,9 @@ internal fun AnimatedPressScaleSkipButton(
                 painter = painter,
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(tint),
-                // the skip vectors are 100x64 not square drawing them into a square
-                // size iconsize box letterboxed them and the scale 2f that followed then
-                // the result out to roughly 108x69 well past the 74dp rounded rect clip on
-                // box above which sheared the leading and trailing triangles off exactly
-                // the animation slid them outward that is the cut
 
-                // sized by its real aspect instead small enough to sit inside the clip with
-                // for the animation s own travel and with no post hoc scale a vector asked
-                // the size it will actually occupy rasterises crisply where a magnified one
-                // not
                 modifier = Modifier
-                    // requiredwidth not width the parent box is size 74dp and a plain
-                    // width is still clamped by the incoming max constraint so asking for
-                    // 108dp there silently produced 74dp smaller than the original the old
-                    // scale 2f never hit this because a draw time scale bypasses layout
-                    // entirely requiredwidth ignores the parent s constraint the same way
-                    // while still being a real layout size so the vector rasterises sharp
+
                     .requiredWidth(iconSize * SkipIconWidthFactor)
                     .aspectRatio(SkipIconAspect)
             )
@@ -274,8 +249,6 @@ internal fun AnimatedPressScalePlayPauseButton(
     }
 }
 
-// native aspect of avd_skip_next avd_skip_previous 100x64 viewport kept as a
 private const val SkipIconAspect = 100f / 64f
 
-// skip glyph width as a multiple of the caller s iconsize 2x reproduces exactly
 private const val SkipIconWidthFactor = 2f

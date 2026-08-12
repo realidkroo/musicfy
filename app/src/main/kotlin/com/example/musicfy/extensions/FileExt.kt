@@ -1,5 +1,4 @@
-// fileextkt
-// this thing is for file ext
+// FileExt.kt
 
 package com.example.musicfy.extensions
 

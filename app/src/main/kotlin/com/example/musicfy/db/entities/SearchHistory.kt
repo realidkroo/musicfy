@@ -1,5 +1,4 @@
-// searchhistorykt
-// this thing is for search history
+// SearchHistory.kt
 
 package com.example.musicfy.db.entities
 

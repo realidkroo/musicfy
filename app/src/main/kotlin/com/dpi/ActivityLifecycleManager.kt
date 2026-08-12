@@ -1,5 +1,4 @@
-// activitylifecyclemanagerkt
-// the file functioned as activity lifecycle manager
+// ActivityLifecycleManager.kt
 
 package com.dpi
 
@@ -13,7 +12,6 @@ import timber.log.Timber
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
-// manages activity lifecycle events and associated logic provides hooks for
 abstract class ActivityLifecycleManager : BaseLifecycleContentProvider() {
 
     private val activeActivities: MutableSet<Activity> =

@@ -1,5 +1,4 @@
-// returnyoutubedislikeresponse kt
-// this thing is part of return you tube dislike response
+// ReturnYouTubeDislikeResponse.kt
 
 package com.music.innertube.models
 

@@ -1,5 +1,4 @@
-// modifierextkt
-// this thing is part of modifier ext
+// ModifierExt.kt
 
 package com.example.musicfy.extensions
 

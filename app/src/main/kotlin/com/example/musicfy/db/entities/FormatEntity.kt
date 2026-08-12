@@ -1,5 +1,4 @@
-// formatentitykt
-// this thing is for format entity
+// FormatEntity.kt
 
 package com.example.musicfy.db.entities
 

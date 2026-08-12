@@ -1,5 +1,4 @@
-// artistpage kt
-// this thing is for artist page
+// ArtistPage.kt
 
 package com.music.innertube.pages
 
@@ -69,7 +68,7 @@ data class ArtistPage(
         }
 
         private fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): SongItem? {
-            // split the secondary line by bullet separator to separate artists from other metadata like views
+
             val secondaryLineRuns = renderer.flexColumns
                 .getOrNull(1)
                 ?.musicResponsiveListItemFlexColumnRenderer
@@ -77,7 +76,6 @@ data class ArtistPage(
                 ?.runs
                 ?.splitBySeparator()
 
-            // extract artists from the first segment after splitting
             val artists = secondaryLineRuns?.firstOrNull()?.oddElements()?.map {
                 Artist(
                     name = it.text,
@@ -85,7 +83,6 @@ data class ArtistPage(
                 )
             }
 
-            // extract album from last flexcolumn like simpmusic
             val album = renderer.flexColumns.lastOrNull()
                 ?.musicResponsiveListItemFlexColumnRenderer?.text?.runs
                 ?.firstOrNull()?.let {
@@ -97,7 +94,6 @@ data class ArtistPage(
                     } else null
                 }
 
-            // extract library tokens using the new method that properly handles multiple toggle items
             val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
             return SongItem(
@@ -127,7 +123,7 @@ data class ArtistPage(
                     SongItem(
                         id = renderer.navigationEndpoint.watchEndpoint?.videoId ?: return null,
                         title = renderer.title.runs?.firstOrNull()?.text ?: return null,
-                        artists = subtitleRuns.filter { 
+                        artists = subtitleRuns.filter {
                             it.navigationEndpoint?.browseEndpoint?.browseId?.startsWith("UC") == true ||
                             it.navigationEndpoint?.browseEndpoint != null
                         }.map {
@@ -136,8 +132,8 @@ data class ArtistPage(
                                 id = it.navigationEndpoint?.browseEndpoint?.browseId
                             )
                         }.ifEmpty {
-                            subtitleRuns.firstOrNull()?.let { 
-                                listOf(Artist(name = it.text, id = null)) 
+                            subtitleRuns.firstOrNull()?.let {
+                                listOf(Artist(name = it.text, id = null))
                             } ?: emptyList()
                         },
                         album = null,
@@ -167,7 +163,7 @@ data class ArtistPage(
                 }
 
                 renderer.isPlaylist -> {
-                    // playlist from youtube music
+
                     PlaylistItem(
                         id = renderer.navigationEndpoint.browseEndpoint?.browseId?.removePrefix("VL") ?: return null,
                         title = renderer.title.runs?.firstOrNull()?.text ?: return null,

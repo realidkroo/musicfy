@@ -1,12 +1,4 @@
-// tunemymusiccsvparserkt
-// parses the csv export produced by tunemymusiccom the same schema
-// source app apple music spotify youtube music tidal qobuz the user
-// since tune my music normalizes everything into one shared column layout
-// export to file verified against a real my apple music librarycsv export
-// track nameartist namealbumplaylist nametypeisrc<provider> id
-// type is one of favorite a liked library song playlist belongs to a
-// album a saved album not a track row or artist a followed artist
-// only favorite playlist rows carry an actual song to import
+// TuneMyMusicCsvParser.kt
 
 package com.example.musicfy.importer
 
@@ -41,8 +33,7 @@ fun parseTuneMyMusicCsv(text: String): ParsedImport {
 
     for (row in rows.drop(1)) {
         val type = row.getOrNull(typeIdx)?.trim().orEmpty()
-        // album artist rows describe a saved album or a followed artist not a
-        // there s no track to import from them
+
         if (type != "Playlist" && type != "Favorite") continue
 
         val title = row.getOrNull(titleIdx)?.trim().orEmpty()
@@ -67,7 +58,6 @@ fun parseTuneMyMusicCsv(text: String): ParsedImport {
     return ParsedImport(liked, playlists)
 }
 
-// minimal rfc4180 ish csv tokenizer handles quoted fields embedded
 private fun parseCsvRows(text: String): List<List<String>> {
     val content = text.removePrefix("\uFEFF")
     val rows = mutableListOf<List<String>>()

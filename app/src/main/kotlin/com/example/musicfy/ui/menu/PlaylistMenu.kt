@@ -1,5 +1,4 @@
-// playlistmenukt
-// the file functioned as playlist menu
+// PlaylistMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -229,12 +228,12 @@ fun PlaylistMenu(
                         showDeletePlaylistDialog = false
                         onDismiss()
                         database.transaction {
-                            // first toggle the like using the same logic as the like button
+
                             if (playlist.playlist.bookmarkedAt != null) {
-                                // using the same togglelike method that s used in the like button
+
                                 update(playlist.playlist.toggleLike())
                             }
-                            // then delete the playlist
+
                             delete(playlist.playlist)
                         }
 
@@ -457,10 +456,10 @@ fun PlaylistMenu(
                     }
                     add(
                         Material3MenuItemData(
-                            title = { 
+                            title = {
                                 Text(
-                                    text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial" 
-                                ) 
+                                    text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial"
+                                )
                             },
                             icon = {
                                 Icon(

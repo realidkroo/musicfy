@@ -1,11 +1,4 @@
-// disccoverstackkt
-// composes the pieces of a disc cover style into the thing morphingcover
-// artwork box the platter possibly two of them mid swap the tonearm the
-// and the preferences that drive all three
-
-// morphingcover calls this only for styles where playercoverstyleisdisc is
-// edge to edge and squared styles keep using the artwork stack that was
-// the point of this file is to be additive not to re route the existing
+// DiscCoverStack.kt
 
 package com.example.musicfy.ui.player.customize
 
@@ -27,10 +20,8 @@ import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.utils.rememberPreference
 import kotlinx.coroutines.isActive
 
-// degrees per second at rest a real 33⅓ rpm platter 200° s reads as a blur at this size
 private const val SpinDegreesPerSecond = 26f
 
-// with derivedstateof from the sheet s own progress exactly like morphingcover s
 @Composable
 fun DiscCoverStack(
     style: PlayerCoverStyle,
@@ -52,19 +43,13 @@ fun DiscCoverStack(
         queueIndex = queueIndex,
     )
 
-    // accumulated platter angle a plain float state written from the frame clock
-    // inside graphicslayer never destructured with by at composable scope
-    // recompose this whole subtree every single frame
     val angle = remember { mutableFloatStateOf(0f) }
     val lastFrameNanos = remember { mutableLongStateOf(0L) }
 
-    // spinactive already carries the caller s own gating sheet progress lyrics
-    // so a platter that has dissolved into the square artwork stops costing a
     val spinning = rotatingEnabled && isPlaying && spinActive
     LaunchedEffect(spinning) {
         if (!spinning) {
-            // drop the anchor so the next run measures from its own first frame instead
-            // jumping the platter forward by however long playback was paused
+
             lastFrameNanos.longValue = 0L
             return@LaunchedEffect
         }
@@ -81,7 +66,7 @@ fun DiscCoverStack(
     }
 
     Box(modifier = modifier) {
-        // departing disc only mounted while a swap is actually in flight
+
         val outgoing = skip.outgoingArtworkUrl
         if (outgoing != null) {
             DiscCover(

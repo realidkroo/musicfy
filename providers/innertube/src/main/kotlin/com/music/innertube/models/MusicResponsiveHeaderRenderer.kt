@@ -1,5 +1,4 @@
-// musicresponsiveheaderrenderer kt
-// this thing is part of music responsive header renderer
+// MusicResponsiveHeaderRenderer.kt
 
 package com.music.innertube.models
 

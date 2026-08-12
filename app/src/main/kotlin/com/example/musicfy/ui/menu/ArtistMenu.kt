@@ -1,5 +1,4 @@
-// artistmenukt
-// this thing is part of artist menu
+// ArtistMenu.kt
 
 package com.example.musicfy.ui.menu
 

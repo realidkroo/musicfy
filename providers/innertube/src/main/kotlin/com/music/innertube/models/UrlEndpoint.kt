@@ -1,5 +1,4 @@
-// urlendpoint kt
-// this thing is part of url endpoint
+// UrlEndpoint.kt
 
 package com.music.innertube.models
 

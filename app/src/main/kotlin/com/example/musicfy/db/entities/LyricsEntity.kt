@@ -1,5 +1,4 @@
-// lyricsentitykt
-// what is this for you ask its for lyrics entity ofc
+// LyricsEntity.kt
 
 package com.example.musicfy.db.entities
 

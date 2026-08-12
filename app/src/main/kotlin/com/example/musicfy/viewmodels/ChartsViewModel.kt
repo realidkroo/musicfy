@@ -1,5 +1,4 @@
-// chartsviewmodelkt
-// this thing is for charts view model
+// ChartsViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -28,7 +27,7 @@ class ChartsViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            
+
             YouTube.getChartsPage()
                 .onSuccess { page ->
                     _chartsPage.value = page
@@ -36,7 +35,7 @@ class ChartsViewModel @Inject constructor() : ViewModel() {
                 .onFailure { e ->
                     _error.value = "Failed to load charts: ${e.message}"
                 }
-            
+
             _isLoading.value = false
         }
     }

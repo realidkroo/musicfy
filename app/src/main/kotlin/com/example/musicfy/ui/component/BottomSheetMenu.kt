@@ -1,5 +1,4 @@
-// bottomsheetmenukt
-// this thing is part of bottom sheet menu
+// BottomSheetMenu.kt
 
 package com.example.musicfy.ui.component
 

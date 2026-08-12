@@ -1,5 +1,4 @@
-// innertube kt
-// this thing is for inner tube
+// InnerTube.kt
 
 package com.music.innertube
 
@@ -36,7 +35,6 @@ import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.io.encoding.Base64
 
-// provide access to innertube endpoints for making http requests not parsing response
 @OptIn(ExperimentalEncodingApi::class)
 class InnerTube {
     private var httpClient = createClient()
@@ -60,7 +58,7 @@ class InnerTube {
             httpClient.close()
             httpClient = createClient()
         }
-    
+
     var proxyAuth: String? = null
 
     var ipVersion: IpVersion = IpVersion.AUTO
@@ -89,38 +87,32 @@ class InnerTube {
             deflate(0.8F)
         }
 
-        // enhanced network configuration for better performance
         engine {
             config {
-                // connection pool settings for better connection reuse
+
                 connectionPool(
                     okhttp3.ConnectionPool(
-                        10, // maxidleconnections
-                        5, // keepaliveduration
+                        10,
+                        5,
                         java.util.concurrent.TimeUnit.MINUTES
                     )
                 )
-                
-                // timeout configurations
+
                 connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
                 writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                
-                // enable http 2 for better performance
+
                 protocols(listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1))
-                
-                // retry on connection failure
+
                 retryOnConnectionFailure(true)
-                
-                // cache configuration for better performance
+
                 cache(
                     okhttp3.Cache(
                         directory = java.io.File(System.getProperty("java.io.tmpdir"), "http_cache"),
-                        maxSize = 50L * 1024L * 1024L // 50 mb
+                        maxSize = 50L * 1024L * 1024L
                     )
                 )
-                
-                // apply ip version filtering
+
                 dns(object : Dns {
                     override fun lookup(hostname: String): List<InetAddress> {
                         val addresses = Dns.SYSTEM.lookup(hostname)
@@ -132,12 +124,10 @@ class InnerTube {
                     }
                 })
 
-                // apply proxy configuration
                 this@InnerTube.proxy?.let { proxyConfig ->
                     proxy(proxyConfig)
                 }
-                
-                // apply proxy authentication
+
                 this@InnerTube.proxyAuth?.let { auth ->
                     proxyAuthenticator { _, response ->
                         response.request.newBuilder()
@@ -148,7 +138,6 @@ class InnerTube {
             }
         }
 
-        // request timeout configuration
         install(HttpTimeout) {
             requestTimeoutMillis = 60000
             connectTimeoutMillis = 30000
@@ -157,7 +146,7 @@ class InnerTube {
 
         defaultRequest {
             url(YouTubeClient.API_URL_YOUTUBE_MUSIC)
-            // add common headers for better compatibility
+
             header("Accept", "application/json")
             header("Accept-Language", "en-US,en;q=0.9")
             header("Cache-Control", "no-cache")
@@ -168,7 +157,7 @@ class InnerTube {
         contentType(ContentType.Application.Json)
         headers {
             append("X-Goog-Api-Format-Version", "1")
-            append("X-YouTube-Client-Name", client.clientId /* Not a typo. The Client-Name header does contain the client id. */)
+            append("X-YouTube-Client-Name", client.clientId )
             append("X-YouTube-Client-Version", client.clientVersion)
             append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
             append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)
@@ -187,7 +176,6 @@ class InnerTube {
         parameter("prettyPrint", false)
     }
 
-    // simple retry wrapper for transient io errors socket aborts timeouts retries the given block up to maxattempts times with exponential backoff cancellation is respected since delay will throw if the coroutine is cancelled
     private suspend fun <T> withRetry(
         maxAttempts: Int = 3,
         initialDelay: Long = 500L,
@@ -622,7 +610,7 @@ class InnerTube {
             )
         }
     }
-    
+
     suspend fun getUploadCustomThumbnailLink(
         client: YouTubeClient,
         contentLength: Int
@@ -717,7 +705,6 @@ class InnerTube {
         }
     }
 
-
     suspend fun getMediaInfo(videoId: String): Result<MediaInfo> =
         runCatching {
             val response = next(client = YouTubeClient.WEB, videoId, null, null, null, null, null).body<NextResponse>()
@@ -788,6 +775,5 @@ class InnerTube {
             )
 
         }
-
 
 }

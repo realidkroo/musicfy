@@ -1,5 +1,4 @@
-// coroutineextkt
-// the file functioned as coroutine ext
+// CoroutineExt.kt
 
 package com.example.musicfy.extensions
 

@@ -1,5 +1,4 @@
-// accountmenubody kt
-// this thing is for account menu body
+// AccountMenuBody.kt
 
 package com.music.innertube.models.body
 

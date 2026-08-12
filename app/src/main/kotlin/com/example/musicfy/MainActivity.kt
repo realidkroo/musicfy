@@ -1,6 +1,4 @@
-// mainactivity kt
-// what is this for you ask its for main activity ofc
-// functioned as activity lifecycle manager
+// MainActivity.kt
 
 package com.example.musicfy
 
@@ -222,7 +220,6 @@ import java.net.URLEncoder
 import java.util.Locale
 import javax.inject.Inject
 
-// whether the page behind the player scales down as the sheet comes up measured
 private const val BackgroundZoomOnExpand = true
 
 @Suppress("DEPRECATION", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
@@ -242,7 +239,6 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var syncUtils: SyncUtils
 
-
     private lateinit var navController: NavHostController
     private var pendingIntent: Intent? = null
 
@@ -256,7 +252,7 @@ class MainActivity : ComponentActivity() {
                     Timber.tag("MainActivity").d("PlayerConnection created successfully")
                 } catch (e: Exception) {
                     Timber.tag("MainActivity").e(e, "Failed to create PlayerConnection")
-                    // retry after a delay of 500ms
+
                     lifecycleScope.launch {
                         delay(500)
                         try {
@@ -277,16 +273,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // request notification permission on android 13+
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1000)
             }
         }
 
-        // on android 12+ we can t start foreground services from background
-        // use bind_auto_create which will create the service if needed
-        // the service will call startforeground in oncreate when bound
         bindService(
             Intent(this, MusicService::class.java),
             serviceConnection,
@@ -378,7 +371,7 @@ class MainActivity : ComponentActivity() {
 
         LaunchedEffect(Unit) {
             if (getAutoUpdateCheckSetting(context)) {
-                // delay to not block app startup
+
                 delay(2000L)
                 checkForUpdate(
                     context = context,
@@ -386,7 +379,7 @@ class MainActivity : ComponentActivity() {
                         val currentVersion = BuildConfig.VERSION_NAME
                         Log.d("UpdateCheck", "Startup check success. Latest: $latestVersion, Current: $currentVersion, isAvailable: $isAvailable")
                         saveUpdateAvailableState(context, isAvailable)
-                        
+
                         if (isAvailable && getUpdateNotificationsSetting(context)) {
                             Log.d("UpdateCheck", "Posting update notification for $latestVersion")
                             UpdateNotificationHelper.showUpdateNotification(context, latestVersion)
@@ -394,7 +387,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onError = {
                         Log.e("UpdateCheck", "Startup check failed")
-                        // do not clear the state on error in case of offline launch
+
                     }
                 )
             }
@@ -476,7 +469,7 @@ class MainActivity : ComponentActivity() {
                             )
                             themeColor = result.image?.toBitmap()?.extractThemeColor() ?: selectedThemeColor
                         } catch (e: Exception) {
-                            // fallback to default on error
+
                             themeColor = selectedThemeColor
                         }
                     }
@@ -511,7 +504,7 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
-                val navigationItems = remember { 
+                val navigationItems = remember {
                         Screens.MainScreens
                 }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
@@ -554,7 +547,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // use derivedstateof to avoid unnecessary recompositions
                 val currentRoute by remember {
                     derivedStateOf { navBackStackEntry?.destination?.route }
                 }
@@ -572,15 +564,12 @@ class MainActivity : ComponentActivity() {
                     currentRoute == null ||
                         navigationItemRoutes.contains(currentRoute) ||
                         currentRoute!!.startsWith("search/") ||
-                        // the mood genre page is a browsing surface reached from the search tab
-                        // not a modal detail view it keeps the bar like the playlist pages do
+
                         currentRoute!!.startsWith("genre/") ||
                         currentRoute!!.startsWith("local_playlist/") ||
                         currentRoute!!.startsWith("online_playlist/") ||
                         currentRoute!!.startsWith("auto_playlist/") ||
-                        // sub settings pages keep the bottom bar they re a drill down from a
-                        // tab not a separate mode so hiding it made the app feel like it had
-                        // navigated somewhere else entirely
+
                         currentRoute in SubSettingsRoutes
                 }
 
@@ -608,11 +597,6 @@ class MainActivity : ComponentActivity() {
                     expandedBound = maxHeight,
                 )
 
-                // the app s own appnavigationbar composable already fades out as the player
-                // expands but the os s own gesture 3 button bar is a separate system drawn
-                // layer that no amount of alpha translation on our composable can touch it
-                // needs an explicit windowinsetscontroller call isexpanded not raw progress
-                // so this only fires once at each end of the transition not every frame
                 LaunchedEffect(playerBottomSheetState.isExpanded) {
                     val controller = WindowCompat.getInsetsController(window, window.decorView.rootView)
                     if (playerBottomSheetState.isExpanded) {
@@ -653,7 +637,6 @@ class MainActivity : ComponentActivity() {
                     },
                 )
 
-                // navigation tracking
                 LaunchedEffect(navBackStackEntry) {
                     if (inSearchScreen) {
                         val searchQuery = withContext(Dispatchers.IO) {
@@ -678,7 +661,6 @@ class MainActivity : ComponentActivity() {
                         onQueryChange(TextFieldValue())
                     }
 
-                    // reset scroll behavior for main navigation items
                     if (navigationItems.fastAny { it.route == navBackStackEntry?.destination?.route }) {
                         if (navigationItems.fastAny { it.route == previousTab }) {
                             topAppBarScrollBehavior.state.resetHeightOffset()
@@ -687,7 +669,6 @@ class MainActivity : ComponentActivity() {
 
                     topAppBarScrollBehavior.state.resetHeightOffset()
 
-                    // track previous tab for animations
                     navController.currentBackStackEntry?.destination?.route?.let {
                         setPreviousTab(it)
                     }
@@ -733,9 +714,7 @@ class MainActivity : ComponentActivity() {
                     val currentRoute = navBackStackEntry?.destination?.route
                     shouldShowTopBar = currentRoute in topLevelScreens &&
                         currentRoute != "settings" &&
-                        // search draws its own collapsing header title + field + progressive
-                        // blur inside the screen the same way home does leaving the shared
-                        // m3 topappbar mounted put a second static search title above it
+
                         currentRoute != Screens.Search.route &&
                         currentRoute != Screens.Home.route
                 }
@@ -745,7 +724,6 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(null)
                 }
                 val snackbarHostState = remember { SnackbarHostState() }
-
 
                 LaunchedEffect(Unit) {
                     if (pendingIntent != null) {
@@ -773,8 +751,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-
-
                 val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
                 val eventCount by database.eventCount().collectAsState(initial = 0)
                 val showHistoryButton = remember(pauseListenHistory, eventCount) {
@@ -782,14 +758,14 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
-                
+
                 val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
                 val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
                 val swipeToSong by rememberPreference(SwipeToSongKey, false)
 
                 val setupCompleted by rememberPreference(com.example.musicfy.constants.SetupCompletedKey, false)
                 var forceShowSetup by remember { mutableStateOf(false) }
-                
+
                 val betaDismissed by rememberPreference(com.example.musicfy.constants.BetaNoticeDismissedKey, false)
                 var showBetaNotice by remember { mutableStateOf(!betaDismissed) }
                 val zoomOutOverlayState = remember { com.example.musicfy.ui.component.ZoomOutOverlayState() }
@@ -837,7 +813,7 @@ class MainActivity : ComponentActivity() {
                             isStacked = showBetaNotice,
                             onSetupCompleted = { username, uri ->
                                 coroutineScope.launch(Dispatchers.IO) {
-                                    // save uri to internal storage if not null
+
                                     var savedUriStr = ""
                                     if (uri != null) {
                                         try {
@@ -964,15 +940,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
-                                // pre calculate values for graphicslayer to avoid reading state during
                                 val navBarTotalHeight = bottomInset + NavigationBarHeight
 
                                 if (!showRail && currentRoute != "wrapped" && currentRoute != "update" && currentRoute != "listen_together/chat") {
-                                    // detail screens album playlist liked publish their cover sampled
-                                    // accent color via localdetailaccentcolor the scrim tints toward it
-                                    // instead of always being flat black uses that color as is no extra
-                                    // darkening blend so it matches the same accent color used for the
-                                    // rest of that screen s background instead of reading darker muddier
+
                                     val detailAccent = LocalDetailAccentColor.current.value
                                     val navScrimTint by androidx.compose.animation.animateColorAsState(
                                         targetValue = detailAccent ?: Color.Black,
@@ -981,12 +952,7 @@ class MainActivity : ComponentActivity() {
                                     )
 
                                     Box {
-                                        // gated with the rest of the chrome this gradient exists
-                                        // to sit behind the nav bar and mini player and blend them
-                                        // into the page drawn while those are composed out it is
-                                        // just an unexplained dark band across the bottom of
-                                        // whatever full screen surface asked for the window most
-                                        // visibly under the update sheet opened from settings
+
                                         if (!hideAppChrome.value) {
                                         Box(
                                             modifier = Modifier
@@ -1020,9 +986,6 @@ class MainActivity : ComponentActivity() {
 
                                         }
 
-                                        // composed out not merely hidden an alpha 0 nav bar and
-                                        // player still hit test and both sit above whatever
-                                        // overlay asked for the window
                                         if (!hideAppChrome.value) {
                                         BottomSheetPlayer(
                                             state = playerBottomSheetState,
@@ -1040,12 +1003,11 @@ class MainActivity : ComponentActivity() {
                                             modifier = Modifier
                                                 .align(Alignment.BottomCenter)
                                                 .height(bottomInset + navPadding)
-                                                // use graphicslayer instead of offset to avoid recomposition
-                                                // graphicslayer runs during draw phase not composition phase
+
                                                 .graphicsLayer {
                                                     val navBarHeightPx = navigationBarHeight.toPx()
                                                     val totalHeightPx = navBarTotalHeight.toPx()
-                                                    // read progress only during draw phase
+
                                                     val progress = playerBottomSheetState.progress.coerceIn(0f, 1f)
 
                                                     translationY = if (navBarHeightPx == 0f) {
@@ -1056,12 +1018,6 @@ class MainActivity : ComponentActivity() {
                                                         slideOffset + hideOffset
                                                     }
 
-                                                    // belt and braces on top of the slide translating by
-                                                    // navbartotalheight should already put this off screen once the
-                                                    // player is up but it was still showing through in practice so
-                                                    // fade it out too reaches fully transparent at 60% expansion
-                                                    // rather than 100% so it s gone before the player s own bottom
-                                                    // card comes into view instead of overlapping it
                                                     alpha = (1f - progress / 0.6f).coerceIn(0f, 1f)
                                                 }
                                         )
@@ -1075,7 +1031,6 @@ class MainActivity : ComponentActivity() {
                                             pureBlack = pureBlack
                                         )
                                     }
-
 
                                 }
                             },
@@ -1127,17 +1082,7 @@ class MainActivity : ComponentActivity() {
                                 Box(
                                     Modifier
                                         .weight(1f)
-                                        // the page behind the player recedes as the sheet comes
-                                        // up the standard the app steps back while a sheet
-                                        // takes over depth cue
 
-                                        // read in the draw phase off the sheet s own progress so
-                                        // the whole navhost is not recomposed while dragging
-                                        // this costs one layer transform per frame and nothing
-                                        // else rounded and clipped as it shrinks so the inset
-                                        // edges read as a card rather than a cropped rectangle
-                                        // and both are skipped entirely at progress 0 so an
-                                        // untouched app pays for none of it
                                         .graphicsLayer {
                                             val p = if (BackgroundZoomOnExpand) {
                                                 playerBottomSheetState.progress.coerceIn(0f, 1f)
@@ -1146,35 +1091,13 @@ class MainActivity : ComponentActivity() {
                                                 val scale = 1f - 0.06f * p
                                                 scaleX = scale
                                                 scaleY = scale
-                                                // fades out over the back half of the travel
-                                                // reaching 0 just before the sheet is fully up
 
-                                                // this is the part that pays for the zoom at
-                                                // alpha 0 hwui skips the node outright so the
-                                                // entire app behind the player stops being drawn
-                                                // and stops being resampled for the last stretch
-                                                // of every open work that was happening before
-                                                // this change too on a surface the player was
-                                                // already covering
                                                 alpha = ((1f - p) / 0.25f).coerceIn(0f, 1f)
                                             }
-                                            // no rounded clip here deliberately clipping a
-                                            // full screen layer to a rounded shape forces hwui to
-                                            // render it offscreen every frame and measured on
-                                            // device that alone took the expand from ~16ms to
-                                            // 26ms median and doubled its jank the scale is what
-                                            // carries the depth cue the corner radius was worth
-                                            // nothing next to that cost and by the time the sheet
-                                            // is far enough up for corners to read it covers them
-                                            // anyway
+
                                         }
                                 ) {
-                                    // navhost with animations material 3 expressive style
-                                    // sharedtransitionlayout wraps the whole navhost so the
-                                    // album playlist cover expand into place open transition
-                                    // see ui component sharedelementtransitionkt can morph a
-                                    // tapped grid cover into the destination screen s header
-                                    // across the navigation change
+
                                     SharedTransitionLayout {
                                     CompositionLocalProvider(LocalSharedTransitionScope provides this) {
                                     NavHost(
@@ -1184,7 +1107,7 @@ class MainActivity : ComponentActivity() {
                                             NavigationTab.SEARCH -> Screens.Search
                                             else -> Screens.Home
                                         }.route,
-                                        // enter transition smoother with smaller offset and longer duration
+
                                         enterTransition = {
                                             val currentRouteIndex = navigationItems.indexOfFirst {
                                                 it.route == targetState.destination.route
@@ -1198,7 +1121,7 @@ class MainActivity : ComponentActivity() {
                                             else
                                                 slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         },
-                                        // exit transition smoother with smaller offset and longer duration
+
                                         exitTransition = {
                                             val currentRouteIndex = navigationItems.indexOfFirst {
                                                 it.route == initialState.destination.route
@@ -1212,7 +1135,7 @@ class MainActivity : ComponentActivity() {
                                             else
                                                 slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         },
-                                        // pop enter transition smoother with smaller offset and longer duration
+
                                         popEnterTransition = {
                                             val currentRouteIndex = navigationItems.indexOfFirst {
                                                 it.route == targetState.destination.route
@@ -1226,7 +1149,7 @@ class MainActivity : ComponentActivity() {
                                             else
                                                 slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         },
-                                        // pop exit transition smoother with smaller offset and longer duration
+
                                         popExitTransition = {
                                             val currentRouteIndex = navigationItems.indexOfFirst {
                                                 it.route == initialState.destination.route
@@ -1251,30 +1174,15 @@ class MainActivity : ComponentActivity() {
                                             snackbarHostState = snackbarHostState
                                         )
                                     }
-                                    } // end compositionlocalprovider localsharedtransitionscope
-                                    } // end sharedtransitionlayout
+                                    }
+                                    }
                                 }
                             }
-                        } // end scaffold
-                    } // end setupwizardcontainer
-                    } // end betanoticecontainer
-                    } // end zoomoutpopupcontainer
+                        }
+                    }
+                    }
+                    }
 
-                    // update prompt mounted here at the top level beside the other overlays
-                    // not inside homescreen
-
-                    // inside homescreen it composed but never laid out its backhandler
-                    // back dismissed it while none of its content appeared in the view
-                    // at all because the nested box it landed in gave it no size to fill the
-                    // visible result was the worst of both the sheet hid the nav bar and mini
-                    // player via hideappchrome then failed to draw anything to interact with so
-                    // the app looked frozen with no way to navigate
-
-                    // this slot is a plain full screen box the same one bottomsheetmenu and
-                    // bottomsheetpage align themselves in so the sheet gets real constraints and
-                    // draws above the scaffold nav bar included it also no longer touches
-                    // hideappchrome the sheet is modal with its own scrim and a global flag that
-                    // can strand navigation if the sheet fails to render is not worth the
                     HomeUpdatePrompt(currentRoute = currentRoute)
 
                     BottomSheetMenu(
@@ -1286,8 +1194,6 @@ class MainActivity : ComponentActivity() {
                         state = LocalBottomSheetPageState.current,
                         modifier = Modifier.align(Alignment.BottomCenter)
                     )
-
-
 
                     sharedSong?.let { song ->
                         playerConnection?.let {
@@ -1315,7 +1221,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-
                 }
             }
         }
@@ -1326,8 +1231,6 @@ class MainActivity : ComponentActivity() {
         intent.data = null
         intent.removeExtra(Intent.EXTRA_TEXT)
         val coroutineScope = lifecycle.coroutineScope
-
-
 
         when (val path = uri.pathSegments.firstOrNull()) {
             "playlist" -> uri.getQueryParameter("list")?.let { playlistId ->
@@ -1420,7 +1323,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// drill down settings pages these share the collapsing header treatment and
 val SubSettingsRoutes = setOf(
     "appearance_settings",
     "playback_settings",
@@ -1432,13 +1334,10 @@ val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database
 val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
 val LocalGlassState = staticCompositionLocalOf<GlassState?> { null }
 
-// set by a full screen overlay that owns the whole window the update sheet for
 val LocalHideAppChrome = staticCompositionLocalOf { mutableStateOf(false) }
 
-// how long remind me in 24 hour actually holds the prompt back
 private const val UpdateSnoozeWindowMillis = 24L * 60L * 60L * 1000L
 
-// the there s an update prompt shown once you land on home gated on the home
 @Composable
 private fun HomeUpdatePrompt(currentRoute: String?) {
     if (currentRoute != Screens.Home.route) return
@@ -1455,8 +1354,6 @@ private fun HomeUpdatePrompt(currentRoute: String?) {
     val release = (updateState as? com.example.musicfy.core.updater.UpdateState.Available)?.release
     val snoozeExpired = System.currentTimeMillis() - snoozedAt > UpdateSnoozeWindowMillis
 
-    // every condition including the release itself resolved in one place the
-    // only when there is genuinely something to show it for
     if (release != null && snoozeExpired && !dismissed) {
         com.example.musicfy.ui.screens.update.UpdatePromptSheet(
             release = release,
@@ -1476,10 +1373,7 @@ val LocalCropAlbumArt = compositionLocalOf { false }
 val LocalGridItemSize = compositionLocalOf { GridItemSize.BIG }
 val LocalSwipeToSong = compositionLocalOf { false }
 val LocalIsPlayerExpanded = compositionLocalOf { false }
-// detail screens album playlist liked publish their cover sampled accent
-// floating bottom nav bar s scrim drawn from mainactivity well outside
-// tint itself to match instead of always being a flat black gradient null =
-// is currently on top so the scrim falls back to its original plain black
+
 val LocalDetailAccentColor = staticCompositionLocalOf<androidx.compose.runtime.MutableState<Color?>> {
     androidx.compose.runtime.mutableStateOf(null)
 }

@@ -1,5 +1,4 @@
-// youlypluslyricsproviderkt
-// what is this for you ask its for you ly plus lyrics provider ofc
+// YouLyPlusLyricsProvider.kt
 
 package com.example.musicfy.lyrics
 
@@ -34,4 +33,3 @@ object YouLyPlusLyricsProvider : LyricsProvider {
         YouLyPlus.getAllLyrics(title, artist, duration, album, id, null, callback)
     }
 }
-

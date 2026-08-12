@@ -1,5 +1,4 @@
-// selectionsongsmenukt
-// the file functioned as selection songs menu
+// SelectionSongsMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -361,7 +360,7 @@ fun SelectionSongMenu(
                                         }
                                     }
                                     coroutineScope.launch {
-                                        // use the new reliable method that fetches fresh tokens
+
                                         songSelection.forEach { song ->
                                             YouTube.toggleSongLibrary(song.id, false)
                                         }
@@ -374,7 +373,7 @@ fun SelectionSongMenu(
                                         }
                                     }
                                     coroutineScope.launch {
-                                        // use the new reliable method that fetches fresh tokens
+
                                         songSelection.filter { it.song.inLibrary == null }
                                             .forEach { song ->
                                                 YouTube.toggleSongLibrary(song.id, true)

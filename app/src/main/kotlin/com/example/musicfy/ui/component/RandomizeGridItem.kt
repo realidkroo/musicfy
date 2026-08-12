@@ -1,5 +1,4 @@
-// randomizegriditemkt
-// what is this for you ask its for randomize grid item ofc
+// RandomizeGridItem.kt
 
 package com.example.musicfy.ui.component
 
@@ -32,8 +31,7 @@ fun RandomizeGridItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // when isloading is true multiplier goes to 0 moving dots to center
-    // when isloading is false multiplier goes to 1 moving dots to corners
+
     val dotOffsetMultiplier by animateFloatAsState(
         targetValue = if (isLoading) 0f else 1f,
         animationSpec = tween(durationMillis = 600),
@@ -54,15 +52,11 @@ fun RandomizeGridItem(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        // die dots 5 pattern
+
         val dotColor = MaterialTheme.colorScheme.onSecondaryContainer
         val dotSize = 14.dp
         val padding = 24.dp
 
-        // using a single center alignment and offsetting from center ensures they
-        // collapse to center correctly
-
-        // top left
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -71,7 +65,7 @@ fun RandomizeGridItem(
                 .clip(CircleShape)
                 .background(dotColor)
         )
-        // top right
+
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -80,7 +74,7 @@ fun RandomizeGridItem(
                 .clip(CircleShape)
                 .background(dotColor)
         )
-        // center
+
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -88,7 +82,7 @@ fun RandomizeGridItem(
                 .clip(CircleShape)
                 .background(dotColor)
         )
-        // bottom left
+
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -97,7 +91,7 @@ fun RandomizeGridItem(
                 .clip(CircleShape)
                 .background(dotColor)
         )
-        // bottom right
+
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -106,8 +100,7 @@ fun RandomizeGridItem(
                 .clip(CircleShape)
                 .background(dotColor)
         )
-        
-        // loading indicator overlay
+
         Box(modifier = Modifier.alpha(loadingAlpha)) {
             LoadingIndicator(
                 modifier = Modifier.size(48.dp),

@@ -1,5 +1,4 @@
-// playerbottomcards kt
-// this thing is for player bottom cards
+// PlayerBottomCards.kt
 
 package com.example.musicfy.ui.player
 
@@ -74,15 +73,12 @@ fun PlayerBottomCards(
     modifier: Modifier = Modifier,
     revealReady: Boolean = true,
 ) {
-    // don t compose the expensive card content until the player is fully settled
-    // during the open transition the cards aren t visible anyway
-    // however we must render an empty box with the exact same dimensions 150 dp
-    // so we don t break the layout of the player controls above us
+
     if (!revealReady) {
         Box(modifier = modifier.fillMaxWidth().height(150.dp))
         return
     }
-    
+
     val surfaceColor = cardColor.copy(alpha = 0.30f)
     val rearSurfaceColor = cardColor.copy(alpha = 0.24f)
     val reveal = remember { Animatable(0f) }
@@ -424,8 +420,8 @@ private fun AutoResizeLyricsLine(
                     Row(verticalAlignment = Alignment.Bottom) {
                         lineWords.forEachIndexed { idx, word ->
                             LyricsWordItem(
-                                word = word, 
-                                baseColor = color, 
+                                word = word,
+                                baseColor = color,
                                 fontSize = fontSize,
                                 playbackPositionProvider = playbackPositionProvider
                             )
@@ -512,4 +508,3 @@ private fun LyricsWordItem(
         modifier = Modifier.graphicsLayer(scaleX = wordScale, scaleY = wordScale)
     )
 }
-

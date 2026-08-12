@@ -1,5 +1,4 @@
-// baselifecyclecontentproviderkt
-// this thing is for base lifecycle content provider
+// BaseLifecycleContentProvider.kt
 
 package com.dpi
 
@@ -8,7 +7,6 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.net.Uri
 
-// base class for lifecycle management contentprovider with default
 abstract class BaseLifecycleContentProvider : ContentProvider() {
 
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<String>?): Int = 0

@@ -1,5 +1,4 @@
-// playlistkt
-// the file functioned as playlist
+// Playlist.kt
 
 package com.example.musicfy.db.entities
 
@@ -33,7 +32,7 @@ data class Playlist(
         get() = playlist.name
     override val thumbnailUrl: String?
         get() = null
-    
+
     val thumbnails: List<String>
         get() {
             return if (playlist.thumbnailUrl != null)

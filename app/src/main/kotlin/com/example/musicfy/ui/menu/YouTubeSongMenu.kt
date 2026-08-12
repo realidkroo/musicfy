@@ -1,5 +1,4 @@
-// youtubesongmenukt
-// what is this for you ask its for you tube song menu ofc
+// YouTubeSongMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -100,8 +99,7 @@ fun YouTubeSongMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val librarySong by database.song(song.id).collectAsState(initial = null)
     val downloadUtil = LocalDownloadUtil.current
-    // remember id getdownload returns a new flow each call so an
-    // unremembered collectasstate relaunches its coroutine every recomposition
+
     val download by remember(downloadUtil, song.id) {
         downloadUtil.getDownload(song.id)
     }.collectAsState(initial = null)
@@ -116,74 +114,74 @@ fun YouTubeSongMenu(
         }
     }
 
-    var showChoosePlaylistDialog by rememberSaveable {  
-        mutableStateOf(false)  
-    }  
+    var showChoosePlaylistDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
 
-    AddToPlaylistDialog(  
-        isVisible = showChoosePlaylistDialog,  
-        onGetSong = { playlist ->  
-            database.withTransaction {  
-                insert(song.toMediaMetadata())  
-            }  
-            coroutineScope.launch(Dispatchers.IO) {  
-                playlist.playlist.browseId?.let { browseId ->  
-                    YouTube.addToPlaylist(browseId, song.id)  
-                }  
-            }  
-            listOf(song.id)  
-        },  
-        onDismiss = { showChoosePlaylistDialog = false }  
-    )  
+    AddToPlaylistDialog(
+        isVisible = showChoosePlaylistDialog,
+        onGetSong = { playlist ->
+            database.withTransaction {
+                insert(song.toMediaMetadata())
+            }
+            coroutineScope.launch(Dispatchers.IO) {
+                playlist.playlist.browseId?.let { browseId ->
+                    YouTube.addToPlaylist(browseId, song.id)
+                }
+            }
+            listOf(song.id)
+        },
+        onDismiss = { showChoosePlaylistDialog = false }
+    )
 
-    var showSelectArtistDialog by rememberSaveable {  
-        mutableStateOf(false)  
-    }  
+    var showSelectArtistDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
 
-    if (showSelectArtistDialog) {  
-        ListDialog(  
-            onDismiss = { showSelectArtistDialog = false },  
-        ) {  
-            items(artists) { artist ->  
-                Row(  
-                    verticalAlignment = Alignment.CenterVertically,  
-                    modifier =  
-                    Modifier  
-                        .height(ListItemHeight)  
-                        .clickable {  
-                            navController.navigate("artist/${artist.id}")  
-                            showSelectArtistDialog = false  
-                            onDismiss()  
-                        }  
-                        .padding(horizontal = 12.dp),  
-                ) {  
-                    Box(  
-                        contentAlignment = Alignment.CenterStart,  
-                        modifier =  
-                        Modifier  
-                            .fillParentMaxWidth()  
-                            .height(ListItemHeight)  
-                            .clickable {  
-                                navController.navigate("artist/${artist.id}")  
-                                showSelectArtistDialog = false  
-                                onDismiss()  
-                            }  
-                            .padding(horizontal = 24.dp),  
-                    ) {  
-                        Text(  
-                            text = artist.name,  
-                            fontSize = 18.sp,  
-                            fontWeight = FontWeight.Bold,  
-                            maxLines = 1,  
-                            overflow = TextOverflow.Ellipsis,  
-                        )  
-                    }  
-                }  
-            }  
-        }  
-    }  
+    if (showSelectArtistDialog) {
+        ListDialog(
+            onDismiss = { showSelectArtistDialog = false },
+        ) {
+            items(artists) { artist ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier =
+                    Modifier
+                        .height(ListItemHeight)
+                        .clickable {
+                            navController.navigate("artist/${artist.id}")
+                            showSelectArtistDialog = false
+                            onDismiss()
+                        }
+                        .padding(horizontal = 12.dp),
+                ) {
+                    Box(
+                        contentAlignment = Alignment.CenterStart,
+                        modifier =
+                        Modifier
+                            .fillParentMaxWidth()
+                            .height(ListItemHeight)
+                            .clickable {
+                                navController.navigate("artist/${artist.id}")
+                                showSelectArtistDialog = false
+                                onDismiss()
+                            }
+                            .padding(horizontal = 24.dp),
+                    ) {
+                        Text(
+                            text = artist.name,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
 
-    ListItem(  
+    ListItem(
         headlineContent = {
             Text(
                 text = song.title,
@@ -191,15 +189,15 @@ fun YouTubeSongMenu(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-        },  
-        supportingContent = {  
-            Text(  
+        },
+        supportingContent = {
+            Text(
                 text = joinByBullet(
                     song.artists.joinToString { it.name },
                     song.duration?.let { makeTimeString(it * 1000L) },
                 )
-            )  
-        },  
+            )
+        },
         leadingContent = {
             Box(
                 contentAlignment = Alignment.Center,
@@ -216,32 +214,32 @@ fun YouTubeSongMenu(
                 )
             }
         },
-        trailingContent = {  
-            IconButton(  
-                onClick = {  
-                    database.transaction {  
-                        librarySong.let { librarySong ->  
-                            val s: SongEntity  
-                            if (librarySong == null) {  
-                                insert(song.toMediaMetadata(), SongEntity::toggleLike)  
-                                s = song.toMediaMetadata().toSongEntity().let(SongEntity::toggleLike)  
-                            } else {  
-                                s = librarySong.song.toggleLike()  
-                                update(s)  
-                            }  
-                            syncUtils.likeSong(s)  
-                        }  
-                    }  
-                },  
-            ) {  
-                Icon(  
-                    painter = painterResource(if (librarySong?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border),  
-                    tint = if (librarySong?.song?.liked == true) MaterialTheme.colorScheme.error else LocalContentColor.current,  
-                    contentDescription = null,  
-                )  
-            }  
-        },  
-    )  
+        trailingContent = {
+            IconButton(
+                onClick = {
+                    database.transaction {
+                        librarySong.let { librarySong ->
+                            val s: SongEntity
+                            if (librarySong == null) {
+                                insert(song.toMediaMetadata(), SongEntity::toggleLike)
+                                s = song.toMediaMetadata().toSongEntity().let(SongEntity::toggleLike)
+                            } else {
+                                s = librarySong.song.toggleLike()
+                                update(s)
+                            }
+                            syncUtils.likeSong(s)
+                        }
+                    }
+                },
+            ) {
+                Icon(
+                    painter = painterResource(if (librarySong?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border),
+                    tint = if (librarySong?.song?.liked == true) MaterialTheme.colorScheme.error else LocalContentColor.current,
+                    contentDescription = null,
+                )
+            }
+        },
+    )
 
     HorizontalDivider()
 
@@ -387,10 +385,10 @@ fun YouTubeSongMenu(
                     }
                     add(
                         Material3MenuItemData(
-                            title = { 
+                            title = {
                                 Text(
                                     text = if (isPinned) stringResource(R.string.unpin_from_speed_dial) else stringResource(R.string.pin_to_speed_dial)
-                                ) 
+                                )
                             },
                             icon = {
                                 Icon(
@@ -425,7 +423,6 @@ fun YouTubeSongMenu(
                             onClick = {
                                 val isInLibrary = librarySong?.song?.inLibrary != null
 
-                                // use the new reliable method that fetches fresh tokens
                                 coroutineScope.launch {
                                     YouTube.toggleSongLibrary(song.id, !isInLibrary)
                                 }

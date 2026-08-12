@@ -1,5 +1,4 @@
-// continuationitemrenderer kt
-// this thing is for continuation item renderer
+// ContinuationItemRenderer.kt
 
 package com.music.innertube.models
 

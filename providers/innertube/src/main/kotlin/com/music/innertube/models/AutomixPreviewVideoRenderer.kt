@@ -1,5 +1,4 @@
-// automixpreviewvideorenderer kt
-// this thing is part of automix preview video renderer
+// AutomixPreviewVideoRenderer.kt
 
 package com.music.innertube.models
 

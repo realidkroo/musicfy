@@ -1,9 +1,4 @@
-// playbacksettingsscreenkt
-// surfaces playback audio features whose actual engines already exist and
-// musicservicekt crossfade s dual player swap the custom biquad equalizer
-// two mechanisms loudnessenhancer based normalization but had no settings
-// crossfade and skip silence normalization were only ever set from their
-// and the equalizer was only reachable from the player s 3 dot menu
+// PlaybackSettingsScreen.kt
 
 package com.example.musicfy.ui.screens.settings
 

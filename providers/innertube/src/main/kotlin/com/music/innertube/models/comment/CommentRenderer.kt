@@ -1,5 +1,4 @@
-// commentrenderer kt
-// this thing is part of comment renderer
+// CommentRenderer.kt
 
 package com.music.innertube.models.comment
 
@@ -24,7 +23,7 @@ data class CommentThreadRenderer(
             val commentKey: String? = null,
         )
     }
-    
+
     @Serializable
     data class Comment(
         val commentRenderer: CommentRenderer? = null,

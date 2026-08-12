@@ -1,5 +1,4 @@
-// playerbody kt
-// this thing is for player body
+// PlayerBody.kt
 
 package com.music.innertube.models.body
 

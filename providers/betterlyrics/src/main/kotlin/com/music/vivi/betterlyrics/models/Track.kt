@@ -1,5 +1,4 @@
-// track kt
-// this thing is part of track
+// Track.kt
 
 package com.example.musicfy.betterlyrics.models
 

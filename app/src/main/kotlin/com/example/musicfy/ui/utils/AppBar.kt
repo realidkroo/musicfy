@@ -1,5 +1,4 @@
-// appbarkt
-// what is this for you ask its for app bar ofc
+// AppBar.kt
 
 package com.example.musicfy.ui.utils
 
@@ -52,8 +51,7 @@ class AppBarScrollBehavior(
                 state.contentOffset += consumed.y
                 if (state.heightOffset == 0f || state.heightOffset == state.heightOffsetLimit) {
                     if (consumed.y == 0f && available.y > 0f) {
-                        // reset the total content offset to zero when scrolling all the way down
-                        // this will eliminate some float precision inaccuracies
+
                         state.contentOffset = 0f
                     }
                 }

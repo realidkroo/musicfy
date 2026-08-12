@@ -1,5 +1,4 @@
-// playlistscreenmenuskt
-// this thing is for playlist screen menus
+// PlaylistScreenMenus.kt
 
 package com.example.musicfy.ui.menu
 
@@ -21,7 +20,6 @@ import com.example.musicfy.db.entities.PlaylistSong
 import com.example.musicfy.ui.component.Material3MenuGroup
 import com.example.musicfy.ui.component.Material3MenuItemData
 
-// menu for local playlist screen
 @Composable
 fun LocalPlaylistMenu(
     playlist: Playlist,
@@ -140,7 +138,6 @@ fun LocalPlaylistMenu(
             )
         )
 
-        // show sync button only for youtube playlists
         if (isYouTubePlaylist) {
             add(
                 Material3MenuItemData(
@@ -230,7 +227,6 @@ fun LocalPlaylistMenu(
     Material3MenuGroup(items = menuItems)
 }
 
-// menu for auto playlist screen liked songs downloaded songs etc
 @Composable
 fun AutoPlaylistMenu(
     downloadState: Int,
@@ -307,7 +303,6 @@ fun AutoPlaylistMenu(
     )
 }
 
-// menu for top playlist screen
 @Composable
 fun TopPlaylistMenu(
     downloadState: Int,
@@ -384,7 +379,6 @@ fun TopPlaylistMenu(
     )
 }
 
-// menu for cache playlist screen
 @Composable
 fun CachePlaylistMenu(
     downloadState: Int,

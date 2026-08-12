@@ -1,5 +1,4 @@
-// chartspage kt
-// this thing is for charts page
+// ChartsPage.kt
 
 package com.music.innertube.pages
 

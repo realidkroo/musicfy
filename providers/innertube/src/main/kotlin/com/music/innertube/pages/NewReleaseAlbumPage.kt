@@ -1,5 +1,4 @@
-// newreleasealbumpage kt
-// this thing is for new release album page
+// NewReleaseAlbumPage.kt
 
 package com.music.innertube.pages
 

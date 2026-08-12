@@ -1,5 +1,4 @@
-// commiitemkt
-// what is this for you ask its for commiitem ofc
+// commiitem.kt
 
 package com.example.musicfy.core.commitscreen
 
@@ -44,7 +43,7 @@ import com.example.musicfy.R
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // left commit icon type indicator
+
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -55,19 +54,18 @@ import com.example.musicfy.R
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                painter = painterResource(R.drawable.commit), // add commit icon or use a fallback
+                painter = painterResource(R.drawable.commit),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(20.dp)
             )
         }
 
-        // center commit information
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // main commit message
+
             Text(
                 text = commit.message,
                 style = MaterialTheme.typography.bodyLarge,
@@ -77,7 +75,6 @@ import com.example.musicfy.R
                 overflow = TextOverflow.Ellipsis
             )
 
-            // author + date row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -101,7 +98,6 @@ import com.example.musicfy.R
                 )
             }
 
-            // short sha chip
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = RoundedCornerShape(4.dp)
@@ -117,7 +113,6 @@ import com.example.musicfy.R
 
         Spacer(Modifier.width(4.dp))
 
-        // right author avatar
         if (commit.authorAvatarUrl != null) {
             AsyncImage(
                 model = commit.authorAvatarUrl,
@@ -127,7 +122,7 @@ import com.example.musicfy.R
                     .clip(CircleShape)
             )
         } else {
-            // fallback avatar with initials
+
             Box(
                 modifier = Modifier
                     .size(36.dp)

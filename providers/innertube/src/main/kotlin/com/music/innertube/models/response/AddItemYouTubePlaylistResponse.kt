@@ -1,5 +1,4 @@
-// additemyoutubeplaylistresponse kt
-// what is this for you ask its for add item you tube playlist response ofc
+// AddItemYouTubePlaylistResponse.kt
 
 package com.music.innertube.models.response
 

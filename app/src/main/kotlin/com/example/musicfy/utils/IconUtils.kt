@@ -1,5 +1,4 @@
-// iconutilskt
-// what is this for you ask its for icon utils ofc
+// IconUtils.kt
 
 package com.example.musicfy.utils
 

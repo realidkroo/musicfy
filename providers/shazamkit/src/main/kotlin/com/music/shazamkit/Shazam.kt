@@ -1,5 +1,4 @@
-// shazam kt
-// this thing is for shazam
+// Shazam.kt
 
 package com.music.shazamkit
 
@@ -32,40 +31,36 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 
-// shazam music recognition with built in rate limiting and queue management
 object Shazam {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // configuration
     private const val MAX_CONCURRENT_REQUESTS = 2
-    
+
     private const val MIN_REQUEST_INTERVAL_MS = 1000L
-    
+
     private const val MAX_RETRIES = 3
-    
+
     private const val INITIAL_RETRY_DELAY_MS = 2000L
-    
+
     private const val CACHE_DURATION_MS = 300000L
-    
+
     private const val MAX_QUEUE_SIZE = 50
 
-    // internal state
     private val activeRequests = AtomicInteger(0)
-    
+
     private var lastRequestTime = 0L
-    
+
     private val requestMutex = Mutex()
-    
+
     private val requestQueue = ConcurrentLinkedQueue<PendingRequest>()
-    
+
     private val resultCache = ConcurrentHashMap<String, CachedResult>()
-    
+
     private var nextRequestId = 0L
-    
+
     private var isProcessingQueue = false
 
-    // http client configuration
     private val client by lazy {
         HttpClient(CIO) {
             install(ContentNegotiation) {
@@ -78,7 +73,7 @@ object Shazam {
                 )
             }
             expectSuccess = false
-            
+
             engine {
                 requestTimeout = 30000
             }
@@ -98,7 +93,6 @@ object Shazam {
         "America/Los_Angeles", "Asia/Tokyo", "Asia/Dubai"
     )
 
-    // recognize music from audio signature
     suspend fun recognize(signature: String, sampleDurationMs: Long): Result<RecognitionResult> {
         val cacheKey = generateCacheKey(signature)
         getCachedResult(cacheKey)?.let {
@@ -108,30 +102,24 @@ object Shazam {
         return enqueueRequest(signature, sampleDurationMs)
     }
 
-    // get number of pending requests in queue
     fun getPendingRequestsCount(): Int = requestQueue.size
 
-    // get number of active requests
     fun getActiveRequestsCount(): Int = activeRequests.get()
 
-    // clear cache
     fun clearCache() {
         resultCache.clear()
     }
 
-    // cancel all pending requests
     fun cancelPendingRequests() {
         requestQueue.clear()
     }
 
-    // cleanup resources
     fun cleanup() {
         cancelPendingRequests()
         clearCache()
         client.close()
     }
 
-    // enqueue request for processing
     private suspend fun enqueueRequest(
         signature: String,
         sampleDurationMs: Long
@@ -157,7 +145,6 @@ object Shazam {
         return request.awaitResult()
     }
 
-    // process request queue
     private suspend fun processQueue() {
         while (true) {
             val request = requestQueue.poll() ?: break
@@ -185,7 +172,6 @@ object Shazam {
         isProcessingQueue = false
     }
 
-    // execute recognition request with retry logic
     private suspend fun executeRequest(
         signature: String,
         sampleDurationMs: Long
@@ -195,12 +181,12 @@ object Shazam {
         for (attempt in 0 until MAX_RETRIES) {
             try {
                 enforceRateLimit()
-                
+
                 val result = performRecognition(signature, sampleDurationMs)
-                
+
                 val cacheKey = generateCacheKey(signature)
                 cacheResult(cacheKey, result)
-                
+
                 return Result.success(result)
             } catch (e: Exception) {
                 lastException = e
@@ -222,7 +208,6 @@ object Shazam {
         throw lastException ?: Exception("Recognition failed after $MAX_RETRIES attempts")
     }
 
-    // perform actual recognition request
     private suspend fun performRecognition(
         signature: String,
         sampleDurationMs: Long
@@ -275,7 +260,6 @@ object Shazam {
             ?: throw Exception("No match found")
     }
 
-    // enforce minimum time between requests
     private suspend fun enforceRateLimit() {
         val currentTime = System.currentTimeMillis()
         val timeSinceLastRequest = currentTime - lastRequestTime
@@ -288,17 +272,14 @@ object Shazam {
         lastRequestTime = System.currentTimeMillis()
     }
 
-    // calculate delay using exponential backoff
     private fun calculateBackoffDelay(attempt: Int): Long {
         return INITIAL_RETRY_DELAY_MS * (1 shl attempt)
     }
 
-    // generate cache key
     private fun generateCacheKey(signature: String): String {
         return signature.hashCode().toString()
     }
 
-    // get result from cache
     private fun getCachedResult(key: String): RecognitionResult? {
         val cached = resultCache[key] ?: return null
         val currentTime = System.currentTimeMillis()
@@ -311,7 +292,6 @@ object Shazam {
         return cached.result
     }
 
-    // cache result
     private fun cacheResult(key: String, result: RecognitionResult) {
         resultCache[key] = CachedResult(
             timestamp = System.currentTimeMillis(),
@@ -321,7 +301,6 @@ object Shazam {
         cleanupCache()
     }
 
-    // cleanup expired cache entries
     private fun cleanupCache() {
         if (resultCache.size < 100) return
 
@@ -336,7 +315,6 @@ object Shazam {
         }
     }
 
-    // convert shazam response to internal model
     private fun ShazamResponseJson.toRecognitionResult(): RecognitionResult? {
         val track = this.track ?: return null
 
@@ -352,7 +330,7 @@ object Shazam {
         val appleAction = track.hub?.options?.firstOrNull {
             it?.providername?.contains("apple", ignoreCase = true) == true
         }?.actions?.firstOrNull()
-        
+
         val spotifyProvider = track.hub?.providers?.find {
             it?.caption?.contains("spotify", ignoreCase = true) == true
         }
@@ -360,7 +338,7 @@ object Shazam {
         val youtubeAction = track.hub?.options?.find {
             it?.type?.contains("video", ignoreCase = true) == true
         }?.actions?.firstOrNull()
-        
+
         val youtubeVideoId = youtubeAction?.uri?.let { uri ->
             uri.substringAfterLast("v=", "").takeIf { it.isNotEmpty() }
                 ?: uri.substringAfterLast("/", "").takeIf { it.isNotEmpty() && it.length == 11 }
@@ -385,7 +363,6 @@ object Shazam {
         )
     }
 
-    // pending request in queue
     private class PendingRequest(
         val id: Long,
         val signature: String,
@@ -408,7 +385,6 @@ object Shazam {
         }
     }
 
-    // cached result
     private data class CachedResult(
         val timestamp: Long,
         val result: RecognitionResult

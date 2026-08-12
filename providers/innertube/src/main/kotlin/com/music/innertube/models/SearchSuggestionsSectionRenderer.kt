@@ -1,5 +1,4 @@
-// searchsuggestionssectionrenderer kt
-// the file functioned as search suggestions section renderer
+// SearchSuggestionsSectionRenderer.kt
 
 package com.music.innertube.models
 

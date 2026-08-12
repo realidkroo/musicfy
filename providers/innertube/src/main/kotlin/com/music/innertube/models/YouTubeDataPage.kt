@@ -1,8 +1,6 @@
-// youtubedatapage kt
-// the file functioned as you tube data page
+// YouTubeDataPage.kt
 
 package com.music.innertube.models
-
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

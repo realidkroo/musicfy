@@ -1,5 +1,4 @@
-// morphingplayer kt
-// this thing is for morphing player
+// MorphingPlayer.kt
 
 package com.example.musicfy.ui.player
 
@@ -42,7 +41,6 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.togetherWith
 
-// pre computed static endpoints for the morphing animation calculated once and cached no allocations per frame
 @Stable
 private class MorphEndpoints(
     val miniArtSize: Dp,
@@ -74,8 +72,8 @@ fun MorphingSharedElements(
     canvasArtwork: com.example.musicfy.canvas.CanvasArtwork? = null,
     isPlaying: Boolean,
     playbackState: @Player.State Int,
-    maxWidth: Dp, // static screenwidth
-    maxHeight: Dp, // static screenheight
+    maxWidth: Dp,
+    maxHeight: Dp,
     collapsedBound: Dp,
     horizontalOffsetProvider: () -> Float,
     isAppleMusic: Boolean,
@@ -86,12 +84,11 @@ fun MorphingSharedElements(
     val playerConnection = LocalPlayerConnection.current
     val density = LocalDensity.current
 
-    // pre compute all static endpoints once these never change during animation
     val endpoints = remember(maxWidth, maxHeight, isAppleMusic, useNewPlayerDesign) {
         val miniHeight = 64.dp
         val miniArtSize = 48.dp
-        // pill starts at 24 dp from screen edge add 12 dp inner padding
-        val miniArtX = 36.dp 
+
+        val miniArtX = 36.dp
         val miniArtY = (miniHeight - miniArtSize) / 2
 
         val miniTextX = miniArtX + miniArtSize + 12.dp
@@ -99,13 +96,10 @@ fun MorphingSharedElements(
 
         val miniPlaySize = 36.dp
         val miniSkipSize = 36.dp
-        
-        // pill ends at maxwidth 24 dp subtract 12 dp inner padding = maxwidth 36 dp
-        // skip button right edge should be at maxwidth 36 dp
+
         val miniSkipX = maxWidth - 36.dp - miniSkipSize
         val miniSkipY = (miniHeight - miniSkipSize) / 2
 
-        // play button with 8 dp gap from skip button
         val miniPlayX = miniSkipX - 8.dp - miniPlaySize
         val miniPlayY = (miniHeight - miniPlaySize) / 2
 
@@ -147,7 +141,6 @@ fun MorphingSharedElements(
         )
     }
 
-    // convert dp endpoints to px once avoids repeated density conversions in graphicslayer
     val endpointsPx = remember(endpoints, density) {
         with(density) {
             MorphEndpointsPx(
@@ -177,7 +170,6 @@ fun MorphingSharedElements(
 
     val miniPlaySize = 36.dp
 
-    // cached gradient brushes created once reused every frame
     val gradientBrush = remember {
         Brush.verticalGradient(
             0f to Color.Black,
@@ -195,7 +187,7 @@ fun MorphingSharedElements(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // 1 album art uses layout modifier to read progress without recomposition
+
         if (mediaMetadata?.thumbnailUrl != null) {
             val isAppleMusicNewDesign = isAppleMusic && useNewPlayerDesign
             val isAppleMusicOldDesign = isAppleMusic && !useNewPlayerDesign
@@ -217,8 +209,7 @@ fun MorphingSharedElements(
                         }
                         clip = true
                         shape = RoundedCornerShape(artCornerRadius)
-                        // the gradient mask is not drawn during the first part of the morph
-                        // avoid allocating a screen sized offscreen buffer until it is needed
+
                         compositingStrategy = if (p > 0.58f) {
                             CompositingStrategy.Offscreen
                         } else {
@@ -307,7 +298,6 @@ fun MorphingSharedElements(
                     }
                 }
 
-                // high res artwork use derivedstateof to avoid recomposition churn
                 val shouldLoadHighArtwork by remember {
                     derivedStateOf { progressProvider() > 0.965f }
                 }
@@ -345,7 +335,6 @@ fun MorphingSharedElements(
                     }
                 }
 
-                // canvas artwork use derivedstateof
                 val shouldLoadCanvasArtwork by remember(canvasArtwork) {
                     derivedStateOf {
                         progressProvider() > 0.985f &&
@@ -368,7 +357,6 @@ fun MorphingSharedElements(
             }
         }
 
-        // 2 title and subtitle uses layout modifier no recomposition on progress change
         if (mediaMetadata != null) {
             Column(
                 modifier = Modifier
@@ -395,7 +383,7 @@ fun MorphingSharedElements(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 val artistText = remember(mediaMetadata.artists, mediaMetadata.album) {
                     if (mediaMetadata.artists.isNotEmpty()) {
                         val artistsStr = mediaMetadata.artists.joinToString { it.name }
@@ -408,7 +396,7 @@ fun MorphingSharedElements(
                         mediaMetadata.album?.title
                     }
                 }
-                
+
                 if (artistText != null) {
                     Text(
                         text = artistText,
@@ -422,7 +410,6 @@ fun MorphingSharedElements(
             }
         }
 
-        // 3 play pause button uses layout modifier
         Box(
             modifier = Modifier
                 .morphLayout(
@@ -446,7 +433,7 @@ fun MorphingSharedElements(
             Icon(
                 painter = painterResource(
                     if (playbackState == Player.STATE_ENDED) R.drawable.replay
-                    else if (isPlaying) R.drawable.ic_untitled_pause 
+                    else if (isPlaying) R.drawable.ic_untitled_pause
                     else R.drawable.ic_untitled_play
                 ),
                 contentDescription = null,
@@ -455,7 +442,6 @@ fun MorphingSharedElements(
             )
         }
 
-        // 4 skip next button uses layout modifier
         Box(
             modifier = Modifier
                 .morphLayout(
@@ -486,12 +472,10 @@ fun MorphingSharedElements(
     }
 }
 
-// identifies which morphing element to position
 private enum class MorphElement {
     ART, TEXT, PLAY, SKIP
 }
 
-// pre computed px endpoints to avoid dp→px conversion in layout draw phase
 @Stable
 private class MorphEndpointsPx(
     val miniArtSizePx: Float,
@@ -519,7 +503,6 @@ private class MorphEndpointsPx(
 private fun lerpF(start: Float, stop: Float, fraction: Float): Float =
     start + (stop - start) * fraction
 
-// custom layout modifier that positions morphing elements by reading progressprovider in the layout phase not composition phase this prevents recomposition of the entire morphing tree on every animation frame
 private fun Modifier.morphLayout(
     progressProvider: () -> Float,
     horizontalOffsetProvider: () -> Float,
@@ -530,9 +513,7 @@ private fun Modifier.morphLayout(
     val p = progressProvider()
     val hOffset = horizontalOffsetProvider()
     val availableHeightPx = constraints.maxHeight.toFloat()
-    
-    // the container in bottomsheet is already bottomcenter aligned and its top starts at
-    // screenheight 164dp if we offset by availableheightpx we double offset and push it off screen
+
     val miniTopPx = 0f
 
     val (x, y, w, h) = when (element) {
@@ -547,7 +528,7 @@ private fun Modifier.morphLayout(
             val textW = lerpF(endpointsPx.miniTextWidthPx, endpointsPx.fullTextWidthPx, p)
             val textX = lerpF(endpointsPx.miniTextXPx, endpointsPx.fullTextXPx, p)
             val textY = lerpF(miniTopPx + endpointsPx.miniTextYPx, endpointsPx.fullTextYPx, p)
-            floatArrayOf(textX, textY, textW, -1f) // 1 = use intrinsic height
+            floatArrayOf(textX, textY, textW, -1f)
         }
         MorphElement.PLAY -> {
             val playX = lerpF(endpointsPx.miniPlayXPx, endpointsPx.fullPlayXPx, p)

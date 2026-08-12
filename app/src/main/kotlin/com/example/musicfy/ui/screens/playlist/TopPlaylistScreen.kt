@@ -1,5 +1,4 @@
-// topplaylistscreenkt
-// what is this for you ask its for top playlist screen ofc
+// TopPlaylistScreen.kt
 
 package com.example.musicfy.ui.screens.playlist
 
@@ -137,13 +136,13 @@ fun TopPlaylistScreen(
     var isSearching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
-    
+
     LaunchedEffect(isSearching) {
         if (isSearching) {
             focusRequester.requestFocus()
         }
     }
-    
+
     var inSelectMode by rememberSaveable { mutableStateOf(false) }
     val selection = rememberSaveable(
         saver = listSaver<MutableList<String>, String>(
@@ -333,7 +332,7 @@ fun TopPlaylistScreen(
 
                         SongListItem(
                             song = song,
-// albumindex = index + 1
+
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             showInLibraryIcon = true,
@@ -397,7 +396,6 @@ fun TopPlaylistScreen(
                     Spacer(Modifier.height(35.dp))
                 }
             }
-
 
         DraggableScrollbar(
             modifier = Modifier

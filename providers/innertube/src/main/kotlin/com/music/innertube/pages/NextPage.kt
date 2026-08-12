@@ -1,5 +1,4 @@
-// nextpage kt
-// the file functioned as next page
+// NextPage.kt
 
 package com.music.innertube.pages
 
@@ -21,14 +20,13 @@ data class NextResult(
     val lyricsEndpoint: BrowseEndpoint? = null,
     val relatedEndpoint: BrowseEndpoint? = null,
     val continuation: String?,
-    val endpoint: WatchEndpoint, // current or continuation next endpoint
+    val endpoint: WatchEndpoint,
 )
 
 object NextPage {
     fun fromPlaylistPanelVideoRenderer(renderer: PlaylistPanelVideoRenderer): SongItem? {
         val longByLineRuns = renderer.longBylineText?.runs?.splitBySeparator() ?: return null
 
-        // extract library tokens using the new method that properly handles multiple toggle items
         val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
         return SongItem(

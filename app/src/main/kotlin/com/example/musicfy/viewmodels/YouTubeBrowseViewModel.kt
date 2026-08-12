@@ -1,5 +1,4 @@
-// youtubebrowseviewmodelkt
-// what is this for you ask its for you tube browse view model ofc
+// YouTubeBrowseViewModel.kt
 
 package com.example.musicfy.viewmodels
 

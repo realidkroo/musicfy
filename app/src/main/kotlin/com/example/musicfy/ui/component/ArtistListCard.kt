@@ -1,6 +1,4 @@
-// artistlistcardkt
-// this thing is for the unified artist list home section one compound
-// avatar + name header a row of covers and a row of related artist circles
+// ArtistListCard.kt
 
 package com.example.musicfy.ui.component
 
@@ -72,7 +70,7 @@ fun ArtistListCard(
                 val thumbnails = mutableListOf<String>()
                 group.artistThumbnailUrl?.let { thumbnails.add(it) }
                 thumbnails.addAll(group.items.take(2).mapNotNull { it.thumbnail })
-                
+
                 val colorsList = mutableListOf<Color>()
                 for (thumb in thumbnails) {
                     val request = ImageRequest.Builder(context)
@@ -124,7 +122,7 @@ fun ArtistListCard(
         val fallbackColors = premiumDarkColors[(group.artistName.hashCode() and 0x7FFFFFFF) % premiumDarkColors.size]
 
         val color1 by animateColorAsState(
-            targetValue = extractedColors.getOrNull(0)?.let { 
+            targetValue = extractedColors.getOrNull(0)?.let {
                 Color(androidx.core.graphics.ColorUtils.blendARGB(it.toArgb(), android.graphics.Color.BLACK, 0.65f))
             } ?: fallbackColors[0],
             animationSpec = tween(800), label = ""
@@ -153,7 +151,7 @@ fun ArtistListCard(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // top section artist avatar + text
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 24.dp, top = 24.dp, end = 24.dp)
@@ -196,7 +194,6 @@ fun ArtistListCard(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // middle section 3 enlarged songs
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier
@@ -224,7 +221,6 @@ fun ArtistListCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // bottom section 2 huge circles clipping off
             Row(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
                 modifier = Modifier

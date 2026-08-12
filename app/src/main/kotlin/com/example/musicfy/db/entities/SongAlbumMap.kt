@@ -1,5 +1,4 @@
-// songalbummapkt
-// the file functioned as song album map
+// SongAlbumMap.kt
 
 package com.example.musicfy.db.entities
 

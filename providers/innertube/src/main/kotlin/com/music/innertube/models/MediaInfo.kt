@@ -1,5 +1,4 @@
-// mediainfo kt
-// this thing is for media info
+// MediaInfo.kt
 
 package com.music.innertube.models
 

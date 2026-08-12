@@ -1,5 +1,4 @@
-// gettranscriptresponse kt
-// the file functioned as get transcript response
+// GetTranscriptResponse.kt
 
 package com.music.innertube.models.response
 

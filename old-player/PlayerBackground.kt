@@ -1,5 +1,4 @@
-// playerbackground kt
-// extracted from player kt s bottomsheet background = slot
+// PlayerBackground.kt
 
 package com.example.musicfy.ui.player
 
@@ -76,7 +75,6 @@ private fun Modifier.liquidWarpEffect(time: Float): Modifier = composed {
     }
 }
 
-// full player background renderer for all playerbackgroundstyle variants extracted verbatim from the old bottomsheetplayer s background = slot in player kt so the ~500 line style when isn t inlined into the root player composable
 @Composable
 fun PlayerBackgroundRenderer(
     playerBackground: PlayerBackgroundStyle,
@@ -95,7 +93,7 @@ fun PlayerBackgroundRenderer(
             .fillMaxSize()
             .background(bottomSheetBackgroundColor)
     ) {
-        // static gradient base always active
+
         if (playerBackground != PlayerBackgroundStyle.DEFAULT) {
             val colors = gradientColors.ifEmpty {
                 listOf(
@@ -118,7 +116,6 @@ fun PlayerBackgroundRenderer(
             )
         }
 
-        // heavy effects fade in on top
         if (playerBackground != PlayerBackgroundStyle.DEFAULT) {
             Box(
                 modifier = Modifier
@@ -390,11 +387,10 @@ fun PlayerBackgroundRenderer(
                                     label = "warpTime"
                                 )
 
-                                // layer 1 full screen blurred background
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(currentBgState.primaryUrl)
-                                        .size(128, 128) // downsample significantly for performance
+                                        .size(128, 128)
                                         .allowHardware(false)
                                         .build(),
                                     contentDescription = null,
@@ -405,13 +401,13 @@ fun PlayerBackgroundRenderer(
                                             scaleX = 1.2f
                                             scaleY = 1.2f
                                             compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                                        } // scale up to hide warped edges
+                                        }
                                         .let {
                                             if (android.os.Build.VERSION.SDK_INT >= 33) {
                                                 val isSheetTransitioning by remember(state) {
                                                     derivedStateOf { state.progress > 0.01f && state.progress < 0.99f }
                                                 }
-                                                // freeze time animation during transition to save gpu
+
                                                 val transitionTime = if (isSheetTransitioning) 0f else time
                                                 it.blur(50.dp).liquidWarpEffect(transitionTime)
                                             } else {
@@ -421,7 +417,6 @@ fun PlayerBackgroundRenderer(
                                 )
                             }
 
-                            // layer 3 dynamic overlay for depth
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -483,23 +478,22 @@ fun PlayerBackgroundRenderer(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    // scale up to avoid showing edges during rotation
+
                                     scaleX = 1.7f
                                     scaleY = 1.7f
                                 }
                         ) {
                             val matrix = remember {
                                 val m = ColorMatrix()
-                                m.setToSaturation(1.8f) // reduced to avoid neon look
+                                m.setToSaturation(1.8f)
                                 m
                             }
                             val colorFilter = ColorFilter.colorMatrix(matrix)
 
-                            // layer 1 the anchor full image counter clockwise
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(thumbnailUrl)
-                                    .size(128, 128) // downsample significantly for performance
+                                    .size(128, 128)
                                     .allowHardware(false)
                                     .build(),
                                 contentDescription = null,
@@ -511,11 +505,10 @@ fun PlayerBackgroundRenderer(
                                     .graphicsLayer { rotationZ = anchorRotation }
                             )
 
-                            // layer 2 fast rotating crop top left
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(thumbnailUrl)
-                                    .size(128, 128) // downsample significantly for performance
+                                    .size(128, 128)
                                     .allowHardware(false)
                                     .build(),
                                 contentDescription = null,
@@ -531,11 +524,10 @@ fun PlayerBackgroundRenderer(
                                     }
                             )
 
-                            // layer 3 slow rotating crop bottom right
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(thumbnailUrl)
-                                    .size(128, 128) // downsample significantly for performance
+                                    .size(128, 128)
                                     .allowHardware(false)
                                     .build(),
                                 contentDescription = null,
@@ -551,7 +543,6 @@ fun PlayerBackgroundRenderer(
                                     }
                             )
 
-                            // global dark tint to prevent neon look + vertical gradient for depth
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -574,7 +565,7 @@ fun PlayerBackgroundRenderer(
                 }
             }
             PlayerBackgroundStyle.DEFAULT -> {
-                        // nothing
+
                     }
                 }
             }

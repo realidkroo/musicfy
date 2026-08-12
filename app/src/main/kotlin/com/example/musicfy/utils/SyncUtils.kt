@@ -1,7 +1,4 @@
-// syncutilskt
-// this thing is for sync utils
-
-// musicfy project c 2026 outertune project copyright c 2025 licensed under
+// SyncUtils.kt
 
 package com.example.musicfy.utils
 
@@ -197,8 +194,6 @@ class SyncUtils @Inject constructor(
         _syncState.value = _syncState.value.update()
     }
 
-    // public api methods queue operations
-
     fun performFullSync() {
         syncScope.launch {
             syncChannel.send(SyncOperation.FullSync)
@@ -327,8 +322,6 @@ class SyncUtils @Inject constructor(
         }
     }
 
-    // suspend versions for direct calls
-
     suspend fun syncLikedSongsSuspend() = executeSyncLikedSongs()
     suspend fun syncLibrarySongsSuspend() = executeSyncLibrarySongs()
     suspend fun syncUploadedSongsSuspend() = executeSyncUploadedSongs()
@@ -349,8 +342,6 @@ class SyncUtils @Inject constructor(
         executeSyncArtistsSubscriptions()
     }
 
-    // private execution methods
-
     private suspend fun executeFullSync() = withContext(Dispatchers.IO) {
         if (!isLoggedIn()) {
             Timber.w("Skipping full sync - user not logged in")
@@ -360,7 +351,7 @@ class SyncUtils @Inject constructor(
         updateState { copy(overallStatus = SyncStatus.Syncing, currentOperation = "Starting full sync") }
 
         try {
-            // sync in sequence to avoid overwhelming the api and database
+
             executeSyncLikedSongs()
             delay(DB_OPERATION_DELAY_MS)
 
@@ -437,7 +428,6 @@ class SyncUtils @Inject constructor(
                     val remoteIds = remoteSongs.map { it.id }.toSet()
                     val localSongs = database.likedSongsByNameAsc().first()
 
-                    // remove likes from songs not in remote
                     localSongs.filterNot { it.id in remoteIds }.forEach { song ->
                         try {
                             database.update(song.song.localToggleLike())
@@ -447,7 +437,6 @@ class SyncUtils @Inject constructor(
                         }
                     }
 
-                    // add update songs from remote
                     val now = LocalDateTime.now()
                     remoteSongs.forEachIndexed { index, song ->
                         try {
@@ -556,7 +545,7 @@ class SyncUtils @Inject constructor(
 
         withRetry {
             Timber.d("[UPLOAD_DEBUG] Calling YouTube.library(FEmusic_library_privately_owned_tracks, tabIndex=1)")
-            // uploaded songs are in tab 1 uploads not tab 0 library
+
             YouTube.library("FEmusic_library_privately_owned_tracks", tabIndex = 1).completed()
         }.onSuccess { result ->
             Timber.d("[UPLOAD_DEBUG] withRetry succeeded, result isSuccess=${result.isSuccess}")
@@ -1031,13 +1020,12 @@ class SyncUtils @Inject constructor(
 
         try {
             database.withTransaction {
-                // clear liked songs
+
                 val likedSongs = database.likedSongsByNameAsc().first()
                 likedSongs.forEach {
                     database.update(it.song.copy(liked = false, likedDate = null))
                 }
 
-                // clear library songs
                 val librarySongs = database.songsByNameAsc().first()
                 librarySongs.forEach {
                     if (it.song.inLibrary != null) {
@@ -1045,19 +1033,16 @@ class SyncUtils @Inject constructor(
                     }
                 }
 
-                // clear liked albums
                 val likedAlbums = database.albumsLikedByNameAsc().first()
                 likedAlbums.forEach {
                     database.update(it.album.copy(bookmarkedAt = null))
                 }
 
-                // clear subscribed artists
                 val subscribedArtists = database.artistsBookmarkedByNameAsc().first()
                 subscribedArtists.forEach {
                     database.update(it.artist.copy(bookmarkedAt = null))
                 }
 
-                // delete synced playlists
                 val savedPlaylists = database.playlistsByNameAsc().first()
                 savedPlaylists.forEach {
                     if (it.playlist.browseId != null) {
@@ -1066,20 +1051,17 @@ class SyncUtils @Inject constructor(
                     }
                 }
 
-                // clear uploaded songs
                 val uploadedSongs = database.uploadedSongsByNameAsc().first()
                 uploadedSongs.forEach {
                     database.update(it.song.copy(isUploaded = false))
                 }
 
-                // clear uploaded albums
                 val uploadedAlbums = database.albumsUploadedByCreateDateAsc().first()
                 uploadedAlbums.forEach {
                     database.update(it.album.copy(isUploaded = false))
                 }
             }
 
-            // reset sync timestamp
             context.dataStore.edit { settings ->
                 settings[LastFullSyncKey] = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)
             }

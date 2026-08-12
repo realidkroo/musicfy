@@ -1,5 +1,4 @@
-// browseresponse kt
-// the file functioned as browse response
+// BrowseResponse.kt
 
 package com.music.innertube.models.response
 

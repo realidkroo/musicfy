@@ -1,5 +1,4 @@
-// castpickersheet kt
-// this thing is part of cast picker sheet
+// CastPickerSheet.kt
 
 package com.example.musicfy.ui.component
 
@@ -41,7 +40,7 @@ fun CastPickerSheet(
             .fillMaxWidth()
             .padding(bottom = 24.dp)
     ) {
-        // header
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(bottom = 16.dp)
@@ -59,7 +58,7 @@ fun CastPickerSheet(
                 fontWeight = FontWeight.Bold
             )
         }
-        
+
         if (isConnecting) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -78,7 +77,7 @@ fun CastPickerSheet(
                 )
             }
         } else if (currentlyConnectedRoute != null) {
-            // currently connected show disconnect option
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -112,7 +111,7 @@ fun CastPickerSheet(
                 )
             }
         } else if (routes.isEmpty()) {
-            // no devices found
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,7 +138,7 @@ fun CastPickerSheet(
                 )
             }
         } else {
-            // show available devices
+
             LazyColumn {
                 items(routes) { route ->
                     Row(

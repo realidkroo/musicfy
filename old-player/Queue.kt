@@ -1,5 +1,4 @@
-// queue kt
-// the file functioned as queue
+// Queue.kt
 
 package com.example.musicfy.ui.player
 
@@ -187,7 +186,7 @@ fun Queue(
 
     val isBluetoothConnected by produceState(initialValue = isBluetoothHeadphoneConnected(context)) {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        
+
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 value = isBluetoothHeadphoneConnected(context)
@@ -212,7 +211,7 @@ fun Queue(
             addAction("android.bluetooth.device.action.ACL_DISCONNECTED")
             addAction("android.media.AUDIO_BECOMING_NOISY")
         }
-        
+
         context.registerReceiver(receiver, filter)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && callback != null) {
             audioManager.registerAudioDeviceCallback(callback, Handler(Looper.getMainLooper()))
@@ -225,9 +224,6 @@ fun Queue(
             }
         }
     }
-
-    // listen together state reactive
-
 
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
@@ -243,7 +239,6 @@ fun Queue(
     val selectedSongs = remember { mutableStateListOf<MediaMetadata>() }
     val selectedItems = remember { mutableStateListOf<Timeline.Window>() }
 
-    // cast state safely access castconnectionhandler to prevent crashes during service lifecycle changes
     val castHandler = remember(playerConnection) {
         try {
             playerConnection.service.castConnectionHandler
@@ -290,7 +285,6 @@ fun Queue(
     }
     var sleepTimerTimeLeft by remember { mutableLongStateOf(0L) }
 
-
     LaunchedEffect(sleepTimerEnabled) {
         if (sleepTimerEnabled) {
             while (isActive) {
@@ -312,7 +306,7 @@ fun Queue(
         },
         collapsedContent = {
             if (!useNewPlayerDesign) {
-                // old design
+
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -338,14 +332,6 @@ fun Queue(
                                 modifier = Modifier.size(40.dp),
                                 tint = TextBackgroundColor
                             )
-// spacer modifier = modifier width 6 dp
-// text
-// text = stringresource id = r string queue
-// color = textbackgroundcolor
-// maxlines = 1
-// overflow = textoverflow ellipsis
-// textalign = textalign center
-// modifier = modifier basicmarquee
 
                         }
                     }
@@ -439,14 +425,6 @@ fun Queue(
                                 modifier = Modifier.size(40.dp),
                                 tint = TextBackgroundColor
                             )
-// spacer modifier = modifier width 6 dp
-// text
-// text = stringresource r string lyrics
-// color = textbackgroundcolor
-// maxlines = 1
-// overflow = textoverflow ellipsis
-// textalign = textalign center
-// modifier = modifier basicmarquee
 
                         }
                     }
@@ -480,7 +458,7 @@ fun Queue(
                         showSleepTimerDialog = false
                     },
                     onReset = {
-                        sleepTimerValue = 30f // default value
+                        sleepTimerValue = 30f
                     },
                     content = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -847,7 +825,6 @@ fun Queue(
                         }
                     }
                 }
-
 
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,

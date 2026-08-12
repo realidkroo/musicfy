@@ -1,5 +1,4 @@
-// simpmusiclyrics kt
-// the file functioned as simp music lyrics
+// SimpMusicLyrics.kt
 
 package com.music.simpmusic
 
@@ -55,16 +54,16 @@ object SimpMusicLyrics {
     suspend fun getLyricsByVideoId(videoId: String): List<LyricsData> {
         val primaryAttempt = runCatching {
             val response = client.get(BASE_URL + videoId)
-            
+
             if (response.status == HttpStatusCode.OK) {
                 val apiResponse = response.body<SimpMusicApiResponse>()
                 if (apiResponse.success) {
                     apiResponse.data
                 } else {
-                    emptyList() // successfully responded but no lyrics
+                    emptyList()
                 }
             } else {
-                null // return null to trigger fallback e g 502 403 etc
+                null
             }
         }.getOrNull()
 
@@ -72,10 +71,9 @@ object SimpMusicLyrics {
             return primaryAttempt
         }
 
-        // fallback attempt
         return runCatching {
             val response = client.get(FALLBACK_URL + videoId)
-            
+
             if (response.status == HttpStatusCode.OK) {
                 val apiResponse = response.body<SimpMusicApiResponse>()
                 if (apiResponse.success) {
@@ -94,12 +92,11 @@ object SimpMusicLyrics {
         duration: Int = 0,
     ): Result<String> = runCatching {
         val tracks = getLyricsByVideoId(videoId)
-        
+
         if (tracks.isEmpty()) {
             throw IllegalStateException("Lyrics unavailable")
         }
 
-        // filter tracks that match duration within tolerance 10 seconds
         val validTracks = if (duration > 0) {
             tracks.filter { track ->
                 abs((track.duration ?: 0) - duration) <= 10
@@ -120,12 +117,11 @@ object SimpMusicLyrics {
             validTracks.firstOrNull()
         }
 
-        // prioritize richsynclyrics for word by word sync then syncedlyrics then plainlyrics
         val lyrics = bestMatch?.richSyncLyrics?.takeIf { it.isNotBlank() }
             ?: bestMatch?.syncedLyrics?.takeIf { it.isNotBlank() }
             ?: bestMatch?.plainLyrics?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("Lyrics unavailable")
-        
+
         lyrics
     }
 
@@ -146,10 +142,9 @@ object SimpMusicLyrics {
 
         sortedTracks.forEach { track ->
             if (count <= 4) {
-                // check duration match relaxed to 10 seconds or skip if duration is 0
+
                 val durationMatch = duration <= 0 || abs((track.duration ?: 0) - duration) <= 10
 
-                // prioritize richsynclyrics for word by word sync
                 if (track.richSyncLyrics != null && track.richSyncLyrics.isNotBlank() && durationMatch) {
                     count++
                     callback(track.richSyncLyrics)

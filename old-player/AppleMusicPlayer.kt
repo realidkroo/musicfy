@@ -1,5 +1,4 @@
-// applemusicplayer kt
-// this thing is for apple music player
+// AppleMusicPlayer.kt
 
 package com.example.musicfy.ui.player
 

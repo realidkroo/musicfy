@@ -1,5 +1,4 @@
-// dialogkt
-// what is this for you ask its for dialog ofc
+// Dialog.kt
 
 package com.example.musicfy.ui.component
 
@@ -91,7 +90,7 @@ fun DefaultDialog(
                     CompositionLocalProvider(LocalContentColor provides AlertDialogDefaults.titleContentColor) {
                         ProvideTextStyle(MaterialTheme.typography.headlineSmall) {
                             Box(
-                                // align the title to the center when an icon is present
+
                                 Modifier.align(if (icon == null) Alignment.Start else Alignment.CenterHorizontally)
                             ) {
                                 title()
@@ -123,8 +122,6 @@ fun DefaultDialog(
         }
     }
 }
-
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -243,7 +240,6 @@ fun TextFieldDialog(
     keyboardType: KeyboardType = KeyboardType.Text,
     onDone: (String) -> Unit = {},
 
-    // new multi field support
     textFields: List<Pair<String, TextFieldValue>>? = null,
     onTextFieldsChange: ((Int, TextFieldValue) -> Unit)? = null,
     onDoneMultiple: ((List<String>) -> Unit)? = null,

@@ -1,17 +1,4 @@
-// searchdesignkt
-// shared building blocks for the rebuilt search experience landing page
-// results page genre page
-
-// deliberately contains no material 3 components no scaffold searchbar
-// card chip iconbutton surface or the m3 expressive progress indicators
-// foundation box row column basictextfield lazycolumn plus explicit
-// are kept purely as glyph vector renderers with explicitly specified styles
-// component chrome of their own and the whole app already draws its type
-
-// the scroll collapse behaviour every search surface shares lives here too
-// remembercollapseprogress and searchglasstopbar the big page title
-// search field slides up into a progressively blurred top bar and reverses
-// it is driven from the draw phase off a provider lambda so a scroll never
+// SearchDesign.kt
 
 package com.example.musicfy.ui.screens.search
 
@@ -92,30 +79,16 @@ import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.ProgressiveGlassBackground
 import com.example.musicfy.ui.utils.resize
 
-// ───────────────────────────────────────────────────────────────────────────
-// metrics
-// ───────────────────────────────────────────────────────────────────────────
-
-// page gutter matches the mockups 24dp inset on every search surface
 val SearchHorizontalPadding = 24.dp
 
-// height of the search field pill
 val SearchFieldHeight = 48.dp
 
-// profile avatar in the top bar s trailing slot
 val AvatarSize = 36.dp
 
-// vertical room the big page title occupies above the field while expanded
 val SearchTitleBlockHeight = 62.dp
 
-// clearance between the status bar and the first thing the bar draws the
 val SearchTopClearance = 18.dp
 
-// ───────────────────────────────────────────────────────────────────────────
-// palette
-// ───────────────────────────────────────────────────────────────────────────
-
-// the search surfaces are drawn against a near black page in every theme as
 object SearchColors {
     val Field = Color(0xFF141416)
     val FieldFocused = Color(0xFF1E1E21)
@@ -126,21 +99,13 @@ object SearchColors {
     val Secondary = Color(0xFF9A9AA0)
     val Placeholder = Color(0xFF77777D)
 
-    // black not a dark grey in both theme modes the near black the surfaces used to
     fun page(pureBlack: Boolean): Color = Color.Black
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// scroll collapse
-// ───────────────────────────────────────────────────────────────────────────
-
-// the collapse curve cubic bezier 057 053 0 1 slow out of the gate long glide home
 val SearchCollapseEasing = CubicBezierEasing(0.57f, 0.53f, 0f, 1f)
 
-// how long the bar takes to travel between its two states in either direction
 const val SearchCollapseDurationMs = 900
 
-// 0 when the bar is expanded 1 when collapsed the single value every top bar
 @Composable
 fun rememberCollapseProgress(listState: LazyListState): State<Float> {
     val density = LocalDensity.current
@@ -170,7 +135,6 @@ fun rememberCollapseProgress(listState: LazyListState): State<Float> {
     )
 }
 
-// total height the expanded top bar occupies ie the top contentpadding the
 @Composable
 fun searchTopBarHeight(withTitle: Boolean = true, extra: Dp = 0.dp): Dp {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -179,22 +143,17 @@ fun searchTopBarHeight(withTitle: Boolean = true, extra: Dp = 0.dp): Dp {
         SearchFieldHeight + extra + 32.dp
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// top bar
-// ───────────────────────────────────────────────────────────────────────────
-
-// the shared collapsing top bar progressive blur over whatever the page captured
 @Composable
 fun SearchGlassTopBar(
     glassState: GlassState,
     progressProvider: () -> Float,
     pureBlack: Boolean,
     title: String?,
-    // false while the list is being flung or dragged the blur s input is the captured
+
     blurActive: Boolean = true,
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
-    // optional second row under the field the results page s category selector
+
     below: (@Composable () -> Unit)? = null,
     field: @Composable () -> Unit,
 ) {
@@ -202,18 +161,14 @@ fun SearchGlassTopBar(
     val pageColor = SearchColors.page(pureBlack)
     val density = LocalDensity.current
     val titleTravelPx = with(density) { SearchTitleBlockHeight.toPx() }
-    // lane the collapsed field gives up to the avatar and the distance the
-    // from the title row s centre to the field s both resolved once not per frame
+
     val avatarReservePx = with(density) { (AvatarSize + 12.dp).toPx() }
     val avatarDropPx = with(density) { (SearchFieldHeight / 2 - SearchTitleBlockHeight / 2).toPx() }
 
-    // cached per quantised radius rendereffect is immutable so building one per
-    // title s blur out would allocate ~60 objects a second for a 300ms transition
     val blurCache = remember { mutableMapOf<Int, androidx.compose.ui.graphics.RenderEffect>() }
 
     Box(modifier = modifier.fillMaxWidth()) {
-        // mount unmount on a boolean so this only recomposes at the boundary
-        // varies continuously is read inside draw phase lambdas below
+
         val showGlass by remember { derivedStateOf { progressProvider() > 0.01f } }
         if (showGlass && blurActive) {
             Box(
@@ -226,11 +181,7 @@ fun SearchGlassTopBar(
                     maxBlurRadius = { 42f * progressProvider().coerceIn(0f, 1f) },
                     foundationColor = pageColor,
                     direction = BlurDirection.BottomToTop,
-                    // every step re rasterises the captured content through its own gaussian so
-                    // this is a direct multiplier on gpu cost measured at 307ms of gpu per frame
-                    // while scrolling the whole 120hz budget is 83ms two layers still read as
-                    // a graduated blur against the gradient beneath three did not earn the third
-                    // full screen pass
+
                     steps = 2,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -243,8 +194,7 @@ fun SearchGlassTopBar(
                     .drawWithCache {
                         onDrawBehind {
                             val p = progressProvider().coerceIn(0f, 1f)
-                            // carries a little more weight while the blur is off so the handover
-                            // in and out of a fling is not a visible step
+
                             val boost = if (blurActive) 1f else 1.12f
                             drawRect(
                                 brush = Brush.verticalGradient(
@@ -261,9 +211,7 @@ fun SearchGlassTopBar(
 
         Column(modifier = Modifier.padding(top = statusBar + SearchTopClearance)) {
             if (title != null) {
-                // collapses in place rises by its own height shrinks slightly toward its
-                // edge and blurs out the same wordmark treatment the home top bar uses so
-                // two screens read as one system
+
                 Box(
                     modifier = Modifier
                         .height(SearchTitleBlockHeight)
@@ -312,13 +260,6 @@ fun SearchGlassTopBar(
                 }
             }
 
-            // rides up into the space the title vacated
-
-            // the field s width is interpolated in the layout phase rather than by
-            // padding it has to give up room for the avatar as that avatar drops down
-            // and a padding weight change would re measure this subtree on every scroll
-            // measuring against a progress derived width is the same layout phase
-            // player s morph uses and costs one measure pass with no recomposition
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -334,8 +275,7 @@ fun SearchGlassTopBar(
                         Modifier.fillMaxWidth()
                     } else {
                         Modifier.layout { measurable, constraints ->
-                            // only reserve the avatar s lane once collapsed expanded the avatar
-                            // is up on the title row and the field owns the full width
+
                             val reserve = if (title == null) {
                                 avatarReservePx
                             } else {
@@ -359,8 +299,6 @@ fun SearchGlassTopBar(
             }
         }
 
-        // travels from the title row s centre line down to the field s so it reads
-        // settling beside the search box rather than two of them swapping over
         if (trailing != null) {
             Box(
                 modifier = Modifier
@@ -380,7 +318,6 @@ fun SearchGlassTopBar(
     }
 }
 
-// avatar profile button used in the top bar s trailing slot
 @Composable
 fun SearchAvatar(
     imageUrl: String?,
@@ -423,11 +360,6 @@ fun SearchAvatar(
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// search field
-// ───────────────────────────────────────────────────────────────────────────
-
-// the search input a basictextfield in a hand drawn pill no searchbar so it
 @Composable
 fun SearchField(
     value: TextFieldValue,
@@ -440,7 +372,7 @@ fun SearchField(
     trailing: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
     readOnlyClick: (() -> Unit)? = null,
-    // applied to the text field itself not to the pill around it a focusrequester on
+
     focusRequester: FocusRequester? = null,
     onFocusChanged: ((Boolean) -> Unit)? = null,
 ) {
@@ -515,11 +447,6 @@ fun SearchField(
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// section header
-// ───────────────────────────────────────────────────────────────────────────
-
-// section label with the hairline rule under it replaces navigationtitle which
 @Composable
 fun SearchSectionHeader(
     title: String,
@@ -561,11 +488,6 @@ fun SearchSectionHeader(
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// mood genre tile
-// ───────────────────────────────────────────────────────────────────────────
-
-// a mood or genre tile the label on the left and two of that category s featured
 @Composable
 fun MoodTile(
     title: String,
@@ -575,10 +497,9 @@ fun MoodTile(
     modifier: Modifier = Modifier,
 ) {
     val tint = remember(stripeColor) { moodTint(stripeColor) }
-    // set from the title s own layout below so the fade is driven by what
-    // the text rather than by guessing at a character count
+
     var titleWraps by remember(title) { mutableStateOf(false) }
-    // pre blended once per tile rather than composited as two layers at draw time
+
     val tileBrush = remember(tint) {
         Brush.linearGradient(
             colors = listOf(
@@ -592,35 +513,17 @@ fun MoodTile(
         modifier = modifier
             .height(76.dp)
             .clip(RoundedCornerShape(14.dp))
-            // one fill not two these were a gradient and a translucent solid stacked on
-            // it two full rect blends per tile times a dozen tiles every scrolled frame
+
             .background(brush = tileBrush)
             .clickable(onClick = onClick),
     ) {
-        // drawn before the label so the text always sits on top of the artwork and
-        // nothing at its left edge so a long title that wraps to two lines runs out
-        // tile colour instead of over the covers dstin against a horizontal ramp
-        // own offscreen layer to composite against
+
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 2.dp)
                 .size(width = 84.dp, height = 76.dp)
-                // a gradient of the tile s own colour painted over the covers left edge
-                // than a dstin alpha mask identical result against an opaque tile but dstin
-                // needs its own offscreen layer per tile a dozen of those per scrolled
-                // exactly the kind of cost this grid cannot carry this is one extra rect
-                // fades the artwork s own alpha to zero rather than painting tile coloured
-                // gradient over it
 
-                // a colour scrim cannot work here the tile underneath is itself a gradient
-                // single flat colour only matches it at one x position and shows a hard
-                // seam everywhere else which is what the cut not continuous edge was
-                // multiplies the artwork s alpha instead so whatever the tile is doing
-                // simply shows through and there is nothing to mismatch
-
-                // the offscreen layer this needs is why it is gated on titlewraps only the
-                // of categories with names long enough to take a second line pay for it
                 .then(
                     if (titleWraps) {
                         Modifier.graphicsLayer {
@@ -642,18 +545,14 @@ fun MoodTile(
                     }
                 },
         ) {
-            // pulled apart along the diagonal and turned to clearly different angles
-            // tighter the back card only showed as a sliver and the pair read as one
-            // square rather than as a fanned stack
+
             LayeredCover(
                 url = covers.getOrNull(1),
                 rotation = -24f,
                 offsetX = (-2).dp,
                 offsetY = 2.dp,
                 size = 44.dp,
-                // fully opaque on purpose a graphicslayer with alpha < 1 and clip = true
-                // be drawn in place and gets its own offscreen buffer the back card reads as
-                // recessed from the overlap and the rotation alone
+
                 alpha = 1f,
             )
             LayeredCover(
@@ -671,8 +570,7 @@ fun MoodTile(
             style = MaterialTheme.typography.titleMedium.copy(
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                // tightened at the default line height a wrapped two line title reads as two
-                // separate labels rather than one that happens to run on
+
                 lineHeight = 17.sp,
             ),
             color = SearchColors.Primary,
@@ -689,7 +587,6 @@ fun MoodTile(
     }
 }
 
-// one card in a moodtile s fanned stack
 @Composable
 private fun BoxScope.LayeredCover(
     url: String?,
@@ -709,10 +606,7 @@ private fun BoxScope.LayeredCover(
                 translationX = with(density) { offsetX.toPx() }
                 translationY = with(density) { offsetY.toPx() }
                 this.alpha = alpha
-                // no shadowelevation two of these per tile and a dozen tiles on screen meant
-                // ~24 shadow casting layers each forcing its own rendernode plus a shadow
-                // on a grid that is constantly being scrolled the cards already read as
-                // from the rotation and the overlap the shadow was costing far more than it
+
                 shape = RoundedCornerShape(8.dp)
                 clip = true
             }
@@ -720,8 +614,7 @@ private fun BoxScope.LayeredCover(
     ) {
         if (url != null) {
             AsyncImage(
-                // 128px covers a 44 48dp card at this density 256 was decoding four times
-                // pixels for every tile in a grid the user scrolls through constantly
+
                 model = url.resize(128, 128),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
@@ -731,7 +624,6 @@ private fun BoxScope.LayeredCover(
     }
 }
 
-// youtube s stripe colour is a fully opaque argb long and many of them are
 private fun moodTint(stripeColor: Long): Color {
     val argb = stripeColor.toInt()
     val r = ((argb shr 16) and 0xFF)
@@ -742,11 +634,6 @@ private fun moodTint(stripeColor: Long): Color {
     return Color(lift(r), lift(g), lift(b))
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// category selector
-// ───────────────────────────────────────────────────────────────────────────
-
-// the all music artist video album playlist selector on the results
 @Composable
 fun SearchCategoryRow(
     categories: List<String>,
@@ -784,11 +671,6 @@ fun SearchCategoryRow(
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// rows
-// ───────────────────────────────────────────────────────────────────────────
-
-// one suggestion history row leading glyph label and an optional trailing
 @Composable
 fun SearchSimpleRow(
     text: String,
@@ -832,7 +714,6 @@ fun SearchSimpleRow(
     }
 }
 
-// the horizontal … overflow affordance horizontal not the vertical kebab
 @Composable
 fun SearchOverflowDots(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
@@ -851,7 +732,6 @@ fun SearchOverflowDots(onClick: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-// thin rule used between result rows
 @Composable
 fun SearchRule(modifier: Modifier = Modifier) {
     Box(
@@ -863,7 +743,6 @@ fun SearchRule(modifier: Modifier = Modifier) {
     )
 }
 
-// square artwork slot with the app s standard corner treatment
 @Composable
 fun SearchArtwork(
     url: String?,
@@ -872,13 +751,7 @@ fun SearchArtwork(
     circle: Boolean = false,
     corner: Dp = 6.dp,
 ) {
-    // ask the cdn for roughly what we are actually going to draw rounded up to a
 
-    // these were fixed 512px requests for rows barely 46dp ~138px tall a
-    // pixels per thumbnail the decodes themselves are wasted bandwidth but the
-    // the memory cache oversized bitmaps evict each other so scrolling back up
-    // cached and every thumbnail decodes again the grid rather than the exact
-    // number of distinct cache keys small so different call sites can share
     val density = LocalDensity.current
     val requestPx = remember(size, density) {
         val px = with(density) { size.roundToPx() }
@@ -910,7 +783,6 @@ fun SearchArtwork(
     }
 }
 
-// loading indicator three breathing dots rather than
 @Composable
 fun SearchLoadingDots(modifier: Modifier = Modifier) {
     val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "searchLoading")
@@ -949,14 +821,12 @@ fun SearchLoadingDots(modifier: Modifier = Modifier) {
     }
 }
 
-// hairline outline for the card surfaces deliberately at the bottom of what
 fun Modifier.searchCardBorder(radius: Dp = 16.dp): Modifier = this.border(
     width = androidx.compose.ui.unit.Dp.Hairline,
     color = Color.White.copy(alpha = 0.05f),
     shape = RoundedCornerShape(radius),
 )
 
-// composites top over bottom once so the two never have to be blended at draw time
 private fun blendOver(top: Color, bottom: Color): Color {
     val a = top.alpha
     return Color(

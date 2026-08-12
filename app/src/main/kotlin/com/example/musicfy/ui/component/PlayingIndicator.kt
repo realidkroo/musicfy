@@ -1,5 +1,4 @@
-// playingindicatorkt
-// this thing is part of playing indicator
+// PlayingIndicator.kt
 
 package com.example.musicfy.ui.component
 

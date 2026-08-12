@@ -1,5 +1,4 @@
-// cacheplaylistscreenkt
-// the file functioned as cache playlist screen
+// CachePlaylistScreen.kt
 
 package com.example.musicfy.ui.screens.playlist
 

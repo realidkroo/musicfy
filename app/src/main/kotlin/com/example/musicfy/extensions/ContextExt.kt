@@ -1,5 +1,4 @@
-// contextextkt
-// what is this for you ask its for context ext ofc
+// ContextExt.kt
 
 package com.example.musicfy.extensions
 

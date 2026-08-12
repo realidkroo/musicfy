@@ -1,5 +1,4 @@
-// loadingscreenkt
-// this thing is part of loading screen
+// LoadingScreen.kt
 
 package com.example.musicfy.ui.menu
 

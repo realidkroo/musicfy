@@ -1,5 +1,4 @@
-// discordwebsocket kt
-// what is this for you ask its for discord web socket ofc
+// DiscordWebSocket.kt
 
 package com.my.kizzy.gateway
 
@@ -49,7 +48,6 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-// modified by zion huang
 open class DiscordWebSocket(
     private val token: String,
     private val os: String = "Android",
@@ -98,7 +96,7 @@ open class DiscordWebSocket(
                 connected = true
                 logger.info("Successfully connected to Discord Gateway.")
                 currentReconnectDelay = INITIAL_RECONNECT_DELAY
-                // start receiving messages
+
                 websocket!!.incoming.receiveAsFlow()
                     .collect {
                         when (it) {
@@ -131,7 +129,6 @@ open class DiscordWebSocket(
             currentReconnectDelay = (currentReconnectDelay * 2).coerceAtMost(MAX_RECONNECT_DELAY)
         }
     }
-
 
     private suspend fun handleClose() {
         heartbeatJob?.cancel()
@@ -288,7 +285,7 @@ open class DiscordWebSocket(
     }
 
     suspend fun sendActivity(presence: Presence) {
-        // todo figure out a better way to wait for socket to be connected to account
+
         while (!isSocketConnectedToAccount()) {
             delay(10.milliseconds)
         }

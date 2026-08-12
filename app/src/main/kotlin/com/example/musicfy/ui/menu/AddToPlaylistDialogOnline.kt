@@ -1,5 +1,4 @@
-// addtoplaylistdialogonlinekt
-// this thing is for add to playlist dialog online
+// AddToPlaylistDialogOnline.kt
 
 package com.example.musicfy.ui.menu
 
@@ -75,7 +74,7 @@ fun AddToPlaylistDialogOnline(
     isVisible: Boolean,
     allowSyncing: Boolean = true,
     initialTextFieldValue: String? = null,
-    songs: SnapshotStateList<Song>, // list of song ids songs should be inserted to database in this function
+    songs: SnapshotStateList<Song>,
     onDismiss: () -> Unit,
     onProgressStart: (Boolean) -> Unit,
     onPercentageChange: (Int) -> Unit,
@@ -105,7 +104,7 @@ fun AddToPlaylistDialogOnline(
         mutableStateOf<Playlist?>(null)
     }
     val songIds by remember {
-        mutableStateOf<List<String>?>(null) // list is not saveable
+        mutableStateOf<List<String>?>(null)
     }
     val duplicates by remember {
         mutableStateOf(emptyList<String>())
@@ -149,12 +148,12 @@ fun AddToPlaylistDialogOnline(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { 
+                        placeholder = {
                             Text(
                                 text = stringResource(R.string.search),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            ) 
+                            )
                         },
                         leadingIcon = {
                             Icon(
@@ -368,10 +367,10 @@ fun AddToPlaylistDialogOnline(
                     title = stringResource(R.string.liked_songs),
                     thumbnailContent = {
                         Image(
-                            painter = painterResource(id = R.drawable.favorite), // the xml image
+                            painter = painterResource(id = R.drawable.favorite),
                             contentDescription = null,
-                            modifier = Modifier.size(40.dp), // adjust size as needed
-                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground) // optional tinting
+                            modifier = Modifier.size(40.dp),
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground)
                         )
                     },
                     trailingContent = {}
@@ -396,7 +395,6 @@ fun AddToPlaylistDialogOnline(
         )
     }
 
-    // duplicate songs warning
     if (showDuplicateDialog) {
         DefaultDialog(
             title = { Text(stringResource(R.string.duplicates)) },

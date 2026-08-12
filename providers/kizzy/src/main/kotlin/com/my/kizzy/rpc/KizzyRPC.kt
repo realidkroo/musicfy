@@ -1,17 +1,4 @@
-// kizzyrpc kt
-// the file functioned as kizzy rpc
-
-/*
- *
- *  ******************************************************************
- *  *  * Copyright (C) 2022
- *  *  * KizzyRPC.kt is part of Kizzy
- *  *  *  and can not be copied and/or distributed without the express
- *  *  * permission of yzziK(Vaibhav)
- *  *  *****************************************************************
- *
- *
- */
+// KizzyRPC.kt
 
 package com.my.kizzy.rpc
 
@@ -27,7 +14,6 @@ import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import org.json.JSONObject
 
-// modified by zion huang
 open class KizzyRPC(
     private val token: String,
     os: String = "Android",

@@ -1,5 +1,4 @@
-// listitemplaceholderkt
-// this thing is part of list item placeholder
+// ListItemPlaceholder.kt
 
 package com.example.musicfy.ui.component.shimmer
 

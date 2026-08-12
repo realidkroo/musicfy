@@ -1,5 +1,4 @@
-// navcontrollerutilskt
-// this thing is for nav controller utils
+// NavControllerUtils.kt
 
 package com.example.musicfy.ui.utils
 

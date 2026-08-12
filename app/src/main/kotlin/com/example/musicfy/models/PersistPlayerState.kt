@@ -1,5 +1,4 @@
-// persistplayerstatekt
-// this thing is part of persist player state
+// PersistPlayerState.kt
 
 package com.example.musicfy.models
 

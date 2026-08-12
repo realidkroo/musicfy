@@ -1,5 +1,4 @@
-// onlinesearchsuggestionviewmodelkt
-// this thing is for online search suggestion view model
+// OnlineSearchSuggestionViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -53,7 +52,7 @@ constructor(
                     } else {
                         val parsedUrl = YouTubeUrlParser.parse(query)
                         val parsedItem = if (parsedUrl != null) fetchParsedUrlItem(parsedUrl) else null
-                        
+
                         val result = if (parsedUrl != null) null else YouTube.searchSuggestions(query).getOrNull()
                         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)

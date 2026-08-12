@@ -1,5 +1,4 @@
-// gridmenukt
-// this thing is part of grid menu
+// GridMenu.kt
 
 package com.example.musicfy.ui.component
 
@@ -115,7 +114,6 @@ fun LazyGridScope.GridMenuItem(
         }
     }
 }
-
 
 fun LazyGridScope.DownloadGridMenu(
     @Download.State state: Int?,

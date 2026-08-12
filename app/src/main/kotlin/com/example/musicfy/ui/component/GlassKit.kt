@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import com.example.musicfy.constants.DisableBlurKey
 import com.example.musicfy.utils.rememberPreference
 
-// rendernode based glass blur system ported from weatherify captures the rendered
 @Stable
 class GlassState {
     var renderNode by mutableStateOf<RenderNode?>(null)
@@ -53,12 +52,7 @@ fun Modifier.glassRoot(state: GlassState, isActive: () -> Boolean = { true }): M
 
         onDrawWithContent {
             val drawContextCanvas = drawContext.canvas
-            // recording into the rendernode and immediately redrawing it back onto the
-            // canvas is a full duplicate draw pass of this subtree s content skip it
-            // nothing downstream is currently reading the captured node isactive is a
-            // read same category as the provider lambdas consumers pass in so checking
-            // never triggers recomposition falls back to the plain drawcontent path
-            // exactly what already happens today when there s no consumer or on
+
             if (node != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isActive()) {
                 val nativeCanvas = node.beginRecording()
                 val composeCanvas = Canvas(nativeCanvas)
@@ -85,19 +79,12 @@ fun GlassPillBackground(
     tint: Color = Color.Transparent,
     foundationColor: Color? = null,
     shape: Shape? = null,
-    // decal the default samples transparent past the layer s own bounds which
-    // want when the layer is meant to fade out at its edges eg a pill floating
-    // clamp instead replicates the edge pixel outward so a layer whose bounds
-    // area you actually want blurred edge to edge no fade reads as fully
-    // its true boundary use it wherever the caller s own bounds are the
+
     tileMode: android.graphics.Shader.TileMode = android.graphics.Shader.TileMode.DECAL,
     modifier: Modifier = Modifier
 ) {
     var position by remember { mutableStateOf(Offset.Zero) }
-    // disable blur replaces the actual blurred capture with a flat
-    // fallback everywhere in the app same gate for every consumer of this
-    // nav bar mini player pill profile menu detail top bar home top bar
-    // rather than each call site reimplementing its own on off branch
+
     val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
 
     androidx.compose.foundation.Canvas(
@@ -152,15 +139,15 @@ fun ProgressiveGlassBackground(
     Box(modifier = modifier) {
         for (i in 1..steps) {
             val fraction = i.toFloat() / steps
-            // quadratic curve for smoother visual radius growth
+
             val radiusProvider = { maxBlurRadius() * (fraction * fraction) }
-            
+
             val fadeStart = (i - 1).toFloat() / steps
             val heightFraction = 1f - fadeStart
-            
+
             if (heightFraction > 0f) {
                 val internalFadeDistance = (1f / steps) / heightFraction
-                
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

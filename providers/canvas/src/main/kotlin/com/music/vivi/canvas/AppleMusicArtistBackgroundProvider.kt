@@ -1,5 +1,4 @@
-// applemusicartistbackgroundprovider kt
-// the file functioned as apple music artist background provider
+// AppleMusicArtistBackgroundProvider.kt
 
 package com.example.musicfy.canvas
 
@@ -26,10 +25,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-// fetches apple music artist motion artwork hls canvas for the artist screen 1 searches for the artist by name 2 fetches the artist profile with extend=editorialvideo editorialartwork results are cached for 24 hours
 object AppleMusicArtistBackgroundProvider {
 
-    // public read only jwt used by the apple music web player for unauthenticated catalog reads
     private const val APPLE_MUSIC_TOKEN =
         "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IldlYlBsYXlLaWQifQ" +
         ".eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzc0NDU2MzgyLCJleHAiOjE3ODE3" +
@@ -70,7 +67,7 @@ object AppleMusicArtistBackgroundProvider {
     )
 
     private val cache = ConcurrentHashMap<String, CacheEntry>()
-    private const val CACHE_TTL_MS = 1000L * 60 * 60 * 24 // 24 hours
+    private const val CACHE_TTL_MS = 1000L * 60 * 60 * 24
 
     suspend fun getByArtistName(
         artistName: String,
@@ -104,24 +101,24 @@ object AppleMusicArtistBackgroundProvider {
 
             val root = response.body<JsonObject>()
             val results = root["results"]?.jsonObject?.get("artists")?.jsonObject?.get("data")?.jsonArray ?: return@runCatching null
-            
+
             val scoredResults = results.mapNotNull { item ->
                 val obj = item.jsonObject
                 val attributes = obj["attributes"]?.jsonObject ?: return@mapNotNull null
                 val resultName = attributes["name"]?.jsonPrimitive?.contentOrNull ?: ""
-                
-                if (!resultName.contains(artistName, ignoreCase = true) && 
+
+                if (!resultName.contains(artistName, ignoreCase = true) &&
                     !artistName.contains(resultName, ignoreCase = true)) return@mapNotNull null
-                
+
                 var score = 0
                 if (resultName.equals(artistName, ignoreCase = true)) score += 10
                 else if (resultName.contains(artistName, ignoreCase = true) || artistName.contains(resultName, ignoreCase = true)) score += 5
-                
+
                 score to obj
             }.sortedByDescending { it.first }
-            
+
             for ((score, obj) in scoredResults) {
-                if (score < 4) continue 
+                if (score < 4) continue
                 val artistId = obj["id"]?.jsonPrimitive?.contentOrNull ?: continue
                 val fetched = fetchArtistMotionByAppleId(artistId, storefront)
                 if (fetched != null) return@runCatching fetched
@@ -148,11 +145,10 @@ object AppleMusicArtistBackgroundProvider {
             val root = response.body<JsonObject>()
             val data = root["data"]?.jsonArray
             if (data.isNullOrEmpty()) return@runCatching null
-            
+
             val artistObj = data.firstOrNull()?.jsonObject ?: return@runCatching null
             val attributes = artistObj["attributes"]?.jsonObject
-            
-            // look for editorialvideo first
+
             val ev = attributes?.get("editorialVideo")?.jsonObject
             if (ev != null) {
                 val videoUrl = extractEditorialVideoUrl(ev)
@@ -161,7 +157,6 @@ object AppleMusicArtistBackgroundProvider {
                 }
             }
 
-            // fallback to editorialartwork
             val ea = attributes?.get("editorialArtwork")?.jsonObject
             if (ea != null) {
                 val videoUrl = extractEditorialVideoUrl(ea)

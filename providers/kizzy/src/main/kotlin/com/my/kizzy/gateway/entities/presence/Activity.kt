@@ -1,5 +1,4 @@
-// activity kt
-// the file functioned as activity
+// Activity.kt
 
 package com.my.kizzy.gateway.entities.presence
 

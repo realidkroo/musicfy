@@ -1,5 +1,4 @@
-// musicfynotificationproviderkt
-// the file functioned as musicfy notification provider
+// MusicfyNotificationProvider.kt
 
 package com.example.musicfy.core.updater.downloadmanager
 
@@ -19,7 +18,6 @@ import com.google.common.collect.ImmutableList
 import com.example.musicfy.R
 import java.util.Locale
 
-// a custom medianotificationprovider that delegates to
 @OptIn(UnstableApi::class)
 class MusicfyNotificationProvider(
     private val context: Context,
@@ -35,7 +33,6 @@ class MusicfyNotificationProvider(
         channelNameResourceId
     )
 
-    // set the small icon for the notification this is used by musicservice
     fun setSmallIcon(iconResId: Int): MusicfyNotificationProvider {
         defaultProvider.setSmallIcon(iconResId)
         return this
@@ -47,7 +44,7 @@ class MusicfyNotificationProvider(
         actionFactory: MediaNotification.ActionFactory,
         onNotificationChangedCallback: MediaNotification.Provider.Callback,
     ): MediaNotification {
-        // get the default notification built by media3
+
         val mediaNotification = defaultProvider.createNotification(
             mediaSession,
             customLayout,
@@ -55,7 +52,6 @@ class MusicfyNotificationProvider(
             onNotificationChangedCallback
         )
 
-        // android 16 status chips implementation api 36 or baklava
         val isAndroid16 = Build.VERSION.SDK_INT >= 36 || Build.VERSION.CODENAME == "Baklava"
 
         if (isAndroid16) {
@@ -65,7 +61,6 @@ class MusicfyNotificationProvider(
             val durationMs = player.duration
             val currentPosMs = player.currentPosition
 
-            // format duration for the chip eg 5 20
             val formattedTime = if (durationMs != C.TIME_UNSET && durationMs > 0) {
                 val totalSeconds = durationMs / 1000
                 val minutes = totalSeconds / 60
@@ -75,33 +70,26 @@ class MusicfyNotificationProvider(
                 null
             }
 
-            // use platform builder to recover and modify the notification
             val notification = mediaNotification.notification
             val builder = Notification.Builder.recoverBuilder(context, notification)
 
-            // essential for android 16 status chips live updates
             builder.setOngoing(true)
             builder.setCategory(Notification.CATEGORY_TRANSPORT)
 
-            // research suggests colorized should be false for promoted notifications in
-            // but for music it might be okay let s try false first for better promotion
             builder.setColorized(false)
 
-            // ensure we have a small icon required for chip
             builder.setSmallIcon(R.drawable.musicfy_notification)
 
-            // promote to live update
             setRequestPromotedOngoingSafely(builder, true)
 
-            // fallback also set via extras just in case reflection fails
             builder.getExtras().putBoolean("android.requestPromotedOngoing", true)
 
             if (isPlaying) {
-                // set the chip text eg the track duration
+
                 setShortCriticalTextSafely(builder, formattedTime ?: context.getString(R.string.playing_status))
 
                 if (durationMs != C.TIME_UNSET && durationMs > 0) {
-                    // set when to the completion time of the track for a live countdown
+
                     val remainingMs = durationMs - currentPosMs
                     val endTime = System.currentTimeMillis() + remainingMs
                     builder.setWhen(endTime)
@@ -112,16 +100,14 @@ class MusicfyNotificationProvider(
                     builder.setShowWhen(true)
                 }
             } else {
-                // when paused show paused or static duration in the chip
+
                 setShortCriticalTextSafely(builder, formattedTime ?: context.getString(R.string.paused_status))
                 builder.setShowWhen(false)
                 builder.setUsesChronometer(false)
             }
 
-            // re build the notification
             val updatedNotification = builder.build()
 
-            // re attach the media session token if it was lost during build
             if (Build.VERSION.SDK_INT >= 33) {
                 mediaNotification.notification.extras.getParcelable(
                     Notification.EXTRA_MEDIA_SESSION,
@@ -170,7 +156,7 @@ class MusicfyNotificationProvider(
 
     private fun setRequestPromotedOngoingSafely(builder: Notification.Builder, promoted: Boolean) {
         try {
-            // try different possible method names from various previews
+
             val methodNames = arrayOf("setRequestPromotedOngoing", "setPromotedOngoing", "setOngoingActivity")
             var success = false
             for (name in methodNames) {

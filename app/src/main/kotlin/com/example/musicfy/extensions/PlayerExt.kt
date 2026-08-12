@@ -1,5 +1,4 @@
-// playerextkt
-// this thing is part of player ext
+// PlayerExt.kt
 
 package com.example.musicfy.extensions
 

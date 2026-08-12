@@ -1,5 +1,4 @@
-// topplaylistviewmodelkt
-// what is this for you ask its for top playlist view model ofc
+// TopPlaylistViewModel.kt
 
 package com.example.musicfy.viewmodels
 

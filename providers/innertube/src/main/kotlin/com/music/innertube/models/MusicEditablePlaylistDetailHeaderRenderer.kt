@@ -1,5 +1,4 @@
-// musiceditableplaylistdetailheaderrenderer kt
-// this thing is part of music editable playlist detail header renderer
+// MusicEditablePlaylistDetailHeaderRenderer.kt
 
 package com.music.innertube.models
 

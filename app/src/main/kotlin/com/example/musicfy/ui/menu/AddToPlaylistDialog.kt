@@ -1,5 +1,4 @@
-// addtoplaylistdialogkt
-// what is this for you ask its for add to playlist dialog ofc
+// AddToPlaylistDialog.kt
 
 package com.example.musicfy.ui.menu
 
@@ -64,7 +63,7 @@ fun AddToPlaylistDialog(
     isVisible: Boolean,
     allowSyncing: Boolean = true,
     initialTextFieldValue: String? = null,
-    onGetSong: suspend (Playlist) -> List<String>, // list of song ids songs should be inserted to database in this function
+    onGetSong: suspend (Playlist) -> List<String>,
     onDismiss: () -> Unit,
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
@@ -94,7 +93,7 @@ fun AddToPlaylistDialog(
         mutableStateOf<Playlist?>(null)
     }
     var songIds by remember {
-        mutableStateOf<List<String>?>(null) // list is not saveable
+        mutableStateOf<List<String>?>(null)
     }
     var duplicates by remember {
         mutableStateOf(emptyList<String>())
@@ -138,12 +137,12 @@ fun AddToPlaylistDialog(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { 
+                        placeholder = {
                             Text(
                                 text = stringResource(R.string.search),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            ) 
+                            )
                         },
                         leadingIcon = {
                             Icon(
@@ -256,7 +255,6 @@ fun AddToPlaylistDialog(
         )
     }
 
-    // duplicate songs warning
         if (showDuplicateDialog) {
             DefaultDialog(
                 title = { Text(stringResource(R.string.duplicates)) },

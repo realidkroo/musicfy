@@ -30,7 +30,7 @@ class MonochromeStreamFetcher(
         val instancesString = prefs[MonochromeInstancesKey]?.takeIf { it.isNotBlank() }
             ?: "https://api.monochrome.tf,https://monochrome-api.samidy.com"
         val instances = instancesString.split(",").map { it.trim().removeSuffix("/") }.filter { it.isNotEmpty() }
-        
+
         if (instances.isEmpty()) {
             throw IOException("Monochrome Backend is enabled but no instances are configured.")
         }
@@ -67,17 +67,16 @@ class MonochromeStreamFetcher(
 
         var lastError: Exception? = null
 
-        // try instances in a shuffled order for basic load balancing or just
         for (instance in instances.shuffled()) {
             try {
-                // 1 search for the track
+
                 val searchUrl = "$instance/search/".toHttpUrlOrNull()?.newBuilder()
                     ?.addQueryParameter("s", query)
                     ?.build() ?: continue
 
                 val searchRequest = Request.Builder().url(searchUrl).build()
                 val searchResponse = httpClient.newCall(searchRequest).execute()
-                
+
                 if (!searchResponse.isSuccessful) {
                     Timber.tag("MonochromeFetcher").w("Search failed on $instance: ${searchResponse.code}")
                     continue
@@ -85,7 +84,7 @@ class MonochromeStreamFetcher(
 
                 val searchBody = searchResponse.body?.string() ?: continue
                 val searchJson = JSONObject(searchBody)
-                // monochrome s s track search returns items under dataitems
+
                 val items = searchJson.optJSONObject("data")?.optJSONArray("items")
 
                 if (items == null || items.length() == 0) {
@@ -100,7 +99,6 @@ class MonochromeStreamFetcher(
 
                 Timber.tag("MonochromeFetcher").d("Found track ID $trackId for query $query")
 
-                // 2 fetch the stream manifest using streaming instances
                 for (streamingInstance in streamingInstances.shuffled()) {
                     try {
                         val manifestUrlBuilder = "$streamingInstance/trackManifests/".toHttpUrlOrNull()?.newBuilder()
@@ -120,7 +118,7 @@ class MonochromeStreamFetcher(
                         }
 
                         val manifestBody = manifestResponse.body?.string() ?: continue
-                        // response is a json api envelope data data attributes uri
+
                         val signedManifestUri = JSONObject(manifestBody)
                             .optJSONObject("data")
                             ?.optJSONObject("data")
@@ -151,8 +149,6 @@ class MonochromeStreamFetcher(
                     }
                 }
 
-                // 3 fallback legacy track endpoint hosted directly on the search api
-                // base64 encoded manifest used when the dedicated streaming cdn hosts are
                 try {
                     val legacyUrl = "$instance/track/".toHttpUrlOrNull()?.newBuilder()
                         ?.addQueryParameter("id", trackId)
@@ -190,8 +186,6 @@ class MonochromeStreamFetcher(
         try {
             val trimmed = manifestText.trim()
 
-            // the signed manifest uri is usually fetched as plain text either a json
-            // object with a urls array or a raw dash mpd xml document
             if (trimmed.startsWith("{")) {
                 val json = JSONObject(trimmed)
                 val urls = json.optJSONArray("urls")
@@ -208,8 +202,6 @@ class MonochromeStreamFetcher(
                 return CustomStreamResult(streamUrl = dashUrl, isDash = true, source = "Monochrome")
             }
 
-            // fall back to treating it as base64 encoded json xml in case an instance
-            // still returns the older inline manifest format
             val decodedBytes = android.util.Base64.decode(manifestText, android.util.Base64.DEFAULT)
             val decodedString = String(decodedBytes)
 
@@ -226,7 +218,6 @@ class MonochromeStreamFetcher(
                 return CustomStreamResult(streamUrl = dashUrl, isDash = true, source = "Monochrome")
             }
 
-            // try matching a url with regex as a last resort
             val urlPattern = java.util.regex.Pattern.compile("https?://[\\w\\-.~:?#\\[\\]@!$&'()*+,;=%/]+")
             val matcher = urlPattern.matcher(decodedString)
             if (matcher.find()) {

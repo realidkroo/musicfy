@@ -1,5 +1,4 @@
-// shazammodels kt
-// what is this for you ask its for shazam models ofc
+// ShazamModels.kt
 
 package com.music.shazamkit.models
 

@@ -1,5 +1,4 @@
-// moodandgenres kt
-// this thing is part of mood and genres
+// MoodAndGenres.kt
 
 package com.music.innertube.pages
 

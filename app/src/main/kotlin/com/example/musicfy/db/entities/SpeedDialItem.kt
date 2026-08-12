@@ -1,5 +1,4 @@
-// speeddialitemkt
-// what is this for you ask its for speed dial item ofc
+// SpeedDialItem.kt
 
 package com.example.musicfy.db.entities
 
@@ -19,7 +18,7 @@ data class SpeedDialItem(
     val title: String,
     val subtitle: String? = null,
     val thumbnailUrl: String? = null,
-    val type: String, // song album artist playlist
+    val type: String,
     val explicit: Boolean = false,
     val createDate: Long = System.currentTimeMillis()
 ) {

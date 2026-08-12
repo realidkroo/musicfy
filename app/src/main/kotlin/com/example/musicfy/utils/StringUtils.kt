@@ -1,5 +1,4 @@
-// stringutilskt
-// this thing is for string utils
+// StringUtils.kt
 
 package com.example.musicfy.utils
 

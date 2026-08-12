@@ -1,5 +1,4 @@
-// mediaitemextkt
-// what is this for you ask its for media item ext ofc
+// MediaItemExt.kt
 
 package com.example.musicfy.extensions
 

@@ -1,5 +1,4 @@
-// showmediainfokt
-// the file functioned as show media info
+// ShowMediaInfo.kt
 
 package com.example.musicfy.ui.utils
 
@@ -83,7 +82,6 @@ fun ShowMediaInfo(videoId: String) {
         database.format(videoId).collect { currentFormat = it }
     }
 
-    // shapes
     val albumArtShape = RoundedCornerShape(24.dp)
 
     LazyColumn(
@@ -95,7 +93,7 @@ fun ShowMediaInfo(videoId: String) {
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // header song info title + done button
+
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -114,7 +112,6 @@ fun ShowMediaInfo(videoId: String) {
             }
         }
 
-        // large album art card
         item {
             Box(
                 modifier = Modifier
@@ -135,13 +132,12 @@ fun ShowMediaInfo(videoId: String) {
             }
         }
 
-        // info grid
         if (song != null || info != null) {
             item {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    // row 1 title artist
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -160,7 +156,6 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 2 duration media id
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -182,7 +177,6 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 3 views likes
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -201,7 +195,6 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 4 dislikes subscribers
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -218,7 +211,6 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 5 itag loudness
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -235,7 +227,6 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 6 format bitrate
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -252,7 +243,6 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 7 codecs sample rate
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -269,7 +259,6 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 8 file size volume
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -292,7 +281,6 @@ fun ShowMediaInfo(videoId: String) {
                 }
             }
 
-            // description full width at bottom
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -323,7 +311,7 @@ fun ShowMediaInfo(videoId: String) {
             }
 
         } else {
-            // loading state before song info data arrives
+
             item {
                 Box(
                     modifier = Modifier

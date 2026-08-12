@@ -1,5 +1,4 @@
-// lyricsresponse kt
-// what is this for you ask its for lyrics response ofc
+// LyricsResponse.kt
 
 package com.music.simpmusic.models
 

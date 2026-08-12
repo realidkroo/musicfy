@@ -1,5 +1,4 @@
-// createplaylistresponse kt
-// what is this for you ask its for create playlist response ofc
+// CreatePlaylistResponse.kt
 
 package com.music.innertube.models.response
 

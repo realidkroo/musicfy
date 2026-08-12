@@ -1,5 +1,4 @@
-// potokenresultkt
-// what is this for you ask its for po token result ofc
+// PoTokenResult.kt
 
 package com.example.musicfy.utils.potoken
 

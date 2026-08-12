@@ -1,7 +1,4 @@
-// monochromeonboardingsheetkt
-// shown once the moment the turn on monochrome backend switch flips on
-// backend is then runs a real connectivity probe see
-// preference is actually committed the switch only ends up enabled if the
+// MonochromeOnboardingSheet.kt
 
 package com.example.musicfy.ui.screens.settings
 
@@ -79,9 +76,7 @@ fun MonochromeOnboardingContent(
     fun runTest() {
         state = MonochromeSheetState.Testing
         coroutineScope.launch {
-            // whatever goes wrong a thrown exception not just a returned failure
-            // this must always resolve out of testing otherwise the spinner just spins
-            // and the sheet never closes no matter what actually failed
+
             val result = try {
                 testMonochromeConnectivity(context)
             } catch (e: Exception) {
@@ -111,8 +106,7 @@ fun MonochromeOnboardingContent(
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
             .background(Color(0xFF161616)),
     ) {
-        // drag handle same treatment as betanoticescreen for the same this is a
-        // affordance now that this popup reuses that container s zoom out motion
+
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)

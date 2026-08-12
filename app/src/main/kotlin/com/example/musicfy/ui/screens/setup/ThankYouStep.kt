@@ -29,7 +29,7 @@ fun ThankYouStep() {
     var showCard by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        delay(300) // small delay before animating card up
+        delay(300)
         showCard = true
     }
 
@@ -49,9 +49,9 @@ fun ThankYouStep() {
             letterSpacing = (-2).sp,
             lineHeight = 48.sp
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         Text(
             text = "for using musicfy!",
             fontSize = 16.sp,
@@ -59,19 +59,18 @@ fun ThankYouStep() {
             lineHeight = 22.sp,
             letterSpacing = (-0.5).sp
         )
-        
-        // card sits centred in whatever space is left between the heading and the
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(bottom = 120.dp), // leave space for done button
+                .padding(bottom = 120.dp),
             contentAlignment = Alignment.Center
         ) {
         androidx.compose.animation.AnimatedVisibility(
             visible = showCard,
             enter = slideInVertically(
-                initialOffsetY = { it }, // slide from bottom
+                initialOffsetY = { it },
                 animationSpec = tween(durationMillis = 600)
             )
         ) {
@@ -82,7 +81,7 @@ fun ThankYouStep() {
                     .clip(RoundedCornerShape(32.dp))
                     .background(Color(0xFF222222))
             ) {
-                // background watermark text
+
                 Text(
                     text = "MUSICFYIT",
                     fontSize = 100.sp,
@@ -94,12 +93,11 @@ fun ThankYouStep() {
                         .align(Alignment.Center)
                         .graphicsLayer {
                             rotationZ = -90f
-                            translationX = 130.dp.toPx() // push to the right edge safely
+                            translationX = 130.dp.toPx()
                         },
                     letterSpacing = 2.sp
                 )
 
-                // content
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -115,9 +113,6 @@ fun ThankYouStep() {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // roo s own picture not the app user s this is a made by credit not a
-                    // profile avatar so it stays fixed rather than reading profilepicurikey
-                    // same asset updatesheet s hello i m the main dev here card uses
                     Box(
                         modifier = Modifier
                             .size(64.dp)
@@ -141,9 +136,9 @@ fun ThankYouStep() {
                         color = Color.White,
                         letterSpacing = (-1).sp
                     )
-                    
+
                     Spacer(modifier = Modifier.height(4.dp))
-                    
+
                     Text(
                         text = "This app still in beta!",
                         fontSize = 14.sp,

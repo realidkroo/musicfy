@@ -1,9 +1,7 @@
-// userinfo kt
-// this thing is part of user info
+// UserInfo.kt
 
 package com.my.kizzy.rpc
 
-// created by zion huang modified by musicfy contributors
 data class UserInfo(
     val id: String,
     val username: String,

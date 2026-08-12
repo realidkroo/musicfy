@@ -1,5 +1,4 @@
-// thumbnailcornerradiusselectorkt
-// the file functioned as thumbnail corner radius selector
+// ThumbnailCornerRadiusSelector.kt
 
 package com.example.musicfy.ui.component
 
@@ -82,13 +81,12 @@ fun ThumbnailCornerRadiusModal(
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // ── image left + chips right ──────────────────────────
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // left thumbnail preview
+
                         Box(
                             modifier = Modifier
                                 .size(160.dp)
@@ -129,7 +127,6 @@ fun ThumbnailCornerRadiusModal(
                             }
                         }
 
-                        // right preset chips
                         ChipsGrid(
                             modifier = Modifier.weight(1f),
                             values = presetValues,
@@ -140,7 +137,6 @@ fun ThumbnailCornerRadiusModal(
                             }
                         )
                     }
-                    // ──────────────────────────────────────────────────────────
 
                     Spacer(modifier = Modifier.height(24.dp))
                     Row(
@@ -313,12 +309,7 @@ fun ThumbnailCornerRadiusModal(
                             )
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-// icon
-// painter = painterresource rdrawablecheck
-// contentdescription = null
-// modifier = modifiersize 18dp
 
-// spacer modifier = modifierwidth 8dp
                                 Text(
                                     text = stringResource(id = android.R.string.ok),
                                     style = MaterialTheme.typography.labelLarge
@@ -335,14 +326,14 @@ fun ThumbnailCornerRadiusModal(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChipsGrid(
-    modifier: Modifier = Modifier,   // ← added
+    modifier: Modifier = Modifier,
     values: List<Float>,
     selectedValue: Float?,
     onValueSelected: (Float) -> Unit
 ) {
     val chunkedValues = values.chunked(2)
     Column(
-        modifier = modifier,          // ← use passed in modifier
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {

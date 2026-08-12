@@ -1,5 +1,4 @@
-// suggestionregionsheetkt
-// what is this for you ask its for suggestion region sheet ofc
+// SuggestionRegionSheet.kt
 
 package com.example.musicfy.ui.screens.search.suggestions
 
@@ -35,10 +34,10 @@ fun SuggestionRegionSheet(
     onDismiss: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    
+
     val filteredRegions = remember(searchQuery) {
         SuggestionRegionSlugToName.toList()
-            .filter { it.first != "system" } // filter out system from the main list
+            .filter { it.first != "system" }
             .filter { it.second.contains(searchQuery, ignoreCase = true) }
     }
 
@@ -55,7 +54,7 @@ fun SuggestionRegionSheet(
                 text = "Choose Suggestions Region",
                 style = MaterialTheme.typography.labelLarge
             )
-            
+
             DockedSearchBar(
                 inputField = {
                     SearchBarDefaults.InputField(
@@ -79,7 +78,7 @@ fun SuggestionRegionSheet(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {}
-            
+
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -87,7 +86,7 @@ fun SuggestionRegionSheet(
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(24.dp))
             ) {
-                // system default section
+
                 item {
                     Text(
                         text = "System",
@@ -112,7 +111,7 @@ fun SuggestionRegionSheet(
                         }
                     )
                 }
-                
+
                 item {
                     Spacer(Modifier.height(12.dp))
                 }
@@ -154,7 +153,7 @@ fun SuggestionRegionSheet(
             }
         }
     }
-    
+
     LaunchedEffect(searchQuery) {
         if (filteredRegions.isNotEmpty()) {
             listState.scrollToItem(0)

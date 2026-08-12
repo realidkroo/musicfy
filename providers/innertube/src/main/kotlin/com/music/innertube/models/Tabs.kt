@@ -1,5 +1,4 @@
-// tabs kt
-// this thing is for tabs
+// Tabs.kt
 
 package com.music.innertube.models
 

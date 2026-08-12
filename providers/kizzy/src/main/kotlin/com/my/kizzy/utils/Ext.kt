@@ -1,17 +1,4 @@
-// ext kt
-// this thing is part of ext
-
-/*
- *
- *  ******************************************************************
- *  *  * Copyright (C) 2022
- *  *  * Ext.kt is part of Kizzy
- *  *  *  and can not be copied and/or distributed without the express
- *  *  * permission of yzziK(Vaibhav)
- *  *  *****************************************************************
- *
- *
- */
+// Ext.kt
 
 package com.my.kizzy.utils
 
@@ -25,4 +12,3 @@ fun String.toRpcImage(): RpcImage? {
     else
         RpcImage.ExternalImage(this)
 }
-

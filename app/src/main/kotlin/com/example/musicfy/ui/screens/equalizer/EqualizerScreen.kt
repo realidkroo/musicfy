@@ -1,8 +1,4 @@
-// equalizerscreenkt
-// first ever ui for musicfy s existing custom 10 band biquad equalizer the
-// customequalizeraudioprocessor was already wired into every exoplayer
-// musicservice it just had no settings screen only a menu entry that
-// unregistered equalizer route standard vertical slider per band layout
+// EqualizerScreen.kt
 
 package com.example.musicfy.ui.screens.equalizer
 
@@ -134,7 +130,6 @@ fun EqualizerScreen(
 private fun frequencyLabel(hz: Double): String =
     if (hz >= 1000.0) "${(hz / 1000.0).let { if (it == it.toInt().toDouble()) it.toInt().toString() else it.toString() }}k" else hz.toInt().toString()
 
-// turns a horizontal slider into a vertical one measure it as if the available
 private fun Modifier.verticalSliderLayout(): Modifier = this
     .graphicsLayer {
         rotationZ = 270f

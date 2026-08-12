@@ -1,6 +1,4 @@
-// playercontrols kt
-// extracted from player kt s controlscontent closure the transport buttons row
-// skip play pause skip the volume slider and the connected bluetooth device row
+// PlayerControls.kt
 
 package com.example.musicfy.ui.player
 
@@ -180,7 +178,7 @@ fun PlayerControls(
                     Box(
                         modifier =
                         Modifier
-                            .size(64.dp) // adjusted to better match 48 dp side buttons visually
+                            .size(64.dp)
                             .clip(CircleShape)
                             .clickable {
                                 if (isCasting) {
@@ -235,7 +233,7 @@ fun PlayerControls(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp)) // space between play and audio
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -248,17 +246,14 @@ fun PlayerControls(
                     val isVolumePressed by volumeInteractionSource.collectIsPressedAsState()
                     val isVolumeActive = isVolumeDragged || isVolumePressed
 
-                    // internal state to track drag value and avoid system feedback lag
                     var dragVolume by remember { mutableFloatStateOf(systemVolume) }
 
-                    // use a coroutine to update system volume to avoid ui blocking on fast swipes
                     val scope = rememberCoroutineScope()
 
                     LaunchedEffect(systemVolume) {
                         if (!isVolumeActive) dragVolume = systemVolume
                     }
 
-                    // smoothly animate the volume position when changed via buttons
                     val animatedSystemVolume by animateFloatAsState(
                         targetValue = systemVolume,
                         animationSpec = tween(150, easing = LinearOutSlowInEasing),
@@ -272,8 +267,8 @@ fun PlayerControls(
                     val volumeTrackHeight by animateDpAsState(
                         targetValue = if (isVolumeActive) 16.dp else 10.dp,
                         animationSpec = spring(
-                            dampingRatio = 0.7f, // slightly more stable damping
-                            stiffness = 600f // balanced stiffness for high speed stability
+                            dampingRatio = 0.7f,
+                            stiffness = 600f
                         ),
                         label = "volumeTrackHeight"
                     )
@@ -305,7 +300,7 @@ fun PlayerControls(
                             if (isCasting) {
                                 castHandler?.setVolume(newVolume)
                             } else {
-                                // non blocking update to prevent fast swipe lag
+
                                 scope.launch(Dispatchers.Default) {
                                     val newStep = (newVolume * maxSystemVolume).roundToInt()
                                     audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newStep, 0)

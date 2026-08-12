@@ -1,5 +1,4 @@
-// assets kt
-// this thing is part of assets
+// Assets.kt
 
 package com.my.kizzy.gateway.entities.presence
 

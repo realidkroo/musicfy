@@ -1,5 +1,4 @@
-// networkmodulekt
-// this thing is part of network module
+// NetworkModule.kt
 
 package com.example.musicfy.di
 

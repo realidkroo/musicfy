@@ -1,5 +1,4 @@
-// lyricsmenuviewmodelkt
-// what is this for you ask its for lyrics menu view model ofc
+// LyricsMenuViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -53,7 +52,7 @@ constructor(
         _isNetworkAvailable.value = try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
-            true // assume connected as fallback
+            true
         }
     }
 
