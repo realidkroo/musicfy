@@ -1,4 +1,4 @@
-// BrowseBody.kt
+// browsebody kt
 // this thing is part of browse body
 
 package com.music.innertube.models.body

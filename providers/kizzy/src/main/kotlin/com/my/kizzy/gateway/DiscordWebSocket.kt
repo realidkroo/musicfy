@@ -1,4 +1,4 @@
-// DiscordWebSocket.kt
+// discordwebsocket kt
 // what is this for you ask its for discord web socket ofc
 
 package com.my.kizzy.gateway
@@ -49,9 +49,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * Modified by Zion Huang
- */
+// modified by zion huang
 open class DiscordWebSocket(
     private val token: String,
     private val os: String = "Android",
@@ -290,7 +288,7 @@ open class DiscordWebSocket(
     }
 
     suspend fun sendActivity(presence: Presence) {
-        // TODO : Figure out a better way to wait for socket to be connected to account
+        // todo figure out a better way to wait for socket to be connected to account
         while (!isSocketConnectedToAccount()) {
             delay(10.milliseconds)
         }

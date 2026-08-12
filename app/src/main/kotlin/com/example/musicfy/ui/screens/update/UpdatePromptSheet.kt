@@ -55,7 +55,7 @@ import kotlinx.coroutines.launch
 
 private val CardSurface = MenuRowSurface
 
-// printing an empty gap or the word "null"
+// printing an empty gap or the word null
 @Composable
 fun UpdatePromptSheet(
     release: GithubRelease,
@@ -77,8 +77,8 @@ fun UpdatePromptSheet(
     var readyToInstall by remember(release.apkName) {
         mutableStateOf(com.example.musicfy.core.updater.isDownloaded(context, release))
     }
-    // set when the installer could not be shown because "install unknown apps"
-    // has been sent to that settings screen; the file is kept so the retry is
+    // set when the installer could not be shown because install unknown apps
+    // has been sent to that settings screen the file is kept so the retry is
     var needsPermission by remember { mutableStateOf(false) }
 
     val startInstall: (java.io.File) -> Unit = { file ->
@@ -96,8 +96,8 @@ fun UpdatePromptSheet(
         modifier = modifier,
         wrapHeight = true,
         fullDetent = 0.92f,
-        // same reasoning as the detail sheet: the download lands in the cache and
-        // system installer so letting the sheet go mid-flight would strand it
+        // same reasoning as the detail sheet the download lands in the cache and
+        // system installer so letting the sheet go mid flight would strand it
         dismissEnabled = !downloading,
         revealProvider = onReveal,
     ) { _ ->
@@ -109,8 +109,8 @@ fun UpdatePromptSheet(
                 .padding(top = 12.dp, bottom = 24.dp)
                 .animateContentSize()
         ) {
-            // the big mark this is the one real difference from the detail sheet's 22dp
-            // icon — here it is the first thing you see so it carries the whole framing
+            // the big mark this is the one real difference from the detail sheet s 22dp
+            // icon here it is the first thing you see so it carries the whole framing
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -179,8 +179,8 @@ fun UpdatePromptSheet(
                     .background(CardSurface)
                     .padding(14.dp)
             ) {
-                // shared with updatesheet — see appiconimage for why this cannot be a
-                // painterresource(rmipmapic_launcher)
+                // shared with updatesheet see appiconimage for why this cannot be a
+                // painterresource rmipmapic_launcher
                 AppIconImage(
                     modifier = Modifier
                         .size(48.dp)
@@ -233,7 +233,7 @@ fun UpdatePromptSheet(
                     error = null
                     val existing = com.example.musicfy.core.updater.apkFileFor(context, release)
                     if (com.example.musicfy.core.updater.isDownloaded(context, release)) {
-                        // nothing to fetch — this is the retry path after a failed install
+                        // nothing to fetch this is the retry path after a failed install
                         startInstall(existing)
                     } else {
                         downloading = true
@@ -271,7 +271,7 @@ fun UpdatePromptSheet(
     }
 }
 
-// the prompt's button shape [progress] fills it from the left which is how the
+// the prompt s button shape progress fills it from the left which is how the
 @Composable
 private fun PromptButton(
     label: String,
@@ -298,8 +298,8 @@ private fun PromptButton(
         if (progress > 0f) {
             Box(
                 modifier = Modifier
-                    // centerstart not the parent's center: the fill inherits the parent's
-                    // contentalignment otherwise so a half-finished download rendered as a bar
+                    // centerstart not the parent s center the fill inherits the parent s
+                    // contentalignment otherwise so a half finished download rendered as a bar
                     // centred in the button growing outward from the middle instead of filling
                     // from the left edge
                     .align(Alignment.CenterStart)

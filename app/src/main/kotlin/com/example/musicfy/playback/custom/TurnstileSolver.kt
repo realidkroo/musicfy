@@ -18,8 +18,8 @@ class TurnstileSolver(private val context: Context) {
 
     private var cachedToken: String? = null
     private var tokenTimestamp: Long = 0L
-    // only one webview-based solve/fetch may run at a time concurrent retries
-    // exoplayer's auto-retry-on-error) would otherwise spin up many webviews at
+    // only one webview based solve fetch may run at a time concurrent retries
+    // exoplayer s auto retry on error would otherwise spin up many webviews at
     // looks like abuse to cloudflare turnstile and gets tokens rejected
     private val solveMutex = Mutex()
 
@@ -158,9 +158,9 @@ class TurnstileSolver(private val context: Context) {
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun fetchWithTurnstile(siteKey: String, exchangeUrl: String, targetUrl: String, forceRefresh: Boolean = false): Pair<Int, String?>? {
         return solveMutex.withLock {
-        // exchange tokens are single-use at cloudflare's edge — never reuse a cached
-        // token here (unlike getturnstiletoken's cache which is for callers that
-        // the token's presence not a working exchange)
+        // exchange tokens are single use at cloudflare s edge never reuse a cached
+        // token here unlike getturnstiletoken s cache which is for callers that
+        // the token s presence not a working exchange
 
         withTimeoutOrNull(20000) { // 20 seconds max
             val deferred = CompletableDeferred<Pair<Int, String?>?>()
@@ -315,7 +315,7 @@ class TurnstileSolver(private val context: Context) {
         }
     }
 
-    // same fingerprint-bound exchange as [fetchwithturnstile] but for apis (like
+    // same fingerprint bound exchange as fetchwithturnstile but for apis like
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun fetchPlaybackWithTurnstile(
         siteKey: String,
@@ -325,7 +325,7 @@ class TurnstileSolver(private val context: Context) {
         forceRefresh: Boolean = false
     ): Pair<Int, String?>? {
         return solveMutex.withLock {
-        // exchange tokens are single-use at cloudflare's edge — always solve fresh
+        // exchange tokens are single use at cloudflare s edge always solve fresh
         // reuse a cached raw token across exchange attempts
 
         withTimeoutOrNull(20000) { // 20 seconds max

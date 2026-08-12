@@ -57,7 +57,7 @@ class MusicfyWidgetManager @Inject constructor(
     ) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
 
-        // use cached album art if uri hasn't changed otherwise load new one
+        // use cached album art if uri hasn t changed otherwise load new one
         val albumArt: Bitmap?
         val circularAlbumArt: Bitmap?
         
@@ -122,16 +122,16 @@ class MusicfyWidgetManager @Inject constructor(
         val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
 
         // determine widget size category
-        // 2x2: approximately 110dp x 110dp (compact square)
-        // 4x1: approximately 250dp x 40dp (wide single row)
-        // full: approximately 250dp x 110dp (default)
+        // 2x2 approximately 110dp x 110dp compact square
+        // 4x1 approximately 250dp x 40dp wide single row
+        // full approximately 250dp x 110dp default
         return when {
             minWidth < 180 && minHeight < 100 -> {
-                // 2x2 compact - only play button with album art
+                // 2x2 compact only play button with album art
                 createCompactSquareRemoteViews(albumArt, isPlaying)
             }
             minWidth >= 180 && minHeight < 100 -> {
-                // 4x1 wide - single row with album art song info like and play buttons
+                // 4x1 wide single row with album art song info like and play buttons
                 createCompactWideRemoteViews(title, artist, albumArt, isPlaying, isLiked)
             }
             else -> {
@@ -164,11 +164,11 @@ class MusicfyWidgetManager @Inject constructor(
             views.setImageViewBitmap(R.id.widget_album_art, getRoundedDefaultIcon(48f))
         }
 
-        // set play/pause icon
+        // set play pause icon
         val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play
         views.setImageViewResource(R.id.widget_play_pause, playPauseIcon)
 
-        // set like icon - using nav style (purple) for main widget
+        // set like icon using nav style purple for main widget
         val likeIcon = if (isLiked) R.drawable.ic_widget_heart_nav else R.drawable.ic_widget_heart_outline_nav
         views.setImageViewResource(R.id.widget_like_button, likeIcon)
 
@@ -268,7 +268,7 @@ class MusicfyWidgetManager @Inject constructor(
             views.setImageViewBitmap(R.id.widget_compact_album_art, getRoundedDefaultIcon(48f))
         }
 
-        // set play/pause icon - using low style icons
+        // set play pause icon using low style icons
         val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause_low else R.drawable.ic_widget_play_low
         views.setImageViewResource(R.id.widget_compact_play_pause, playPauseIcon)
 
@@ -292,7 +292,7 @@ class MusicfyWidgetManager @Inject constructor(
         views.setTextViewText(R.id.widget_wide_song_title, title)
         views.setTextViewText(R.id.widget_wide_artist_name, artist)
 
-        // set album art with rounded corners (48f to match 12dp at ~4x density for
+        // set album art with rounded corners 48f to match 12dp at ~4x density for
         if (albumArt != null) {
             val roundedAlbumArt = getRoundedCornerBitmap(albumArt, 48f)
             views.setImageViewBitmap(R.id.widget_wide_album_art, roundedAlbumArt)
@@ -301,11 +301,11 @@ class MusicfyWidgetManager @Inject constructor(
             views.setImageViewBitmap(R.id.widget_wide_album_art, getRoundedDefaultIcon(48f))
         }
 
-        // set play/pause icon - using low style icons
+        // set play pause icon using low style icons
         val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause_low else R.drawable.ic_widget_play_low
         views.setImageViewResource(R.id.widget_wide_play_pause, playPauseIcon)
 
-        // set like icon - using navigation style (purple)
+        // set like icon using navigation style purple
         val likeIcon = if (isLiked) R.drawable.ic_widget_heart_nav else R.drawable.ic_widget_heart_outline_nav
         views.setImageViewResource(R.id.widget_wide_like_button, likeIcon)
 
@@ -324,7 +324,7 @@ class MusicfyWidgetManager @Inject constructor(
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_turntable)
 
-        // set circular album art - create circular default icon if no album art
+        // set circular album art create circular default icon if no album art
         if (circularAlbumArt != null) {
             views.setImageViewBitmap(R.id.widget_turntable_album_art, circularAlbumArt)
         } else {
@@ -332,7 +332,7 @@ class MusicfyWidgetManager @Inject constructor(
             views.setImageViewBitmap(R.id.widget_turntable_album_art, getCircularDefaultIcon())
         }
 
-        // set play/pause icon - using secondary color icons for turntable
+        // set play pause icon using secondary color icons for turntable
         val playPauseIcon = if (isPlaying) R.drawable.ic_widget_pause_secondary else R.drawable.ic_widget_play_secondary
         views.setImageViewResource(R.id.widget_turntable_play_pause, playPauseIcon)
 

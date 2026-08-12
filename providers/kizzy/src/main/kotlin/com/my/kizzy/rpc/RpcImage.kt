@@ -1,4 +1,4 @@
-// RpcImage.kt
+// rpcimage kt
 // this thing is for rpc image
 
 /*
@@ -15,9 +15,7 @@
 
 package com.my.kizzy.rpc
 
-/**
- * Modified by Zion Huang
- */
+// modified by zion huang
 sealed class RpcImage {
     abstract suspend fun resolveImage(resolveExternalImage: suspend (String) -> String?): String?
 
@@ -35,7 +33,7 @@ sealed class RpcImage {
             val asset = ArtworkCache.getOrFetch(image) { resolveExternalImage(image) }
             return when {
                 asset != null -> if (asset.startsWith("http") || asset.startsWith("mp:")) asset else "mp:$asset"
-                image.startsWith("http") -> image // Raw URL
+                image.startsWith("http") -> image // raw url
                 else -> fallbackDiscordAsset?.let { if (it.startsWith("http")) it else "mp:${it}" }
             }
         }

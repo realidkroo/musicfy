@@ -1,4 +1,4 @@
-// PlayerResponse.kt
+// playerresponse kt
 // the file functioned as player response
 
 package com.music.innertube.models.response
@@ -8,9 +8,7 @@ import com.music.innertube.models.Thumbnails
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * PlayerResponse with [com.music.innertube.models.YouTubeClient.WEB_REMIX] client
- */
+// playerresponse with com music innertube models youtubeclient web_remix client
 @Serializable
 data class PlayerResponse(
     val responseContext: ResponseContext,

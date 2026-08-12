@@ -14,7 +14,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// service for managing custom eq using exoplayer's audioprocessor supports 10+
+// service for managing custom eq using exoplayer s audioprocessor supports 10+
 @Singleton
 class EqualizerService @Inject constructor() {
 
@@ -36,11 +36,11 @@ class EqualizerService @Inject constructor() {
         // apply pending profile if one was set before processor was available
         if (shouldDisable) {
             processor.disable()
-            // don't clear shoulddisable here as we might add more processors
+            // don t clear shoulddisable here as we might add more processors
         } else if (pendingProfile != null) {
             val profile = pendingProfile!!
             applyProfileToProcessor(processor, profile)
-            // don't clear pendingprofile here
+            // don t clear pendingprofile here
         }
     }
 
@@ -86,7 +86,7 @@ class EqualizerService @Inject constructor() {
         processor.applyProfile(parametricEQ)
     }
 
-    // disable the equalizer (flat response) if audio processor is not set stores
+    // disable the equalizer flat response if audio processor is not set stores
     @OptIn(UnstableApi::class)
     fun disable() {
         if (audioProcessors.isEmpty()) {
@@ -129,7 +129,7 @@ class EqualizerService @Inject constructor() {
         )
     }
 
-    // release resources (not needed for audioprocessor but kept for api compatibility)
+    // release resources not needed for audioprocessor but kept for api compatibility
     fun release() {
         // audioprocessor is managed by exoplayer we just clear our reference
         audioProcessors.clear()

@@ -1,4 +1,4 @@
-// Timestamps.kt
+// timestamps kt
 // what is this for you ask its for timestamps ofc
 
 package com.my.kizzy.gateway.entities.presence

@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 
-// enhanced action button - material 3 expressive design
+// enhanced action button material 3 expressive design
 @Composable
 fun NewActionButton(
     icon: @Composable () -> Unit,
@@ -118,7 +118,7 @@ fun NewActionButton(
     }
 }
 
-// enhanced menu item - material 3 expressive design
+// enhanced menu item material 3 expressive design
 @Composable
 fun NewMenuItem(
     headlineContent: @Composable () -> Unit,
@@ -141,7 +141,7 @@ fun NewMenuItem(
     )
 }
 
-// enhanced menu section header - material 3 expressive design
+// enhanced menu section header material 3 expressive design
 @Composable
 fun NewMenuSectionHeader(
     text: String,
@@ -158,7 +158,7 @@ fun NewMenuSectionHeader(
     )
 }
 
-// enhanced action grid - material 3 expressive design
+// enhanced action grid material 3 expressive design
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun NewActionGrid(
@@ -227,7 +227,7 @@ data class NewAction(
     val contentColor: Color = Color.Unspecified
 )
 
-// enhanced menu content - material 3 expressive design
+// enhanced menu content material 3 expressive design
 @Composable
 fun NewMenuContent(
     headerContent: @Composable (() -> Unit)? = null,
@@ -258,7 +258,7 @@ fun NewMenuContent(
     }
 }
 
-// enhanced icon button - material 3 expressive design
+// enhanced icon button material 3 expressive design
 @Composable
 fun NewIconButton(
     icon: @Composable () -> Unit,
@@ -302,7 +302,7 @@ fun NewIconButton(
     }
 }
 
-// enhanced menu container - material 3 expressive design
+// enhanced menu container material 3 expressive design
 @Composable
 fun NewMenuContainer(
     content: @Composable () -> Unit,

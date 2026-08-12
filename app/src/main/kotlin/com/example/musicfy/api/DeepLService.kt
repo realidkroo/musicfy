@@ -38,7 +38,7 @@ object DeepLService {
         val lines = text.lines()
         val lineCount = lines.size
         
-        // deepl language codes (uppercase)
+        // deepl language codes uppercase
         val deeplLangCode = when (targetLanguage.lowercase()) {
             "zh", "zh-cn", "zh-hans" -> "ZH"
             "zh-tw", "zh-hant" -> "ZH"
@@ -80,7 +80,7 @@ object DeepLService {
                 val responseBody = response.body?.string()
 
                 if (!response.isSuccessful) {
-                    // retry on server errors (5xx)
+                    // retry on server errors 5xx
                     if (response.code >= 500) {
                         currentAttempt++
                         kotlinx.coroutines.delay(1000L * currentAttempt)

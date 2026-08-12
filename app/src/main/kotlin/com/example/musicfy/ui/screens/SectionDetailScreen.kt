@@ -386,7 +386,7 @@ fun SectionDetailScreen(
                                         modifier = Modifier.align(Alignment.Center).size(32.dp)
                                     )
                                     // here we might need a way to get the artist thumbnail but typically youtube
-                                    // we'll leave it as a placeholder circle as the database or innertube may
+                                    // we ll leave it as a placeholder circle as the database or innertube may
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(

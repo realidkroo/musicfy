@@ -1,4 +1,4 @@
-// MonochromeApiCanvas.kt
+// monochromeapicanvas kt
 // what is this for you ask its for monochrome api canvas ofc
 
 package com.example.musicfy.canvas
@@ -25,9 +25,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * A canvas provider that fetches Tidal video covers via Monochrome API instances.
- */
+// a canvas provider that fetches tidal video covers via monochrome api instances
 object MonochromeApiCanvas {
     private val INSTANCES = listOf(
         "https://eu-central.monochrome.tf/",
@@ -88,7 +86,7 @@ object MonochromeApiCanvas {
         artist: String,
         album: String?
     ): CanvasArtwork? {
-        // Try to be specific to avoid false positives
+        // try to be specific to avoid false positives
         val query = if (!album.isNullOrBlank()) "$artist - $song - $album" else "$artist - $song"
         
         for (baseUrl in INSTANCES) {
@@ -105,11 +103,11 @@ object MonochromeApiCanvas {
                 for (item in items) {
                     val track = item.jsonObject
                     
-                    // Basic validation to ensure we found the right track
+                    // basic validation to ensure we found the right track
                     val trackTitle = track["title"]?.jsonPrimitive?.contentOrNull
                     if (trackTitle != null && !trackTitle.contains(song, ignoreCase = true)) continue
 
-                    // Artist validation to prevent "wrong canvas" for same song title by different artists
+                    // artist validation to prevent wrong canvas for same song title by different artists
                     val artists = track["artists"]?.jsonArray
                     val resultArtist = artists?.firstOrNull()?.jsonObject?.get("name")?.jsonPrimitive?.contentOrNull
                     if (resultArtist != null && !resultArtist.contains(artist, ignoreCase = true) && !artist.contains(resultArtist, ignoreCase = true)) continue
@@ -129,16 +127,14 @@ object MonochromeApiCanvas {
                     }
                 }
             } catch (e: Exception) {
-                // Try next instance if one fails
+                // try next instance if one fails
                 continue
             }
         }
         return null
     }
 
-    /**
-     * Recursively find a section in the search response that matches the key and has items.
-     */
+    // recursively find a section in the search response that matches the key and has items
     private fun findSearchSection(source: JsonElement, key: String): JsonElement? {
         if (source is JsonObject) {
             if (source.containsKey("items") && source["items"] is JsonArray) return source
@@ -164,7 +160,7 @@ object MonochromeApiCanvas {
     internal fun formatVideoUrl(id: String): String? {
         val parts = id.split("-")
         if (parts.size != 5) return null
-        // 1280x1280 is the standard high-res video cover size used by Tidal
+        // 1280x1280 is the standard high res video cover size used by tidal
         return "https://resources.tidal.com/videos/${parts[0]}/${parts[1]}/${parts[2]}/${parts[3]}/${parts[4]}/1280x1280.mp4"
     }
 

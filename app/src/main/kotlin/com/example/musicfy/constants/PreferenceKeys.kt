@@ -197,7 +197,7 @@ val LastArtistSyncKey = longPreferencesKey("last_artist_sync")
 val LastPlaylistSyncKey = longPreferencesKey("last_playlist_sync")
 val LastFullSyncKey = longPreferencesKey("last_full_sync")
 
-// sync cooldown in seconds (30 minutes)
+// sync cooldown in seconds 30 minutes
 const val SYNC_COOLDOWN = 30 * 60L
 
 val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
@@ -215,10 +215,10 @@ val RandomizeHomeOrderKey = booleanPreferencesKey("randomizeHomeOrder")
 val AlbumCanvasEnabledKey = booleanPreferencesKey("albumCanvasEnabled")
 val BetaNoticeDismissedKey = booleanPreferencesKey("beta_notice_dismissed")
 
-// when the user last chose "remind me in 24 hours" on the home update prompt
+// when the user last chose remind me in 24 hours on the home update prompt
 val UpdatePromptSnoozedAtKey = longPreferencesKey("update_prompt_snoozed_at")
 
-// announce which provider a track resolved from ("playing from …") as a toast on
+// announce which provider a track resolved from playing from … as a toast on
 val ShowStreamSourceToastKey = booleanPreferencesKey("show_stream_source_toast")
 
 val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
@@ -388,9 +388,9 @@ enum class PlayerButtonsStyle {
     TERTIARY
 }
 
-// the four player background treatments offered by the "bg style" section of the
+// the four player background treatments offered by the bg style section of the
 enum class PlayerBackgroundStyle {
-    // blurred artwork + warp shader the historical (and default) player backdrop
+    // blurred artwork + warp shader the historical and default player backdrop
     COVER_GRADIENT,
 
     // flat surfacecontainer fill
@@ -399,11 +399,11 @@ enum class PlayerBackgroundStyle {
     // static dark vertical gradient independent of the artwork
     DARK_GRADIENT,
 
-    // apple-music-style morphing colour mesh derived from the artwork's palette
+    // apple music style morphing colour mesh derived from the artwork s palette
     APPLE_MUSIC,
 }
 
-// how the artwork is presented in the expanded player [edge_to_edge] is the
+// how the artwork is presented in the expanded player edge_to_edge is the
 enum class PlayerCoverStyle {
     EDGE_TO_EDGE,
     SQUARED,
@@ -425,7 +425,7 @@ val DiscRotatingAnimationKey = booleanPreferencesKey("discRotatingAnimation")
 // adds groove texture and a fixed specular sheen to the vinyl disc styles only
 val DiscRealisticModeKey = booleanPreferencesKey("discRealisticMode")
 
-// the user's custom label printed on the vinyl's platter one global string not
+// the user s custom label printed on the vinyl s platter one global string not
 val DiscNameKey = stringPreferencesKey("discName")
 
 // what a player text slot displays persisted and settable but nothing reads these
@@ -451,10 +451,10 @@ val EnableLyricsThumbnailPlayPauseKey = booleanPreferencesKey("enableLyricsThumb
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
 
-// whether the active lyric line's letters lift stretch and bloom as the sweep
+// whether the active lyric line s letters lift stretch and bloom as the sweep
 val LyricsWaveAnimationKey = booleanPreferencesKey("lyricsWaveAnimation")
 
-// eight-tap bloom on the sung word instead of four on by default; off halves the
+// eight tap bloom on the sung word instead of four on by default off halves the
 val LyricsHighBloomKey = booleanPreferencesKey("lyricsHighBloom")
 val LyricsScrollKey = booleanPreferencesKey("lyricsScrollKey")
 val LyricsRomanizeJapaneseKey = booleanPreferencesKey("lyricsRomanizeJapanese")
@@ -803,7 +803,7 @@ val DisableBlurKey = booleanPreferencesKey("disableBlur")
 val AudioQualityBadgeDevKey = booleanPreferencesKey("audioQualityBadgeDev")
 val YtVideoBackgroundLyricsSyncKey = booleanPreferencesKey("ytVideoBackgroundLyricsSync")
 
-// setup wizard "would you like to" additions
+// setup wizard would you like to additions
 val OfflineModeKey = booleanPreferencesKey("offlineMode")
 val DisableAiFilterKey = booleanPreferencesKey("disableAiFilter")
 val SetupImportCompletedKey = booleanPreferencesKey("setupImportCompleted")

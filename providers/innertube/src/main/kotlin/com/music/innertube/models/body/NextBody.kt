@@ -1,4 +1,4 @@
-// NextBody.kt
+// nextbody kt
 // this thing is for next body
 
 package com.music.innertube.models.body

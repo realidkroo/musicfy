@@ -35,7 +35,7 @@ object PlayerJsFetcher {
             val cacheDir = getCacheDir()
             if (!cacheDir.exists()) cacheDir.mkdirs()
 
-            // check cache first (unless forced refresh)
+            // check cache first unless forced refresh
             if (!forceRefresh) {
                 val cached = readFromCache()
                 if (cached != null) {

@@ -1,4 +1,4 @@
-// ArtistItemsContinuationPage.kt
+// artistitemscontinuationpage kt
 // this thing is part of artist items continuation page
 
 package com.music.innertube.pages

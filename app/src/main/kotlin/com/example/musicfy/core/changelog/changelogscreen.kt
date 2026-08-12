@@ -175,7 +175,7 @@ fun ChangelogScreen(
                                         sections.add(ChangelogSection(title, items))
                                     }
                                 } else {
-                                    // fallback: this is the old format (array of strings)
+                                    // fallback this is the old format array of strings
                                     val item = changelogArray.optString(i, "")
                                     if (item.isNotBlank()) {
                                         if (sections.isEmpty() || sections[0].title.isNotBlank()) {

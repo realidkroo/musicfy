@@ -1,4 +1,4 @@
-// GetSearchSuggestionsBody.kt
+// getsearchsuggestionsbody kt
 // the file functioned as get search suggestions body
 
 package com.music.innertube.models.body

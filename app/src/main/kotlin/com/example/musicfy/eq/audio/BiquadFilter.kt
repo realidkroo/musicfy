@@ -10,7 +10,7 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-// biquad filter implementation for eq supports peaking (pk) low-shelf (lsc) and
+// biquad filter implementation for eq supports peaking pk low shelf lsc and
 class BiquadFilter(
     private val sampleRate: Int,
     private val frequency: Double,
@@ -26,7 +26,7 @@ class BiquadFilter(
     private var b1 = 0.0
     private var b2 = 0.0
 
-    // state variables for filtering (per channel)
+    // state variables for filtering per channel
     private var x1L = 0.0
     private var x2L = 0.0
     private var y1L = 0.0
@@ -54,7 +54,7 @@ class BiquadFilter(
         }
     }
 
-    // calculate peaking eq coefficients (pk) boosts or cuts around a center frequency
+    // calculate peaking eq coefficients pk boosts or cuts around a center frequency
     private fun calculatePeakingCoefficients() {
         val A = 10.0.pow(gain / 40.0) // gain in linear scale
         val omega = 2.0 * PI * frequency / sampleRate
@@ -79,17 +79,17 @@ class BiquadFilter(
         a0 = 1.0
     }
 
-    // calculate low-shelf coefficients (lsc) boosts or cuts frequencies below the
+    // calculate low shelf coefficients lsc boosts or cuts frequencies below the
     private fun calculateLowShelfCoefficients() {
         val A = sqrt(10.0.pow(gain / 20.0)) // gain amplitude
         val omega = 2.0 * PI * frequency / sampleRate
         val sinOmega = sin(omega)
         val cosOmega = cos(omega)
-        val S = 1.0 // shelf slope parameter (could be made adjustable)
+        val S = 1.0 // shelf slope parameter could be made adjustable
         val alpha = sinOmega / 2.0 * sqrt((A + 1.0 / A) * (1.0 / S - 1.0) + 2.0)
         val sqrtA = sqrt(A)
 
-        // low-shelf coefficients
+        // low shelf coefficients
         val aPlusOne = A + 1.0
         val aMinusOne = A - 1.0
         val twoSqrtAAlpha = 2.0 * sqrtA * alpha
@@ -110,17 +110,17 @@ class BiquadFilter(
         a0 = 1.0
     }
 
-    // calculate high-shelf coefficients (hsc) boosts or cuts frequencies above the
+    // calculate high shelf coefficients hsc boosts or cuts frequencies above the
     private fun calculateHighShelfCoefficients() {
         val A = sqrt(10.0.pow(gain / 20.0)) // gain amplitude
         val omega = 2.0 * PI * frequency / sampleRate
         val sinOmega = sin(omega)
         val cosOmega = cos(omega)
-        val S = 1.0 // shelf slope parameter (could be made adjustable)
+        val S = 1.0 // shelf slope parameter could be made adjustable
         val alpha = sinOmega / 2.0 * sqrt((A + 1.0 / A) * (1.0 / S - 1.0) + 2.0)
         val sqrtA = sqrt(A)
 
-        // high-shelf coefficients
+        // high shelf coefficients
         val aPlusOne = A + 1.0
         val aMinusOne = A - 1.0
         val twoSqrtAAlpha = 2.0 * sqrtA * alpha
@@ -141,7 +141,7 @@ class BiquadFilter(
         a0 = 1.0
     }
 
-    // process a single sample (mono)
+    // process a single sample mono
     fun processSample(input: Double): Double {
         val output = b0 * input + b1 * x1L + b2 * x2L - a1 * y1L - a2 * y2L
 
@@ -154,7 +154,7 @@ class BiquadFilter(
         return output
     }
 
-    // process stereo samples (left and right channels)
+    // process stereo samples left and right channels
     fun processStereo(inputLeft: Double, inputRight: Double): Pair<Double, Double> {
         // left channel
         val outputLeft = b0 * inputLeft + b1 * x1L + b2 * x2L - a1 * y1L - a2 * y2L
@@ -173,7 +173,7 @@ class BiquadFilter(
         return Pair(outputLeft, outputRight)
     }
 
-    // reset filter state (clears history)
+    // reset filter state clears history
     fun reset() {
         x1L = 0.0
         x2L = 0.0

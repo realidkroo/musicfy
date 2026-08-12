@@ -59,7 +59,7 @@ internal class DensityConfiguration(
         applyDensityToActivity(activity)
     }
 
-    // applies the density configuration to a specific activity's resources
+    // applies the density configuration to a specific activity s resources
     private fun applyDensityToActivity(activity: Activity) {
         try {
             updateDensityDpi(activity.resources.configuration, activity.resources)

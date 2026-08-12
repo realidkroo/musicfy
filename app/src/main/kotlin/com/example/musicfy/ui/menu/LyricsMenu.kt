@@ -106,8 +106,8 @@ fun LyricsMenu(
 
     val hasApiKey = if (aiProvider == "DeepL") deeplApiKey.isNotBlank() else openRouterApiKey.isNotBlank()
 
-    // observe the authoritative translation-active state from the singleton;
-    // correctly across menu open/close cycles and avoids the lyricsprovider()
+    // observe the authoritative translation active state from the singleton
+    // correctly across menu open close cycles and avoids the lyricsprovider
     val hasTranslations by LyricsTranslationHelper.hasActiveTranslations.collectAsState()
 
     var showEditDialog by rememberSaveable {
@@ -441,7 +441,7 @@ fun LyricsMenu(
         item {
             Material3MenuGroup(
                 items = buildList {
-                    // add "translate with ai" option if api key is configured
+                    // add translate with ai option if api key is configured
                     if (hasApiKey) {
                         add(
                             Material3MenuItemData(
@@ -460,7 +460,7 @@ fun LyricsMenu(
                                             database.query {
                                                 upsert(clearedLyrics)
                                             }
-                                            // resets hasactivetranslations and clears in-memory translations
+                                            // resets hasactivetranslations and clears in memory translations
                                             LyricsTranslationHelper.triggerClearTranslations()
                                         }
                                     } else {

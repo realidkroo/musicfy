@@ -93,7 +93,7 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "equalizer" to "settings",
 )
 
-// the tab route that owns [currentroute] or null if nothing claims it
+// the tab route that owns currentroute or null if nothing claims it
 private fun owningTabRoute(currentRoute: String?, navigationItems: List<Screens>): String? {
     if (currentRoute == null) return null
     navigationItems.firstOrNull { isRouteSelected(currentRoute, it.route, navigationItems) }
@@ -226,8 +226,8 @@ fun AppNavigationBar(
                 .padding(horizontal = 24.dp, vertical = 8.dp)
                 .align(Alignment.TopCenter)
                 .height(64.dp)
-                // whole-bar tilt applied before the clip so the rounded shape tilts with it
-                // a smaller angle than the pill's: this is a wide surface and the same
+                // whole bar tilt applied before the clip so the rounded shape tilts with it
+                // a smaller angle than the pill s this is a wide surface and the same
                 // across that width would swing the far end much further
                 .press3D(maxTilt = 4f, pressedScale = 0.985f)
                 .clip(RoundedCornerShape(32.dp))
@@ -238,8 +238,8 @@ fun AppNavigationBar(
                 blurRadius = { 24f },
                 tint = containerColor.copy(alpha = 0.65f),
                 foundationColor = containerColor,
-                // clamp not the default decal — this pill's own bounds are the intended blur
-                // extent (no fade-out) so edges need to read as fully blurred right up to the
+                // clamp not the default decal this pill s own bounds are the intended blur
+                // extent no fade out so edges need to read as fully blurred right up to the
                 // border instead of washing to transparent near it
                 tileMode = android.graphics.Shader.TileMode.CLAMP,
                 modifier = Modifier.fillMaxSize()

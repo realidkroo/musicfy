@@ -75,7 +75,7 @@ fun SetupWizardScreen(
     var profilePicUri by remember { mutableStateOf<Uri?>(null) }
     var selectedUncroppedUri by remember { mutableStateOf<Uri?>(null) }
     // kept so tapping the avatar again reopens the cropper on the original photo
-    // forcing a re-pick
+    // forcing a re pick
     var lastPickedUri by remember { mutableStateOf<Uri?>(null) }
     var isLeavingWelcome by remember { mutableStateOf(false) }
 
@@ -183,15 +183,15 @@ fun SetupWizardScreen(
                     )
                 }
                 .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(Color(0xFF121212)) // dark gray/black surface
+                .background(Color(0xFF121212)) // dark gray black surface
         ) {
-            // pager content (fill screen first drawing behind overlays)
+            // pager content fill screen first drawing behind overlays
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = false, // must use buttons to navigate
                 modifier = Modifier.fillMaxSize()
             ) { page ->
-                // pass content padding to non-welcome pages so they don't overlap with the
+                // pass content padding to non welcome pages so they don t overlap with the
                 val pageModifier = Modifier.fillMaxSize().padding(top = 56.dp)
                 when (page) {
                     PAGE_WELCOME -> WelcomeStep(isHiding = isLeavingWelcome)
@@ -201,8 +201,8 @@ fun SetupWizardScreen(
                             onUsernameChange = { username = it },
                             profilePicUri = profilePicUri,
                             onProfileTap = {
-                                // already have a photo? go straight back to the adjust frame; the
-                                // cropper itself offers "select new image"
+                                // already have a photo go straight back to the adjust frame the
+                                // cropper itself offers select new image
                                 val existing = lastPickedUri
                                 if (existing != null) selectedUncroppedUri = existing else openPhotoPicker()
                             }
@@ -254,12 +254,12 @@ fun SetupWizardScreen(
                 // calculate the exact floating scroll position
                 val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
 
-                // show overlay between page 0 (transitioning out) and page 3 (transitioning
+                // show overlay between page 0 transitioning out and page 3 transitioning
                 if (pageOffset > 0f && pageOffset < 3f) {
                     val progress = (pageOffset - 1f).coerceIn(0f, 1f)
 
                     val page1Y = 242.dp
-                    val page1X = 32.dp // fixed: left aligned to match hitbox
+                    val page1X = 32.dp // fixed left aligned to match hitbox
                     val page1Size = 140.dp
 
                     val page2Y = screenHeight - 333.dp
@@ -336,7 +336,7 @@ fun SetupWizardScreen(
                 PAGE_THANK_YOU -> WizardButton(text = "Done", onClick = { onComplete(username, profilePicUri) })
 
                 PAGE_GREETING -> {
-                    // auto-advances via the launchedeffect above — no button needed
+                    // auto advances via the launchedeffect above no button needed
                 }
 
                 PAGE_PROFILE -> WizardButton(
@@ -385,12 +385,12 @@ fun SetupWizardScreen(
                 PAGE_TOGGLES -> WizardButton(text = "Continue", onClick = { goTo(PAGE_MONOCHROME_CHOICE) })
 
                 PAGE_MONOCHROME_CHOICE -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    WizardButton(text = "this thing does not work rn go tap the no button", secondary = true, onClick = { goTo(PAGE_MONOCHROME_INFO) })// work- yes button
+                    WizardButton(text = "this thing does not work rn go tap the no button", secondary = true, onClick = { goTo(PAGE_MONOCHROME_INFO) })// work yes button
                     WizardButton(text = "No (recommended)", highlighted = true, onClick = { goTo(PAGE_THANK_YOU) })
                 }
 
                 PAGE_MONOCHROME_INFO -> {
-                    // the monochrome page carries its own continue button (it runs the probe)
+                    // the monochrome page carries its own continue button it runs the probe
                 }
             }
         }

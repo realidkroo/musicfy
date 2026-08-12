@@ -372,7 +372,7 @@ val MIGRATION_21_24 =
         override fun migrate(db: SupportSQLiteDatabase) {
             // combine all changes from 21→22→23→24
             
-            // from 21→22: add columns
+            // from 21→22 add columns
             try {
                 db.execSQL("ALTER TABLE song ADD COLUMN libraryAddToken TEXT DEFAULT ''")
             } catch (e: Exception) {
@@ -394,7 +394,7 @@ val MIGRATION_21_24 =
                 Timber.tag("Migration").w("Column isDownloaded may already exist")
             }
 
-            // from 23→24: add isuploaded
+            // from 23→24 add isuploaded
             var hasIsUploaded = false
             db.query("PRAGMA table_info('song')").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")
@@ -416,7 +416,7 @@ val MIGRATION_21_24 =
 val MIGRATION_22_24 =
     object : Migration(22, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // from 23→24: add isuploaded
+            // from 23→24 add isuploaded
             var hasIsUploaded = false
             db.query("PRAGMA table_info('song')").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")
@@ -641,7 +641,7 @@ val MIGRATION_24_25 =
             }
 
             if (!columnExists) {
-                // add the column allowing null values (since existing rows won't have this
+                // add the column allowing null values since existing rows won t have this
                 db.execSQL("ALTER TABLE format ADD COLUMN perceptualLoudnessDb REAL DEFAULT NULL")
             }
         }
@@ -649,7 +649,7 @@ val MIGRATION_24_25 =
 
 class Migration29To30 : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        // ensure isvideo column exists (safeguard)
+        // ensure isvideo column exists safeguard
         var hasIsVideo = false
         db.query("PRAGMA table_info('song')").use { cursor ->
             val nameIndex = cursor.getColumnIndex("name")

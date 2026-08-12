@@ -1,4 +1,4 @@
-// PageHelper.kt
+// pagehelper kt
 // this thing is for page helper
 
 package com.music.innertube.pages
@@ -8,43 +8,34 @@ import com.music.innertube.models.MusicResponsiveListItemRenderer.FlexColumn
 import com.music.innertube.models.Run
 
 object PageHelper {
-    // Icon types for library management (YouTube changed these in Feb 2026)
-    // Old icons: LIBRARY_ADD (not in library), LIBRARY_SAVED/LIBRARY_REMOVE (in library)
-    // New icons: BOOKMARK_BORDER (not in library), BOOKMARK (in library)
-    // Note: KEEP/KEEP_OFF are for "Pin to Listen Again" - different from library!
+    // icon types for library management youtube changed these in feb 2026
+    // old icons library_add not in library library_saved library_remove in library
+    // new icons bookmark_border not in library bookmark in library
+    // note keep keep_off are for pin to listen again different from library
     private val LIBRARY_ADD_ICONS = setOf("LIBRARY_ADD", "BOOKMARK_BORDER")
     private val LIBRARY_SAVED_ICONS = setOf("LIBRARY_SAVED", "BOOKMARK", "LIBRARY_REMOVE")
     private val ALL_LIBRARY_ICONS = LIBRARY_ADD_ICONS + LIBRARY_SAVED_ICONS
 
-    /**
-     * Data class to hold both library feedback tokens extracted from a menu
-     */
+    // data class to hold both library feedback tokens extracted from a menu
     data class LibraryFeedbackTokens(
-        val addToken: String?,      // Token to add song to library (from BOOKMARK_BORDER)
-        val removeToken: String?    // Token to remove song from library (from BOOKMARK)
+        val addToken: String?,      // token to add song to library from bookmark_border
+        val removeToken: String?    // token to remove song from library from bookmark
     )
 
-    /**
-     * Check if an icon type is a library-related icon (for filtering menu items)
-     * Excludes KEEP/KEEP_OFF which are for "Pin to Listen Again"
-     */
+    // check if an icon type is a library related icon for filtering menu items excludes keep keep_off which are for pin to listen again
     fun isLibraryIcon(iconType: String?): Boolean {
         if (iconType == null) return false
-        // Exclude KEEP/KEEP_OFF (Listen Again pins)
+        // exclude keep keep_off listen again pins
         if (iconType == "KEEP" || iconType == "KEEP_OFF") return false
         return iconType in ALL_LIBRARY_ICONS || iconType.startsWith("LIBRARY_")
     }
 
-    /**
-     * Check if an icon type indicates the song is NOT in library (add state)
-     */
+    // check if an icon type indicates the song is not in library add state
     fun isAddLibraryIcon(iconType: String?): Boolean {
         return iconType in LIBRARY_ADD_ICONS
     }
 
-    /**
-     * Check if an icon type indicates the song IS in library (saved/remove state)
-     */
+    // check if an icon type indicates the song is in library saved remove state
     fun isSavedLibraryIcon(iconType: String?): Boolean {
         return iconType in LIBRARY_SAVED_ICONS
     }
@@ -68,21 +59,7 @@ object PageHelper {
         return filteredRuns
     }
 
-    /**
-     * Extract library feedback tokens from a list of menu items.
-     *
-     * This function iterates through ALL toggle menu items and extracts tokens
-     * based on their icon types, ensuring we don't confuse library tokens with
-     * "Pin to Listen Again" tokens (KEEP/KEEP_OFF).
-     *
-     * YouTube's icon system (Feb 2026):
-     * - BOOKMARK_BORDER: Song NOT in library -> defaultToken = ADD, toggledToken = REMOVE
-     * - BOOKMARK: Song IS in library -> defaultToken = REMOVE, toggledToken = ADD
-     * - KEEP/KEEP_OFF: "Pin to Listen Again" - COMPLETELY DIFFERENT, must be ignored!
-     *
-     * @param menuItems The list of menu items to search through
-     * @return LibraryFeedbackTokens containing both add and remove tokens
-     */
+    // extract library feedback tokens from a list of menu items this function iterates through all toggle menu items and extracts tokens based on their icon types ensuring we don t confuse library tokens with pin to listen again tokens keep keep_off youtube s icon system feb 2026 bookmark_border song not in library > defaulttoken = add toggledtoken = remove bookmark song is in library > defaulttoken = remove toggledtoken = add keep keep_off pin to listen again completely different must be ignored
     fun extractLibraryTokensFromMenuItems(
         menuItems: List<Menu.MenuRenderer.Item>?
     ): LibraryFeedbackTokens {
@@ -95,24 +72,24 @@ object PageHelper {
             val toggleRenderer = item.toggleMenuServiceItemRenderer ?: continue
             val iconType = toggleRenderer.defaultIcon.iconType
 
-            // Skip KEEP/KEEP_OFF icons (Pin to Listen Again) - these are NOT library actions
+            // skip keep keep_off icons pin to listen again these are not library actions
             if (iconType == "KEEP" || iconType == "KEEP_OFF") continue
 
-            // Only process library-related icons
+            // only process library related icons
             if (!isLibraryIcon(iconType)) continue
 
             val defaultToken = toggleRenderer.defaultServiceEndpoint.feedbackEndpoint?.feedbackToken
             val toggledToken = toggleRenderer.toggledServiceEndpoint?.feedbackEndpoint?.feedbackToken
 
-            // Determine which token is which based on icon type
+            // determine which token is which based on icon type
             when {
                 isAddLibraryIcon(iconType) -> {
-                    // BOOKMARK_BORDER or LIBRARY_ADD: default=add, toggled=remove
+                    // bookmark_border or library_add default=add toggled=remove
                     if (addToken == null) addToken = defaultToken
                     if (removeToken == null) removeToken = toggledToken
                 }
                 isSavedLibraryIcon(iconType) -> {
-                    // BOOKMARK or LIBRARY_SAVED/REMOVE: default=remove, toggled=add
+                    // bookmark or library_saved remove default=remove toggled=add
                     if (removeToken == null) removeToken = defaultToken
                     if (addToken == null) addToken = toggledToken
                 }
@@ -122,45 +99,35 @@ object PageHelper {
         return LibraryFeedbackTokens(addToken, removeToken)
     }
 
-    /**
-     * Extract feedback token for library operations.
-     *
-     * YouTube's new icon system (Feb 2026):
-     * - BOOKMARK_BORDER: Song NOT in library -> defaultToken = ADD, toggledToken = REMOVE
-     * - BOOKMARK: Song IS in library -> defaultToken = REMOVE, toggledToken = ADD
-     *
-     * @param menu The toggle menu renderer containing the feedback tokens
-     * @param type "LIBRARY_ADD" to get the add token, "LIBRARY_REMOVE" to get the remove token
-     * @return The appropriate feedback token, or null if not found
-     */
+    // extract feedback token for library operations youtube s new icon system feb 2026 bookmark_border song not in library > defaulttoken = add toggledtoken = remove bookmark song is in library > defaulttoken = remove toggledtoken = add
     fun extractFeedbackToken(menu: Menu.MenuRenderer.Item.ToggleMenuServiceRenderer?, type: String): String? {
         if (menu == null) return null
         val defaultToken = menu.defaultServiceEndpoint.feedbackEndpoint?.feedbackToken
         val toggledToken = menu.toggledServiceEndpoint?.feedbackEndpoint?.feedbackToken
         val iconType = menu.defaultIcon.iconType
 
-        // Determine if the current icon indicates song is NOT in library
-        // BOOKMARK_BORDER or LIBRARY_ADD = song is NOT in library (default action is ADD)
+        // determine if the current icon indicates song is not in library
+        // bookmark_border or library_add = song is not in library default action is add
         val songNotInLibrary = iconType in LIBRARY_ADD_ICONS
 
         return when (type) {
             "LIBRARY_ADD" -> {
-                // We want the ADD token
+                // we want the add token
                 if (songNotInLibrary) {
-                    // Icon shows "add" state, default action adds to library
+                    // icon shows add state default action adds to library
                     defaultToken
                 } else {
-                    // Icon shows "saved" state, toggled action would add back
+                    // icon shows saved state toggled action would add back
                     toggledToken
                 }
             }
             "LIBRARY_REMOVE", "LIBRARY_SAVED" -> {
-                // We want the REMOVE token
+                // we want the remove token
                 if (songNotInLibrary) {
-                    // Icon shows "add" state, toggled action would remove
+                    // icon shows add state toggled action would remove
                     toggledToken
                 } else {
-                    // Icon shows "saved" state, default action removes from library
+                    // icon shows saved state default action removes from library
                     defaultToken
                 }
             }

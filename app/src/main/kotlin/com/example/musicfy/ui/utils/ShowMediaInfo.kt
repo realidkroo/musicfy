@@ -95,7 +95,7 @@ fun ShowMediaInfo(videoId: String) {
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // header: "song info" title + done button
+        // header song info title + done button
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -141,7 +141,7 @@ fun ShowMediaInfo(videoId: String) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    // row 1: title / artist
+                    // row 1 title artist
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -160,7 +160,7 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 2: duration / media id
+                    // row 2 duration media id
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -182,7 +182,7 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 3: views / likes
+                    // row 3 views likes
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -201,7 +201,7 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 4: dislikes / subscribers
+                    // row 4 dislikes subscribers
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -218,7 +218,7 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 5: itag / loudness
+                    // row 5 itag loudness
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -235,7 +235,7 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 6: format / bitrate
+                    // row 6 format bitrate
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -252,7 +252,7 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 7: codecs / sample rate
+                    // row 7 codecs sample rate
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -269,7 +269,7 @@ fun ShowMediaInfo(videoId: String) {
                         )
                     }
 
-                    // row 8: file size / volume
+                    // row 8 file size volume
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -292,7 +292,7 @@ fun ShowMediaInfo(videoId: String) {
                 }
             }
 
-            // description (full width at bottom)
+            // description full width at bottom
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -323,7 +323,7 @@ fun ShowMediaInfo(videoId: String) {
             }
 
         } else {
-            // loading state before song/info data arrives
+            // loading state before song info data arrives
             item {
                 Box(
                     modifier = Modifier

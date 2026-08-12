@@ -1,7 +1,7 @@
 // lyricsv2kt
 // the file functioned as lyrics v2
 
-// musicfy project (c) 2026 licensed under gpl-30 | see git history for
+// musicfy project c 2026 licensed under gpl 30 | see git history for
 
 package com.example.musicfy.ui.component
 
@@ -68,7 +68,7 @@ fun LyricsLineV2(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = arrangement,
             verticalArrangement = Arrangement.spacedBy(
-                // use a capped spacing for internal wrapping to prevent "sentence break-off"
+                // use a capped spacing for internal wrapping to prevent sentence break off
                 with(LocalDensity.current) { (baseFontSize * ( (lineHeight / baseFontSize).coerceAtMost(1.3f) - 1f)).sp.toDp() }
             )
         ) {
@@ -94,7 +94,7 @@ fun LyricsLineV2(
             }
         }
     } else {
-        // fallback for lines without word timings (eg standard lrc without word sync)
+        // fallback for lines without word timings eg standard lrc without word sync
         Text(
             text = entry.text,
             style = MaterialTheme.typography.headlineMedium.copy(
@@ -145,7 +145,7 @@ fun AnimatedWordV2(
     val isWordComplete = isLinePast || effectivePlaybackPosition >= wordEndMs
     val isWordActive = isLineActive && effectivePlaybackPosition in wordStartMs until wordEndMs
 
-    // perfect linear progress [01]
+    // perfect linear progress 01
     val progress = when {
         isWordComplete -> 1f
         !isLineActive || effectivePlaybackPosition <= wordStartMs -> 0f
@@ -182,7 +182,7 @@ fun AnimatedWordV2(
                 scaleY = wordScale
             }
     ) {
-        // layer 1: base text (always dimmed)
+        // layer 1 base text always dimmed
         Text(
             text = word.text,
             style = MaterialTheme.typography.headlineMedium.copy(
@@ -194,7 +194,7 @@ fun AnimatedWordV2(
             color = expressiveAccent.copy(alpha = if (isBackground) inactiveAlpha * 0.7f else inactiveAlpha),
         )
 
-        // layer 2: filled overlay with liquid sweep mask + glow
+        // layer 2 filled overlay with liquid sweep mask + glow
         if (isWordComplete || isWordActive) {
             Text(
                 text = word.text,

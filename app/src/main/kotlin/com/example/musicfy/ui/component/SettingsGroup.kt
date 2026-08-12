@@ -1,10 +1,10 @@
 // settingsgroupkt
 // what is this for you ask its for material3settings group ofc
 
-// two looks live here classic is the original one-card-per-row treatment and
-// main settingsscreen renders grouped is the drill-down sub-settings look: a
-// card with no dividers where any option whose sub-options are currently
-// into a nested pill together with them so the parent/child relationship is
+// two looks live here classic is the original one card per row treatment and
+// main settingsscreen renders grouped is the drill down sub settings look a
+// card with no dividers where any option whose sub options are currently
+// into a nested pill together with them so the parent child relationship is
 // divider or an indent
 
 package com.example.musicfy.ui.component
@@ -52,10 +52,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 enum class SettingsGroupStyle {
-    // original look: one card per row hairline gaps used by the main settings page
+    // original look one card per row hairline gaps used by the main settings page
     Classic,
 
-    // sub-settings look: one continuous card no dividers nested pills for sub-options
+    // sub settings look one continuous card no dividers nested pills for sub options
     Grouped,
 }
 
@@ -91,7 +91,7 @@ fun SettingsGroup(
 private fun ClassicItems(items: List<SettingsItem>) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(0.dp) // no separator!
+        verticalArrangement = Arrangement.spacedBy(0.dp) // no separator
     ) {
         val visibleItems = items.filter { it.isVisible }
         items.forEach { item ->
@@ -100,7 +100,7 @@ private fun ClassicItems(items: List<SettingsItem>) {
                 enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
-                // concept style: fully rounded separate cards
+                // concept style fully rounded separate cards
                 val shape = RoundedCornerShape(20.dp)
 
                 Card(
@@ -120,13 +120,13 @@ private fun ClassicItems(items: List<SettingsItem>) {
     }
 }
 
-// a parent option together with the sub-options that belong to it
+// a parent option together with the sub options that belong to it
 private class ItemCluster(
     val parent: SettingsItem,
     val subs: MutableList<SettingsItem> = mutableListOf(),
 )
 
-// `issuboption` items attach to the most recent non-sub item above them which is
+// issuboption items attach to the most recent non sub item above them which is
 private fun clusterItems(items: List<SettingsItem>): List<ItemCluster> {
     val clusters = mutableListOf<ItemCluster>()
     items.forEach { item ->
@@ -169,8 +169,8 @@ private fun GroupedItems(items: List<SettingsItem>) {
 private fun ClusterRows(cluster: ItemCluster) {
     val hasVisibleSubs = cluster.subs.any { it.isVisible }
 
-    // animated rather than branched so toggling a parent doesn't pop a
-    // and out — the pill fades and insets in step with the sub-rows expanding
+    // animated rather than branched so toggling a parent doesn t pop a
+    // and out the pill fades and insets in step with the sub rows expanding
     val pillAlpha by animateFloatAsState(
         targetValue = if (hasVisibleSubs) 1f else 0f,
         animationSpec = tween(300),
@@ -287,8 +287,8 @@ private fun SettingsItemRow(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            // title content grouped (sub-settings) rows read smaller and greyer than
-            // full-strength white — the main settings page keeps its original weight
+            // title content grouped sub settings rows read smaller and greyer than
+            // full strength white the main settings page keeps its original weight
             val titleBaseStyle = if (style == SettingsGroupStyle.Grouped) {
                 MaterialTheme.typography.titleSmall
             } else {
@@ -303,7 +303,7 @@ private fun SettingsItemRow(
                 item.title()
             }
 
-            // description descriptiontext is the preferred form: it is capped to a
+            // description descriptiontext is the preferred form it is capped to a
             // here so a long string can never grow the row to two or three lines
             val descColor = if (!item.enabled) {
                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -326,7 +326,7 @@ private fun SettingsItemRow(
                     ProvideTextStyle(
                         MaterialTheme.typography.labelMedium.copy(color = descColor)
                     ) {
-                        // attempt to wrap in something that limits lines or rely on desc() to do it
+                        // attempt to wrap in something that limits lines or rely on desc to do it
                         // we will just provide the smaller text style
                         desc()
                     }
@@ -347,7 +347,7 @@ data class SettingsItem(
     val icon: Painter? = null,
     val title: @Composable () -> Unit,
     val description: (@Composable () -> Unit)? = null,
-    // single-line subtitle preferred over [description] — takes precedence when both are set
+    // single line subtitle preferred over description takes precedence when both are set
     val descriptionText: String? = null,
     val trailingContent: (@Composable () -> Unit)? = null,
     val showBadge: Boolean = false,

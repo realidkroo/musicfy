@@ -1,6 +1,6 @@
-// test_offset.kt
+// test_offset kt
 // the file functioned as test_offset
 
 package com.example.musicfy
 
-// Just a reminder that we can use Modifier.offset { IntOffset(x, y) }
+// just a reminder that we can use modifier offset intoffset x y

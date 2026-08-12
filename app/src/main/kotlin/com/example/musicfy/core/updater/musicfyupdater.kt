@@ -619,7 +619,7 @@ private fun formatGitHubDate(githubDate: String): String = try {
     githubDate
 }
 
-// robust version comparison: returns true if latestversion > currentversion
+// robust version comparison returns true if latestversion > currentversion
 fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
     val latestVersionClean = latestVersion.removePrefix("b").removePrefix("v")
     val currentVersionClean = currentVersion.removePrefix("b").removePrefix("v")
@@ -641,7 +641,7 @@ fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
     if (latestVersionClean == currentVersionClean) {
         val latestIsBeta = latestVersion.startsWith("b")
         val currentIsBeta = currentVersion.startsWith("b")
-        // stable is "newer" (better) than beta of the same version
+        // stable is newer better than beta of the same version
         if (currentIsBeta && !latestIsBeta) return true
     }
     
@@ -715,8 +715,8 @@ suspend fun checkForUpdate(
                 val changelogList = mutableListOf<ChangelogSection>()
                 val headCommit = nightlyRunObject.optJSONObject("head_commit")
                 val commitMessage = headCommit?.optString("message") ?: "New features and bug fixes"
-                // only use the subject line (first line) of the commit message
-                // git commit bodies (lines after the blank separator) are implementation
+                // only use the subject line first line of the commit message
+                // git commit bodies lines after the blank separator are implementation
                 // details and should not appear as separate changelog bullet points
                 val subjectLine = commitMessage.lineSequence().firstOrNull { it.isNotBlank() } ?: commitMessage
                 changelogList.add(ChangelogSection(context.getString(R.string.changelog), listOf(subjectLine)))
@@ -758,10 +758,10 @@ suspend fun checkForUpdate(
                 val targetTagName = targetRelease.getString("tag_name")
                 val isNewer = isNewerVersion(targetTagName, currentVersion)
                 
-                // track switch logic:
+                // track switch logic
                 // if the user has disabled beta updates we should offer the latest stable
-                // even if it's technically a lower version number than their current
-                // this allows users to correctly "roll back" to the stable track
+                // even if it s technically a lower version number than their current
+                // this allows users to correctly roll back to the stable track
                 val currentIsBeta = currentVersion.startsWith("b")
                 val targetIsStable = targetTagName.startsWith("v")
                 
@@ -772,12 +772,12 @@ suspend fun checkForUpdate(
                 
                 var shouldShow = isNewer
                 if (!shouldShow && !betaEnabled) {
-                    // logic: if i'm on a beta (b507) and latest stable is v506
+                    // logic if i m on a beta b507 and latest stable is v506
                     // and i just turned off beta i want to see v506
                     if (currentIsBeta && targetIsStable) {
                         shouldShow = true
                     } else if (isDifferentVersion && targetIsStable) {
-                        // also show if current is a newer unofficial stable (eg built locally as 507)
+                        // also show if current is a newer unofficial stable eg built locally as 507
                         // but user wants the official stable 506
                         shouldShow = true
                     }
@@ -812,7 +812,7 @@ suspend fun checkForUpdate(
                             changelogList.add(ChangelogSection(title, itemsList))
                         }
                     } catch (e: Exception) {
-                        // fallback: parse body as a single list if it starts with characters or
+                        // fallback parse body as a single list if it starts with characters or
                         val body = targetRelease.optString("body", context.getString(R.string.no_changelog_available))
                         val fallbackItems = body.split("\n").filter { it.isNotBlank() }
                         changelogList.add(ChangelogSection(context.getString(R.string.changelog), fallbackItems))

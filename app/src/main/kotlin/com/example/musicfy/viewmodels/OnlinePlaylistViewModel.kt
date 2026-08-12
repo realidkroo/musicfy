@@ -94,7 +94,7 @@ class OnlinePlaylistViewModel @Inject constructor(
             while (currentProactiveToken != null && isActive) {
                 // if a manual loadmore is happening pause proactive loading
                 if (_isLoadingMore.value) {
-                    // wait until manual load is finished then re-evaluate
+                    // wait until manual load is finished then re evaluate
                     // this simple break and restart strategy from loadmoresongs is preferred
                     break 
                 }
@@ -105,7 +105,7 @@ class OnlinePlaylistViewModel @Inject constructor(
                         currentSongs.addAll(playlistContinuationPage.songs)
                         playlistSongs.value = applySongFilters(currentSongs)
                         currentProactiveToken = playlistContinuationPage.continuation
-                        // update the class-level continuation for manual loadmore if needed
+                        // update the class level continuation for manual loadmore if needed
                         this@OnlinePlaylistViewModel.continuation = currentProactiveToken 
                     }.onFailure { throwable ->
                         reportException(throwable)
@@ -117,7 +117,7 @@ class OnlinePlaylistViewModel @Inject constructor(
     }
 
     fun loadMoreSongs() {
-        if (_isLoadingMore.value) return // already loading more (manually)
+        if (_isLoadingMore.value) return // already loading more manually
         
         val tokenForManualLoad = continuation ?: return // no more songs to load
 
@@ -135,7 +135,7 @@ class OnlinePlaylistViewModel @Inject constructor(
                     reportException(throwable)
                 }.also {
                     _isLoadingMore.value = false
-                    // resume proactive loading if there's still a continuation
+                    // resume proactive loading if there s still a continuation
                     if (continuation != null && isActive) {
                         startProactiveBackgroundLoading()
                     }

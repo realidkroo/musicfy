@@ -1,4 +1,4 @@
-// SearchSummaryPage.kt
+// searchsummarypage kt
 // the file functioned as search summary page
 
 package com.music.innertube.pages
@@ -230,7 +230,7 @@ data class SearchSummaryPage(
             val listRun = (secondaryLine + thirdLine).clean()
             return when {
                 renderer.isSong -> {
-                    // Extract library tokens using the new method that properly handles multiple toggle items
+                    // extract library tokens using the new method that properly handles multiple toggle items
                     val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
                     SongItem(

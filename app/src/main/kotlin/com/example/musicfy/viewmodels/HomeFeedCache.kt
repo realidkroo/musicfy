@@ -1,7 +1,7 @@
 // homefeedcachekt
-// disk cache for homeviewmodel's four pure-network-sourced feeds (homepage
-// communityplaylists alltimehits explorepage) — everything else
-// is local-db-backed already and shows up instantly so only these need
+// disk cache for homeviewmodel s four pure network sourced feeds homepage
+// communityplaylists alltimehits explorepage everything else
+// is local db backed already and shows up instantly so only these need
 // same sharedpreferences + kotlinxserializationjson pattern as
 
 package com.example.musicfy.viewmodels
@@ -29,8 +29,8 @@ class HomeFeedCache(context: Context) {
     fun loadExplorePage(): ExplorePage? = load(KEY_EXPLORE_PAGE)
     fun saveExplorePage(value: ExplorePage) = save(KEY_EXPLORE_PAGE, value)
 
-    // falls back to null on any decode failure (eg a shape change between app
-    // versions) rather than crashing — the network phase always runs regardless
+    // falls back to null on any decode failure eg a shape change between app
+    // versions rather than crashing the network phase always runs regardless
     // will overwrite it with a fresh value
     private inline fun <reified T> load(key: String): T? {
         val raw = prefs.getString(key, null) ?: return null

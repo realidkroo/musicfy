@@ -89,7 +89,7 @@ fun SpeedDialGridItem(
                 modifier = Modifier.weight(1f)
             )
             
-            // navigation chevron for browsable items (album playlist artist)
+            // navigation chevron for browsable items album playlist artist
             if (item !is SongItem) {
                 Icon(
                     painter = painterResource(R.drawable.navigate_next),

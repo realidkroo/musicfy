@@ -1,4 +1,4 @@
-// YouTubeClient.kt
+// youtubeclient kt
 // what is this for you ask its for you tube client ofc
 
 package com.music.innertube.models
@@ -89,10 +89,7 @@ data class YouTubeClient(
             useWebPoTokens = true,
         )
 
-        /**
-         * Embedded player that can bypass age-restriction.
-         * Does not require login for age-restricted content.
-         */
+        // embedded player that can bypass age restriction does not require login for age restricted content
         val TVHTML5_SIMPLY_EMBEDDED_PLAYER = YouTubeClient(
             clientName = "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
             clientVersion = "2.0",
@@ -121,11 +118,7 @@ data class YouTubeClient(
             useSignatureTimestamp = true
         )
 
-        /**
-         * Video not playable: Paid / Movie / Private / Age-restricted.
-         * Note: The 'Authorization' key must be excluded from the header.
-         * For some reason, PoToken is not required.
-         */
+        // video not playable paid movie private age restricted note the authorization key must be excluded from the header for some reason potoken is not required
         val ANDROID_NO_SDK = YouTubeClient(
             clientName = "ANDROID",
             clientVersion = "21.03.38",
@@ -145,10 +138,7 @@ data class YouTubeClient(
             useSignatureTimestamp = false
         )
 
-        /**
-         * Video not playable: Kids / Paid / Movie / Private / Age-restricted.
-         * This client can only be used when logged out.
-         */
+        // video not playable kids paid movie private age restricted this client can only be used when logged out
         val ANDROID_VR_1_61_48 = YouTubeClient(
             clientName = "ANDROID_VR",
             clientVersion = "1.61.48",
@@ -167,10 +157,7 @@ data class YouTubeClient(
             useSignatureTimestamp = false
         )
 
-        /**
-         * Uses non adaptive bitrate, which fixes audio stuttering with YT Music.
-         * Does not use AV1.
-         */
+        // uses non adaptive bitrate which fixes audio stuttering with yt music does not use av1
         val ANDROID_VR_1_43_32 = YouTubeClient(
             clientName = "ANDROID_VR",
             clientVersion = "1.43.32",
@@ -189,9 +176,7 @@ data class YouTubeClient(
             useSignatureTimestamp = false
         )
 
-        /**
-         * Cannot play livestreams and lacks HDR, but can play videos with music and labeled "for children".
-         */
+        // cannot play livestreams and lacks hdr but can play videos with music and labeled for children
         val ANDROID_CREATOR = YouTubeClient(
             clientName = "ANDROID_CREATOR",
             clientVersion = "25.03.101",
@@ -210,9 +195,7 @@ data class YouTubeClient(
             useSignatureTimestamp = true
         )
 
-        /**
-         * Internal YT client for an unreleased YT client. May stop working at any time.
-         */
+        // internal yt client for an unreleased yt client may stop working at any time
         val VISIONOS = YouTubeClient(
             clientName = "VISIONOS",
             clientVersion = "0.1",
@@ -227,10 +210,7 @@ data class YouTubeClient(
             useSignatureTimestamp = false
         )
 
-        /**
-         * The device machine id for the iPad 6th Gen (iPad7,6).
-         * AV1 hardware decoding is not supported.
-         */
+        // the device machine id for the ipad 6th gen ipad7 6 av1 hardware decoding is not supported
         val IPADOS = YouTubeClient(
             clientName = "IOS",
             clientVersion = "21.03.3",

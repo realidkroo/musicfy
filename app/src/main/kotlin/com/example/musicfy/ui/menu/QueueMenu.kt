@@ -97,7 +97,7 @@ fun QueueMenu(
 
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
     val downloadUtil = LocalDownloadUtil.current
-    // remember(id): getdownload() returns a new flow each call so an
+    // remember id getdownload returns a new flow each call so an
     // unremembered collectasstate relaunches its coroutine every recomposition
     val download by remember(downloadUtil, mediaMetadata.id) {
         downloadUtil.getDownload(mediaMetadata.id)
@@ -295,7 +295,7 @@ fun QueueMenu(
             )
         }
 
-        // play next / add to queue
+        // play next add to queue
         item {
             Material3MenuGroup(
                 items = listOf(
@@ -426,7 +426,7 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // navigation section (artist album)
+        // navigation section artist album
         item {
             Material3MenuGroup(
                 items = buildList {

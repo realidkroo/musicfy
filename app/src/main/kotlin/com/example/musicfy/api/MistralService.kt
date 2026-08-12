@@ -184,19 +184,19 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         if (!content.isNullOrBlank()) {
                             var translatedLines: List<String>? = null
 
-                            // strategy 1: try direct json parsing
+                            // strategy 1 try direct json parsing
                             try {
                                 val jsonArray = JSONArray(content)
                                 translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                             } catch (e: Exception) {
-                                // strategy 2: extract json from markdown code blocks
+                                // strategy 2 extract json from markdown code blocks
                                 content = content.replace("```json", "").replace("```", "").trim()
 
                                 try {
                                     val jsonArray = JSONArray(content)
                                     translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                                 } catch (e2: Exception) {
-                                    // strategy 3: find first [ and last ]
+                                    // strategy 3 find first and last
                                     val startIdx = content.indexOf('[')
                                     val endIdx = content.lastIndexOf(']')
 
@@ -206,7 +206,7 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                             val jsonArray = JSONArray(jsonString)
                                             translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                                         } catch (e3: Exception) {
-                                            // strategy 4: manual line-by-line parsing as last resort
+                                            // strategy 4 manual line by line parsing as last resort
                                             translatedLines =
                                                 content
                                                     .lines()

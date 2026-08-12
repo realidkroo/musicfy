@@ -135,7 +135,7 @@ fun WavySlider(
             waveSpeed = waveSpeed
         )
         
-        // draw circular thumb - synced with progress indicator position
+        // draw circular thumb synced with progress indicator position
         Canvas(modifier = Modifier.fillMaxSize()) {
             val thumbX = size.width * displayValue
             val thumbY = size.height / 2

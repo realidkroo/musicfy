@@ -1,10 +1,10 @@
 // playercoverstyleskt
-// presentation metadata for playercoverstyle: what each style is called
+// presentation metadata for playercoverstyle what each style is called
 // vinyl and which option rows the customization page shows underneath its
 
-// the enum itself lives in constants/preferencekeyskt (which stays a plain
+// the enum itself lives in constants preferencekeyskt which stays a plain
 // question the editor asks about a style is answered here in one table so
-// style is a matter of one enum constant plus one row in each `when` below —
+// style is a matter of one enum constant plus one row in each when below
 // the ui
 
 package com.example.musicfy.ui.player.customize
@@ -27,7 +27,7 @@ val PlayerCoverStyle.isDisc: Boolean
         else -> true
     }
 
-// whether the artwork sits in the inset lower "stage" box rather than filling the
+// whether the artwork sits in the inset lower stage box rather than filling the
 val PlayerCoverStyle.usesBoxedStage: Boolean
     get() = when (this) {
         PlayerCoverStyle.EDGE_TO_EDGE,
@@ -41,11 +41,11 @@ val PlayerCoverStyle.usesBoxedStage: Boolean
 val PlayerCoverStyle.isBigDisc: Boolean
     get() = this == PlayerCoverStyle.DISC_BIG_FULL || this == PlayerCoverStyle.DISC_BIG_LABEL
 
-// whether this style draws the record player's tonearm only the oversized label
+// whether this style draws the record player s tonearm only the oversized label
 val PlayerCoverStyle.hasTonearm: Boolean
     get() = this == PlayerCoverStyle.DISC_BIG_LABEL
 
-// label shown under "style" on the customization page the concept screens reuse
+// label shown under style on the customization page the concept screens reuse
 val PlayerCoverStyle.displayName: String
     get() = when (this) {
         PlayerCoverStyle.EDGE_TO_EDGE -> "Full edge to edge"
@@ -57,13 +57,13 @@ val PlayerCoverStyle.displayName: String
         PlayerCoverStyle.DISC_ALBUM -> "Disc + album Music"
     }
 
-// one row in the option card below a style's preview most of these point at
+// one row in the option card below a style s preview most of these point at
 sealed interface CoverOption {
     val title: String
     val description: String
     @get:DrawableRes val icon: Int
 
-    // a switch row [inverted] exists for disableblurkey whose stored sense is
+    // a switch row inverted exists for disableblurkey whose stored sense is
     data class Switch(
         override val title: String,
         override val description: String,
@@ -74,7 +74,7 @@ sealed interface CoverOption {
         val parent: Switch? = null,
     ) : CoverOption
 
-    // a free-text row that opens an inline editor
+    // a free text row that opens an inline editor
     data class Text(
         override val title: String,
         override val description: String,
@@ -135,7 +135,7 @@ private val DiscNameOption = CoverOption.Text(
 
 private val DiscOptions = listOf(RotatingAnimationOption, RealisticModeOption, DiscNameOption)
 
-// the option rows the customization page shows below this style's preview
+// the option rows the customization page shows below this style s preview
 val PlayerCoverStyle.options: List<CoverOption>
     get() = when (this) {
         PlayerCoverStyle.SQUARED -> listOf(AnimatedCanvasOption)

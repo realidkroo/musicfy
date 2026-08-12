@@ -101,7 +101,7 @@ class DiscordRPC(
     companion object {
         private const val APPLICATION_ID = "1411019391843172514"
 
-        // resolves template variables in text supported: {song_name} {artist_name}
+        // resolves template variables in text supported song_name artist_name
         fun resolveVariables(text: String, song: Song): String {
             return text
                 .replace("{song_name}", song.song.title)

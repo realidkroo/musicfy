@@ -230,7 +230,7 @@ fun LocalPlaylistMenu(
     Material3MenuGroup(items = menuItems)
 }
 
-// menu for auto playlist screen (liked songs downloaded songs etc)
+// menu for auto playlist screen liked songs downloaded songs etc
 @Composable
 fun AutoPlaylistMenu(
     downloadState: Int,

@@ -44,7 +44,7 @@ import com.example.musicfy.R
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // left: commit icon / type indicator
+        // left commit icon type indicator
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -62,7 +62,7 @@ import com.example.musicfy.R
             )
         }
 
-        // center: commit information
+        // center commit information
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -117,7 +117,7 @@ import com.example.musicfy.R
 
         Spacer(Modifier.width(4.dp))
 
-        // right: author avatar
+        // right author avatar
         if (commit.authorAvatarUrl != null) {
             AsyncImage(
                 model = commit.authorAvatarUrl,

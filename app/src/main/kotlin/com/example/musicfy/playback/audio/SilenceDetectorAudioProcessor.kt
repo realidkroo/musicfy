@@ -10,7 +10,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
 
-// lightweight pcm pass-through processor that detects long stretches of
+// lightweight pcm pass through processor that detects long stretches of
 @UnstableApi
 @Suppress("DEPRECATION")
 class SilenceDetectorAudioProcessor(
@@ -70,7 +70,7 @@ class SilenceDetectorAudioProcessor(
     }
 
     private fun detectSilence(inputBuffer: ByteBuffer) {
-        // ensure predictable endian access for getshort(index)
+        // ensure predictable endian access for getshort index
         inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
 
         val frameCount = inputBuffer.remaining() / 2 / channelCount

@@ -38,13 +38,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 
-// @stable: playerconnection is passed as a parameter into nearly every
-// (songinfo actionbuttons playerslider playercontrols ) without this compose
-// infer stability across its context/coroutinescope/exoplayer-typed
+// @stable playerconnection is passed as a parameter into nearly every
+// songinfo actionbuttons playerslider playercontrols without this compose
+// infer stability across its context coroutinescope exoplayer typed
 // of those composables is forced to fully recompose whenever the root player
-// recomposes for any reason — even when nothing they actually read changed
+// recomposes for any reason even when nothing they actually read changed
 // observed state lives on the exposed stateflow properties which are already
-// collectasstate() everywhere so this annotation doesn't change what gets
+// collectasstate everywhere so this annotation doesn t change what gets
 @Stable
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerConnection(
@@ -166,7 +166,7 @@ class PlayerConnection(
         }
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, emptyList())
 
-    // single 15hz ticker for position/duration replacing the per-screen polling loops
+    // single 15hz ticker for position duration replacing the per screen polling loops
     val progressState: kotlinx.coroutines.flow.StateFlow<com.example.musicfy.ui.player.models.ProgressState> =
         kotlinx.coroutines.flow.callbackFlow {
             while (true) {
@@ -212,7 +212,7 @@ class PlayerConnection(
 
     init {
         try {
-            // observe player changes (eg crossfade swap)
+            // observe player changes eg crossfade swap
             scope.launch {
                 service.playerFlow.collect { newPlayer ->
                     if (newPlayer != null && newPlayer != attachedPlayer) {
@@ -221,7 +221,7 @@ class PlayerConnection(
                 }
             }
             
-            // initial setup if flow hasn't emitted yet but service is ready
+            // initial setup if flow hasn t emitted yet but service is ready
             if (attachedPlayer == null && service.isPlayerReady.value) {
                  updateAttachedPlayer(player)
             }
@@ -326,7 +326,7 @@ class PlayerConnection(
         }
     }
 
-    // toggle play/pause - handles cast when active
+    // toggle play pause handles cast when active
     fun togglePlayPause() {
         try {
             val castHandler = service.castConnectionHandler
@@ -344,7 +344,7 @@ class PlayerConnection(
         }
     }
     
-    // start playback - handles cast when active
+    // start playback handles cast when active
     fun play() {
         try {
             val castHandler = service.castConnectionHandler
@@ -361,7 +361,7 @@ class PlayerConnection(
         }
     }
     
-    // pause playback - handles cast when active
+    // pause playback handles cast when active
     fun pause() {
         try {
             val castHandler = service.castConnectionHandler
@@ -375,7 +375,7 @@ class PlayerConnection(
         }
     }
 
-    // seek to position - handles cast when active
+    // seek to position handles cast when active
     fun seekTo(position: Long) {
         try {
             val castHandler = service.castConnectionHandler

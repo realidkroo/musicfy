@@ -1,4 +1,4 @@
-// AlbumPage.kt
+// albumpage kt
 // this thing is for album page
 
 package com.music.innertube.pages
@@ -86,7 +86,7 @@ data class AlbumPage(
         }
 
         fun getSong(renderer: MusicResponsiveListItemRenderer, album: AlbumItem? = null): SongItem? {
-            // Extract library tokens using the new method that properly handles multiple toggle items
+            // extract library tokens using the new method that properly handles multiple toggle items
             val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
             return SongItem(
@@ -98,7 +98,7 @@ data class AlbumPage(
                         id = it.navigationEndpoint?.browseEndpoint?.browseId
                     )
                 }.ifEmpty {
-                    // Fallback to album artists if no artists found in song data
+                    // fallback to album artists if no artists found in song data
                     album?.artists ?: emptyList()
                 },
                 album = album?.let {

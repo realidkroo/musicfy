@@ -59,7 +59,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
     var thumbnails by remember { mutableStateOf<List<String>>(emptyList()) }
     
     // square cover art from youtube music fetched once the hardcoded iytimg list
-    // a fallback — those are 16:9 video thumbnails which look wrong cropped into
+    // a fallback those are 16 9 video thumbnails which look wrong cropped into
     LaunchedEffect(Unit) {
         val fetched = withContext(Dispatchers.IO) {
             listOf("top hits", "classic rock", "j-pop", "pop hits 2020s")
@@ -125,7 +125,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
     Box(
         modifier = Modifier.fillMaxSize().clipToBounds()
     ) {
-        // morphing dark green/black gradient background
+        // morphing dark green black gradient background
         Canvas(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = bgAlpha }) {
             val center1 = Offset(size.width * 0.2f + (size.width * 0.6f * morphProgress), size.height * 0.3f)
             val center2 = Offset(size.width * 0.8f - (size.width * 0.4f * morphProgress), size.height * 0.7f + (size.height * 0.2f * morphProgress))
@@ -185,7 +185,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
                 )
         )
         
-        // the text at bottom left - shifted up to avoid next button overlap
+        // the text at bottom left shifted up to avoid next button overlap
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -239,8 +239,8 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
     var isInteracting by remember { mutableStateOf(false) }
     var playDuration by remember { mutableLongStateOf(5000L) }
     
-    val discOffset = remember { Animatable(1f) } // 1f = hidden (top right) 0f = visible
-    val armBaseRotation = remember { Animatable(-90f) } // -90f = hidden -15f = playing
+    val discOffset = remember { Animatable(1f) } // 1f = hidden top right 0f = visible
+    val armBaseRotation = remember { Animatable(-90f) } // 90f = hidden 15f = playing
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(isHiding) {
@@ -309,7 +309,7 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
             val discCenter = Offset(cx, cy)
             val maxRadius = size.width * 0.85f
             
-            // depth effect: scale up the disc as it moves away
+            // depth effect scale up the disc as it moves away
             val discScale = 1.0f + (discOffset.value * 0.5f)
             
             scale(scale = discScale, pivot = discCenter) {
@@ -353,7 +353,7 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                         center = discCenter,
                         style = Stroke(width = 4.dp.toPx())
                     )
-                    // center hole (background color)
+                    // center hole background color
                     drawCircle(
                         color = Color(0xFF121212),
                         radius = maxRadius * 0.08f,
@@ -382,7 +382,7 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                     cap = StrokeCap.Round
                 )
                 
-                // draw stylus head (pill shape)
+                // draw stylus head pill shape
                 val headWidth = 80.dp.toPx()
                 val headHeight = 28.dp.toPx()
                 
@@ -541,7 +541,7 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
                     }
                     .size(itemSize)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF242424)) // fallback/loading color
+                    .background(Color(0xFF242424)) // fallback loading color
             ) {
                 if (url.isNotEmpty()) {
                     // fades up as it decodes rather than snapping over the placeholder tile

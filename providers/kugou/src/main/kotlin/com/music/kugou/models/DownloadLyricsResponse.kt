@@ -1,4 +1,4 @@
-// DownloadLyricsResponse.kt
+// downloadlyricsresponse kt
 // this thing is for download lyrics response
 
 package com.music.kugou.models

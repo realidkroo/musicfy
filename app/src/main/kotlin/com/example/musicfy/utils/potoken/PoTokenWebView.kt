@@ -32,7 +32,7 @@ import kotlin.coroutines.resumeWithException
 
 class PoTokenWebView private constructor(
     context: Context,
-    // to be used exactly once only during initialization!
+    // to be used exactly once only during initialization
     private val continuation: Continuation<PoTokenWebView>,
 ) {
     private val webView = WebView(context)
@@ -47,7 +47,7 @@ class PoTokenWebView private constructor(
     // region initialization
     init {
         val webViewSettings = webView.settings
-        // noinspection setjavascriptenabled we want to use javascript!
+        // noinspection setjavascriptenabled we want to use javascript
         webViewSettings.javaScriptEnabled = true
         webViewSettings.userAgentString = USER_AGENT
         webViewSettings.blockNetworkLoads = true // the webview does not need internet access
@@ -78,7 +78,7 @@ class PoTokenWebView private constructor(
         }
     }
 
-    // must be called right after instantiating [potokenwebview] to perform the actual
+    // must be called right after instantiating potokenwebview to perform the actual
     private fun loadHtmlAndObtainBotguard() {
         Timber.tag(TAG).d("loadHtmlAndObtainBotguard() called")
 
@@ -87,7 +87,7 @@ class PoTokenWebView private constructor(
                 webView.context.assets.open("po_token.html").bufferedReader().use { it.readText() }
             }
 
-            // calls downloadandrunbotguard() when the page has finished loading
+            // calls downloadandrunbotguard when the page has finished loading
             val data = html.replaceFirst("</script>", "\n$JS_INTERFACE.downloadAndRunBotguard()</script>")
             webView.loadDataWithBaseURL("https://www.youtube.com", data, "text/html", "utf-8", null)
         }
@@ -146,7 +146,7 @@ class PoTokenWebView private constructor(
                 expirationInstant = Instant.now().plusSeconds(expirationTimeInSeconds).minus(10, ChronoUnit.MINUTES)
 
                 // store integritytoken and create the minter callback once
-                // note: createpotokenminter is now async so we use then()
+                // note createpotokenminter is now async so we use then
                 Timber.tag(TAG).d("Evaluating createPoTokenMinter JavaScript...")
                 webView.evaluateJavascript(
                     """try {
@@ -186,7 +186,7 @@ class PoTokenWebView private constructor(
             suspendCancellableCoroutine { cont ->
                 Timber.tag(TAG).d("generatePoToken() called with identifier $identifier")
                 addPoTokenEmitter(identifier, cont)
-                // note: obtainpotoken is now async so we use then()
+                // note obtainpotoken is now async so we use then
                 webView.evaluateJavascript(
                     """try {
                         identifier = "$identifier"
@@ -206,7 +206,7 @@ class PoTokenWebView private constructor(
         }
     }
 
-    // called by the javascript snippet from [generatepotoken] when an error occurs in
+    // called by the javascript snippet from generatepotoken when an error occurs in
     @JavascriptInterface
     fun onObtainPoTokenError(identifier: String, error: String) {
         if (BuildConfig.DEBUG) {
@@ -215,7 +215,7 @@ class PoTokenWebView private constructor(
         popPoTokenContinuation(identifier)?.resumeWithException(buildExceptionForJsError(error))
     }
 
-    // called by the javascript snippet from [generatepotoken] with the original
+    // called by the javascript snippet from generatepotoken with the original
     @JavascriptInterface
     fun onObtainPoTokenResult(identifier: String, poTokenU8: String) {
         Timber.tag(TAG).d("Generated poToken (before decoding): identifier=$identifier poTokenU8=$poTokenU8")

@@ -55,7 +55,7 @@ class MusicfyNotificationProvider(
             onNotificationChangedCallback
         )
 
-        // android 16 status chips implementation (api 36 or "baklava")
+        // android 16 status chips implementation api 36 or baklava
         val isAndroid16 = Build.VERSION.SDK_INT >= 36 || Build.VERSION.CODENAME == "Baklava"
 
         if (isAndroid16) {
@@ -65,7 +65,7 @@ class MusicfyNotificationProvider(
             val durationMs = player.duration
             val currentPosMs = player.currentPosition
 
-            // format duration for the chip (eg "5:20")
+            // format duration for the chip eg 5 20
             val formattedTime = if (durationMs != C.TIME_UNSET && durationMs > 0) {
                 val totalSeconds = durationMs / 1000
                 val minutes = totalSeconds / 60
@@ -79,29 +79,29 @@ class MusicfyNotificationProvider(
             val notification = mediaNotification.notification
             val builder = Notification.Builder.recoverBuilder(context, notification)
 
-            // essential for android 16 status chips (live updates)
+            // essential for android 16 status chips live updates
             builder.setOngoing(true)
             builder.setCategory(Notification.CATEGORY_TRANSPORT)
 
             // research suggests colorized should be false for promoted notifications in
-            // but for music it might be okay let's try false first for better promotion
+            // but for music it might be okay let s try false first for better promotion
             builder.setColorized(false)
 
-            // ensure we have a small icon (required for chip)
+            // ensure we have a small icon required for chip
             builder.setSmallIcon(R.drawable.musicfy_notification)
 
             // promote to live update
             setRequestPromotedOngoingSafely(builder, true)
 
-            // fallback: also set via extras just in case reflection fails
+            // fallback also set via extras just in case reflection fails
             builder.getExtras().putBoolean("android.requestPromotedOngoing", true)
 
             if (isPlaying) {
-                // set the chip text (eg the track duration)
+                // set the chip text eg the track duration
                 setShortCriticalTextSafely(builder, formattedTime ?: context.getString(R.string.playing_status))
 
                 if (durationMs != C.TIME_UNSET && durationMs > 0) {
-                    // set 'when' to the completion time of the track for a live countdown
+                    // set when to the completion time of the track for a live countdown
                     val remainingMs = durationMs - currentPosMs
                     val endTime = System.currentTimeMillis() + remainingMs
                     builder.setWhen(endTime)
@@ -112,16 +112,16 @@ class MusicfyNotificationProvider(
                     builder.setShowWhen(true)
                 }
             } else {
-                // when paused show "paused" or static duration in the chip
+                // when paused show paused or static duration in the chip
                 setShortCriticalTextSafely(builder, formattedTime ?: context.getString(R.string.paused_status))
                 builder.setShowWhen(false)
                 builder.setUsesChronometer(false)
             }
 
-            // re-build the notification
+            // re build the notification
             val updatedNotification = builder.build()
 
-            // re-attach the media session token if it was lost during build()
+            // re attach the media session token if it was lost during build
             if (Build.VERSION.SDK_INT >= 33) {
                 mediaNotification.notification.extras.getParcelable(
                     Notification.EXTRA_MEDIA_SESSION,

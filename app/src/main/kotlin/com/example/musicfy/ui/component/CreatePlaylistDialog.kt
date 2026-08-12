@@ -77,7 +77,7 @@ fun CreatePlaylistDialog(
                     insert(playlistEntity)
                 }
 
-// onplaylistcreated?invoke(playlistentityid)
+// onplaylistcreated invoke playlistentityid
                 withContext(Dispatchers.Main) {
                     onPlaylistCreated?.invoke(playlistEntity.id)
                 }

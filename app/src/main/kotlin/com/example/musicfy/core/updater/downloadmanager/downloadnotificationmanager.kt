@@ -20,7 +20,7 @@ object DownloadNotificationManager {
     private lateinit var appContext: Context
 
     const val CHANNEL_ID = "download_progress_channel"
-    private const val CHANNEL_NAME = "Download Progress" // will be replaced with contextgetstring in initialize()
+    private const val CHANNEL_NAME = "Download Progress" // will be replaced with contextgetstring in initialize
     private const val NOTIFICATION_ID = 5678
 
     fun initialize(context: Context) {
@@ -88,12 +88,12 @@ object DownloadNotificationManager {
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
-    // cancel/dismiss the notification
+    // cancel dismiss the notification
     fun cancelNotification() {
         notificationManager.cancel(NOTIFICATION_ID)
     }
 
-    // ============ modern implementation (android 16+) ============
+    // ============ modern implementation android 16+ ============
     @RequiresApi(Build.VERSION_CODES.BAKLAVA)
     private fun showDownloadStartingModern(version: String, fileSize: String) {
         val progressStyle = Notification.ProgressStyle()
@@ -106,7 +106,7 @@ object DownloadNotificationManager {
                                 if (i % 2 == 0) {
                                     "#4285F4".toColorInt() // primary blue
                                 } else {
-                                    "#8E24AA".toColorInt() // tertiary maroon/purple
+                                    "#8E24AA".toColorInt() // tertiary maroon purple
                                 }
                             )
                     )
@@ -143,7 +143,7 @@ object DownloadNotificationManager {
                                 if (i % 2 == 0) {
                                     "#4285F4".toColorInt() // primary blue
                                 } else {
-                                    "#8E24AA".toColorInt() // tertiary maroon/purple
+                                    "#8E24AA".toColorInt() // tertiary maroon purple
                                 }
                             )
                     )
@@ -192,7 +192,7 @@ object DownloadNotificationManager {
 
         val progressStyle = Notification.ProgressStyle()
             .also {
-                // all segments completed - alternating colors
+                // all segments completed alternating colors
                 for (i in 0 until 4) {
                     it.addProgressSegment(
                         Notification.ProgressStyle.Segment(25)
@@ -200,7 +200,7 @@ object DownloadNotificationManager {
                                 if (i % 2 == 0) {
                                     "#4285F4".toColorInt() // primary blue
                                 } else {
-                                    "#8E24AA".toColorInt() // tertiary maroon/purple
+                                    "#8E24AA".toColorInt() // tertiary maroon purple
                                 }
                             )
                     )
@@ -236,7 +236,7 @@ object DownloadNotificationManager {
     }
 
     private fun setRequestPromotedOngoingSafely(builder: Notification.Builder, promoted: Boolean) {
-        // fallback: set via extras first
+        // fallback set via extras first
         builder.getExtras().putBoolean("android.requestPromotedOngoing", promoted)
 
         try {
@@ -252,7 +252,7 @@ object DownloadNotificationManager {
         } catch (e: Exception) {}
     }
 
-    // ============ legacy implementation (pre-android 16) ============
+    // ============ legacy implementation pre android 16 ============
     private fun showDownloadStartingLegacy(version: String, fileSize: String) {
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.musicfy_notification) // your app icon

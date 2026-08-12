@@ -6,7 +6,7 @@ package com.dpi
 import android.content.Context
 import timber.log.Timber
 
-// densityscaler - main entry point for screen density scaling reads scale factor
+// densityscaler main entry point for screen density scaling reads scale factor
 class DensityScaler : BaseLifecycleContentProvider() {
 
     override fun onCreate(): Boolean {

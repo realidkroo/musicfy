@@ -1,8 +1,8 @@
 // playereditoverlaykt
-// the layer a long press on the artwork drops you into: "select the part
-// with an outline around each customizable region of the player (concept
+// the layer a long press on the artwork drops you into select the part
+// with an outline around each customizable region of the player concept
 
-// it draws outlines and nothing else — the real player stays fully visible
+// it draws outlines and nothing else the real player stays fully visible
 // it which is the whole point of picking a part by pointing at it rather
 
 package com.example.musicfy.ui.player.customize
@@ -60,14 +60,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.R
 
-// which part of the player an outline refers to only [cover] currently opens
+// which part of the player an outline refers to only cover currently opens
 enum class PlayerEditTarget {
     COVER,
 
-    // the title/artist + progress + transport block
+    // the title artist + progress + transport block
     CONTROLS,
 
-    // the lyrics/queue card deck at the bottom
+    // the lyrics queue card deck at the bottom
     BOTTOM_CARD,
 }
 
@@ -76,13 +76,13 @@ enum class PlayerEditPhase {
     // normal playback the overwhelmingly common case
     NONE,
 
-    // the blur-and-hold beat right after the long press see playerenteringeditoverlay
+    // the blur and hold beat right after the long press see playerenteringeditoverlay
     ENTERING,
 
-    // the "select the part you want to edit" outlines
+    // the select the part you want to edit outlines
     SELECTING,
 
-    // the full "currently editing" page
+    // the full currently editing page
     CUSTOMIZING,
 }
 
@@ -100,8 +100,8 @@ fun PlayerEditOverlay(
 
     // owned as an animatable rather than animatefloatasstate because this layer
     // animate out as well as in choosing a part used to swap straight to the
-    // on the same frame; now the scrim the header and every outline dissolve
-    // the selection is only reported once they are gone — so the two screens
+    // on the same frame now the scrim the header and every outline dissolve
+    // the selection is only reported once they are gone so the two screens
     // of cutting
     val appearAnim = remember { Animatable(0f) }
     val appear = appearAnim.value
@@ -120,15 +120,15 @@ fun PlayerEditOverlay(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            // swallows everything the outlines below didn't want before the bottom
-            // detectdraggestures — which lives on an ancestor — can see it without this a
+            // swallows everything the outlines below didn t want before the bottom
+            // detectdraggestures which lives on an ancestor can see it without this a
             // swipe down or left while choosing a part collapses or dismisses the whole
             // instead of doing nothing
 
-            // deliberately the main pass not initial: main travels descendant → ancestor
-            // the outline hit targets and the dismiss-tap below (both inner to this
+            // deliberately the main pass not initial main travels descendant → ancestor
+            // the outline hit targets and the dismiss tap below both inner to this
             // still get first refusal and only the leftovers are eaten here consuming on
-            // initial pass would take the events on the way *down* and break those taps
+            // initial pass would take the events on the way down and break those taps
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -175,7 +175,7 @@ fun PlayerEditOverlay(
                 },
         )
 
-        // the artwork runs under the status bar and under this layer's own header so
+        // the artwork runs under the status bar and under this layer s own header so
         // outline is held below both rather than being drawn across the clock and
         // button
         val headerBottomPx = with(LocalDensity.current) {
@@ -183,7 +183,7 @@ fun PlayerEditOverlay(
         }
 
         if (coverRect != null) {
-            // "side to side": the artwork reaches both screen edges so it has no
+            // side to side the artwork reaches both screen edges so it has no
             // boundary of its own inside the viewport and a closed box would sit on top
             val coverIsFullBleed = coverRect.left <= bounds.left + 1f &&
                 coverRect.right >= bounds.right - 1f
@@ -193,7 +193,7 @@ fun PlayerEditOverlay(
                 appear = { appear },
                 topLimitPx = headerBottomPx,
                 sideRailsOnly = coverIsFullBleed,
-                // the cover has no bottom edge of its own — it bleeds straight into the
+                // the cover has no bottom edge of its own it bleeds straight into the
                 // controls a hard line across the middle of the artwork reads as a seam so
                 // the stroke ramps to fully transparent over its lower portion instead
                 fadeBottom = true,
@@ -211,14 +211,14 @@ fun PlayerEditOverlay(
                 appear = { appear },
                 // the deck is anchored flush to the screen edge and bleeds past it by design
                 // its outline is allowed to run off the bottom too clamping it inside the
-                // viewport would draw a closing line across the card that isn't there
+                // viewport would draw a closing line across the card that isn t there
                 clampBottom = false,
             ) { select(PlayerEditTarget.BOTTOM_CARD) }
         }
     }
 }
 
-// back affordance matching subsettingsscaffold's circular button and its 20dp page padding
+// back affordance matching subsettingsscaffold s circular button and its 20dp page padding
 @Composable
 fun EditOverlayBackButton(
     onClick: () -> Unit,
@@ -248,7 +248,7 @@ fun EditOverlayBackButton(
     }
 }
 
-// one tappable outline the rect arrives in pixels (that is what
+// one tappable outline the rect arrives in pixels that is what
 @Composable
 private fun EditTargetOutline(
     rect: Rect,
@@ -265,7 +265,7 @@ private fun EditTargetOutline(
     onClick: () -> Unit,
 ) {
     val density = LocalDensity.current
-    // a tight outline sits right on the content; a little breathing room makes
+    // a tight outline sits right on the content a little breathing room makes
     // selectable region and gives a usable touch target
     val padPx = with(density) { OutlinePadding.toPx() }
     val marginPx = with(density) { OutlineScreenMargin.toPx() }
@@ -289,7 +289,7 @@ private fun EditTargetOutline(
             .offset { IntOffset(left.toInt(), top.toInt()) }
             .graphicsLayer { alpha = appear() }
             // drawn rather than modifierborder because border only takes a solid colour
-            // the cover's stroke has to fade out down its length
+            // the cover s stroke has to fade out down its length
             .drawWithCache {
                 val strokePx = OutlineStroke.toPx()
                 val radiusPx = OutlineCorner.toPx()
@@ -349,7 +349,7 @@ private val OutlineStroke = 6.dp
 private val OutlineCorner = 30.dp
 private val OutlineColor = Color.White.copy(alpha = 0.6f)
 
-// where the cover outline's stroke starts ramping away as a fraction of its height
+// where the cover outline s stroke starts ramping away as a fraction of its height
 private const val FadeStart = 0.55f
 
 // vertical room reserved under the status bar for the back button and the header line

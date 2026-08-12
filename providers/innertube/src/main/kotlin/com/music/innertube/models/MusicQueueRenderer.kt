@@ -1,4 +1,4 @@
-// MusicQueueRenderer.kt
+// musicqueuerenderer kt
 // what is this for you ask its for music queue renderer ofc
 
 package com.music.innertube.models

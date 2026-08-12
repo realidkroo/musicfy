@@ -1,4 +1,4 @@
-// GetTranscriptBody.kt
+// gettranscriptbody kt
 // the file functioned as get transcript body
 
 package com.music.innertube.models.body

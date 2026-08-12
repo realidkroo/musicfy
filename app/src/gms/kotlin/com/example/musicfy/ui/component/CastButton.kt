@@ -1,4 +1,4 @@
-// CastButton.kt
+// castbutton kt
 // what is this for you ask its for cast button ofc
 
 package com.example.musicfy.ui.component
@@ -38,10 +38,7 @@ import com.example.musicfy.constants.EnableGoogleCastKey
 import com.example.musicfy.utils.rememberPreference
 import timber.log.Timber
 
-/**
- * A Composable Cast button that shows available Cast devices.
- * Uses the app's MenuState to show a styled bottom sheet.
- */
+// a composable cast button that shows available cast devices uses the app s menustate to show a styled bottom sheet
 @Composable
 fun CastButton(
     modifier: Modifier = Modifier,
@@ -61,19 +58,19 @@ fun CastButton(
         defaultValue = true
     )
     
-    // Get cast state from service
+    // get cast state from service
     val castHandler = playerConnection?.service?.castConnectionHandler
     val isCasting by castHandler?.isCasting?.collectAsState() ?: remember { mutableStateOf(false) }
     val isConnecting by castHandler?.isConnecting?.collectAsState() ?: remember { mutableStateOf(false) }
     val castDeviceName by castHandler?.castDeviceName?.collectAsState() ?: remember { mutableStateOf(null) }
     
-    // Get current media metadata
+    // get current media metadata
     val currentMetadata by playerConnection?.mediaMetadata?.collectAsState() ?: remember { mutableStateOf(null) }
 
-    // Check if Cast is available and disconnect if disabled while casting
+    // check if cast is available and disconnect if disabled while casting
     LaunchedEffect(enableGoogleCast) {
         if (!enableGoogleCast) {
-            // Disconnect from Cast if currently casting
+            // disconnect from cast if currently casting
             if (isCasting) {
                 playerConnection?.service?.castConnectionHandler?.disconnect()
             }
@@ -89,7 +86,7 @@ fun CastButton(
             routeSelector = MediaRouteSelector.Builder()
                 .addControlCategory(CastMediaControlIntent.categoryForCast(CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID))
                 .build()
-            // Reinitialize the Cast handler to ensure it's ready
+            // reinitialize the cast handler to ensure it s ready
             playerConnection?.service?.castConnectionHandler?.initialize()
             castAvailable = true
         } catch (e: Exception) {
@@ -98,7 +95,7 @@ fun CastButton(
         }
     }
     
-    // Listen for route changes to discover devices
+    // listen for route changes to discover devices
     DisposableEffect(mediaRouter, routeSelector) {
         val callback = object : MediaRouter.Callback() {
             override fun onRouteAdded(router: MediaRouter, route: MediaRouter.RouteInfo) {
@@ -116,7 +113,7 @@ fun CastButton(
         
         routeSelector?.let { selector ->
             mediaRouter?.addCallback(selector, callback, MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY)
-            // Initial update
+            // initial update
             updateRoutes(mediaRouter, selector) { availableRoutes = it }
         }
         
@@ -125,12 +122,12 @@ fun CastButton(
         }
     }
 
-    // Show the button if Cast is enabled and SDK is available
+    // show the button if cast is enabled and sdk is available
     if (enableGoogleCast && castAvailable) {
         Box(
             modifier = modifier
         ) {
-            // Shadow background for cast button
+            // shadow background for cast button
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -145,7 +142,7 @@ fun CastButton(
                     )
             )
             
-            // Cast button
+            // cast button
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -158,7 +155,7 @@ fun CastButton(
                         return@clickable
                     }
                     
-                    // Get current connected route if casting
+                    // get current connected route if casting
                     val currentRoute = if (isCasting) {
                         mediaRouter?.routes?.find { route ->
                             routeSelector?.let { selector -> 
@@ -167,7 +164,7 @@ fun CastButton(
                         }
                     } else null
                     
-                    // Show bottom sheet with cast picker
+                    // show bottom sheet with cast picker
                     menuState.show {
                         CastPickerSheet(
                             routes = availableRoutes,

@@ -37,7 +37,7 @@ fun MusicfyTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    // determine if system dynamic colors should be used (android s+ and default
+    // determine if system dynamic colors should be used android s+ and default
     val useSystemDynamicColor = false
 
     // select the appropriate color scheme generation method
@@ -48,7 +48,7 @@ fun MusicfyTheme(
         /*
         // use materialkolor only when a specific seed color is provided
         rememberDynamicColorScheme(
-            seedColor = themeColor, // themecolor is guaranteed non-default here
+            seedColor = themeColor, // themecolor is guaranteed non default here
             isDark = darkTheme,
             style = PaletteStyle.TonalSpot // keep existing style
         )

@@ -1,4 +1,4 @@
-// PlaybackError.kt
+// playbackerror kt
 // this thing is part of playback error
 
 package com.example.musicfy.ui.player
@@ -35,14 +35,14 @@ fun PlaybackError(
     error: PlaybackException,
     retry: () -> Unit,
 ) {
-    // Build detailed error info for debugging
+    // build detailed error info for debugging
     val rawErrorMessage = error.cause?.cause?.message 
         ?: error.cause?.message 
         ?: error.message 
         ?: stringResource(R.string.error_unknown)
     
-    // Check if this is an age-restricted content error
-    // Age-restricted content typically returns 403 Forbidden or contains age-related messages
+    // check if this is an age restricted content error
+    // age restricted content typically returns 403 forbidden or contains age related messages
     val isAgeRestricted = rawErrorMessage.contains("age", ignoreCase = true) ||
             rawErrorMessage.contains("Sign in to confirm your age", ignoreCase = true) ||
             rawErrorMessage.contains("LOGIN_REQUIRED", ignoreCase = true) ||
@@ -64,7 +64,7 @@ fun PlaybackError(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Error icon
+        // error icon
         Icon(
             painter = painterResource(R.drawable.error),
             contentDescription = null,
@@ -74,7 +74,7 @@ fun PlaybackError(
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        // Main error message
+        // main error message
         Text(
             text = stringResource(R.string.error_playback_failed),
             style = MaterialTheme.typography.titleMedium,
@@ -84,7 +84,7 @@ fun PlaybackError(
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Error details
+        // error details
         Text(
             text = errorMessage,
             style = MaterialTheme.typography.bodyMedium,
@@ -96,7 +96,7 @@ fun PlaybackError(
         
         Spacer(modifier = Modifier.height(4.dp))
         
-        // Error code
+        // error code
         Text(
             text = "Code: ${getErrorCodeName(error.errorCode)} (${error.errorCode})",
             style = MaterialTheme.typography.bodySmall.copy(
@@ -109,7 +109,7 @@ fun PlaybackError(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Retry button
+        // retry button
         Button(
             onClick = retry,
             shape = RoundedCornerShape(20.dp),
@@ -128,9 +128,7 @@ fun PlaybackError(
     }
 }
 
-/**
- * Get human-readable error code name from PlaybackException error code
- */
+// get human readable error code name from playbackexception error code
 private fun getErrorCodeName(errorCode: Int): String {
     return when (errorCode) {
         PlaybackException.ERROR_CODE_UNSPECIFIED -> "UNSPECIFIED"

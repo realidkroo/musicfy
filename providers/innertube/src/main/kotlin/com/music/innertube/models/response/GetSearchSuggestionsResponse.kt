@@ -1,4 +1,4 @@
-// GetSearchSuggestionsResponse.kt
+// getsearchsuggestionsresponse kt
 // this thing is part of get search suggestions response
 
 package com.music.innertube.models.response

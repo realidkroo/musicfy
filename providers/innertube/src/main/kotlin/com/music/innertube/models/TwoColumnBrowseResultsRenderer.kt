@@ -1,4 +1,4 @@
-// TwoColumnBrowseResultsRenderer.kt
+// twocolumnbrowseresultsrenderer kt
 // what is this for you ask its for two column browse results renderer ofc
 
 package com.music.innertube.models

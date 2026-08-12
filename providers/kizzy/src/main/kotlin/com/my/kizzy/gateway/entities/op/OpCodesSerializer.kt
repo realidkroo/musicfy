@@ -1,4 +1,4 @@
-// OpCodesSerializer.kt
+// opcodesserializer kt
 // what is this for you ask its for op codes serializer ofc
 
 package com.my.kizzy.gateway.entities.op

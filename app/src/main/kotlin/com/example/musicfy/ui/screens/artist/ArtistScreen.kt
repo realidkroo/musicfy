@@ -337,7 +337,7 @@ fun ArtistScreen(
                             }
                         }
 
-                        // artist name and controls section - positioned at bottom of image
+                        // artist name and controls section positioned at bottom of image
 
                         Column(
                             modifier = Modifier
@@ -944,7 +944,7 @@ fun ArtistScreen(
         val isScrollingUp = lazyListState.isScrollingUp()
         val showLocalFab = librarySongs.isNotEmpty() && libraryArtist?.artist?.isLocal != true
         
-        // library/local toggle fab
+        // library local toggle fab
         HideOnScrollFAB(
             visible = showLocalFab,
             lazyListState = lazyListState,
@@ -955,7 +955,7 @@ fun ArtistScreen(
             }
         )
         
-        // play all fab (stacked above library/local fab if visible)
+        // play all fab stacked above library local fab if visible
         val canPlayAll = (
             (showLocal && librarySongs.isNotEmpty()) || 
             (!showLocal && artistPage?.sections?.any { 
@@ -974,7 +974,7 @@ fun ArtistScreen(
                         LocalPlayerAwareWindowInsets.current
                             .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                     )
-                    // add padding to position it above the other fab (56dp height + 16dp padding
+                    // add padding to position it above the other fab 56dp height + 16dp padding
                     // if the other fab is visible
                     .padding(bottom = if (showLocalFab) 64.dp else 0.dp)
             ) {
@@ -1030,7 +1030,7 @@ fun ArtistScreen(
                                 )
                             )
                         } else {
-                            // fallback to shuffle endpoint (stripped) if no song section found
+                            // fallback to shuffle endpoint stripped if no song section found
                             val shuffleEndpoint = artistPage.artist.shuffleEndpoint
                             if (shuffleEndpoint != null) {
                                 val endpoint = if (shuffleEndpoint.playlistId != null) {
@@ -1050,7 +1050,7 @@ fun ArtistScreen(
 
                 if (showLocalFab) {
                      androidx.compose.material3.SmallFloatingActionButton(
-                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp), // align center with standard fab (56dp vs 48dp)
+                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp), // align center with standard fab 56dp vs 48dp
                         onClick = onPlayAllClick
                     ) {
                         Icon(

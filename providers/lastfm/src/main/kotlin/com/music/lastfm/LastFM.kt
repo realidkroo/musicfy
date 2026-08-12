@@ -1,4 +1,4 @@
-// LastFM.kt
+// lastfm kt
 // what is this for you ask its for last fm ofc
 
 package com.music.lastfm
@@ -69,7 +69,7 @@ object LastFM {
         }))
     }
 
-    // OAuth methods (kept for backward compatibility)
+    // oauth methods kept for backward compatibility
     suspend fun getToken() = runCatching {
         client.post {
             lastfmParams(
@@ -95,7 +95,7 @@ object LastFM {
         return "https://www.last.fm/api/auth/?api_key=$API_KEY&token=$token"
     }
 
-    // Mobile session authentication
+    // mobile session authentication
     suspend fun getMobileSession(username: String, password: String) = runCatching {
         val response = client.post {
             lastfmParams(
@@ -184,15 +184,11 @@ object LastFM {
         }
     }
 
-    // API keys passed from the app module (loaded from BuildConfig/GitHub Secrets)
+    // api keys passed from the app module loaded from buildconfig github secrets
     private var API_KEY = ""
     private var SECRET = ""
 
-    /**
-     * Initialize LastFM with API credentials
-     * @param apiKey LastFM API key
-     * @param secret LastFM secret key
-     */
+    // initialize lastfm with api credentials
     fun initialize(apiKey: String, secret: String) {
         API_KEY = apiKey
         SECRET = secret

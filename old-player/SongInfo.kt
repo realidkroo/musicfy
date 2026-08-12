@@ -1,6 +1,6 @@
-// SongInfo.kt
-// Extracted from Player.kt's `controlsContent` closure: the header row
-// (lyrics-mode thumbnail toggle + title/artist column).
+// songinfo kt
+// extracted from player kt s controlscontent closure the header row
+// lyrics mode thumbnail toggle + title artist column
 
 package com.example.musicfy.ui.player
 
@@ -80,12 +80,7 @@ import com.example.musicfy.playback.PlayerConnection
 import com.example.musicfy.ui.component.AudioFormatBadge
 import com.example.musicfy.ui.component.BottomSheetState
 
-/**
- * Emits the lyrics-mode thumbnail toggle + title/artist column as siblings into the
- * caller's [Row] (see `Player.kt`'s header row) — kept as a `RowScope` extension rather
- * than owning its own `Row` so `.weight(1f)` below keeps resolving against that outer row
- * and the surrounding Spacer/action-buttons stay laid out side-by-side exactly as before.
- */
+// emits the lyrics mode thumbnail toggle + title artist column as siblings into the caller s row see player kt s header row kept as a rowscope extension rather than owning its own row so weight 1f below keeps resolving against that outer row and the surrounding spacer action buttons stay laid out side by side exactly as before
 @Composable
 fun RowScope.SongInfo(
     mediaMetadata: MediaMetadata,

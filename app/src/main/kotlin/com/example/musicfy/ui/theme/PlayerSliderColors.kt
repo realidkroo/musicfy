@@ -22,8 +22,8 @@ object PlayerSliderColors {
     ): SliderColors {
         val inactiveTrackColor = when (playerBackground) {
             // the flat fill is the only backdrop that follows the app theme rather than
-            // being a dark image-derived surface so it's the only one that needs the
-            // theme's darker track
+            // being a dark image derived surface so it s the only one that needs the
+            // theme s darker track
             PlayerBackgroundStyle.SOLID -> {
                 if (useDarkTheme) {
                     MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)

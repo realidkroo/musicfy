@@ -1,4 +1,4 @@
-// TTMLParser.kt
+// ttmlparser kt
 // what is this for you ask its for ttmlparser ofc
 
 package com.example.musicfy.betterlyrics
@@ -31,17 +31,17 @@ object TTMLParser {
         val hasTrailingSpace: Boolean
     )
     
-    // Helper function to get attribute by local name (handles namespace prefixes)
+    // helper function to get attribute by local name handles namespace prefixes
     private fun Element.getAttributeByLocalName(localName: String): String {
-        // First try namespace-aware lookup
+        // first try namespace aware lookup
         val nsValue = getAttributeNS("http://www.w3.org/ns/ttml#metadata", localName)
         if (nsValue.isNotEmpty()) return nsValue
         
-        // Then try with common prefixes
+        // then try with common prefixes
         val prefixedValue = getAttribute("ttm:$localName")
         if (prefixedValue.isNotEmpty()) return prefixedValue
         
-        // Finally, search through all attributes
+        // finally search through all attributes
         val attrs = attributes
         for (i in 0 until attrs.length) {
             val attr = attrs.item(i)
@@ -74,10 +74,10 @@ object TTMLParser {
                 val spanInfos = mutableListOf<SpanInfo>()
                 val backgroundLines = mutableListOf<ParsedLine>()
                 
-                // Get agent/vocalist info (ttm:agent attribute)
+                // get agent vocalist info ttm agent attribute
                 val agent = pElement.getAttributeByLocalName("agent").ifEmpty { null }
                 
-                // Parse child nodes to preserve whitespace between spans
+                // parse child nodes to preserve whitespace between spans
                 val childNodes = pElement.childNodes
                 for (j in 0 until childNodes.length) {
                     val node = childNodes.item(j)
@@ -86,22 +86,22 @@ object TTMLParser {
                         Node.ELEMENT_NODE -> {
                             val span = node as? Element
                             if (span?.tagName?.lowercase() == "span") {
-                                // Check for background vocal role (ttm:role="x-bg")
+                                // check for background vocal role ttm role= x bg
                                 val role = span.getAttributeByLocalName("role")
                                 
                                 when (role) {
                                     "x-bg" -> {
-                                        // Parse background vocal line
+                                        // parse background vocal line
                                         val bgLine = parseBackgroundSpan(span, startTime)
                                         if (bgLine != null) {
                                             backgroundLines.add(bgLine)
                                         }
                                     }
                                     "x-translation", "x-roman" -> {
-                                        // Skip translation and romanization spans
+                                        // skip translation and romanization spans
                                     }
                                     else -> {
-                                        // Regular word span
+                                        // regular word span
                                         val wordBegin = span.getAttribute("begin")
                                         val wordEnd = span.getAttribute("end")
                                         val wordText = span.textContent?.trim() ?: ""
@@ -126,11 +126,11 @@ object TTMLParser {
                     }
                 }
                 
-                // Merge consecutive spans without whitespace between them into single words
+                // merge consecutive spans without whitespace between them into single words
                 val words = mergeSpansIntoWords(spanInfos)
                 val lineText = words.joinToString(" ") { it.text }
                 
-                // If no spans found, use text content directly (excluding background text)
+                // if no spans found use text content directly excluding background text
                 val finalText = if (lineText.isEmpty()) {
                     getDirectTextContent(pElement).trim()
                 } else {
@@ -172,7 +172,7 @@ object TTMLParser {
                 if (innerSpan?.tagName?.lowercase() == "span") {
                     val role = innerSpan.getAttributeByLocalName("role")
                     
-                    // Skip translation and romanization spans
+                    // skip translation and romanization spans
                     if (role == "x-translation" || role == "x-roman") continue
                     
                     val wordBegin = innerSpan.getAttribute("begin")
@@ -228,7 +228,7 @@ object TTMLParser {
             } else if (node.nodeType == Node.ELEMENT_NODE) {
                 val el = node as? Element
                 val role = el?.getAttributeByLocalName("role") ?: ""
-                // Skip background, translation, and romanization spans
+                // skip background translation and romanization spans
                 if (role != "x-bg" && role != "x-translation" && role != "x-roman") {
                     if (el?.tagName?.lowercase() == "span") {
                         sb.append(el.textContent ?: "")
@@ -239,19 +239,7 @@ object TTMLParser {
         return sb.toString()
     }
     
-    /**
-     * Whether the text node between two spans is a real word gap rather than XML indentation.
-     *
-     * Apple Music TTML times each *syllable* as its own span, and relies on the literal
-     * whitespace between spans to say where one word actually ends. The previous test was
-     * `contains(Regex("\\s"))`, which treats any whitespace as a gap — so as soon as the document
-     * arrives pretty-printed, the `"\n    "` indentation node sitting between every span reads as
-     * a word boundary and every syllable becomes its own word. That is what turned "dirancang
-     * lega" into "di ran cang le ga".
-     *
-     * A genuine separator is a space or tab on the same line. A run of whitespace containing a
-     * newline is formatting, and the spans it separates belong to the same word.
-     */
+    // whether the text node between two spans is a real word gap rather than xml indentation apple music ttml times each syllable as its own span and relies on the literal whitespace between spans to say where one word actually ends the previous test was contains regex \\s which treats any whitespace as a gap so as soon as the document arrives pretty printed the \n indentation node sitting between every span reads as a word boundary and every syllable becomes its own word that is what turned dirancang lega into di ran cang le ga a genuine separator is a space or tab on the same line a run of whitespace containing a newline is formatting and the spans it separates belong to the same word
     private fun isWordBoundary(node: Node?): Boolean {
         if (node == null || node.nodeType != Node.TEXT_NODE) return false
         val between = node.textContent ?: return false
@@ -274,10 +262,10 @@ object TTMLParser {
                 currentStartTime = span.startTime
                 currentEndTime = span.endTime
             } else {
-                // Check if previous span had trailing space (word boundary)
+                // check if previous span had trailing space word boundary
                 val prevSpan = spanInfos[index - 1]
                 if (prevSpan.hasTrailingSpace) {
-                    // Save current word and start new one
+                    // save current word and start new one
                     if (currentText.isNotEmpty()) {
                         words.add(
                             ParsedWord(
@@ -291,14 +279,14 @@ object TTMLParser {
                     currentStartTime = span.startTime
                     currentEndTime = span.endTime
                 } else {
-                    // No space between spans - merge into same word (syllables)
+                    // no space between spans merge into same word syllables
                     currentText.append(span.text)
                     currentEndTime = span.endTime
                 }
             }
         }
         
-        // Add the last word
+        // add the last word
         if (currentText.isNotEmpty()) {
             words.add(
                 ParsedWord(
@@ -320,7 +308,7 @@ object TTMLParser {
                 val seconds = (timeMs % 60000) / 1000
                 val centiseconds = (timeMs % 1000) / 10
                 
-                // Add agent info if present
+                // add agent info if present
                 val agentPrefix = if (!line.agent.isNullOrEmpty()) "{agent:${line.agent}}" else ""
                 
                 appendLine(String.format("[%02d:%02d.%02d]%s%s", minutes, seconds, centiseconds, agentPrefix, line.text))
@@ -332,7 +320,7 @@ object TTMLParser {
                     appendLine("<$wordsData>")
                 }
                 
-                // Add background vocals as separate lines
+                // add background vocals as separate lines
                 line.backgroundLines.forEach { bgLine ->
                     val bgTimeMs = (bgLine.startTime * 1000).toLong()
                     val bgMinutes = bgTimeMs / 60000

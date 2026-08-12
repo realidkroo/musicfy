@@ -1,4 +1,4 @@
-// SearchSongResponse.kt
+// searchsongresponse kt
 // this thing is for search song response
 
 package com.music.kugou.models

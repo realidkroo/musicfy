@@ -827,7 +827,7 @@ interface DatabaseDao {
             ArtistSortType.PLAY_TIME -> artistsByPlayTimeAsc()
         }.map { artists ->
             artists
-                .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // todo: add ui to filter by local or remote or something idk
+                .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // todo add ui to filter by local or remote or something idk
                 .reversed(descending)
         }
 
@@ -839,7 +839,7 @@ interface DatabaseDao {
             ArtistSortType.PLAY_TIME -> artistsBookmarkedByPlayTimeAsc()
         }.map { artists ->
             artists
-                .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // todo: add ui to filter by local or remote or something idk
+                .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // todo add ui to filter by local or remote or something idk
                 .reversed(descending)
         }
 
@@ -1315,7 +1315,7 @@ interface DatabaseDao {
     @Query("UPDATE playCount SET count = count + 1 WHERE song = :songId AND year = :year AND month = :month")
     fun incrementPlayCount(songId: String, year: Int, month: Int)
 
-    // increment by one the play count with today's year and month
+    // increment by one the play count with today s year and month
     fun incrementPlayCount(songId: String) {
         val time = LocalDateTime.now().atOffset(ZoneOffset.UTC)
         var oldCount: Int
@@ -1460,10 +1460,10 @@ interface DatabaseDao {
 
         // single guard for every source of song metadata
 
-        // several innertube parsers pick the artist out of a bullet-separated
-        // ("song • artist • 5:06") when a track has no artist run the segmentation
-        // the *duration* lands in the artist slot which then gets written here and
-        // so the row keeps showing "5:06 • 5:06" (artist • duration) long after any
+        // several innertube parsers pick the artist out of a bullet separated
+        // song • artist • 5 06 when a track has no artist run the segmentation
+        // the duration lands in the artist slot which then gets written here and
+        // so the row keeps showing 5 06 • 5 06 artist • duration long after any
         // corrected filtering at the point of persistence covers all of those call
         // instead of patching each parser and missing one
         mediaMetadata.artists.filterNot { it.name.looksLikeTimestampName() }.forEachIndexed { index, artist ->
@@ -1745,7 +1745,7 @@ interface DatabaseDao {
     }
 }
 
-// m:ss mm:ss or h:mm:ss — the shapes a duration run takes in a subtitle
+// m ss mm ss or h mm ss the shapes a duration run takes in a subtitle
 private val TIMESTAMP_NAME_REGEX = Regex("""^\d{1,2}:\d{2}(:\d{2})?$""")
 
 private fun String.looksLikeTimestampName(): Boolean = TIMESTAMP_NAME_REGEX.matches(trim())

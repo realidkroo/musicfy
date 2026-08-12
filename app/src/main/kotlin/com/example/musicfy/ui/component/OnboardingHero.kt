@@ -1,7 +1,7 @@
 // onboardingherokt
 // the hero shown in place of herocarousel when there is nothing to carousel
-// install with no last-played song no daily discover and no listening
-// concept as the setup wizard's welcome screen but permanently looping
+// install with no last played song no daily discover and no listening
+// concept as the setup wizard s welcome screen but permanently looping
 
 package com.example.musicfy.ui.component
 
@@ -244,7 +244,7 @@ private fun TiltedCoverWall(
             horizontalArrangement = Arrangement.spacedBy(spacing)
         ) {
             repeat(3) { column ->
-                // each column is offset a little so the wall doesn't read as one rigid block
+                // each column is offset a little so the wall doesn t read as one rigid block
                 // the loop is seamless because the strip repeats its own contents twice
                 val strip = remember(covers, column) {
                     val rotated = covers.drop(column * 2) + covers.take(column * 2)

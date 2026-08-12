@@ -1,7 +1,7 @@
 // itemskt
 // this thing is for items
 
-// musicfy project (c) 2026 licensed under gpl-30 | see git history for
+// musicfy project c 2026 licensed under gpl 30 | see git history for
 
 package com.example.musicfy.ui.component
 
@@ -142,7 +142,7 @@ fun currentGridThumbnailHeight(): Dp {
 
 val LocalGridItemPadding = compositionLocalOf { 12.dp }
 
-// basic list item - optimized with inline to reduce recomposition
+// basic list item optimized with inline to reduce recomposition
 @Composable
 inline fun ListItem(
     modifier: Modifier = Modifier,
@@ -410,9 +410,9 @@ fun SongListItem(
             if (downloadState != null) {
                 Icon.Download(downloadState)
             } else {
-                // remember(songid): getdownload() builds a new flow per call and
+                // remember songid getdownload builds a new flow per call and
                 // collectasstate keys its collector on the flow instance without this every
-                // recomposition of this row cancels and relaunches a coroutine — once per
+                // recomposition of this row cancels and relaunches a coroutine once per
                 // visible row continuously while scrolling
                 val downloadUtil = LocalDownloadUtil.current
                 val download by remember(downloadUtil, song.id) {
@@ -496,7 +496,7 @@ fun SongGridItem(
             if (downloadState != null) {
                 Icon.Download(downloadState)
             } else {
-                // see the note on the other download badge above: the flow must be remembered
+                // see the note on the other download badge above the flow must be remembered
                 // or collectasstate relaunches its coroutine on every recomposition
                 val downloadUtil = LocalDownloadUtil.current
                 val download by remember(downloadUtil, song.id) {
@@ -687,9 +687,9 @@ fun AlbumGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-    // opt-in key for the "expand into place" open transition (see
-    // ui/component/sharedelementtransitionkt) — null (the default) leaves every
-    // existing call site's behavior unchanged
+    // opt in key for the expand into place open transition see
+    // ui component sharedelementtransitionkt null the default leaves every
+    // existing call site s behavior unchanged
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -808,9 +808,9 @@ fun PlaylistGridItem(
         }
     },
     fillMaxWidth: Boolean = false,
-    // opt-in key for the "expand into place" open transition (see
-    // ui/component/sharedelementtransitionkt) — null (the default) leaves every
-    // existing call site's behavior unchanged
+    // opt in key for the expand into place open transition see
+    // ui component sharedelementtransitionkt null the default leaves every
+    // existing call site s behavior unchanged
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -1020,10 +1020,10 @@ fun YouTubeGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-    // opt-in key for the "expand into place" open transition (see
-    // ui/component/sharedelementtransitionkt) — only meaningful for albumitem/
-    // playlistitem (matching albumscreen/onlineplaylistscreen's headers); null
-    // default) leaves every existing call site's behavior unchanged
+    // opt in key for the expand into place open transition see
+    // ui component sharedelementtransitionkt only meaningful for albumitem
+    // playlistitem matching albumscreen onlineplaylistscreen s headers null
+    // default leaves every existing call site s behavior unchanged
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -1689,8 +1689,8 @@ fun LikedSongsThumbnail(
     size: Dp,
     shape: Shape = RoundedCornerShape(com.example.musicfy.constants.ThumbnailCornerRadius),
     modifier: Modifier = Modifier,
-    // liked songs' hero header (a bigger version of this same collage) caps at 8
-    // instead of this component's original 9 — parameterized rather than
+    // liked songs hero header a bigger version of this same collage caps at 8
+    // instead of this component s original 9 parameterized rather than
     // duplicating the whole composable for one different number
     maxCovers: Int = 9,
 ) {

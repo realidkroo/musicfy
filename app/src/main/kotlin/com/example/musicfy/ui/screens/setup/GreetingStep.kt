@@ -29,7 +29,7 @@ fun GreetingStep(
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Bottom
     ) {
-        // profile picture placeholder (visuals drawn by setupwizardscreen overlay
+        // profile picture placeholder visuals drawn by setupwizardscreen overlay
         Spacer(
             modifier = Modifier.size(110.dp)
         )

@@ -20,7 +20,7 @@ import timber.log.Timber
 // utility for fetching album descriptions from apple music via the amp api
 object AppleMusicAboutAlbum {
 
-    // public read-only jwt used by the apple music web player for
+    // public read only jwt used by the apple music web player for
     private const val APPLE_MUSIC_TOKEN =
         "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IldlYlBsYXlLaWQifQ" +
         ".eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzc0NDU2MzgyLCJleHAiOjE3ODE3" +

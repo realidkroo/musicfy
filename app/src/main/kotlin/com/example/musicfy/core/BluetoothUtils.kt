@@ -9,7 +9,7 @@ import android.media.AudioManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 
-// checks if bluetooth headphones (a2dp or sco) are currently connected
+// checks if bluetooth headphones a2dp or sco are currently connected
 fun isBluetoothHeadphoneConnected(context: Context): Boolean {
     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -46,7 +46,7 @@ fun getConnectedBluetoothDeviceName(context: Context): String? {
     }
 }
 
-// returns true if the device name suggests it is a pair of earbuds (buds)
+// returns true if the device name suggests it is a pair of earbuds buds
 fun isBuds(name: String?): Boolean {
     if (name == null) return false
     val lowerName = name.lowercase()

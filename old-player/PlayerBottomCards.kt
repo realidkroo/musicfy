@@ -1,4 +1,4 @@
-// PlayerBottomCards.kt
+// playerbottomcards kt
 // this thing is for player bottom cards
 
 package com.example.musicfy.ui.player
@@ -74,10 +74,10 @@ fun PlayerBottomCards(
     modifier: Modifier = Modifier,
     revealReady: Boolean = true,
 ) {
-    // Don't compose the expensive card content until the player is fully settled.
-    // During the open transition, the cards aren't visible anyway.
-    // However, we MUST render an empty box with the exact same dimensions (150.dp)
-    // so we don't break the layout of the player controls above us.
+    // don t compose the expensive card content until the player is fully settled
+    // during the open transition the cards aren t visible anyway
+    // however we must render an empty box with the exact same dimensions 150 dp
+    // so we don t break the layout of the player controls above us
     if (!revealReady) {
         Box(modifier = modifier.fillMaxWidth().height(150.dp))
         return

@@ -24,7 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 
-// from https://stackoverflowcom/a/69780826
+// from https stackoverflowcom a 69780826
 @Composable
 fun AutoResizeText(
     text: String,
@@ -66,15 +66,15 @@ fun AutoResizeText(
                 // did overflow height calculate next font size value
                 val nextFontSizeValue = fontSizeValue - fontSizeRange.step.value
                 if (nextFontSizeValue <= fontSizeRange.min.value) {
-                    // reached minimum set minimum font size and it's readtodraw
+                    // reached minimum set minimum font size and it s readtodraw
                     fontSizeValue = fontSizeRange.min.value
                     readyToDraw = true
                 } else {
-                    // text doesn't fit yet and haven't reached minimum text range keep decreasing
+                    // text doesn t fit yet and haven t reached minimum text range keep decreasing
                     fontSizeValue = nextFontSizeValue
                 }
             } else {
-                // text fits before reaching the minimum it's readytodraw
+                // text fits before reaching the minimum it s readytodraw
                 readyToDraw = true
             }
         },

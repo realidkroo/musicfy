@@ -136,7 +136,7 @@ if [ "$SKIP_BUILD" = false ]; then
     fi
 
     # base version
-    BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*//')
+    BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*
 
     # version name update
     sed -i '' "s/versionName = \".*\"/versionName = \"$BASE_VERSION build#$BUILD_ATTEMPT\"/g" app/build.gradle.kts
@@ -177,7 +177,7 @@ if [ "$SKIP_BUILD" = false ]; then
 else
     echo "Skipping compilation (--install-only/--no-compile requested for $VARIANT variant)..."
     BUILD_ATTEMPT=$(cat "$BUILD_ATTEMPT_FILE")
-    BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*//')
+    BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*
 fi
 
 # github release publish

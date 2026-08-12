@@ -1,9 +1,9 @@
 // musicimportservicekt
-// runs the actual csv -> library import in the background: searches youtube
-// parsed track picks the best match by title/artist similarity and writes
+// runs the actual csv > library import in the background searches youtube
+// parsed track picks the best match by title artist similarity and writes
 // playlists into the local database a hilt singleton with its own
-// as syncutils) so the import keeps running even after the setup wizard that
-// dismissed — thousands of songs at one search each is not something the
+// as syncutils so the import keeps running even after the setup wizard that
+// dismissed thousands of songs at one search each is not something the
 
 package com.example.musicfy.importer
 

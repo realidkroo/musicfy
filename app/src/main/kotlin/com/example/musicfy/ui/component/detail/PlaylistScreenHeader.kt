@@ -53,10 +53,10 @@ fun PlaylistScreenHeader(
     onMoreClick: () -> Unit,
     onColorExtracted: (Color) -> Unit = {},
     onCoverPositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
-    // from detailcollapsestate: headercontentalpha fades this header's own text+
-    // gradient away (phase a); morphprogress > 0 means the top bar's morph
-    // taken over and this cover should hard-cut to invisible (phase b) — without
-    // cut the two would be visible at once reading as a ghost/duplicate rather
+    // from detailcollapsestate headercontentalpha fades this header s own text+
+    // gradient away phase a morphprogress > 0 means the top bar s morph
+    // taken over and this cover should hard cut to invisible phase b without
+    // cut the two would be visible at once reading as a ghost duplicate rather
     // one continuous image handing off
     headerContentAlpha: Float = 1f,
     morphProgress: Float = 0f,
@@ -107,7 +107,7 @@ fun PlaylistScreenHeader(
         label = "PlaylistHeaderColor",
     )
 
-    // content (title action row) sits on animatedcolor near the bottom of the
+    // content title action row sits on animatedcolor near the bottom of the
     // pick black vs white based on what actually ended up there instead of
     val contentColor = if (animatedColor.luminance() > 0.5f) Color.Black else Color.White
 
@@ -119,12 +119,12 @@ fun PlaylistScreenHeader(
         modifier = modifier
             .fillMaxWidth()
             .height(headerHeight)
-        // no background color here on purpose: once the cover hands off to the top
-        // bar's morphing copy (and the gradient overlay has faded with it) a flat
-        // background here would sit exposed behind the now-empty header instead of
-        // the screen's own accent-tinted background — that's the "dark bg behind the
-        // cover" this used to show letting it stay transparent means whatever's
-        // painted behind this whole screen (the accent-color gradient) shows through
+        // no background color here on purpose once the cover hands off to the top
+        // bar s morphing copy and the gradient overlay has faded with it a flat
+        // background here would sit exposed behind the now empty header instead of
+        // the screen s own accent tinted background that s the dark bg behind the
+        // cover this used to show letting it stay transparent means whatever s
+        // painted behind this whole screen the accent color gradient shows through
         // consistently instead of a mismatched flat color
     ) {
         // fullscreen cover image forced to fill container
@@ -162,7 +162,7 @@ fun PlaylistScreenHeader(
             )
         }
 
-        // gradient overlay — fades with the header content (phase a) not the cover
+        // gradient overlay fades with the header content phase a not the cover
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -178,11 +178,11 @@ fun PlaylistScreenHeader(
                 )
         )
 
-        // header content positioned at bottom of the cover content is bottom-aligned
-        // within this fixed-height header so the gap between the action row and the
+        // header content positioned at bottom of the cover content is bottom aligned
+        // within this fixed height header so the gap between the action row and the
         // track list right below it is controlled by this bottom padding not a
-        // trailing spacer (which would just get pushed against the box's own bottom
-        // edge instead of creating room before the list that follows)
+        // trailing spacer which would just get pushed against the box s own bottom
+        // edge instead of creating room before the list that follows
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -191,9 +191,9 @@ fun PlaylistScreenHeader(
                 .padding(bottom = 28.dp)
                 .graphicsLayer { alpha = headerContentAlpha }
         ) {
-            // hidden entirely rather than shown blank/as a placeholder — callers pass an
-            // empty string when there's no meaningful creator to name (auto-generated
-            // playlists no signed-in account etc) per the per-screen rules
+            // hidden entirely rather than shown blank as a placeholder callers pass an
+            // empty string when there s no meaningful creator to name auto generated
+            // playlists no signed in account etc per the per screen rules
             if (userName.isNotBlank()) {
                 Text(
                     text = userName,
@@ -213,8 +213,8 @@ fun PlaylistScreenHeader(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            // the "n songs • duration" line was removed per feedback — kept as an
-            // unused param on the composable's public signature since callers still
+            // the n songs • duration line was removed per feedback kept as an
+            // unused param on the composable s public signature since callers still
             // compute it for other purposes but it no longer renders here
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -223,8 +223,8 @@ fun PlaylistScreenHeader(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // play button (pill) — symmetric horizontal padding centers the icon+
-                // text instead of the previous 36/58 split and the pill's height comes
+                // play button pill symmetric horizontal padding centers the icon+
+                // text instead of the previous 36 58 split and the pill s height comes
                 // from action_row_height so it lines up exactly with the circles below
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -255,7 +255,7 @@ fun PlaylistScreenHeader(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // shuffle button (circle) — same height as the pill above
+                // shuffle button circle same height as the pill above
                 Box(
                     modifier = Modifier
                         .size(ACTION_ROW_HEIGHT)
@@ -274,7 +274,7 @@ fun PlaylistScreenHeader(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // options button (circle) — same height as the pill above
+                // options button circle same height as the pill above
                 Box(
                     modifier = Modifier
                         .size(ACTION_ROW_HEIGHT)

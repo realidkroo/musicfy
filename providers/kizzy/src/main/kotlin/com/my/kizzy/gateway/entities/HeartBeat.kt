@@ -1,4 +1,4 @@
-// HeartBeat.kt
+// heartbeat kt
 // this thing is for heart beat
 
 /*

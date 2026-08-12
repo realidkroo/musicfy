@@ -10,7 +10,7 @@ import java.nio.ByteOrder
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-// audioprocessor that detects strong beats (like bass hits) and triggers haptic
+// audioprocessor that detects strong beats like bass hits and triggers haptic
 @UnstableApi
 @Suppress("DEPRECATION")
 class HapticAudioProcessor(
@@ -95,12 +95,12 @@ class HapticAudioProcessor(
                 val filteredValue = when (focus) {
                     HapticFocus.BALANCE -> sampleValue
                     HapticFocus.BASS -> {
-                        // low pass filter ~ 250hz (alpha ~ 0034 at 441khz)
+                        // low pass filter ~ 250hz alpha ~ 0034 at 441khz
                         filterState1 = filterState1 + 0.034 * (sampleValue - filterState1)
                         filterState1
                     }
                     HapticFocus.VOCAL -> {
-                        // band pass: hp at 300hz (alpha ~ 0959) lp at 3000hz (alpha ~ 0298)
+                        // band pass hp at 300hz alpha ~ 0959 lp at 3000hz alpha ~ 0298
                         val hp = 0.959 * (filterState1 + sampleValue - filterState2)
                         filterState2 = sampleValue
                         filterState1 = hp
@@ -110,7 +110,7 @@ class HapticAudioProcessor(
                         lp
                     }
                     HapticFocus.VIBE -> {
-                        // low pass ~ 1000hz (alpha ~ 012)
+                        // low pass ~ 1000hz alpha ~ 012
                         filterState1 = filterState1 + 0.12 * (sampleValue - filterState1)
                         filterState1
                     }
@@ -149,13 +149,13 @@ class HapticAudioProcessor(
         
         val finalAmplitude = smoothedAmplitude.toInt().coerceIn(0, 255)
 
-        // highlight (transient) detection
+        // highlight transient detection
         shortTermRms = (shortTermRms * 0.6) + (rms * 0.4)
         longTermRms = (longTermRms * 0.98) + (rms * 0.02)
         val currentTime = System.currentTimeMillis()
         
         var isHighlight = false
-        // vibrate mainly on transients (highlights)
+        // vibrate mainly on transients highlights
         if (shortTermRms > (longTermRms * 1.6) && shortTermRms > 1500.0) {
             if (currentTime - lastKickTimeMs > 150) {
                 isHighlight = true

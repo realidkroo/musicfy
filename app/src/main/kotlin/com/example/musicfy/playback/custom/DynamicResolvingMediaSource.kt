@@ -67,8 +67,8 @@ class DynamicResolvingMediaSource(
 
             if (result == null) {
                 if (fetchError == null) {
-                    // fetcheraction declined to handle this item without erroring (eg custom
-                    // backends disabled) — fall back to playing the original item (youtube)
+                    // fetcheraction declined to handle this item without erroring eg custom
+                    // backends disabled fall back to playing the original item youtube
                     // normally instead of leaving the source unprepared forever
                     withContext(Dispatchers.Main) {
                         val source = mediaSourceFactoryProvider(null).createMediaSource(originalMediaItem)
@@ -76,8 +76,8 @@ class DynamicResolvingMediaSource(
                         prepareChildSource(null, source)
                     }
                 }
-                // if fetcherror is set don't prepare — exoplayer will poll
-                // maybethrowsourceinforefresherror() and correctly propagate the error
+                // if fetcherror is set don t prepare exoplayer will poll
+                // maybethrowsourceinforefresherror and correctly propagate the error
                 return@launch
             }
 

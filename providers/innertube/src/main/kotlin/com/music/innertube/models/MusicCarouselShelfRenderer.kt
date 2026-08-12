@@ -1,4 +1,4 @@
-// MusicCarouselShelfRenderer.kt
+// musiccarouselshelfrenderer kt
 // the file functioned as music carousel shelf renderer
 
 package com.music.innertube.models

@@ -19,23 +19,23 @@ object PlayerColorExtractor {
         fallbackColor: Int
     ): List<Color> = withContext(Dispatchers.Default) {
 
-        // palette's own "dominant" swatch is already defined as whichever cluster
-        // covers the most pixels — ie the actual majority color/vibe of the image —
-        // so pick that directly instead of letting a small-but-saturated swatch
-        // (logo text a highlight a single accent) outbid it on vibrancy muting/
+        // palette s own dominant swatch is already defined as whichever cluster
+        // covers the most pixels ie the actual majority color vibe of the image
+        // so pick that directly instead of letting a small but saturated swatch
+        // logo text a highlight a single accent outbid it on vibrancy muting
         // darkening for background use happens afterward in darkeniftoolight
         val primaryColor = palette.dominantSwatch?.rgb?.let { Color(it) }
             ?: Color(palette.getDominantColor(fallbackColor))
 
         // create sophisticated gradient with 3 color points
         listOf(
-            primaryColor, // start: primary vibrant color
+            primaryColor, // start primary vibrant color
             primaryColor.copy(
                 red = (primaryColor.red * 0.6f).coerceAtLeast(0f),
                 green = (primaryColor.green * 0.6f).coerceAtLeast(0f),
                 blue = (primaryColor.blue * 0.6f).coerceAtLeast(0f)
-            ), // middle: darker version of primary color
-            Color.Black // end: black
+            ), // middle darker version of primary color
+            Color.Black // end black
         )
     }
 
@@ -86,7 +86,7 @@ object PlayerColorExtractor {
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
-    // tames a raw cover-sampled color before it's used to tint a detail-screen
+    // tames a raw cover sampled color before it s used to tint a detail screen
     fun darkenIfTooLight(
         color: Color,
         isDarkTheme: Boolean = true,
@@ -101,20 +101,20 @@ object PlayerColorExtractor {
             hsv,
         )
 
-        // always desaturate a bit — keeps the background reading as a muted backdrop
+        // always desaturate a bit keeps the background reading as a muted backdrop
         // instead of a second copy of the vivid album art lighter touch in light
-        // so a light cover's pastel actually stays visibly light instead of graying
+        // so a light cover s pastel actually stays visibly light instead of graying
         hsv[1] *= if (isDarkTheme) 0.5f else 0.7f
 
         if (isDarkTheme) {
-            // dark theme: white text/icons sit on this background everywhere downstream
+            // dark theme white text icons sit on this background everywhere downstream
             // so bright covers still get forced dark for legibility
             if (hsv[2] > luminanceThreshold) {
                 hsv[2] = (hsv[2] * (1f - darkenAmount)).coerceAtLeast(0.12f)
             }
         } else {
-            // light theme: let a light cover keep a light background — only guarantee a
-            // floor so a very dark cover doesn't go pitch black against light chrome
+            // light theme let a light cover keep a light background only guarantee a
+            // floor so a very dark cover doesn t go pitch black against light chrome
             hsv[2] = hsv[2].coerceAtLeast(0.55f)
         }
 

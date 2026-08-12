@@ -1,4 +1,4 @@
-// AccountInfo.kt
+// accountinfo kt
 // this thing is part of account info
 
 package com.music.innertube.models

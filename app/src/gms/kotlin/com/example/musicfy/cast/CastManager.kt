@@ -1,4 +1,4 @@
-// CastManager.kt
+// castmanager kt
 // this thing is part of cast manager
 
 package com.example.musicfy.cast
@@ -16,10 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 
-/**
- * Manages Google Cast integration for the music player.
- * Handles switching between local ExoPlayer and remote CastPlayer.
- */
+// manages google cast integration for the music player handles switching between local exoplayer and remote castplayer
 class CastManager(
     private val context: Context
 ) : SessionAvailabilityListener, CastStateListener {
@@ -36,18 +33,15 @@ class CastManager(
     private var onCastSessionStarted: ((CastPlayer) -> Unit)? = null
     private var onCastSessionEnded: (() -> Unit)? = null
 
-    /**
-     * Initialize the Cast context. Should be called when the activity is created.
-     * This is safe to call even if Google Play Services is not available.
-     */
+    // initialize the cast context should be called when the activity is created this is safe to call even if google play services is not available
     @Suppress("DEPRECATION")
     fun initialize() {
         try {
             castContext = CastContext.getSharedInstance(context)
             castContext?.addCastStateListener(this)
             
-            // Using deprecated constructor and setSessionAvailabilityListener as the new
-            // CastPlayer.Builder API requires a local player which we don't use in this architecture
+            // using deprecated constructor and setsessionavailabilitylistener as the new
+            // castplayer builder api requires a local player which we don t use in this architecture
             castPlayer = CastPlayer(castContext!!)
             castPlayer?.setSessionAvailabilityListener(this)
             
@@ -61,9 +55,7 @@ class CastManager(
         }
     }
 
-    /**
-     * Set callbacks for cast session events.
-     */
+    // set callbacks for cast session events
     fun setSessionCallbacks(
         onStarted: (CastPlayer) -> Unit,
         onEnded: () -> Unit
@@ -72,30 +64,20 @@ class CastManager(
         onCastSessionEnded = onEnded
     }
 
-    /**
-     * Get the CastPlayer instance if available.
-     */
+    // get the castplayer instance if available
     fun getCastPlayer(): CastPlayer? = castPlayer
 
-    /**
-     * Check if casting is currently active.
-     */
+    // check if casting is currently active
     @Suppress("DEPRECATION")
     fun isCastSessionAvailable(): Boolean = castPlayer?.isCastSessionAvailable == true
 
-    /**
-     * Get the current playback position from the cast player.
-     */
+    // get the current playback position from the cast player
     fun getCurrentPosition(): Long = castPlayer?.currentPosition ?: 0
 
-    /**
-     * Get whether the cast player is currently playing.
-     */
+    // get whether the cast player is currently playing
     fun isPlaying(): Boolean = castPlayer?.isPlaying == true
 
-    /**
-     * Load media items into the cast player.
-     */
+    // load media items into the cast player
     fun loadMediaItems(
         mediaItems: List<MediaItem>,
         startIndex: Int = 0,
@@ -108,16 +90,12 @@ class CastManager(
         }
     }
 
-    /**
-     * Add a listener to the cast player.
-     */
+    // add a listener to the cast player
     fun addListener(listener: Player.Listener) {
         castPlayer?.addListener(listener)
     }
 
-    /**
-     * Remove a listener from the cast player.
-     */
+    // remove a listener from the cast player
     fun removeListener(listener: Player.Listener) {
         castPlayer?.removeListener(listener)
     }
@@ -141,9 +119,7 @@ class CastManager(
         Timber.d("Cast session unavailable")
     }
 
-    /**
-     * Release resources. Should be called when the service is destroyed.
-     */
+    // release resources should be called when the service is destroyed
     @Suppress("DEPRECATION")
     fun release() {
         castContext?.removeCastStateListener(this)
@@ -154,9 +130,7 @@ class CastManager(
     }
 
     companion object {
-        /**
-         * Check if Cast is available on this device.
-         */
+        // check if cast is available on this device
         fun isCastAvailable(context: Context): Boolean {
             return try {
                 CastContext.getSharedInstance(context)

@@ -115,9 +115,9 @@ fun ThankYouStep() {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // roo's own picture not the app user's — this is a "made by" credit not a
+                    // roo s own picture not the app user s this is a made by credit not a
                     // profile avatar so it stays fixed rather than reading profilepicurikey
-                    // same asset updatesheet's "hello i'm the main dev here" card uses
+                    // same asset updatesheet s hello i m the main dev here card uses
                     Box(
                         modifier = Modifier
                             .size(64.dp)

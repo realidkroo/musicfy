@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-// scoped distinctuntilchanged views over [playerconnection]'s raw flows one
+// scoped distinctuntilchanged views over playerconnection s raw flows one
 @Stable
 class PlayerUiState(connection: PlayerConnection) {
     private val scope = connection.scope

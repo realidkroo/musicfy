@@ -62,9 +62,9 @@ fun BetaNoticeContainer(
     val effectiveProgress = overlayProgress.value
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        // main app content (shrinks dynamically based on beta notice position)
+        // main app content shrinks dynamically based on beta notice position
         val screenHeight = maxHeight
-        // the background card's top edge will be exactly at topinset + 8dp
+        // the background card s top edge will be exactly at topinset + 8dp
         val backgroundTopEdge = topInset + 8.dp
         val foregroundTopEdge = backgroundTopEdge + 12.dp
 
@@ -105,7 +105,7 @@ fun BetaNoticeContainer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // animate the padding in along with the alpha/translation
+                    // animate the padding in along with the alpha translation
                     .padding(top = foregroundTopEdge * effectiveProgress)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
@@ -134,7 +134,7 @@ fun BetaNoticeContainer(
                         ) { change, dragAmount ->
                             change.consume()
                             coroutineScope.launch {
-                                // add heavy resistance to the drag (rubber-banding)
+                                // add heavy resistance to the drag rubber banding
                                 val resistance = if (dragOffset.value > 0) 0.3f else 0.1f 
                                 val newOffset = dragOffset.value + dragAmount * resistance
                                 dragOffset.snapTo(newOffset.coerceAtLeast(-30f))

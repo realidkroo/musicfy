@@ -1,4 +1,4 @@
-// PlaylistPanelRenderer.kt
+// playlistpanelrenderer kt
 // the file functioned as playlist panel renderer
 
 package com.music.innertube.models

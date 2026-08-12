@@ -85,7 +85,7 @@ class MonochromeStreamFetcher(
 
                 val searchBody = searchResponse.body?.string() ?: continue
                 val searchJson = JSONObject(searchBody)
-                // monochrome's "s" (track) search returns items under dataitems
+                // monochrome s s track search returns items under dataitems
                 val items = searchJson.optJSONObject("data")?.optJSONArray("items")
 
                 if (items == null || items.length() == 0) {
@@ -120,7 +120,7 @@ class MonochromeStreamFetcher(
                         }
 
                         val manifestBody = manifestResponse.body?.string() ?: continue
-                        // response is a json:api envelope: { data: { data: { attributes: { uri:
+                        // response is a json api envelope data data attributes uri
                         val signedManifestUri = JSONObject(manifestBody)
                             .optJSONObject("data")
                             ?.optJSONObject("data")
@@ -151,8 +151,8 @@ class MonochromeStreamFetcher(
                     }
                 }
 
-                // 3 fallback: legacy /track/ endpoint hosted directly on the search api
-                // (base64-encoded manifest) used when the dedicated streaming/cdn hosts are
+                // 3 fallback legacy track endpoint hosted directly on the search api
+                // base64 encoded manifest used when the dedicated streaming cdn hosts are
                 try {
                     val legacyUrl = "$instance/track/".toHttpUrlOrNull()?.newBuilder()
                         ?.addQueryParameter("id", trackId)
@@ -190,8 +190,8 @@ class MonochromeStreamFetcher(
         try {
             val trimmed = manifestText.trim()
 
-            // the signed manifest uri is usually fetched as plain text: either a json
-            // object with a "urls" array or a raw dash mpd xml document
+            // the signed manifest uri is usually fetched as plain text either a json
+            // object with a urls array or a raw dash mpd xml document
             if (trimmed.startsWith("{")) {
                 val json = JSONObject(trimmed)
                 val urls = json.optJSONArray("urls")
@@ -208,8 +208,8 @@ class MonochromeStreamFetcher(
                 return CustomStreamResult(streamUrl = dashUrl, isDash = true, source = "Monochrome")
             }
 
-            // fall back to treating it as base64 encoded json/xml in case an instance
-            // still returns the older inline-manifest format
+            // fall back to treating it as base64 encoded json xml in case an instance
+            // still returns the older inline manifest format
             val decodedBytes = android.util.Base64.decode(manifestText, android.util.Base64.DEFAULT)
             val decodedString = String(decodedBytes)
 

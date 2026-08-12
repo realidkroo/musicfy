@@ -185,7 +185,7 @@ class SuggestionsViewModel @Inject constructor() : ViewModel() {
                 .onSuccess { searchResult ->
                     val songs = searchResult.items.filterIsInstance<SongItem>()
 
-                    // use the same multi-step matching as playtrack for reliability
+                    // use the same multi step matching as playtrack for reliability
                     val bestMatch = songs.firstOrNull { s ->
                         s.title.equals(video.title, ignoreCase = true) &&
                         s.artists.any { a -> video.artist.contains(a.name, ignoreCase = true) }

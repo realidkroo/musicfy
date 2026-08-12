@@ -1,4 +1,4 @@
-// GetQueueResponse.kt
+// getqueueresponse kt
 // what is this for you ask its for get queue response ofc
 
 package com.music.innertube.models.response

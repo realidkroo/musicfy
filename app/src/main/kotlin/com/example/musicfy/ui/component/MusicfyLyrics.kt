@@ -48,7 +48,7 @@ import com.example.musicfy.ui.screens.LyricsPosition
 import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.utils.rememberPreference
 
-// exact apple music style lyrics animation ported from musicfy-503 features: -
+// exact apple music style lyrics animation ported from musicfy 503 features
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MusicfyLyricsLine(
@@ -77,7 +77,7 @@ fun MusicfyLyricsLine(
     val targetBlur = if (!appleMusicLyricsBlur || !isAutoScrollActive || isActive || !isSynced || isSelectionModeActive) {
         0f
     } else {
-        // progressive blur: further away = more blur for a premium look
+        // progressive blur further away = more blur for a premium look
         when (distanceFromCurrent) {
             1 -> 0f
             2 -> 0f
@@ -96,7 +96,7 @@ fun MusicfyLyricsLine(
         if (nextEntryTime != null) nextEntryTime - entry.time else 4000L
     }
 
-    // heuristic: active highlighting should span about 95% of the duration for
+    // heuristic active highlighting should span about 95% of the duration for
     val activeDuration = remember(duration) {
         (duration * 0.95).toLong().coerceAtLeast(300L)
     }
@@ -174,7 +174,7 @@ fun MusicfyLyricsLine(
         .padding(horizontal = 24.dp, vertical = (8 * lineSpacing).dp)
         .blur(animatedBlur.dp)
 
-    // multi-singer support: determine alignment based on agent
+    // multi singer support determine alignment based on agent
     val agentAlignment = when {
         entry.isBackground -> Alignment.CenterHorizontally
         entry.agent == "v1" -> Alignment.Start
@@ -211,7 +211,7 @@ fun MusicfyLyricsLine(
                 else -> Arrangement.Start
             },
             verticalArrangement = Arrangement.spacedBy(
-                // use a capped spacing for internal wrapping to prevent "sentence break-off"
+                // use a capped spacing for internal wrapping to prevent sentence break off
                 with(LocalDensity.current) { (textSize * (lineSpacing.coerceAtMost(1.3f) - 1f)).sp.toDp() }
             )
         ) {
@@ -245,7 +245,7 @@ fun MusicfyLyricsLine(
                         ),
                         fontFamily = InterFontFamily,
                         fontWeight = finalFontWeight,
-// letterspacing = (-05)sp
+// letterspacing = 05 sp
                         // cap internal line height for wrapped words
                         lineHeight = (textSize * lineSpacing.coerceAtMost(1.3f)).sp,
                         textAlign = agentTextAlign,
@@ -287,7 +287,7 @@ fun MusicfyLyricsLine(
                     color = textColor.copy(alpha = 0.6f),
                     textAlign = agentTextAlign,
                     fontWeight = FontWeight.SemiBold,
-// letterspacing = (-02)sp
+// letterspacing = 02 sp
                     modifier = Modifier.padding(top = 2.dp).fillMaxWidth(),
                     lineHeight = (textSize * 0.65f * lineSpacing.coerceAtMost(1.3f)).sp
                 )

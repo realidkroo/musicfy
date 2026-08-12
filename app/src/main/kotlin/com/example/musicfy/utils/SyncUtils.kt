@@ -1,7 +1,7 @@
 // syncutilskt
 // this thing is for sync utils
 
-// musicfy project (c) 2026 outertune project copyright (c) 2025 licensed under
+// musicfy project c 2026 outertune project copyright c 2025 licensed under
 
 package com.example.musicfy.utils
 
@@ -197,7 +197,7 @@ class SyncUtils @Inject constructor(
         _syncState.value = _syncState.value.update()
     }
 
-    // public api methods - queue operations
+    // public api methods queue operations
 
     fun performFullSync() {
         syncScope.launch {
@@ -447,7 +447,7 @@ class SyncUtils @Inject constructor(
                         }
                     }
 
-                    // add/update songs from remote
+                    // add update songs from remote
                     val now = LocalDateTime.now()
                     remoteSongs.forEachIndexed { index, song ->
                         try {
@@ -556,7 +556,7 @@ class SyncUtils @Inject constructor(
 
         withRetry {
             Timber.d("[UPLOAD_DEBUG] Calling YouTube.library(FEmusic_library_privately_owned_tracks, tabIndex=1)")
-            // uploaded songs are in tab 1 ("uploads") not tab 0 ("library")
+            // uploaded songs are in tab 1 uploads not tab 0 library
             YouTube.library("FEmusic_library_privately_owned_tracks", tabIndex = 1).completed()
         }.onSuccess { result ->
             Timber.d("[UPLOAD_DEBUG] withRetry succeeded, result isSuccess=${result.isSuccess}")

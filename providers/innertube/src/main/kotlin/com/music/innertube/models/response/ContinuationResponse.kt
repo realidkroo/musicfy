@@ -1,4 +1,4 @@
-// ContinuationResponse.kt
+// continuationresponse kt
 // this thing is for continuation response
 
 package com.music.innertube.models.response

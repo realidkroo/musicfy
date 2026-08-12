@@ -23,7 +23,7 @@ class YouTubeQueue(
         return withContext(IO) {
             var lastException: Throwable? = null
             
-            // try with original endpoint first (allows youtube to personalize
+            // try with original endpoint first allows youtube to personalize
             for (attempt in 0..maxRetries) {
                 try {
                     val nextResult = YouTube.next(endpoint, continuation).getOrThrow()

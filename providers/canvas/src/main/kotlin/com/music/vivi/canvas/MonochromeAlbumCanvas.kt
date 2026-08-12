@@ -1,4 +1,4 @@
-// MonochromeAlbumCanvas.kt
+// monochromealbumcanvas kt
 // the file functioned as monochrome album canvas
 
 package com.example.musicfy.canvas
@@ -22,9 +22,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Fetches album canvas artwork from artwork.boidu.dev (used by Monochrome).
- */
+// fetches album canvas artwork from artwork boidu dev used by monochrome
 object MonochromeAlbumCanvas {
     private const val BASE_URL = "https://artwork.boidu.dev/"
 

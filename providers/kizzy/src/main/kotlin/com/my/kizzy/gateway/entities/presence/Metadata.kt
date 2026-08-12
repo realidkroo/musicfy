@@ -1,4 +1,4 @@
-// Metadata.kt
+// metadata kt
 // this thing is for metadata
 
 package com.my.kizzy.gateway.entities.presence

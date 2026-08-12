@@ -1,14 +1,14 @@
 // lyricsglowlinekt
-// per-line renderer for the lyrics page lines away from playback are dim
-// down; the active one is sharp and white with a soft left-to-right sweep
+// per line renderer for the lyrics page lines away from playback are dim
+// down the active one is sharp and white with a soft left to right sweep
 // lyricsentrywords when the provider supplied word timestamps an optional
-// romanized/translated sub-line renders beneath the main text
+// romanized translated sub line renders beneath the main text
 
-// the sweep is deliberately one effect: a gradient boundary travelling
-// versions stacked a per-letter lift a per-letter scale and a multi-pass
+// the sweep is deliberately one effect a gradient boundary travelling
+// versions stacked a per letter lift a per letter scale and a multi pass
 // it each of those needed the text redrawn again per frame through its own
 // made the page struggle and the offset bloom passes read as ghosted
-// than as light the reference this is modelled on does none of that — it is
+// than as light the reference this is modelled on does none of that it is
 // through the word and nothing else
 
 package com.example.musicfy.ui.player
@@ -60,7 +60,7 @@ import com.example.musicfy.lyrics.LyricsEntry
 
 enum class LyricsLineState { ACTIVE, UPCOMING, PAST, DEFAULT }
 
-// lyrics dominate this page — this is the primary content not a caption under the
+// lyrics dominate this page this is the primary content not a caption under the
 private val LyricsFontSize = 32.sp
 private val LyricsLineHeight = 40.sp
 
@@ -72,7 +72,7 @@ private const val BlurQuantStepPx = 0.5f
 private val BlurEffectCache: Array<androidx.compose.ui.graphics.RenderEffect?> =
     arrayOfNulls((BlurStageRadii.max() / BlurQuantStepPx).toInt() + 2)
 
-// the blur for a radius snapped to a [blurquantsteppx] grid and built at most
+// the blur for a radius snapped to a blurquantsteppx grid and built at most
 private fun blurEffectForRadius(radius: Float): androidx.compose.ui.graphics.RenderEffect? {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || radius <= 0.05f) return null
     val step = (radius / BlurQuantStepPx).roundToInt().coerceIn(1, BlurEffectCache.lastIndex)
@@ -84,12 +84,12 @@ private fun blurEffectForRadius(radius: Float): androidx.compose.ui.graphics.Ren
         .also { BlurEffectCache[step] = it }
 }
 
-// three clearly separated tones not four similar ones: the line being sung the
+// three clearly separated tones not four similar ones the line being sung the
 private const val UpcomingAlpha = 0.5f
 private const val PastAlpha = 0.24f
 private const val DefaultAlpha = 0.38f
 
-// alpha of the not-yet-sung tail of the active line has to stay above
+// alpha of the not yet sung tail of the active line has to stay above
 private const val ActiveUnsungAlpha = 0.58f
 
 @Composable
@@ -102,11 +102,11 @@ fun LyricsGlowLine(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     subLine: String? = null,
-    // style two is this page with the per-letter warp turned off; the sweep itself is unchanged
+    // style two is this page with the per letter warp turned off the sweep itself is unchanged
     waveEnabled: Boolean = true,
-    // eight-tap bloom instead of four off trades a slightly flatter halo for fragment cost
+    // eight tap bloom instead of four off trades a slightly flatter halo for fragment cost
     highBloom: Boolean = true,
-    // drops this line's blur rendereffect outright rather than letting it ramp down
+    // drops this line s blur rendereffect outright rather than letting it ramp down
     suppressEffects: Boolean = false,
 ) {
     val targetAlpha = when (state) {
@@ -126,12 +126,12 @@ fun LyricsGlowLine(
     val alpha by animateFloatAsState(targetAlpha, animSpec, label = "lyricsLineAlpha")
     val scale by animateFloatAsState(targetScale, animSpec, label = "lyricsLineScale")
     // ramped not snapped this used to jump straight between the three cached
-    // changing stage — or the whole list dropping to stage 0 the instant a
+    // changing stage or the whole list dropping to stage 0 the instant a
     // between sharp and blurred with no transition at all
 
     // a tweened radius does mean a different rendereffect object per frame which
     // snapping was avoiding so the radius is quantised to a fixed grid and the
-    // grid are built once and shared (see [blureffectforradius]) — the animation
+    // grid are built once and shared see blureffectforradius the animation
     // eye while the number of distinct rendereffects stays small and fixed
     val blurRadius by animateFloatAsState(
         targetValue = BlurStageRadii[blurStage.coerceIn(0, BlurStageRadii.lastIndex)],
@@ -146,17 +146,17 @@ fun LyricsGlowLine(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            // 8dp was fine at the old 22sp font — enough slack to absorb the active
-            // scale-up (below) without it visually reaching into the neighbouring line
-            // current 32sp/40sp size that same 6% is a much bigger absolute pixel amount
-            // 8dp is no longer enough clearance: the scaled-up active line bleeds into
-            // line sits right above/below it which is what showed up as ghosted
-            // text scale itself reserves no extra layout space (it's paint-time only) so
+            // 8dp was fine at the old 22sp font enough slack to absorb the active
+            // scale up below without it visually reaching into the neighbouring line
+            // current 32sp 40sp size that same 6% is a much bigger absolute pixel amount
+            // 8dp is no longer enough clearance the scaled up active line bleeds into
+            // line sits right above below it which is what showed up as ghosted
+            // text scale itself reserves no extra layout space it s paint time only so
             // padding is the only thing that can give it room to grow into
 
-            // horizontal 36dp — matches playerprogressslider's time-label row
-            // + 4dp) and the header row above so lyrics text lines up with the timestamp
-            // the cover/title instead of sitting at its own separate inset
+            // horizontal 36dp matches playerprogressslider s time label row
+            // + 4dp and the header row above so lyrics text lines up with the timestamp
+            // the cover title instead of sitting at its own separate inset
             .padding(vertical = 16.dp, horizontal = 36.dp)
             .graphicsLayer {
                 this.alpha = alpha
@@ -167,7 +167,7 @@ fun LyricsGlowLine(
                 renderEffect = if (suppressEffects) null else blurEffectForRadius(blurRadius)
             }
     ) {
-        // bracketed asides — "lift your head to the sky (sky)" or a whole line of
+        // bracketed asides lift your head to the sky sky or a whole line of
         // backing vocals not lyrics in their own right they come out of the lead
         // brackets and render smaller underneath sliding up out of the line they
         val parts = remember(entry.text, entry.words) {
@@ -179,17 +179,17 @@ fun LyricsGlowLine(
         // the wave retracts rather than being switched off when a line stopped being
         // whole sweeping renderer used to be swapped for a plain text on that same
         // lifted letter snapped flat in one step this amplitude eases to zero on the
-        // as the line's own alpha and scale and the sweep stays composed until it
+        // as the line s own alpha and scale and the sweep stays composed until it
         // the letters settle back down as the line dims out from under them
         val waveAmplitude by animateFloatAsState(
             targetValue = if (state == LyricsLineState.ACTIVE) 1f else 0f,
             animationSpec = animSpec,
             label = "lyricsWaveAmplitude",
         )
-        // the karaoke path renders its own sub-line so the pronunciation can sweep
-        // the main line; the static path below keeps rendering it separately
+        // the karaoke path renders its own sub line so the pronunciation can sweep
+        // the main line the static path below keeps rendering it separately
         // whether this entry should be sweeping at all independent of which half is
-        // a whole-line aside has no lead text but is still a sung line and still
+        // a whole line aside has no lead text but is still a sung line and still
         val sweepActive = !words.isNullOrEmpty() &&
             (state == LyricsLineState.ACTIVE || waveAmplitude > 0.01f)
         val karaokeActive = sweepActive && leadText.isNotEmpty()
@@ -201,7 +201,7 @@ fun LyricsGlowLine(
                 waveAmplitudeProvider = { if (waveEnabled) waveAmplitude else 0f },
                 baseColor = textColor.copy(alpha = ActiveUnsungAlpha),
                 // sung text is white not the accent accentcolor comes out of
-                // playercolorextractordarkeniftoolight() so using it as the fill colour meant
+                // playercolorextractordarkeniftoolight so using it as the fill colour meant
                 // the lit part of the line was painted in a deliberately darkened cover
                 // dark text on a dark backdrop
                 highlightColor = Color.White,
@@ -227,16 +227,16 @@ fun LyricsGlowLine(
             BackingVocalLine(
                 text = backing,
                 color = textColor,
-                // a whole-line aside has nothing above it on this row to emerge from so it
+                // a whole line aside has nothing above it on this row to emerge from so it
                 // fades in place instead of sliding
                 slide = leadText.isNotEmpty(),
                 words = parts.backingWords,
                 positionProvider = positionProvider,
                 waveAmplitudeProvider = { if (waveEnabled) waveAmplitude else 0f },
                 sweep = sweepActive,
-                // expansion runs on the line's clock not its own it used to have a private
-                // 420ms animation keyed off `active` so the aside started folding away the
-                // moment the next line took over — while its own sweep was still running and
+                // expansion runs on the line s clock not its own it used to have a private
+                // 420ms animation keyed off active so the aside started folding away the
+                // moment the next line took over while its own sweep was still running and
                 // while the line itself was still 600ms from finishing its fade sharing
                 // waveamplitude keeps the collapse in step with everything else on the row
                 expandProvider = { waveAmplitude },
@@ -244,7 +244,7 @@ fun LyricsGlowLine(
             )
         }
 
-        // only for non-karaoke lines — karaokesweeptext draws its own sweeping
+        // only for non karaoke lines karaokesweeptext draws its own sweeping
         if (!karaokeActive && !subLine.isNullOrBlank()) {
             Text(
                 text = subLine,
@@ -259,16 +259,16 @@ fun LyricsGlowLine(
     }
 }
 
-// width of the soft lit/unlit boundary in characters behind the sweep head
+// width of the soft lit unlit boundary in characters behind the sweep head
 private const val EdgeSoftChars = 1
 
-// fallback boundary width in px for the wrapped-line case where the measurement can't be taken
+// fallback boundary width in px for the wrapped line case where the measurement can t be taken
 private const val EdgeSoftPx = 26f
 
-// how far past the head the lit region reaches so the letter under it isn't cut in half
+// how far past the head the lit region reaches so the letter under it isn t cut in half
 private const val EdgeLeadPx = 6f
 
-// half-widths of the lift wave in characters behind and ahead of the sweep head
+// half widths of the lift wave in characters behind and ahead of the sweep head
 private const val WaveCharsBehind = 4f
 private const val WaveCharsAhead = 3f
 
@@ -278,7 +278,7 @@ private const val WaveLiftPx = 4.5f
 // peak vertical stretch of those letters applied about the baseline so they grow upward
 private const val WaveZoom = 0.09f
 
-// radius in px of the bloom's sample taps
+// radius in px of the bloom s sample taps
 private const val BloomRadiusPx = 2.6f
 
 // peak bloom strength on a fully held word
@@ -288,7 +288,7 @@ private const val BloomStrength = 1.6f
 private const val BloomLagChars = 1.6f
 private const val BloomSpanChars = 3.5f
 
-// the lift the stretch and the bloom as one filter over the already-rendered line
+// the lift the stretch and the bloom as one filter over the already rendered line
 private const val WaveAgsl = """
 uniform shader content;
 uniform float headX;
@@ -323,17 +323,17 @@ half4 main(float2 coord) {
     half4 c = content.eval(p);
 
     if (bloom > 0.0 && onLine > 0.0) {
-        // the bloom gets its own bell wider than the lift's and centred behind the
-        // than on it sharing the lift's bell put the glow exactly where the sweep's
-        // boundary is — the one place the lit copy is half-transparent and the dim
-        // dim — so it landed on the faintest pixels on screen and was invisible
+        // the bloom gets its own bell wider than the lift s and centred behind the
+        // than on it sharing the lift s bell put the glow exactly where the sweep s
+        // boundary is the one place the lit copy is half transparent and the dim
+        // dim so it landed on the faintest pixels on screen and was invisible
         float bdx = coord.x - bloomX;
         float ba = min(1.0, abs(bdx) / max(bloomSpan, 1.0));
         float bw = 1.0 - ba;
         float bbell = bw * bw * (3.0 - 2.0 * bw) * onLine;
 
-        // four diagonal taps always; the axis-aligned four only on the high setting
-        // alone still read as a halo — they just make it very slightly less round
+        // four diagonal taps always the axis aligned four only on the high setting
+        // alone still read as a halo they just make it very slightly less round
         half4 b = content.eval(p + float2(bloomR, bloomR))
                 + content.eval(p + float2(bloomR, -bloomR))
                 + content.eval(p + float2(-bloomR, bloomR))
@@ -352,7 +352,7 @@ half4 main(float2 coord) {
 }
 """
 
-// the sweep: two stacked copies of the line the bright one revealed up to the
+// the sweep two stacked copies of the line the bright one revealed up to the
 @Composable
 private fun KaraokeSweepText(
     text: String,
@@ -373,7 +373,7 @@ private fun KaraokeSweepText(
         lineHeight = lineHeight,
     )
 
-    // held in plain holders rather than mutablestate: the layout only changes
+    // held in plain holders rather than mutablestate the layout only changes
     // width does and routing either through snapshot state would add a
     // that exists specifically to avoid them
     val layoutHolder = remember(text) { arrayOfNulls<TextLayoutResult>(1) }
@@ -383,23 +383,23 @@ private fun KaraokeSweepText(
 
     // one wave layer for the whole line wrapping both copies
 
-    // this used to be two — one per text — each allocating its own runtimeshader
+    // this used to be two one per text each allocating its own runtimeshader
     // rendereffect every frame so a line with a bracketed aside ran four
     // four offscreen buffers per frame and two overlapping lines ran eight the
-    // pixel-registered by construction so displacing them together is identical
+    // pixel registered by construction so displacing them together is identical
     // makes it structurally impossible for them to drift apart which the old
     // by feeding both shaders the same uniforms and hoping
     val wave = rememberWaveModifier(layoutHolder, head, text.length, waveAmplitudeProvider, highBloom)
 
     Column {
         Box(modifier = wave) {
-            // dim copy — the whole line always drawn plainly
+            // dim copy the whole line always drawn plainly
 
             // it is not masked an earlier version punched the sung region back out of it
             // two copies were exact complements which was only necessary because letters
             // being lifted off their own positions and exposing the dim copy underneath
             // sweep as a pure gradient the two register perfectly and opaque white
-            // what is beneath it — so this needs no offscreen layer and no second mask
+            // what is beneath it so this needs no offscreen layer and no second mask
             Text(
                 text = text,
                 style = style,
@@ -419,8 +419,8 @@ private fun KaraokeSweepText(
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 3,
                 modifier = Modifier
-                    // the dstin below needs a layer of its own to act on — the wave's layer now
-                    // sits outside this box so it can't serve double duty declaring it here
+                    // the dstin below needs a layer of its own to act on the wave s layer now
+                    // sits outside this box so it can t serve double duty declaring it here
                     // rather than opening a manual savelayer inside the draw lambda means the
                     // compositor owns and recycles the buffer instead of one being allocated and
                     // torn down every frame
@@ -433,7 +433,7 @@ private fun KaraokeSweepText(
                         if (len == 0) return@drawWithContent
 
                         val headOffset = h.toInt().coerceIn(0, len)
-                        // sub-character interpolation so the edge glides between glyphs rather
+                        // sub character interpolation so the edge glides between glyphs rather
                         // than stepping from one to the next
                         val headX = if (headOffset >= len) {
                             layout.getLineRight(layout.getLineForOffset(len - 1))
@@ -443,7 +443,7 @@ private fun KaraokeSweepText(
                                 (headOffset + 1).coerceAtMost(len),
                                 true,
                             )
-                            // at a wrap x1 jumps back to the left margin; clamping stops the edge
+                            // at a wrap x1 jumps back to the left margin clamping stops the edge
                             // sliding backwards across the line break
                             if (x1 >= x0) x0 + (x1 - x0) * (h - headOffset) else x0
                         }
@@ -451,8 +451,8 @@ private fun KaraokeSweepText(
                         val lineTop = layout.getLineTop(headLine)
                         val lineBottom = layout.getLineBottom(headLine)
 
-                        // the boundary trails behind the head: the letters just sung are the ones
-                        // part-way lit and nothing ahead of the voice brightens early
+                        // the boundary trails behind the head the letters just sung are the ones
+                        // part way lit and nothing ahead of the voice brightens early
                         val softFrom = layout.getHorizontalPosition(
                             (headOffset - EdgeSoftChars).coerceAtLeast(layout.getLineStart(headLine)),
                             true,
@@ -479,10 +479,10 @@ private fun KaraokeSweepText(
 
                         clipPath(sung) { this@drawWithContent.drawContent() }
 
-                        // soften the leading edge confined to the head's own line: a horizontal
-                        // gradient spanning the whole node would also fade every fully-sung line
+                        // soften the leading edge confined to the head s own line a horizontal
+                        // gradient spanning the whole node would also fade every fully sung line
                         // above it wherever their glyphs happened to sit to the right of the head
-                        // skipped once the line is fully sung so the last letter isn't left faded
+                        // skipped once the line is fully sung so the last letter isn t left faded
                         if (headOffset < len) {
                             drawRect(
                                 brush = Brush.horizontalGradient(
@@ -537,7 +537,7 @@ private fun partitionWords(
         val start = text.indexOf(trimmed, searchFrom)
         if (start < 0) continue
         searchFrom = start + trimmed.length
-        // classified on its first character: a word never straddles a bracket
+        // classified on its first character a word never straddles a bracket
         // bracket itself is a delimiter
         if (inBracket.getOrElse(start) { false }) backing.add(word) else lead.add(word)
     }
@@ -574,7 +574,7 @@ internal fun splitBackingVocal(
             else -> lead.append(ch)
         }
     }
-    // an unclosed bracket means the line isn't really structured this way; leave
+    // an unclosed bracket means the line isn t really structured this way leave
     // rather than silently swallowing the rest of it
     if (depth != 0) return untouched
 
@@ -593,7 +593,7 @@ internal fun splitBackingVocal(
 
 private val WhitespaceRun = Regex("\\s{2,}")
 
-// a backing vocal: small and it rises into place out of the line above rather
+// a backing vocal small and it rises into place out of the line above rather
 @Composable
 private fun BackingVocalLine(
     text: String,
@@ -606,11 +606,11 @@ private fun BackingVocalLine(
     expandProvider: () -> Float,
     highBloom: Boolean,
 ) {
-    // expansion is driven by the aside's own word timings not by the line's
+    // expansion is driven by the aside s own word timings not by the line s
 
-    // it used to follow the line's wave amplitude and an aside is almost always
-    // of its line — so the line began retreating while the aside was still
-    // collapsed out from under it that is the "stuck" highlight: the sweep was
+    // it used to follow the line s wave amplitude and an aside is almost always
+    // of its line so the line began retreating while the aside was still
+    // collapsed out from under it that is the stuck highlight the sweep was
     // container was closing on top of it
     val expand = rememberBackingExpand(words, positionProvider, expandProvider)
 
@@ -619,21 +619,21 @@ private fun BackingVocalLine(
             .clipToBounds()
             // the height is animated in the layout pass not faked with a translation
 
-            // a graphicslayer translation is paint-only: the row still reserved the
+            // a graphicslayer translation is paint only the row still reserved the
             // height at all times so every line that happened to have one sat further
-            // neighbours than the lines around it — the spacing that jumps from lyric to
+            // neighbours than the lines around it the spacing that jumps from lyric to
             // and the text stayed on screen on inactive lines because there was nothing
             // go away reporting a collapsing height instead means the row genuinely
             // nothing and the list closes the gap as it does
 
             // the measurement happens at full size and only the reported height shrinks
-            // text never re-wraps while it animates
+            // text never re wraps while it animates
             .layout { measurable, constraints ->
                 val placeable = measurable.measure(constraints)
                 val e = expand.floatValue.coerceIn(0f, 1f)
                 val height = (placeable.height * e).roundToInt()
                 layout(placeable.width, height) {
-                    // anchoring the text's bottom to the bottom of the collapsing box with the
+                    // anchoring the text s bottom to the bottom of the collapsing box with the
                     // clip above makes it descend out from underneath the lead line rather than
                     // fade in beside it
                     placeable.place(0, if (slide) height - placeable.height else 0)
@@ -641,8 +641,8 @@ private fun BackingVocalLine(
             }
             .graphicsLayer { alpha = expand.floatValue.coerceIn(0f, 1f) },
     ) {
-        // the aside sweeps too it is a sung line like any other — the provider's
-        // the bracketed words are still in this entry's list and karaokesweeptext
+        // the aside sweeps too it is a sung line like any other the provider s
+        // the bracketed words are still in this entry s list and karaokesweeptext
         // searching for each word inside the text it was handed so passing the whole
         // gives this half exactly the timings that belong to it
         if (sweep && !words.isNullOrEmpty()) {
@@ -674,11 +674,11 @@ private fun BackingVocalLine(
     }
 }
 
-// lead-in before the aside's first word and tail after its last in seconds
+// lead in before the aside s first word and tail after its last in seconds
 private const val BackingLeadInSec = 0.35
 private const val BackingTailSec = 0.6
 
-// how open the backing vocal's box should be from its own timings opens a beat
+// how open the backing vocal s box should be from its own timings opens a beat
 @Composable
 private fun rememberBackingExpand(
     words: List<com.example.musicfy.lyrics.WordTimestamp>?,
@@ -721,7 +721,7 @@ private fun smoothstep(t: Float): Float {
     return x * x * (3f - 2f * x)
 }
 
-// builds the wave [modifier] for one copy of the line both the dim and the bright
+// builds the wave modifier for one copy of the line both the dim and the bright
 @Composable
 private fun rememberWaveModifier(
     layoutHolder: Array<TextLayoutResult?>,
@@ -729,10 +729,10 @@ private fun rememberWaveModifier(
     textLength: Int,
     // 01 master amplitude so the wave can retract instead of being switched off
     amplitudeProvider: () -> Float,
-    // eight bloom taps instead of four — rounder halo roughly double the fragment cost
+    // eight bloom taps instead of four rounder halo roughly double the fragment cost
     highBloom: Boolean,
 ): Modifier {
-    // null below api 33 — agsl didn't exist before tiramisu there the line
+    // null below api 33 agsl didn t exist before tiramisu there the line
     // the wave which is a missing flourish rather than a broken page
     val shader = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -755,11 +755,11 @@ private fun rememberWaveModifier(
         val amp = amplitudeProvider().coerceIn(0f, 1f)
         // cut off well before zero below a fiftieth of full strength the
         // fraction of a pixel and the bloom is invisible but the shader pass costs
-        // same — so every line still finishing its 600ms retract was paying full
+        // same so every line still finishing its 600ms retract was paying full
         // something nobody can see
         if (layout == null || textLength == 0 || h <= 0f || amp <= WaveCutoff) {
             // dropping the effect entirely once the amplitude reaches zero also drops
-            // shader cost for every line that isn't being sung
+            // shader cost for every line that isn t being sung
             renderEffect = null
             return@graphicsLayer
         }
@@ -774,7 +774,7 @@ private fun rememberWaveModifier(
             if (x1 >= x0) x0 + (x1 - x0) * (h - headOffset) else x0
         }
 
-        // span converted from characters to px off this line's own metrics so the
+        // span converted from characters to px off this line s own metrics so the
         // same number of letters whatever the text or the font is doing
         val lineStart = layout.getLineStart(headLine)
         val lineEnd = layout.getLineEnd(headLine, visibleEnd = true)
@@ -798,7 +798,7 @@ private fun rememberWaveModifier(
         shader.setFloatUniform("bloomSpan", charWidth * BloomSpanChars)
         shader.setFloatUniform("highQuality", if (highBloom) 1f else 0f)
 
-        // quantised so a sub-pixel head movement doesn't mint a new effect at 120hz
+        // quantised so a sub pixel head movement doesn t mint a new effect at 120hz
         // sweep crosses half a pixel every few frames so this drops allocation by
         // order of magnitude without any visible stepping
         renderEffect = cache.effectFor(shader, headX, amp, head.glow.floatValue)
@@ -808,11 +808,11 @@ private fun rememberWaveModifier(
 // amplitude below which the wave is dropped entirely rather than rendered faintly
 private const val WaveCutoff = 0.02f
 
-// quantisation grids for the wave's uniforms — see [waveeffectcache]
+// quantisation grids for the wave s uniforms see waveeffectcache
 private const val WaveHeadStepPx = 0.5f
 private const val WaveAmpStep = 0.02f
 
-// holds one line's wave rendereffect and rebuilds it only when the picture would
+// holds one line s wave rendereffect and rebuilds it only when the picture would
 private class WaveEffectCache {
     private var lastHead = Int.MIN_VALUE
     private var lastAmp = Int.MIN_VALUE
@@ -840,25 +840,25 @@ private class WaveEffectCache {
     }
 }
 
-// sweep position plus the two per-word quantities the wave and the bloom are driven by
+// sweep position plus the two per word quantities the wave and the bloom are driven by
 @androidx.compose.runtime.Stable
 internal class KaraokeHead {
     // how far through the line the sweep has reached in fractional character offsets
     val offset = mutableFloatStateOf(0f)
 
-    // 01 — bloom intensity driven by the current word's seconds-per-character and
+    // 01 bloom intensity driven by the current word s seconds per character and
     val glow = mutableFloatStateOf(0f)
 }
 
-// seconds per character at which a word counts as rattled off (no bloom) versus
+// seconds per character at which a word counts as rattled off no bloom versus
 private const val FastSecPerChar = 0.1f
 private const val SlowSecPerChar = 0.34f
 
-// fractions of a word's duration the bloom spends swelling and releasing
+// fractions of a word s duration the bloom spends swelling and releasing
 private const val GlowAttackFraction = 0.35f
 private const val GlowReleaseFraction = 0.3f
 
-// one word's timing paired with the character range it occupies in the rendered line
+// one word s timing paired with the character range it occupies in the rendered line
 private class TimedRange(
     val start: Int,
     val end: Int,
@@ -866,7 +866,7 @@ private class TimedRange(
     val endTime: Double,
 )
 
-// how many characters of [text] are sung at [positionms] plain function no frame
+// how many characters of text are sung at positionms plain function no frame
 internal fun karaokeFilledChars(
     text: String,
     words: List<com.example.musicfy.lyrics.WordTimestamp>,
@@ -897,7 +897,7 @@ internal fun karaokeFilledChars(
     return filled.coerceIn(0, text.length)
 }
 
-// splits [text] at [filledchars] into a highlighted prefix and a dimmed remainder
+// splits text at filledchars into a highlighted prefix and a dimmed remainder
 internal fun karaokeAnnotated(
     text: String,
     filledChars: Int,
@@ -920,7 +920,7 @@ private fun rememberKaraokeHead(
     words: List<com.example.musicfy.lyrics.WordTimestamp>,
     positionProvider: () -> Long,
 ): KaraokeHead {
-    // words matched to their character offsets once timing data that doesn't
+    // words matched to their character offsets once timing data that doesn t
     // the line is dropped here rather than left in the list so the frame loop
     // array and never has to skip holes
     val timed = remember(text, words) {
@@ -937,14 +937,14 @@ private fun rememberKaraokeHead(
     val head = remember(text, words) { KaraokeHead() }
 
     LaunchedEffect(text, timed, positionProvider) {
-        // playerconnectionprogressstate is a 15hz ticker (delay(66l)) sampling it
-        // displayed frame does not make the sweep smooth — at 120hz the same value
+        // playerconnectionprogressstate is a 15hz ticker delay 66l sampling it
+        // displayed frame does not make the sweep smooth at 120hz the same value
         // eight times in a row so the fill still advances in 66ms steps that
-        // the rendering is what looked like lag even after the draw-phase rewrite
+        // the rendering is what looked like lag even after the draw phase rewrite
 
-        // so the position is extrapolated between ticks: remember when a new value
-        // the wall-clock time elapsed since playback is linear between ticks so this
-        // and every real tick re-anchors it
+        // so the position is extrapolated between ticks remember when a new value
+        // the wall clock time elapsed since playback is linear between ticks so this
+        // and every real tick re anchors it
         var lastTick = -1L
         var lastTickAtMs = 0L
         while (true) {
@@ -954,8 +954,8 @@ private fun rememberKaraokeHead(
                     lastTick = tick
                     lastTickAtMs = frameMs
                 }
-                // capped so a paused or stalled player can't let the estimate run away; one
-                // interval of slack bridges the gap and it self-corrects on the next
+                // capped so a paused or stalled player can t let the estimate run away one
+                // interval of slack bridges the gap and it self corrects on the next
                 val elapsed = (frameMs - lastTickAtMs).coerceIn(0L, 120L)
                 val positionSec = (tick + elapsed) / 1000.0
 
@@ -989,7 +989,7 @@ private fun rememberKaraokeHead(
 
                     // bloom only on words the singer actually holds measured per character so a
                     // short word stretched over a long note reaches full strength while a long
-                    // word of the same duration doesn't
+                    // word of the same duration doesn t
                     val secPerChar = (span / length).toFloat()
                     val hold = smoothstep(
                         (secPerChar - FastSecPerChar) / (SlowSecPerChar - FastSecPerChar)
@@ -1003,7 +1003,7 @@ private fun rememberKaraokeHead(
 
                 if (next != head.offset.floatValue) head.offset.floatValue = next
                 // eased down rather than cut so the bloom fades out over the gap after a held
-                // note instead of vanishing the instant the word's timestamp ends
+                // note instead of vanishing the instant the word s timestamp ends
                 val glowNow = head.glow.floatValue
                 val glowNext =
                     if (nextGlow >= glowNow) nextGlow else glowNow + (nextGlow - glowNow) * 0.12f

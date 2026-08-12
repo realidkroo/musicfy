@@ -115,7 +115,7 @@ fun PlayerMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsState()
     
-    // cast state for volume control - safely access castconnectionhandler to
+    // cast state for volume control safely access castconnectionhandler to
     val castHandler = remember(playerConnection) {
         try {
             playerConnection.service.castConnectionHandler
@@ -131,7 +131,7 @@ fun PlayerMenu(
     val coroutineScope = rememberCoroutineScope()
 
     val downloadUtil = LocalDownloadUtil.current
-    // remember(id): getdownload() returns a new flow each call so an
+    // remember id getdownload returns a new flow each call so an
     // unremembered collectasstate relaunches its coroutine every recomposition
     val download by remember(downloadUtil, mediaMetadata.id) {
         downloadUtil.getDownload(mediaMetadata.id)

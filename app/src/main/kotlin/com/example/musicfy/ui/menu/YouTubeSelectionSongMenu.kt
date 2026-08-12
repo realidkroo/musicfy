@@ -147,7 +147,7 @@ fun YouTubeSelectionSongMenu(
                         com.example.musicfy.db.entities.AlbumEntity(
                             id = album.id,
                             title = album.title,
-                            thumbnailUrl = metadata.thumbnailUrl, // use song's thumbnail as album thumbnail
+                            thumbnailUrl = metadata.thumbnailUrl, // use song s thumbnail as album thumbnail
                             songCount = 0,
                             duration = 0
                         )
@@ -388,7 +388,7 @@ fun YouTubeSelectionSongMenu(
                                 songSelection.forEach { song ->
                                     val metadata = song.toMediaMetadata()
                                     if ((!allLiked && !metadata.liked) || allLiked) {
-                                        // insert the song first if it doesn't exist
+                                        // insert the song first if it doesn t exist
                                         insert(metadata)
                                         // create songentity with toggled like status
                                         val songEntity = com.example.musicfy.db.entities.SongEntity(

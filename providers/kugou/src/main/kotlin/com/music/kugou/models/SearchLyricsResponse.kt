@@ -1,4 +1,4 @@
-// SearchLyricsResponse.kt
+// searchlyricsresponse kt
 // this thing is part of search lyrics response
 
 package com.music.kugou.models
@@ -19,7 +19,7 @@ data class SearchLyricsResponse(
     data class Candidate(
         val id: Long,
         @SerialName("product_from")
-        val productFrom: String, // Consider choosing '官方推荐歌词'
+        val productFrom: String, // consider choosing 官方推荐歌词
         val duration: Long,
         val accesskey: String,
     )

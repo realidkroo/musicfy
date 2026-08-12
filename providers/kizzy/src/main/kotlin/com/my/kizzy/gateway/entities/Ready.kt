@@ -1,4 +1,4 @@
-// Ready.kt
+// ready kt
 // this thing is for ready
 
 /*

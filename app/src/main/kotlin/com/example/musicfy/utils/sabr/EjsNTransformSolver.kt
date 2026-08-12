@@ -21,13 +21,13 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-// standalone ejs-based n-parameter transform solver for sabr urls uses the same
+// standalone ejs based n parameter transform solver for sabr urls uses the same
 object EjsNTransformSolver {
     private const val TAG = "musicfy_EjsNSolver"
 
     private var solverWebView: SolverWebView? = null
 
-    // transform the 'n' parameter in a sabr streaming url returns the url with the
+    // transform the n parameter in a sabr streaming url returns the url with the
     suspend fun transformNParamInUrl(url: String): String {
         val nMatch = Regex("[?&]n=([^&]+)").find(url)
         if (nMatch == null) {
