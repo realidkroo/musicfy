@@ -1,4 +1,4 @@
-// GridItemPlaceholder.kt
+// griditemplaceholderkt
 // this thing is for grid item placeholder
 
 package com.example.musicfy.ui.component.shimmer

@@ -1,4 +1,4 @@
-// LyricsHelper.kt
+// lyricshelperkt
 // this thing is part of lyrics helper
 
 package com.example.musicfy.lyrics
@@ -30,11 +30,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val networkConnectivity: NetworkConnectivityObserver,
 ) {
-    /**
-     * Resolves the ordered list of lyrics providers from the user's saved priority order.
-     * Falls back to migrating the legacy [PreferredLyricsProvider] enum if the new order
-     * preference has not been written yet, ensuring a smooth upgrade for existing users.
-     */
+    // resolves the ordered list of lyrics providers from the user's saved priority
     private suspend fun resolveLyricsProviders(): List<LyricsProvider> {
         val preferences = context.dataStore.data.first()
         val orderString = preferences[LyricsProviderOrderKey].orEmpty()
@@ -43,7 +39,7 @@ constructor(
             return LyricsProviderRegistry.getOrderedProviders(orderString)
         }
 
-        // Migration path: place the old preferred provider first in the default order
+        // migration path: place the old preferred provider first in the default order
         val preferredEnum = preferences[PreferredLyricsProviderKey]
             .toEnum(PreferredLyricsProvider.YOULYPLUS)
         val preferredName = LyricsProviderRegistry.getProviderNameForEnum(preferredEnum)
@@ -65,17 +61,17 @@ constructor(
             return LyricsWithProvider(cached.lyrics, cached.providerName)
         }
 
-        // Check network connectivity before making network requests
-        // Use synchronous check as fallback if flow doesn't emit
+        // check network connectivity before making network requests
+        // use synchronous check as fallback if flow doesn't emit
         val isNetworkAvailable = try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
-            // If network check fails, try to proceed anyway
+            // if network check fails try to proceed anyway
             true
         }
         
         if (!isNetworkAvailable) {
-            // Still proceed but return not found to avoid hanging
+            // still proceed but return not found to avoid hanging
             return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         }
 
@@ -95,26 +91,26 @@ constructor(
                             mediaMetadata.album?.title,
                         )
                         result.onSuccess { lyrics ->
-                            // Check if these lyrics have moving text patterns (e.g. word-by-word sync <MM:SS.mm>)
+                            // check if these lyrics have moving text patterns (eg word-by-word sync
                             val hasMovingLyrics = lyrics.contains("<") && lyrics.contains(">") && lyrics.contains(":")
                             val currentLyricsWithProvider = LyricsWithProvider(lyrics, provider.name)
 
-                            // Word-timed lyrics are only worth preferring if the words are
-                            // actually words. Some providers time each syllable separately and
-                            // space them apart, which renders as "Se men ta ra". Those are passed
+                            // word-timed lyrics are only worth preferring if the words are
+                            // actually words some providers time each syllable separately and
+                            // space them apart which renders as "se men ta ra" those are passed
                             // over so the next provider gets a chance — but still kept as a
-                            // last-resort fallback, since split lyrics beat no lyrics.
+                            // last-resort fallback since split lyrics beat no lyrics
                             if (hasMovingLyrics && !LyricsUtils.isSyllableSplit(lyrics)) {
                                 return@async currentLyricsWithProvider
                             } else if (fallbackLyrics == null) {
-                                // Save the first successful (but non-moving) lyrics as fallback
+                                // save the first successful (but non-moving) lyrics as fallback
                                 fallbackLyrics = currentLyricsWithProvider
                             }
                         }.onFailure {
                             reportException(it)
                         }
                     } catch (e: Exception) {
-                        // Catch network-related exceptions like UnresolvedAddressException
+                        // catch network-related exceptions like unresolvedaddressexception
                         reportException(e)
                     }
                 }
@@ -145,17 +141,17 @@ constructor(
             return
         }
 
-        // Check network connectivity before making network requests
-        // Use synchronous check as fallback if flow doesn't emit
+        // check network connectivity before making network requests
+        // use synchronous check as fallback if flow doesn't emit
         val isNetworkAvailable = try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
-            // If network check fails, try to proceed anyway
+            // if network check fails try to proceed anyway
             true
         }
         
         if (!isNetworkAvailable) {
-            // Still try to proceed in case of false negative
+            // still try to proceed in case of false negative
             return
         }
 
@@ -171,7 +167,7 @@ constructor(
                             callback(result)
                         }
                     } catch (e: Exception) {
-                        // Catch network-related exceptions like UnresolvedAddressException
+                        // catch network-related exceptions like unresolvedaddressexception
                         reportException(e)
                     }
                 }

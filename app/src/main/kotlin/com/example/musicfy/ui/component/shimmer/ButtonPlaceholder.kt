@@ -1,4 +1,4 @@
-// ButtonPlaceholder.kt
+// buttonplaceholderkt
 // what is this for you ask its for button placeholder ofc
 
 package com.example.musicfy.ui.component.shimmer

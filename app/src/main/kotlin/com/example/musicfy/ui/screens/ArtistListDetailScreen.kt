@@ -1,6 +1,6 @@
-// ArtistListDetailScreen.kt
-// "see all" destination for the unified Artist List home section - doesn't fit
-// SectionDetailScreen's flat song-list template since it renders compound cards.
+// artistlistdetailscreenkt
+// "see all" destination for the unified artist list home section - doesn't
+// sectiondetailscreen's flat song-list template since it renders compound
 
 package com.example.musicfy.ui.screens
 

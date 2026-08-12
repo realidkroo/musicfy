@@ -1,4 +1,4 @@
-// BigSeekBar.kt
+// bigseekbarkt
 // this thing is for big seek bar
 
 package com.example.musicfy.ui.component

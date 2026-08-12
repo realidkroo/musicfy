@@ -1,4 +1,4 @@
-// SpeedDialDao.kt
+// speeddialdaokt
 // the file functioned as speed dial dao
 
 package com.example.musicfy.db.daos

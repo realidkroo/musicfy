@@ -1,4 +1,4 @@
-// YouTubeSubtitleLyricsProvider.kt
+// youtubesubtitlelyricsproviderkt
 // this thing is part of you tube subtitle lyrics provider
 
 package com.example.musicfy.lyrics

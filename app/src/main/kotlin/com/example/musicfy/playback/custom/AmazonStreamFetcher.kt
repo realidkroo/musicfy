@@ -29,8 +29,8 @@ class AmazonStreamFetcher(
 
         onStatusUpdate("The song is found on Amazon Music, preparing stream...")
 
-        // amz.geeked.wtf is the only instance the reference web client actually uses/defaults
-        // to; amz-music(2).geeked.wtf are non-canonical hosts that just waste retry attempts.
+        // amzgeekedwtf is the only instance the reference web client actually
+        // to; amz-music(2)geekedwtf are non-canonical hosts that just waste retry
         val baseUrls = listOf("https://amz.geeked.wtf")
 
         val customInstance = prefs[com.example.musicfy.constants.AmazonMusicApiUrlKey]?.takeIf { it.isNotBlank() }
@@ -81,7 +81,7 @@ class AmazonStreamFetcher(
                 var responseBodyStr: String? = null
 
                 if (turnstileBypassToken != null || turnstileSolver == null) {
-                    // Bypass token supplied directly as a query param — no Turnstile needed.
+                    // bypass token supplied directly as a query param — no turnstile needed
                     val requestBuilder = Request.Builder().url(fetchUrl)
                         .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
                         .addHeader("Origin", "https://monochrome.tf")
@@ -96,8 +96,8 @@ class AmazonStreamFetcher(
                     }
                     responseBodyStr = response.body?.string()
                 } else {
-                    // Solve Turnstile, exchange for a JWT, and fetch — all from the same WebView
-                    // context, since the exchanged JWT is fingerprint-bound to that context.
+                    // solve turnstile exchange for a jwt and fetch — all from the same webview
+                    // context since the exchanged jwt is fingerprint-bound to that context
                     onStatusUpdate("Solving Cloudflare Turnstile...")
                     val exchangeUrl = "$instance/api/auth/turnstile"
                     var fetchResult = turnstileSolver.fetchWithTurnstile(turnstileSiteKey, exchangeUrl, fetchUrl, forceRefresh = false)
@@ -153,7 +153,7 @@ class AmazonStreamFetcher(
             ?: json.optString("decryption_key").takeIf { it.isNotBlank() }
             ?: json.optString("decryptionKey").takeIf { it.isNotBlank() }
 
-        // We assume CENC (which will trigger DASH behavior) if a decryption key is present
+        // we assume cenc (which will trigger dash behavior) if a decryption key is
         return CustomStreamResult(
             streamUrl = streamUrl,
             decryptionKey = decryptionKey,

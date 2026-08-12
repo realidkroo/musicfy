@@ -1,4 +1,4 @@
-// EqualizerService.kt
+// equalizerservicekt
 // what is this for you ask its for equalizer service ofc
 
 package com.example.musicfy.eq
@@ -14,10 +14,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Service for managing custom EQ using ExoPlayer's AudioProcessor
- * Supports 10+ band Parametric EQ format (APO)
- */
+// service for managing custom eq using exoplayer's audioprocessor supports 10+
 @Singleton
 class EqualizerService @Inject constructor() {
 
@@ -30,37 +27,29 @@ class EqualizerService @Inject constructor() {
         private const val TAG = "EqualizerService"
     }
 
-    /**
-     * Add an audio processor instance
-     * This should be called when ExoPlayer is initialized
-     */
+    // add an audio processor instance this should be called when exoplayer is
     @OptIn(UnstableApi::class)
     fun addAudioProcessor(processor: CustomEqualizerAudioProcessor) {
         audioProcessors.add(processor)
         Timber.tag(TAG).d("Audio processor added. Total: ${audioProcessors.size}")
 
-        // Apply pending profile if one was set before processor was available
+        // apply pending profile if one was set before processor was available
         if (shouldDisable) {
             processor.disable()
-            // Don't clear shouldDisable here, as we might add more processors
+            // don't clear shoulddisable here as we might add more processors
         } else if (pendingProfile != null) {
             val profile = pendingProfile!!
             applyProfileToProcessor(processor, profile)
-            // Don't clear pendingProfile here
+            // don't clear pendingprofile here
         }
     }
 
-    /**
-     * Remove an audio processor instance
-     */
+    // remove an audio processor instance
     fun removeAudioProcessor(processor: CustomEqualizerAudioProcessor) {
         audioProcessors.remove(processor)
     }
 
-    /**
-     * Apply an EQ profile
-     * If audio processor is not set, stores as pending profile
-     */
+    // apply an eq profile if audio processor is not set stores as pending profile
     @OptIn(UnstableApi::class)
     fun applyProfile(profile: SavedEQProfile): Result<Unit> {
         if (audioProcessors.isEmpty()) {
@@ -71,7 +60,7 @@ class EqualizerService @Inject constructor() {
             return Result.success(Unit)
         }
 
-        pendingProfile = profile // Keep it for future processors
+        pendingProfile = profile // keep it for future processors
         shouldDisable = false
         
         var success = true
@@ -97,10 +86,7 @@ class EqualizerService @Inject constructor() {
         processor.applyProfile(parametricEQ)
     }
 
-    /**
-     * Disable the equalizer (flat response)
-     * If audio processor is not set, stores pending disable request
-     */
+    // disable the equalizer (flat response) if audio processor is not set stores
     @OptIn(UnstableApi::class)
     fun disable() {
         if (audioProcessors.isEmpty()) {
@@ -110,7 +96,7 @@ class EqualizerService @Inject constructor() {
             return
         }
 
-        shouldDisable = true // Keep state
+        shouldDisable = true // keep state
         pendingProfile = null
 
         audioProcessors.forEach { processor ->
@@ -123,24 +109,18 @@ class EqualizerService @Inject constructor() {
         Timber.tag(TAG).d("Equalizer disabled on all processors")
     }
 
-    /**
-     * Check if audio processor is set
-     */
+    // check if audio processor is set
     fun isInitialized(): Boolean {
         return audioProcessors.isNotEmpty()
     }
 
-    /**
-     * Check if equalizer is enabled
-     */
+    // check if equalizer is enabled
     @OptIn(UnstableApi::class)
     fun isEnabled(): Boolean {
         return audioProcessors.any { it.isEnabled() }
     }
 
-    /**
-     * Get information about the current EQ capabilities
-     */
+    // get information about the current eq capabilities
     fun getEqualizerInfo(): EqualizerInfo {
         return EqualizerInfo(
             supportsUnlimitedBands = true,
@@ -149,19 +129,15 @@ class EqualizerService @Inject constructor() {
         )
     }
 
-    /**
-     * Release resources (not needed for AudioProcessor, but kept for API compatibility)
-     */
+    // release resources (not needed for audioprocessor but kept for api compatibility)
     fun release() {
-        // AudioProcessor is managed by ExoPlayer, we just clear our reference
+        // audioprocessor is managed by exoplayer we just clear our reference
         audioProcessors.clear()
         Timber.tag(TAG).d("Audio processor references cleared")
     }
 }
 
-/**
- * Information about equalizer capabilities
- */
+// information about equalizer capabilities
 data class EqualizerInfo(
     val supportsUnlimitedBands: Boolean,
     val maxBands: Int,

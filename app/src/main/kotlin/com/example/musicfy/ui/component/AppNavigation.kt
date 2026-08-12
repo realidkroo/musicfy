@@ -1,4 +1,4 @@
-// AppNavigation.kt
+// appnavigationkt
 // this thing is for app navigation
 
 package com.example.musicfy.ui.component
@@ -78,14 +78,7 @@ private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigati
            currentRoute.startsWith("$screenRoute/")
 }
 
-/**
- * Routes that belong to a tab without being nested under its path.
- *
- * The prefix rule above only catches `library/albums`-shaped routes. Everything else a tab can
- * open — the search results page (`search/{query}`), the genre pages, every sub-settings screen —
- * has a route that shares no prefix with its tab, matched nothing, and left the bar with no
- * highlighted item at all. That is the indicator "disappearing" on some pages.
- */
+// routes that belong to a tab without being nested under its path the prefix rule
 private val RouteOwners: List<Pair<String, String>> = listOf(
     "search/" to "search_input",
     "genre/" to "search_input",
@@ -100,7 +93,7 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "equalizer" to "settings",
 )
 
-/** The tab route that owns [currentRoute], or null if nothing claims it. */
+// the tab route that owns [currentroute] or null if nothing claims it
 private fun owningTabRoute(currentRoute: String?, navigationItems: List<Screens>): String? {
     if (currentRoute == null) return null
     navigationItems.firstOrNull { isRouteSelected(currentRoute, it.route, navigationItems) }
@@ -110,13 +103,7 @@ private fun owningTabRoute(currentRoute: String?, navigationItems: List<Screens>
     }?.second
 }
 
-/**
- * Which tab the bar should light up.
- *
- * Falls back to whatever was last selected rather than to nothing: an album, artist or playlist
- * page can be reached from any tab, so there is no static rule that could claim them, and going
- * dark is worse than staying on the tab the user actually came from.
- */
+// which tab the bar should light up falls back to whatever was last selected
 @Composable
 private fun rememberSelectedTabRoute(
     currentRoute: String?,
@@ -160,7 +147,7 @@ fun AppNavigationRail(
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
             
-            // Long press detection using InteractionSource
+            // long press detection using interactionsource
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
                     var isLongClick = false
@@ -192,7 +179,7 @@ fun AppNavigationRail(
                     if (!isSearchItem) {
                         onItemClick(screen, isSelected)
                     }
-                    // For search item, click is handled via InteractionSource
+                    // for search item click is handled via interactionsource
                 },
                 interactionSource = interactionSource,
                 icon = {
@@ -239,9 +226,9 @@ fun AppNavigationBar(
                 .padding(horizontal = 24.dp, vertical = 8.dp)
                 .align(Alignment.TopCenter)
                 .height(64.dp)
-                // Whole-bar tilt, applied before the clip so the rounded shape tilts with it.
-                // A smaller angle than the pill's: this is a wide surface, and the same degrees
-                // across that width would swing the far end much further.
+                // whole-bar tilt applied before the clip so the rounded shape tilts with it
+                // a smaller angle than the pill's: this is a wide surface and the same
+                // across that width would swing the far end much further
                 .press3D(maxTilt = 4f, pressedScale = 0.985f)
                 .clip(RoundedCornerShape(32.dp))
                 .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(32.dp))
@@ -251,9 +238,9 @@ fun AppNavigationBar(
                 blurRadius = { 24f },
                 tint = containerColor.copy(alpha = 0.65f),
                 foundationColor = containerColor,
-                // CLAMP, not the default DECAL — this pill's own bounds ARE the intended blur
-                // extent (no fade-out), so edges need to read as fully blurred right up to the
-                // border instead of washing to transparent near it.
+                // clamp not the default decal — this pill's own bounds are the intended blur
+                // extent (no fade-out) so edges need to read as fully blurred right up to the
+                // border instead of washing to transparent near it
                 tileMode = android.graphics.Shader.TileMode.CLAMP,
                 modifier = Modifier.fillMaxSize()
             )
@@ -301,7 +288,7 @@ fun AppNavigationBar(
                         label = "nav_item_icon_tint"
                     )
                     
-                    // Long press detection using InteractionSource
+                    // long press detection using interactionsource
                     if (isSearchItem) {
                         LaunchedEffect(interactionSource) {
                             var isLongClick = false

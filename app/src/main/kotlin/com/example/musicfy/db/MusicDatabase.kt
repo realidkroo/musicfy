@@ -1,4 +1,4 @@
-// MusicDatabase.kt
+// musicdatabasekt
 // what is this for you ask its for music database ofc
 
 package com.example.musicfy.db
@@ -159,7 +159,7 @@ abstract class InternalDatabase : RoomDatabase() {
     }
 }
 
-// ===== Migrations =====
+// ===== migrations =====
 
 val MIGRATION_1_2 =
     object : Migration(1, 2) {
@@ -370,9 +370,9 @@ val MIGRATION_1_2 =
 val MIGRATION_21_24 =
     object : Migration(21, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // Combine all changes from 21→22→23→24
+            // combine all changes from 21→22→23→24
             
-            // From 21→22: Add columns
+            // from 21→22: add columns
             try {
                 db.execSQL("ALTER TABLE song ADD COLUMN libraryAddToken TEXT DEFAULT ''")
             } catch (e: Exception) {
@@ -394,7 +394,7 @@ val MIGRATION_21_24 =
                 Timber.tag("Migration").w("Column isDownloaded may already exist")
             }
 
-            // From 23→24: Add isUploaded
+            // from 23→24: add isuploaded
             var hasIsUploaded = false
             db.query("PRAGMA table_info('song')").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")
@@ -416,7 +416,7 @@ val MIGRATION_21_24 =
 val MIGRATION_22_24 =
     object : Migration(22, 24) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // From 23→24: Add isUploaded
+            // from 23→24: add isuploaded
             var hasIsUploaded = false
             db.query("PRAGMA table_info('song')").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")
@@ -435,7 +435,7 @@ val MIGRATION_22_24 =
         }
     }
 
-// ===== AutoMigration Specs =====
+// ===== automigration specs =====
 
 @DeleteColumn.Entries(
     DeleteColumn(tableName = "song", columnName = "isTrash"),
@@ -601,7 +601,7 @@ class Migration21To22 : AutoMigrationSpec {
 
 class Migration22To23 : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        // No changes needed for 22→23
+        // no changes needed for 22→23
     }
 }
 
@@ -628,7 +628,7 @@ class Migration23To24: AutoMigrationSpec {
 val MIGRATION_24_25 =
     object : Migration(24, 25) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // Add perceptualLoudnessDb column to format table for improved audio normalization
+            // add perceptualloudnessdb column to format table for improved audio
             var columnExists = false
             db.query("PRAGMA table_info(format)").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")
@@ -641,7 +641,7 @@ val MIGRATION_24_25 =
             }
 
             if (!columnExists) {
-                // Add the column allowing NULL values (since existing rows won't have this data)
+                // add the column allowing null values (since existing rows won't have this
                 db.execSQL("ALTER TABLE format ADD COLUMN perceptualLoudnessDb REAL DEFAULT NULL")
             }
         }
@@ -649,7 +649,7 @@ val MIGRATION_24_25 =
 
 class Migration29To30 : AutoMigrationSpec {
     override fun onPostMigrate(db: SupportSQLiteDatabase) {
-        // Ensure isVideo column exists (safeguard)
+        // ensure isvideo column exists (safeguard)
         var hasIsVideo = false
         db.query("PRAGMA table_info('song')").use { cursor ->
             val nameIndex = cursor.getColumnIndex("name")
@@ -665,7 +665,7 @@ class Migration29To30 : AutoMigrationSpec {
             db.execSQL("ALTER TABLE song ADD COLUMN isVideo INTEGER NOT NULL DEFAULT 0")
         }
 
-        // Ensure provider column exists in lyrics table
+        // ensure provider column exists in lyrics table
         var hasProvider = false
         db.query("PRAGMA table_info('lyrics')").use { cursor ->
             val nameIndex = cursor.getColumnIndex("name")
@@ -696,7 +696,7 @@ val MIGRATION_35_36 =
 val MIGRATION_36_37 =
     object : Migration(36, 37) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // Add localUri column to song table for local file playback
+            // add localuri column to song table for local file playback
             var columnExists = false
             db.query("PRAGMA table_info(song)").use { cursor ->
                 val nameIndex = cursor.getColumnIndex("name")

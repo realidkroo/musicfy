@@ -1,4 +1,4 @@
-// LyricsEntry.kt
+// lyricsentrykt
 // this thing is part of lyrics entry
 
 package com.example.musicfy.lyrics

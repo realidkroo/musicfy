@@ -1,4 +1,4 @@
-// MediaLibrarySessionCallback.kt
+// medialibrarysessioncallbackkt
 // the file functioned as media library session callback
 
 package com.example.musicfy.playback
@@ -450,7 +450,7 @@ constructor(
                         }
                     }.first()
 
-                    // Check if this is a shuffle action
+                    // check if this is a shuffle action
                     if (songId == MusicService.SHUFFLE_ACTION) {
                         MediaItemsWithStartPosition(
                             songs.shuffled().map { it.toMediaItem() },
@@ -479,7 +479,7 @@ constructor(
                         return@future defaultResult
                     }
 
-                    // Check if this is a shuffle action
+                    // check if this is a shuffle action
                     if (songId == MusicService.SHUFFLE_ACTION) {
                         MediaItemsWithStartPosition(
                             songs.shuffled(),

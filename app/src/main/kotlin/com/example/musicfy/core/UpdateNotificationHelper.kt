@@ -1,4 +1,4 @@
-// UpdateNotificationHelper.kt
+// updatenotificationhelperkt
 // this thing is for update notification helper
 
 package com.example.musicfy.core
@@ -33,7 +33,7 @@ object UpdateNotificationHelper {
             nm.createNotificationChannel(channel)
         }
 
-        // Direct download URL format from musicfyupdater - use the full tag (vX.X.X or bX.X.X) or nightly link
+        // direct download url format from musicfyupdater - use the full tag (vxxx or
         val apkUrl = if (versionName.contains("nightly", ignoreCase = true)) {
             "https://nightly.link/musicfy-app/musicfy/workflows/nightly.yml/main/musicfy-gms-nightly.zip"
         } else {

@@ -1,4 +1,4 @@
-// AlbumMenu.kt
+// albummenukt
 // what is this for you ask its for album menu ofc
 
 package com.example.musicfy.ui.menu

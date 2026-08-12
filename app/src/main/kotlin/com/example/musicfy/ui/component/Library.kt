@@ -1,4 +1,4 @@
-// Library.kt
+// librarykt
 // what is this for you ask its for library ofc
 
 package com.example.musicfy.ui.component
@@ -239,9 +239,9 @@ fun LibraryPlaylistGridItem(
 ) = PlaylistGridItem(
     playlist = playlist,
     fillMaxWidth = true,
-    // Same id used for the actual navigate() call below, whichever branch it takes,
+    // same id used for the actual navigate() call below whichever branch it takes
     // so the key matches whichever destination (local or online playlist screen)
-    // ends up rendering.
+    // ends up rendering
     sharedElementKey = if (!playlist.playlist.isEditable && playlist.songCount == 0 && playlist.playlist.remoteSongCount != 0) {
         playlist.playlist.browseId?.let { "playlist-$it" }
     } else {

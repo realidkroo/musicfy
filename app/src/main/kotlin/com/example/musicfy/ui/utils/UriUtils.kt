@@ -1,4 +1,4 @@
-// UriUtils.kt
+// uriutilskt
 // the file functioned as uri utils
 
 package com.example.musicfy.ui.utils
@@ -8,11 +8,7 @@ import android.widget.Toast
 import androidx.compose.ui.platform.UriHandler
 import com.example.musicfy.R
 
-/**
- * Safely opens a URI using the provided [UriHandler].
- * If the URI cannot be handled (e.g., no app installed for the scheme), 
- * it shows a toast message instead of crashing.
- */
+// safely opens a uri using the provided [urihandler] if the uri cannot be handled
 fun UriHandler.safeOpenUri(context: Context, uri: String) {
     if (uri.isBlank()) return
     
@@ -21,7 +17,7 @@ fun UriHandler.safeOpenUri(context: Context, uri: String) {
     }.onFailure {
         Toast.makeText(
             context,
-            context.getString(R.string.error_no_stream).replace("stream", "app"), // Fallback if specific string not found
+            context.getString(R.string.error_no_stream).replace("stream", "app"), // fallback if specific string not found
             Toast.LENGTH_SHORT
         ).show()
     }

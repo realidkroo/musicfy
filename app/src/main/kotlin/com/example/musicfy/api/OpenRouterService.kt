@@ -1,4 +1,4 @@
-// OpenRouterService.kt
+// openrouterservicekt
 // the file functioned as open router service
 
 package com.example.musicfy.api
@@ -34,7 +34,7 @@ object OpenRouterService {
     ): Result<List<String>> = withContext(Dispatchers.IO) {
         var currentAttempt = 0
         
-        // Validate input
+        // validate input
         if (text.isBlank()) {
             return@withContext Result.failure(Exception("Input text is empty"))
         }
@@ -44,7 +44,7 @@ object OpenRouterService {
         
         while (currentAttempt < maxRetries) {
             try {
-                // Enhanced prompt with strict formatting requirements
+                // enhanced prompt with strict formatting requirements
                 val systemPrompt = """You are a precise lyrics translation assistant. Your output must ALWAYS be a valid JSON array of strings.
 
 CRITICAL RULES:
@@ -130,8 +130,8 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         put("model", model)
                     }
                     put("messages", messages)
-                    put("temperature", 0.3) // Lower temperature for more consistent output
-                    put("max_tokens", lineCount * 100) // Adequate tokens for translation
+                    put("temperature", 0.3) // lower temperature for more consistent output
+                    put("max_tokens", lineCount * 100) // adequate tokens for translation
                 }
 
                 val request = Request.Builder()
@@ -151,7 +151,7 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                 val responseBody = response.body?.string()
 
                 if (!response.isSuccessful) {
-                    // Retry on server errors (5xx)
+                    // retry on server errors (5xx)
                     if (response.code >= 500) {
                         currentAttempt++
                         kotlinx.coroutines.delay(1000L * currentAttempt)
@@ -179,22 +179,22 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                     var content = message?.optString("content")?.trim()
                     
                     if (!content.isNullOrBlank()) {
-                        // Enhanced JSON extraction with multiple fallback strategies
+                        // enhanced json extraction with multiple fallback strategies
                         var translatedLines: List<String>? = null
                         
-                        // Strategy 1: Try direct JSON parsing
+                        // strategy 1: try direct json parsing
                         try {
                             val jsonArray = JSONArray(content)
                             translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                         } catch (e: Exception) {
-                            // Strategy 2: Extract JSON from markdown code blocks
+                            // strategy 2: extract json from markdown code blocks
                             content = content.replace("```json", "").replace("```", "").trim()
                             
                             try {
                                 val jsonArray = JSONArray(content)
                                 translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                             } catch (e2: Exception) {
-                                // Strategy 3: Find first [ and last ]
+                                // strategy 3: find first [ and last ]
                                 val startIdx = content.indexOf('[')
                                 val endIdx = content.lastIndexOf(']')
                                 
@@ -204,7 +204,7 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                         val jsonArray = JSONArray(jsonString)
                                         translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                                     } catch (e3: Exception) {
-                                        // Strategy 4: Manual line-by-line parsing as last resort
+                                        // strategy 4: manual line-by-line parsing as last resort
                                         translatedLines = content.lines()
                                             .filter { it.trim().isNotEmpty() }
                                             .map { it.trim().removeSurrounding("\"").removeSurrounding("'") }
@@ -214,14 +214,14 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         }
                         
                         if (translatedLines != null) {
-                            // Validate line count matches
+                            // validate line count matches
                             if (translatedLines.size == lineCount) {
                                 return@withContext Result.success(translatedLines)
                             } else if (translatedLines.size > lineCount) {
-                                // If we got more lines, take first N
+                                // if we got more lines take first n
                                 return@withContext Result.success(translatedLines.take(lineCount))
                             } else {
-                                // If we got fewer lines, pad with empty strings
+                                // if we got fewer lines pad with empty strings
                                 val paddedLines = translatedLines.toMutableList()
                                 while (paddedLines.size < lineCount) {
                                     paddedLines.add("")

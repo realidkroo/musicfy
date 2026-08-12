@@ -1,12 +1,7 @@
-// Items.kt
+// itemskt
 // this thing is for items
 
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- * 
- * Optimized for minimal recomposition during navigation
- */
+// musicfy project (c) 2026 licensed under gpl-30 | see git history for
 
 package com.example.musicfy.ui.component
 
@@ -147,7 +142,7 @@ fun currentGridThumbnailHeight(): Dp {
 
 val LocalGridItemPadding = compositionLocalOf { 12.dp }
 
-// Basic list item - optimized with inline to reduce recomposition
+// basic list item - optimized with inline to reduce recomposition
 @Composable
 inline fun ListItem(
     modifier: Modifier = Modifier,
@@ -415,10 +410,10 @@ fun SongListItem(
             if (downloadState != null) {
                 Icon.Download(downloadState)
             } else {
-                // remember(song.id): getDownload() builds a new Flow per call, and
-                // collectAsState keys its collector on the flow instance. Without this every
+                // remember(songid): getdownload() builds a new flow per call and
+                // collectasstate keys its collector on the flow instance without this every
                 // recomposition of this row cancels and relaunches a coroutine — once per
-                // visible row, continuously, while scrolling.
+                // visible row continuously while scrolling
                 val downloadUtil = LocalDownloadUtil.current
                 val download by remember(downloadUtil, song.id) {
                     downloadUtil.getDownload(song.id)
@@ -501,8 +496,8 @@ fun SongGridItem(
             if (downloadState != null) {
                 Icon.Download(downloadState)
             } else {
-                // See the note on the other download badge above: the flow must be remembered
-                // or collectAsState relaunches its coroutine on every recomposition.
+                // see the note on the other download badge above: the flow must be remembered
+                // or collectasstate relaunches its coroutine on every recomposition
                 val downloadUtil = LocalDownloadUtil.current
                 val download by remember(downloadUtil, song.id) {
                     downloadUtil.getDownload(song.id)
@@ -692,9 +687,9 @@ fun AlbumGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-    // Opt-in key for the "expand into place" open transition (see
-    // ui/component/SharedElementTransition.kt) — null (the default) leaves every
-    // existing call site's behavior unchanged.
+    // opt-in key for the "expand into place" open transition (see
+    // ui/component/sharedelementtransitionkt) — null (the default) leaves every
+    // existing call site's behavior unchanged
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -780,7 +775,7 @@ fun PlaylistListItem(
                     stringResource(R.string.liked) -> R.drawable.favorite_border
                     stringResource(R.string.offline) -> R.drawable.offline
                     stringResource(R.string.cached_playlist) -> R.drawable.cached
-                    // R.drawable.backup as placeholder
+                    // rdrawablebackup as placeholder
                     stringResource(R.string.uploaded_playlist) -> R.drawable.backup
                     else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
                 }
@@ -813,9 +808,9 @@ fun PlaylistGridItem(
         }
     },
     fillMaxWidth: Boolean = false,
-    // Opt-in key for the "expand into place" open transition (see
-    // ui/component/SharedElementTransition.kt) — null (the default) leaves every
-    // existing call site's behavior unchanged.
+    // opt-in key for the "expand into place" open transition (see
+    // ui/component/sharedelementtransitionkt) — null (the default) leaves every
+    // existing call site's behavior unchanged
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -869,7 +864,7 @@ fun PlaylistGridItem(
                     stringResource(R.string.liked) -> R.drawable.favorite_border
                     stringResource(R.string.offline) -> R.drawable.offline
                     stringResource(R.string.cached_playlist) -> R.drawable.cached
-                    // R.drawable.backup as placeholder
+                    // rdrawablebackup as placeholder
                     stringResource(R.string.uploaded_playlist) -> R.drawable.backup
                     else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
                 }
@@ -1025,10 +1020,10 @@ fun YouTubeGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-    // Opt-in key for the "expand into place" open transition (see
-    // ui/component/SharedElementTransition.kt) — only meaningful for AlbumItem/
-    // PlaylistItem (matching AlbumScreen/OnlinePlaylistScreen's headers); null (the
-    // default) leaves every existing call site's behavior unchanged.
+    // opt-in key for the "expand into place" open transition (see
+    // ui/component/sharedelementtransitionkt) — only meaningful for albumitem/
+    // playlistitem (matching albumscreen/onlineplaylistscreen's headers); null
+    // default) leaves every existing call site's behavior unchanged
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -1614,7 +1609,7 @@ fun SwipeToSongBox(
     }
 }
 
-// Helper to animate reset of swipe offset
+// helper to animate reset of swipe offset
 private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
     scope.launch {
         animate(
@@ -1625,7 +1620,7 @@ private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
     }
 }
 
-// Data holder for swipe visuals
+// data holder for swipe visuals
 data class Quadruple<A, B, C, D>(
     val first: A,
     val second: B,
@@ -1694,9 +1689,9 @@ fun LikedSongsThumbnail(
     size: Dp,
     shape: Shape = RoundedCornerShape(com.example.musicfy.constants.ThumbnailCornerRadius),
     modifier: Modifier = Modifier,
-    // Liked Songs' hero header (a bigger version of this same collage) caps at 8
+    // liked songs' hero header (a bigger version of this same collage) caps at 8
     // instead of this component's original 9 — parameterized rather than
-    // duplicating the whole composable for one different number.
+    // duplicating the whole composable for one different number
     maxCovers: Int = 9,
 ) {
     val database = LocalDatabase.current

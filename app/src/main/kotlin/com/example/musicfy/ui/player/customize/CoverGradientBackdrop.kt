@@ -1,11 +1,11 @@
-// CoverGradientBackdrop.kt
-// The player's default backdrop — a tiny blurred copy of the artwork, stretched and pushed
-// through a liquid-warp AGSL shader — extracted so the customization page can render the exact
-// same thing rather than an approximation of it.
-//
-// It previously lived inline in MorphingCover and the editor drew a lookalike: a bigger blurred
-// bitmap, no warp. Two implementations of "the background" meant the editor's preview visibly
-// disagreed with the player it was previewing. There is now one.
+// covergradientbackdropkt
+// the player's default backdrop — a tiny blurred copy of the artwork
+// through a liquid-warp agsl shader — extracted so the customization page
+// same thing rather than an approximation of it
+
+// it previously lived inline in morphingcover and the editor drew a
+// bitmap no warp two implementations of "the background" meant the editor's
+// disagreed with the player it was previewing there is now one
 
 package com.example.musicfy.ui.player.customize
 
@@ -34,14 +34,7 @@ import com.example.musicfy.ui.player.BackdropBlurTransformation
 import com.example.musicfy.ui.utils.resize
 import kotlinx.coroutines.isActive
 
-/**
- * The warp program, hoisted so a caller can create it once and keep it alive.
- *
- * Building a RuntimeShader compiles the AGSL on the GPU. MorphingCover deliberately does that
- * once, unconditionally, at composition of the player rather than at the moment its backdrop
- * mounts — a compile right as the user starts swiping the sheet up is a visible hitch. Callers
- * that don't have that constraint can just let [CoverGradientBackdrop] make its own.
- */
+// the warp program hoisted so a caller can create it once and keep it alive
 @Composable
 fun rememberWarpShader(): android.graphics.RuntimeShader? = remember {
     if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -70,17 +63,7 @@ fun rememberWarpShader(): android.graphics.RuntimeShader? = remember {
     }
 }
 
-/**
- * @param width / [height] the fixed size to allocate this layer at. requiredSize, not fillMaxSize:
- *   the caller may be measuring this with a smaller, animating constraint (MorphingCover's
- *   growing backdrop window, the editor's shrinking stage), and re-measuring the shader layer
- *   every frame would reallocate its GPU buffer every frame. Allocate once, let the parent's clip
- *   reveal more or less of it.
- * @param animate whether the warp clock should run. Gate it — an idle infinite frame clock wakes
- *   Choreographer every vsync for nothing.
- * @param timeProvider supply this to share one clock with another instance; otherwise the
- *   composable runs its own.
- */
+// the caller may be measuring this with a smaller animating constraint
 @Composable
 fun CoverGradientBackdrop(
     thumbnailUrl: String?,
@@ -99,8 +82,8 @@ fun CoverGradientBackdrop(
         if (!animate || !runOwnClock) return@LaunchedEffect
         while (isActive) {
             withInfiniteAnimationFrameNanos { frameTimeNanos ->
-                // Absolute frame time mod 100 rather than delta accumulation, so restarting the
-                // loop never drifts.
+                // absolute frame time mod 100 rather than delta accumulation so restarting
+                // loop never drifts
                 ownTime.floatValue = ((frameTimeNanos / 1_000_000f) * (100f / 100_000f)).mod(100f)
             }
         }
@@ -113,11 +96,11 @@ fun CoverGradientBackdrop(
                 .data(thumbnailUrl?.resize(48, 48))
                 .allowHardware(false)
                 .transformations(BackdropBlurTransformation(radiusPx = 4))
-                // Decode at the source's own 48x48, not at the node's size — this node is
-                // requiredSize(width, height), so Coil would otherwise upscale a 48px image into
-                // a full-screen software bitmap (~10MB, since allowHardware is false) and then
-                // blur it at that size. Decoding small and letting FillBounds + the 1.6x layer
-                // stretch it on the GPU looks identical for ~9KB.
+                // decode at the source's own 48x48 not at the node's size — this node is
+                // requiredsize(width height) so coil would otherwise upscale a 48px image
+                // a full-screen software bitmap (~10mb since allowhardware is false) and then
+                // blur it at that size decoding small and letting fillbounds + the 16x layer
+                // stretch it on the gpu looks identical for ~9kb
                 .size(CoilSize(48, 48))
                 .build(),
             contentDescription = null,
@@ -131,7 +114,7 @@ fun CoverGradientBackdrop(
                 }
                 .let { if (shader != null) it.liquidWarpEffect(shader, time) else it }
         )
-        // Legibility wash.
+        // legibility wash
         Box(
             modifier = Modifier
                 .requiredSize(width, height)
@@ -145,8 +128,8 @@ private fun Modifier.liquidWarpEffect(
     shader: android.graphics.RuntimeShader,
     time: () -> Float,
 ): Modifier = this.graphicsLayer {
-    // Both reads happen here, in the draw phase — that is what keeps the warp's continuous
-    // per-frame updates from ever recomposing the tree above it.
+    // both reads happen here in the draw phase — that is what keeps the warp's
+    // per-frame updates from ever recomposing the tree above it
     shader.setFloatUniform("resolution", size.width, size.height)
     shader.setFloatUniform("time", time())
     renderEffect = android.graphics.RenderEffect

@@ -10,13 +10,7 @@ import okhttp3.OkHttpClient
 import org.json.JSONObject
 import timber.log.Timber
 
-/**
- * Monochrome's in-house lossless playback API (track-api.monochrome.tf), matching the
- * web client's getMonochromePlaybackStreamUrl flow: exchange a Turnstile token for a
- * short-lived bearer session once, then POST song metadata to /playback for a direct
- * signed FLAC URL. No manifest parsing or DRM involved. Both requests run inside the
- * TurnstileSolver's WebView since the exchanged session is fingerprint-bound to it.
- */
+// monochrome's in-house lossless playback api (track-apimonochrometf) matching
 class MonochromePlaybackStreamFetcher(
     private val dataStore: androidx.datastore.core.DataStore<Preferences>,
     private val database: MusicDatabase,
@@ -69,8 +63,8 @@ class MonochromePlaybackStreamFetcher(
         val playbackUrl = "$apiBaseUrl/playback"
 
         for (attempt in 0 until 2) {
-            // Solve Turnstile, exchange for a session, and POST /playback — all from the same
-            // WebView context, since the exchanged session is fingerprint-bound to that context.
+            // solve turnstile exchange for a session and post /playback — all from the
+            // webview context since the exchanged session is fingerprint-bound to that
             val fetchResult = turnstileSolver.fetchPlaybackWithTurnstile(
                 siteKey, exchangeUrl, playbackUrl, requestBody, forceRefresh = attempt > 0
             )

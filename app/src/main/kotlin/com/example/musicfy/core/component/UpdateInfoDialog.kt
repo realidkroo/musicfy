@@ -1,4 +1,4 @@
-// UpdateInfoDialog.kt
+// updateinfodialogkt
 // what is this for you ask its for update info dialog ofc
 
 package com.example.musicfy.core.component

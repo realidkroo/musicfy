@@ -1,4 +1,4 @@
-// YouTubeBrowseScreen.kt
+// youtubebrowsescreenkt
 // the file functioned as you tube browse screen
 
 package com.example.musicfy.ui.screens
@@ -67,8 +67,8 @@ fun YouTubeBrowseScreen(
     val coroutineScope = rememberCoroutineScope()
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
-    // flatMap + distinctBy are O(n) allocations; without remember they re-ran on every
-    // recomposition of this screen and rebuilt the list handed to the grid.
+    // flatmap + distinctby are o(n) allocations; without remember they re-ran on
+    // recomposition of this screen and rebuilt the list handed to the grid
     val allItems = remember(browseResult) {
         browseResult?.items?.flatMap { it.items }?.distinctBy { it.id } ?: emptyList()
     }

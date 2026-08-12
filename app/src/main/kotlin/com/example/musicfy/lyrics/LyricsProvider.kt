@@ -1,4 +1,4 @@
-// LyricsProvider.kt
+// lyricsproviderkt
 // this thing is for lyrics provider
 
 package com.example.musicfy.lyrics

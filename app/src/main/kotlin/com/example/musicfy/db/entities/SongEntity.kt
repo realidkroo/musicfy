@@ -1,4 +1,4 @@
-// SongEntity.kt
+// songentitykt
 // what is this for you ask its for song entity ofc
 
 package com.example.musicfy.db.entities
@@ -33,7 +33,7 @@ data class SongEntity(
     @ColumnInfo(defaultValue = "0")
     val explicit: Boolean = false,
     val year: Int? = null,
-    val date: LocalDateTime? = null, // ID3 tag property
+    val date: LocalDateTime? = null, // id3 tag property
     val dateModified: LocalDateTime? = null, // file property
     val liked: Boolean = false,
     val likedDate: LocalDateTime? = null,
@@ -79,7 +79,7 @@ data class SongEntity(
     ).also {
         if (syncToYouTube) {
             CoroutineScope(Dispatchers.IO).launch {
-                // Use the new reliable method that fetches fresh tokens
+                // use the new reliable method that fetches fresh tokens
                 val addToLibrary = inLibrary == null
                 YouTube.toggleSongLibrary(id, addToLibrary)
             }

@@ -1,4 +1,4 @@
-// BottomSheetPage.kt
+// bottomsheetpagekt
 // this thing is for bottom sheet page
 
 package com.example.musicfy.ui.component

@@ -1,13 +1,4 @@
-// UpdateSheet.kt
-// The "about this build" sheet and the update flow behind it.
-//
-// Two surfaces, both in the beta-notice's language and both minimizable, because they reuse the
-// player's MenuSheetSurface:
-//
-//   UpdateSheet        version, whether there's an update, and the links. Fixed detent.
-//   UpdateDetailSheet  title, changelog, what will be installed, and the install button. Sized
-//                      to its content — a changelog is a paragraph or a page, so a fixed detent
-//                      would either crop it or leave a void underneath.
+// update sheet ui and detail sheet
 
 package com.example.musicfy.ui.screens.update
 
@@ -78,14 +69,7 @@ import kotlinx.coroutines.launch
 private val CardSurface = MenuRowSurface
 private val AccentGreen = Color(0xFF2E9E5B)
 
-/**
- * Resolves the update state once and keeps it — the sheet, and the settings row that opens it,
- * both read the same instance so they can never disagree about whether an update exists.
- *
- * Backed by [getLatestRelease], so this is a cache read rather than a network call on all but the
- * first use in an hour. It previously called the network directly on every composition of the
- * settings screen, i.e. once per visit to Settings.
- */
+// update state state holder
 @Composable
 fun rememberUpdateState(): androidx.compose.runtime.State<UpdateState> {
     val state = remember { mutableStateOf<UpdateState>(UpdateState.Checking) }
@@ -153,7 +137,7 @@ fun UpdateSheet(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                // The one line that changes: this is the same copy the settings row shows.
+                // the one line that changes: this is the same copy the settings row shows
                 text = when (state) {
                     is UpdateState.Available -> UpdateHeadline
                     UpdateState.Checking -> "Checking for updates…"
@@ -165,8 +149,8 @@ fun UpdateSheet(
                 fontWeight = FontWeight.Medium,
             )
 
-            // The update card only exists when there is one. "Latest version" is the whole
-            // no-update state — nothing greyed out, nothing to explain.
+            // the update card only exists when there is one "latest version" is the whole
+            // no-update state — nothing greyed out nothing to explain
             if (state is UpdateState.Available) {
                 Spacer(modifier = Modifier.height(18.dp))
                 Row(
@@ -239,7 +223,7 @@ fun UpdateSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // ---- Dev card ----
+            // ---- dev card ----
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -280,7 +264,7 @@ fun UpdateSheet(
                 Spacer(modifier = Modifier.height(8.dp))
                 LinkRow(R.drawable.link, "@realidkroo") { context.openUrl(InstagramUrl) }
                 Spacer(modifier = Modifier.height(8.dp))
-                // Nothing to donate to yet, so it reads as unavailable rather than being hidden.
+                // nothing to donate to yet so it reads as unavailable rather than being
                 LinkRow(R.drawable.heart, "Donate me!", enabled = false) {}
             }
 
@@ -314,7 +298,7 @@ fun UpdateSheet(
     }
 }
 
-/** The line the settings row and the sheet both show when an update is waiting. */
+// the line the settings row and the sheet both show when an update is waiting
 const val UpdateHeadline = "Theres an update~!"
 
 @Composable
@@ -363,12 +347,7 @@ private fun LinkRow(
     }
 }
 
-/**
- * Changelog, what will be installed, and the install button.
- *
- * wrapHeight is the point: the sheet is exactly as tall as the changelog needs, growing and
- * shrinking with `animateContentSize` rather than snapping to a detent.
- */
+// changelog what will be installed and the install button wrapheight is the
 @Composable
 private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -378,8 +357,8 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val progress = remember { mutableFloatStateOf(0f) }
 
-    // Same reasoning as UpdatePromptSheet: keep a finished download and offer a plain retry when
-    // the installer could not be shown, instead of fetching the whole APK a second time.
+    // same reasoning as updatepromptsheet: keep a finished download and offer a
+    // the installer could not be shown instead of fetching the whole apk a
     var needsPermission by remember { mutableStateOf(false) }
     val startInstall: (java.io.File) -> Unit = { file ->
         if (installApk(context, file)) {
@@ -394,8 +373,8 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
         onDismiss = onDismiss,
         wrapHeight = true,
         fullDetent = 0.9f,
-        // The download writes into the cache and hands off to the installer; letting the sheet
-        // go mid-flight would strand it with no way back to the progress.
+        // the download writes into the cache and hands off to the installer; letting
+        // go mid-flight would strand it with no way back to the progress
         dismissEnabled = !downloading,
     ) { _ ->
         Column(
@@ -441,8 +420,8 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    // Verbatim release body. No line cap — the sheet grows to fit it, and the
-                    // scroll above takes over once it hits the 90% ceiling.
+                    // verbatim release body no line cap — the sheet grows to fit it and the
+                    // scroll above takes over once it hits the 90% ceiling
                     text = release.body.trim().ifBlank { "No changelog for this release." },
                     color = Color(0xFF9A9A9A),
                     fontSize = 12.sp,
@@ -500,7 +479,7 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Install — the progress fills the button itself, same as the beta notice's cooldown.
+            // install — the progress fills the button itself same as the beta notice's
             val animatedProgress by animateFloatAsState(
                 targetValue = progress.floatValue,
                 animationSpec = tween(durationMillis = 120),
@@ -538,8 +517,8 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
             ) {
                 Box(
                     modifier = Modifier
-                        // See UpdatePromptSheet: without this the fill is centred by the parent's
-                        // contentAlignment and grows out of the middle instead of from the left.
+                        // see updatepromptsheet: without this the fill is centred by the parent's
+                        // contentalignment and grows out of the middle instead of from the left
                         .align(Alignment.CenterStart)
                         .fillMaxHeight()
                         .fillMaxWidth(fraction = animatedProgress)
@@ -594,22 +573,7 @@ private fun android.content.Context.openUrl(url: String) {
 }
 
 
-/**
- * The app's own launcher icon, as the system actually composites it.
- *
- * Deliberately NOT `painterResource(R.mipmap.ic_launcher)`. On API 26+ that id resolves to
- * `mipmap-anydpi-v26/ic_launcher.xml`, which is an `<adaptive-icon>`; Compose's painterResource
- * accepts only `<vector>` and bitmap assets and throws
- * `IllegalArgumentException: Only VectorDrawables and rasterized asset types are supported` on
- * anything else. That is precisely what crashed this sheet the moment an update existed and the
- * "To Be Installed" row tried to draw. Every ic_launcher* alias in this project (including
- * ic_launcher_static, via mipmap-anydpi) has an adaptive variant, so there is no drawable id that
- * could simply be swapped in.
- *
- * Going through the PackageManager returns the real icon — background, foreground and mask already
- * composited for whatever API level is running — as a Drawable, which cannot hit that restriction.
- * Rasterised once and remembered, since it never changes for the life of the process.
- */
+// the app's own launcher icon as the system actually composites it deliberately
 @Composable
 internal fun AppIconImage(modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -625,8 +589,8 @@ internal fun AppIconImage(modifier: Modifier = Modifier) {
     if (icon != null) {
         Image(bitmap = icon, contentDescription = null, modifier = modifier)
     } else {
-        // Only reachable if the PackageManager lookup fails outright. The brand mark is a plain
-        // vector, so this path can never re-trigger the crash above.
+        // only reachable if the packagemanager lookup fails outright the brand mark
+        // vector so this path can never re-trigger the crash above
         Box(
             contentAlignment = Alignment.Center,
             modifier = modifier.background(CardSurface),

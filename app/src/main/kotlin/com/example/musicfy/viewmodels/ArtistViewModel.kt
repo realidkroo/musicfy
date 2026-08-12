@@ -1,4 +1,4 @@
-// ArtistViewModel.kt
+// artistviewmodelkt
 // what is this for you ask its for artist view model ofc
 
 package com.example.musicfy.viewmodels
@@ -73,7 +73,7 @@ class ArtistViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
-        // Load artist page and reload when hide explicit setting changes
+        // load artist page and reload when hide explicit setting changes
         viewModelScope.launch {
             context.dataStore.data
                 .map {
@@ -105,7 +105,7 @@ class ArtistViewModel @Inject constructor(
 
                     artistPage = page.copy(sections = filteredSections)
                     
-                    // Try to fetch artist video canvas from top songs
+                    // try to fetch artist video canvas from top songs
                     val topSongsSection = page.sections.find { it.items.firstOrNull() is com.music.innertube.models.SongItem }
                     topSongsSection?.items?.forEach { item ->
                         if (item is com.music.innertube.models.SongItem) {

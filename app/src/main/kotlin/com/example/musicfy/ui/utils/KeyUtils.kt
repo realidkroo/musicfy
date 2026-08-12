@@ -1,20 +1,15 @@
-// KeyUtils.kt
+// keyutilskt
 // the file functioned as key utils
 
 package com.example.musicfy.ui.utils
 
 import java.util.concurrent.atomic.AtomicLong
 
-/**
- * Utility object for generating unique keys in LazyColumn/LazyRow to prevent duplicate key errors
- */
+// utility object for generating unique keys in lazycolumn/lazyrow to prevent
 object KeyUtils {
     private val counter = AtomicLong(0)
     
-    /**
-     * Generates a unique key by combining a base identifier with a unique counter
-     * This prevents duplicate keys in LazyColumn/LazyRow implementations
-     */
+    // generates a unique key by combining a base identifier with a unique counter
     fun generateUniqueKey(baseId: String, prefix: String = ""): String {
         val uniqueId = counter.incrementAndGet()
         return if (prefix.isNotEmpty()) {
@@ -24,10 +19,7 @@ object KeyUtils {
         }
     }
     
-    /**
-     * Generates a unique key for items in a list with their index
-     * Useful for preventing duplicate keys when items might have the same ID
-     */
+    // generates a unique key for items in a list with their index useful for
     fun generateIndexedKey(baseId: String, index: Int, prefix: String = ""): String {
         val uniqueId = counter.incrementAndGet()
         return if (prefix.isNotEmpty()) {
@@ -37,10 +29,7 @@ object KeyUtils {
         }
     }
     
-    /**
-     * Generates a timestamp-based unique key for dynamic content
-     * Useful for content that changes frequently
-     */
+    // generates a timestamp-based unique key for dynamic content useful for content
     fun generateTimestampKey(baseId: String, prefix: String = ""): String {
         val timestamp = System.currentTimeMillis()
         val uniqueId = counter.incrementAndGet()

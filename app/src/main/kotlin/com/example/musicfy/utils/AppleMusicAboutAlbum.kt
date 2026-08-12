@@ -1,4 +1,4 @@
-// AppleMusicAboutAlbum.kt
+// applemusicaboutalbumkt
 // this thing is part of apple music about album
 
 package com.example.musicfy.utils
@@ -17,12 +17,10 @@ import kotlinx.serialization.json.*
 import java.util.Locale
 import timber.log.Timber
 
-/**
- * Utility for fetching album descriptions from Apple Music via the AMP API.
- */
+// utility for fetching album descriptions from apple music via the amp api
 object AppleMusicAboutAlbum {
 
-    // Public read-only JWT used by the Apple Music web player for unauthenticated catalog reads.
+    // public read-only jwt used by the apple music web player for
     private const val APPLE_MUSIC_TOKEN =
         "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IldlYlBsYXlLaWQifQ" +
         ".eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzc0NDU2MzgyLCJleHAiOjE3ODE3" +
@@ -51,21 +49,14 @@ object AppleMusicAboutAlbum {
         }
     }
 
-    /**
-     * Attempts to find the Apple Music description for a specific album.
-     *
-     * @param albumTitle The title of the album.
-     * @param artistName The name of the artist.
-     * @param storefront The Apple Music storefront (default "us").
-     * @return The editorial note/summary text if found, or null.
-     */
+    // attempts to find the apple music description for a specific album
     suspend fun fetchAlbumDescription(
         albumTitle: String,
         artistName: String?,
         storefront: String = "us"
     ): String? {
         return runCatching {
-            // 1. Search for the album to get the ID
+            // 1 search for the album to get the id
             val query = if (artistName != null && !albumTitle.contains(artistName, ignoreCase = true)) {
                 "$artistName $albumTitle"
             } else {
@@ -89,7 +80,7 @@ object AppleMusicAboutAlbum {
             val albumsData = searchRoot["results"]?.jsonObject?.get("albums")?.jsonObject?.get("data")?.jsonArray 
                 ?: return@runCatching null
 
-            // Score and find best match with editorial notes
+            // score and find best match with editorial notes
             val bestMatch = albumsData.mapNotNull { item ->
                 val obj = item.jsonObject
                 val attributes = obj["attributes"]?.jsonObject ?: return@mapNotNull null
@@ -113,7 +104,7 @@ object AppleMusicAboutAlbum {
             val description = editorialNotes?.get("standard")?.jsonPrimitive?.contentOrNull
                 ?: editorialNotes?.get("short")?.jsonPrimitive?.contentOrNull
 
-            // Remove HTML tags if present
+            // remove html tags if present
             description?.replace(Regex("<[^>]*>"), "")?.trim()
         }.onFailure {
             Timber.w("Failed to fetch Apple Music description for $albumTitle: ${it.message}")

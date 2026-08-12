@@ -1,4 +1,4 @@
-// musicfyupdater.kt
+// musicfyupdaterkt
 // the file functioned as musicfyupdater
 
 package com.example.musicfy.core.updater
@@ -141,7 +141,7 @@ fun UpdateScreen(navController: NavHostController) {
         DownloadNotificationManager.initialize(context)
     }
 
-    // Observe WorkManager for download progress
+    // observe workmanager for download progress
     LaunchedEffect(Unit) {
         WorkManager.getInstance(context)
             .getWorkInfosForUniqueWorkLiveData("update_download")
@@ -176,7 +176,7 @@ fun UpdateScreen(navController: NavHostController) {
             }
     }
 
-    // Check if downloaded file still exists
+    // check if downloaded file still exists
     LaunchedEffect(isDownloadComplete, downloadedFile) {
         if (isDownloadComplete && downloadedFile != null) {
             if (!downloadedFile!!.exists()) {
@@ -190,7 +190,7 @@ fun UpdateScreen(navController: NavHostController) {
     fun triggerUpdateCheck() {
         status = MusicfyUpdateStatus.Checking
         scope.launch {
-            // Add a small delay for visual feedback as in Med
+            // add a small delay for visual feedback as in med
             delay(1000L)
             checkForUpdate(
                 context = context,
@@ -551,7 +551,7 @@ fun UpdateScreen(navController: NavHostController) {
 }
 
 
-// Utility functions for SharedPreferences uses now view model
+// utility functions for sharedpreferences uses now view model
 const val PREFS_NAME = "settings"
 const val KEY_AUTO_UPDATE_CHECK = "auto_update_check"
 const val KEY_LAST_CHECKED_TIME = "last_checked_time"
@@ -619,7 +619,7 @@ private fun formatGitHubDate(githubDate: String): String = try {
     githubDate
 }
 
-// Robust version comparison: returns true if latestVersion > currentVersion
+// robust version comparison: returns true if latestversion > currentversion
 fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
     val latestVersionClean = latestVersion.removePrefix("b").removePrefix("v")
     val currentVersionClean = currentVersion.removePrefix("b").removePrefix("v")
@@ -627,7 +627,7 @@ fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
     val latestParts = latestVersionClean.split(".").map { it.toIntOrNull() ?: 0 }
     val currentParts = currentVersionClean.split(".").map { it.toIntOrNull() ?: 0 }
     
-    // Compare version numbers
+    // compare version numbers
     for (i in 0 until maxOf(latestParts.size, currentParts.size)) {
         val latest = latestParts.getOrElse(i) { 0 }
         val current = currentParts.getOrElse(i) { 0 }
@@ -637,18 +637,18 @@ fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
         }
     }
     
-    // If numbers are equal, check if one is beta and the other is not
+    // if numbers are equal check if one is beta and the other is not
     if (latestVersionClean == currentVersionClean) {
         val latestIsBeta = latestVersion.startsWith("b")
         val currentIsBeta = currentVersion.startsWith("b")
-        // Stable is "newer" (better) than beta of the same version
+        // stable is "newer" (better) than beta of the same version
         if (currentIsBeta && !latestIsBeta) return true
     }
     
     return false
 }
 
-// Fetches ALL releases, finds the latest version > current, and returns its info
+// fetches all releases finds the latest version > current and returns its
 suspend fun checkForUpdate(
     context: Context,
     onSuccess: (tag: String, isAvailable: Boolean, changelog: List<ChangelogSection>, size: String, date: String, description: String?, imageUrl: String?, apkUrl: String?) -> Unit,
@@ -715,9 +715,9 @@ suspend fun checkForUpdate(
                 val changelogList = mutableListOf<ChangelogSection>()
                 val headCommit = nightlyRunObject.optJSONObject("head_commit")
                 val commitMessage = headCommit?.optString("message") ?: "New features and bug fixes"
-                // Only use the subject line (first line) of the commit message.
-                // Git commit bodies (lines after the blank separator) are implementation
-                // details and should not appear as separate changelog bullet points.
+                // only use the subject line (first line) of the commit message
+                // git commit bodies (lines after the blank separator) are implementation
+                // details and should not appear as separate changelog bullet points
                 val subjectLine = commitMessage.lineSequence().firstOrNull { it.isNotBlank() } ?: commitMessage
                 changelogList.add(ChangelogSection(context.getString(R.string.changelog), listOf(subjectLine)))
                 
@@ -738,47 +738,47 @@ suspend fun checkForUpdate(
                 val tagName = release.getString("tag_name")
                 val isBeta = tagName.startsWith("b")
                 
-                // Track best stable
+                // track best stable
                 if (!isBeta) {
                     if (bestStableRelease == null || isNewerVersion(tagName, bestStableRelease.getString("tag_name"))) {
                         bestStableRelease = release
                     }
                 }
                 
-                // Track best overall
+                // track best overall
                 if (bestOverallRelease == null || isNewerVersion(tagName, bestOverallRelease.getString("tag_name"))) {
                     bestOverallRelease = release
                 }
             }
 
-            // Select the target release based on user preference
+            // select the target release based on user preference
             val targetRelease = if (betaEnabled) bestOverallRelease else bestStableRelease
 
             if (targetRelease != null) {
                 val targetTagName = targetRelease.getString("tag_name")
                 val isNewer = isNewerVersion(targetTagName, currentVersion)
                 
-                // Track Switch Logic:
-                // If the user has disabled beta updates, we should offer the latest stable release
-                // even if it's technically a lower version number than their current beta/custom build.
-                // This allows users to correctly "roll back" to the stable track.
+                // track switch logic:
+                // if the user has disabled beta updates we should offer the latest stable
+                // even if it's technically a lower version number than their current
+                // this allows users to correctly "roll back" to the stable track
                 val currentIsBeta = currentVersion.startsWith("b")
                 val targetIsStable = targetTagName.startsWith("v")
                 
-                // Compare version numbers ignoring prefixes
+                // compare version numbers ignoring prefixes
                 val currentClean = currentVersion.removePrefix("b").removePrefix("v")
                 val targetClean = targetTagName.removePrefix("b").removePrefix("v")
                 val isDifferentVersion = currentClean != targetClean
                 
                 var shouldShow = isNewer
                 if (!shouldShow && !betaEnabled) {
-                    // Logic: If I'm on a Beta (b5.0.7) and latest stable is v5.0.6, 
-                    // and I just turned OFF beta, I want to see v5.0.6.
+                    // logic: if i'm on a beta (b507) and latest stable is v506
+                    // and i just turned off beta i want to see v506
                     if (currentIsBeta && targetIsStable) {
                         shouldShow = true
                     } else if (isDifferentVersion && targetIsStable) {
-                        // Also show if current is a newer unofficial stable (e.g. built locally as 5.0.7)
-                        // but user wants the official stable 5.0.6.
+                        // also show if current is a newer unofficial stable (eg built locally as 507)
+                        // but user wants the official stable 506
                         shouldShow = true
                     }
                 }
@@ -787,7 +787,7 @@ suspend fun checkForUpdate(
                     val tagWithPrefix = targetRelease.getString("tag_name")
                     val displayTag = tagWithPrefix
 
-                    // FETCH CHANGELOG.JSON FROM RELEASE ASSETS
+                    // fetch changelogjson from release assets
                     val changelogList = mutableListOf<ChangelogSection>()
                     var description: String? = null
                     var imageUrl: String? = null
@@ -812,7 +812,7 @@ suspend fun checkForUpdate(
                             changelogList.add(ChangelogSection(title, itemsList))
                         }
                     } catch (e: Exception) {
-                        // Fallback: Parse body as a single list if it starts with characters or split by lines
+                        // fallback: parse body as a single list if it starts with characters or
                         val body = targetRelease.optString("body", context.getString(R.string.no_changelog_available))
                         val fallbackItems = body.split("\n").filter { it.isNotBlank() }
                         changelogList.add(ChangelogSection(context.getString(R.string.changelog), fallbackItems))
@@ -844,7 +844,7 @@ suspend fun checkForUpdate(
                 }
             }
 
-            // No update found or APK missing
+            // no update found or apk missing
             withContext(Dispatchers.Main) {
                 onSuccess(currentVersion, false, emptyList(), "", "", null, null, null)
             }
@@ -864,7 +864,7 @@ fun String.extractUrls(): List<Pair<IntRange, String>> {
     while (matcher.find()) {
         val url = matcher.group(1)?.trim() ?: continue
         val range = IntRange(matcher.start(1), matcher.end(1) - 1)
-        // Ensure URL has proper scheme
+        // ensure url has proper scheme
         val fullUrl = if (url.startsWith("http")) url else "https://$url"
         urlList.add(range to fullUrl)
     }

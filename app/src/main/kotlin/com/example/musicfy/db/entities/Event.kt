@@ -1,4 +1,4 @@
-// Event.kt
+// eventkt
 // this thing is for event
 
 package com.example.musicfy.db.entities

@@ -12,12 +12,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-/**
- * Scoped, distinctUntilChanged views over [PlayerConnection]'s raw flows, one instance
- * per connection (see [PlayerConnection.uiState]). Lets composables collect only the
- * slice of state they render instead of the ~17 flows the old root player composable
- * collected at once, which recomposed the whole tree on any single tick.
- */
+// scoped distinctuntilchanged views over [playerconnection]'s raw flows one
 @Stable
 class PlayerUiState(connection: PlayerConnection) {
     private val scope = connection.scope

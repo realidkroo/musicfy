@@ -1,4 +1,4 @@
-// PreferenceKeys.kt
+// preferencekeyskt
 // the file functioned as preference keys
 
 package com.example.musicfy.constants
@@ -150,10 +150,10 @@ val DiscordActivityTypeKey = stringPreferencesKey("discordActivityType")
 val DiscordActivityNameKey = stringPreferencesKey("discordActivityName")
 val DiscordAdvancedModeKey = booleanPreferencesKey("discordAdvancedMode")
 
-// Google Cast
+// google cast
 val EnableGoogleCastKey = booleanPreferencesKey("enableGoogleCast")
 
-// Listen Together
+// listen together
 
 val LastFMSessionKey = stringPreferencesKey("lastfmSession")
 val LastFMUsernameKey = stringPreferencesKey("lastfmUsername")
@@ -197,7 +197,7 @@ val LastArtistSyncKey = longPreferencesKey("last_artist_sync")
 val LastPlaylistSyncKey = longPreferencesKey("last_playlist_sync")
 val LastFullSyncKey = longPreferencesKey("last_full_sync")
 
-// Sync cooldown in seconds (30 minutes)
+// sync cooldown in seconds (30 minutes)
 const val SYNC_COOLDOWN = 30 * 60L
 
 val ArtistViewTypeKey = stringPreferencesKey("artistViewType")
@@ -215,22 +215,10 @@ val RandomizeHomeOrderKey = booleanPreferencesKey("randomizeHomeOrder")
 val AlbumCanvasEnabledKey = booleanPreferencesKey("albumCanvasEnabled")
 val BetaNoticeDismissedKey = booleanPreferencesKey("beta_notice_dismissed")
 
-/**
- * When the user last chose "remind me in 24 hours" on the home update prompt.
- *
- * Epoch millis, 0 for never. Deliberately a snooze rather than a per-version dismissal: the prompt
- * should come back for the same release if they simply were not ready, and a new release resets
- * nothing — 24 hours after the snooze it asks again either way.
- */
+// when the user last chose "remind me in 24 hours" on the home update prompt
 val UpdatePromptSnoozedAtKey = longPreferencesKey("update_prompt_snoozed_at")
 
-/**
- * Announce which provider a track resolved from ("Playing from …") as a toast on every song.
- *
- * Off by default — it fires on each track change, including automatic advances, which makes it a
- * toast most people see constantly and nobody asked for. It stays available because it is
- * genuinely useful when diagnosing which extractor a stream came from.
- */
+// announce which provider a track resolved from ("playing from …") as a toast on
 val ShowStreamSourceToastKey = booleanPreferencesKey("show_stream_source_toast")
 
 val ShowLikedPlaylistKey = booleanPreferencesKey("show_liked_playlist")
@@ -400,36 +388,22 @@ enum class PlayerButtonsStyle {
     TERTIARY
 }
 
-/**
- * The four player background treatments offered by the "Bg Style" section of the player
- * customization page.
- *
- * [COVER_GRADIENT] is first — and therefore the default — because it is implemented by the
- * blurred-cover + liquid-warp backdrop the player has always drawn, so an install that never
- * opens the editor looks exactly as it did before this enum was read by anything.
- */
+// the four player background treatments offered by the "bg style" section of the
 enum class PlayerBackgroundStyle {
-    /** Blurred artwork + warp shader. The historical (and default) player backdrop. */
+    // blurred artwork + warp shader the historical (and default) player backdrop
     COVER_GRADIENT,
 
-    /** Flat surfaceContainer fill. */
+    // flat surfacecontainer fill
     SOLID,
 
-    /** Static dark vertical gradient, independent of the artwork. */
+    // static dark vertical gradient independent of the artwork
     DARK_GRADIENT,
 
-    /** Apple-Music-style morphing colour mesh derived from the artwork's palette. */
+    // apple-music-style morphing colour mesh derived from the artwork's palette
     APPLE_MUSIC,
 }
 
-/**
- * How the artwork is presented in the expanded player. [EDGE_TO_EDGE] is the default for the same
- * reason as [PlayerBackgroundStyle.COVER_GRADIENT]: it is what the player already draws.
- *
- * Presentation metadata (display name, which toggles a style exposes, disc geometry) lives in
- * ui/player/customize/PlayerCoverStyles.kt rather than here — this file stays a plain key/enum
- * registry.
- */
+// how the artwork is presented in the expanded player [edge_to_edge] is the
 enum class PlayerCoverStyle {
     EDGE_TO_EDGE,
     SQUARED,
@@ -442,31 +416,19 @@ enum class PlayerCoverStyle {
 
 val PlayerCoverStyleKey = stringPreferencesKey("playerCoverStyle")
 
-/**
- * Whether the two oversized disc styles appear in the cover carousel.
- *
- * Off by default — they bleed off the screen edges by design and aren't finished enough to ship,
- * so they're hidden behind an Experimental switch rather than deleted.
- */
+// whether the two oversized disc styles appear in the cover carousel off by
 val ShowBigDiscStylesKey = booleanPreferencesKey("showBigDiscStyles")
 
-/** Spins the vinyl while the track is playing. Disc styles only. */
+// spins the vinyl while the track is playing disc styles only
 val DiscRotatingAnimationKey = booleanPreferencesKey("discRotatingAnimation")
 
-/** Adds groove texture and a fixed specular sheen to the vinyl. Disc styles only. */
+// adds groove texture and a fixed specular sheen to the vinyl disc styles only
 val DiscRealisticModeKey = booleanPreferencesKey("discRealisticMode")
 
-/**
- * The user's custom label printed on the vinyl's platter. One global string, not per-track.
- * Empty (the default) hides the label on the real player; the editor still outlines where it
- * would go so there is something to tap.
- */
+// the user's custom label printed on the vinyl's platter one global string not
 val DiscNameKey = stringPreferencesKey("discName")
 
-/**
- * What a player text slot displays. Persisted and settable, but nothing reads these yet — the
- * text-slot editor is scaffolded (see PlayerEditTarget.TITLE / SUBTITLE) and not built.
- */
+// what a player text slot displays persisted and settable but nothing reads these
 enum class PlayerTextContent {
     MUSIC_NAME,
     ALBUM_NAME,
@@ -489,20 +451,10 @@ val EnableLyricsThumbnailPlayPauseKey = booleanPreferencesKey("enableLyricsThumb
 val LyricsTextPositionKey = stringPreferencesKey("lyricsTextPosition")
 val LyricsClickKey = booleanPreferencesKey("lyricsClick")
 
-/**
- * Whether the active lyric line's letters lift, stretch and bloom as the sweep crosses them.
- *
- * Off leaves the same page and the same gradient sweep, only without the per-letter warp — the
- * second of the two lyric styles. Also the automatic behaviour below API 33, where the AGSL shader
- * the warp is built on doesn't exist.
- */
+// whether the active lyric line's letters lift stretch and bloom as the sweep
 val LyricsWaveAnimationKey = booleanPreferencesKey("lyricsWaveAnimation")
 
-/**
- * Eight-tap bloom on the sung word instead of four. On by default; off halves the bloom's
- * fragment cost for a very slightly flatter halo. Only meaningful when [LyricsWaveAnimationKey]
- * is on, since the bloom lives in the same shader as the warp.
- */
+// eight-tap bloom on the sung word instead of four on by default; off halves the
 val LyricsHighBloomKey = booleanPreferencesKey("lyricsHighBloom")
 val LyricsScrollKey = booleanPreferencesKey("lyricsScrollKey")
 val LyricsRomanizeJapaneseKey = booleanPreferencesKey("lyricsRomanizeJapanese")
@@ -817,7 +769,7 @@ val SuggestionRegionSlugToName =
         "il" to "Israel"
     )
 
-// Custom API & Advanced Audio Options
+// custom api & advanced audio options
 val EnableCustomApiKey = booleanPreferencesKey("enableCustomApi")
 val EnableMonochromeBackendKey = booleanPreferencesKey("enableMonochromeBackend")
 val EnableSpatialAudioKey = booleanPreferencesKey("enableSpatialAudio")
@@ -846,12 +798,12 @@ val MusicHapticsSensitivityKey = stringPreferencesKey("musicHapticsSensitivity")
 val HapticFocusKey = stringPreferencesKey("hapticFocus")
 val HideAudioQualityBadgeKey = booleanPreferencesKey("hideAudioQualityBadge")
 
-// Settings redesign additions
+// settings redesign additions
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
 val AudioQualityBadgeDevKey = booleanPreferencesKey("audioQualityBadgeDev")
 val YtVideoBackgroundLyricsSyncKey = booleanPreferencesKey("ytVideoBackgroundLyricsSync")
 
-// Setup wizard "would you like to" additions
+// setup wizard "would you like to" additions
 val OfflineModeKey = booleanPreferencesKey("offlineMode")
 val DisableAiFilterKey = booleanPreferencesKey("disableAiFilter")
 val SetupImportCompletedKey = booleanPreferencesKey("setupImportCompleted")

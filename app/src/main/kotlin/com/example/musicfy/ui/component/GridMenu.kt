@@ -1,4 +1,4 @@
-// GridMenu.kt
+// gridmenukt
 // this thing is part of grid menu
 
 package com.example.musicfy.ui.component

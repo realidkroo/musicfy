@@ -1,4 +1,4 @@
-// QueueMenu.kt
+// queuemenukt
 // this thing is part of queue menu
 
 package com.example.musicfy.ui.menu
@@ -97,8 +97,8 @@ fun QueueMenu(
 
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
     val downloadUtil = LocalDownloadUtil.current
-    // remember(id): getDownload() returns a new Flow each call, so an
-    // unremembered collectAsState relaunches its coroutine every recomposition.
+    // remember(id): getdownload() returns a new flow each call so an
+    // unremembered collectasstate relaunches its coroutine every recomposition
     val download by remember(downloadUtil, mediaMetadata.id) {
         downloadUtil.getDownload(mediaMetadata.id)
     }.collectAsState(initial = null)
@@ -182,7 +182,7 @@ fun QueueMenu(
         }
     }
 
-    // Song header with like button
+    // song header with like button
     MediaMetadataListItem(
         mediaMetadata = mediaMetadata,
         shape = listItemShape(0, 2),
@@ -234,7 +234,7 @@ fun QueueMenu(
             bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
-        // Quick actions grid
+        // quick actions grid
         item {
             NewActionGrid(
                 actions = listOf(
@@ -295,7 +295,7 @@ fun QueueMenu(
             )
         }
 
-        // Play next / Add to queue
+        // play next / add to queue
         item {
             Material3MenuGroup(
                 items = listOf(
@@ -341,7 +341,7 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // Download section
+        // download section
         item {
             Material3MenuGroup(
                 items = listOf(
@@ -426,7 +426,7 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // Navigation section (Artist, Album)
+        // navigation section (artist album)
         item {
             Material3MenuGroup(
                 items = buildList {
@@ -492,7 +492,7 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // Details and refetch section
+        // details and refetch section
         item {
             Material3MenuGroup(
                 items = buildList {

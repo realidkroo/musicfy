@@ -1,4 +1,4 @@
-// UpdaterComponents.kt
+// updatercomponentskt
 // this thing is for updater components
 
 package com.example.musicfy.ui.component
@@ -161,7 +161,7 @@ fun ErrorSnackbar(
     }
 }
 
-// Shape utilities for grouped list items
+// shape utilities for grouped list items
 private const val ConnectedCornerRadius = 4
 private const val EndCornerRadius = 16
 

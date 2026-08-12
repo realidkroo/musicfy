@@ -1,4 +1,4 @@
-// DatabaseDao.kt
+// databasedaokt
 // this thing is part of database dao
 
 package com.example.musicfy.db
@@ -827,7 +827,7 @@ interface DatabaseDao {
             ArtistSortType.PLAY_TIME -> artistsByPlayTimeAsc()
         }.map { artists ->
             artists
-                .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // TODO: add ui to filter by local or remote or something idk
+                .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // todo: add ui to filter by local or remote or something idk
                 .reversed(descending)
         }
 
@@ -839,7 +839,7 @@ interface DatabaseDao {
             ArtistSortType.PLAY_TIME -> artistsBookmarkedByPlayTimeAsc()
         }.map { artists ->
             artists
-                .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // TODO: add ui to filter by local or remote or something idk
+                .filter { it.artist.isYouTubeArtist || it.artist.isLocal } // todo: add ui to filter by local or remote or something idk
                 .reversed(descending)
         }
 
@@ -1278,7 +1278,7 @@ interface DatabaseDao {
     @Query("DELETE FROM search_history")
     fun clearSearchHistory()
 
-    // Recognition History
+    // recognition history
     @Transaction
     @Query("SELECT * FROM recognition_history ORDER BY recognizedAt DESC")
     fun recognitionHistory(): Flow<List<RecognitionHistory>>
@@ -1315,9 +1315,7 @@ interface DatabaseDao {
     @Query("UPDATE playCount SET count = count + 1 WHERE song = :songId AND year = :year AND month = :month")
     fun incrementPlayCount(songId: String, year: Int, month: Int)
 
-    /**
-     * Increment by one the play count with today's year and month.
-     */
+    // increment by one the play count with today's year and month
     fun incrementPlayCount(songId: String) {
         val time = LocalDateTime.now().atOffset(ZoneOffset.UTC)
         var oldCount: Int
@@ -1440,14 +1438,7 @@ interface DatabaseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(playCountEntity: PlayCountEntity): Long
 
-    /**
-     * Removes artist rows that are actually track durations, and unlinks them from their songs.
-     * One-off repair for libraries built before the guard in [insert] existed — the bad names are
-     * already persisted, so fixing the parsers alone would never clean them up.
-     *
-     * GLOB, not LIKE: SQLite's LIKE has no character-class syntax, so '[0-9]' would be matched
-     * literally. This targets m:ss / mm:ss / h:mm:ss.
-     */
+    // removes artist rows that are actually track durations and unlinks them from
     @Query("DELETE FROM song_artist_map WHERE artistId IN (SELECT id FROM artist WHERE name GLOB '[0-9]*:[0-9][0-9]')")
     fun unlinkTimestampArtists(): Int
 
@@ -1467,14 +1458,14 @@ interface DatabaseDao {
     ) {
         if (insert(mediaMetadata.toSongEntity().let(block)) == -1L) return
 
-        // Single guard for every source of song metadata.
-        //
-        // Several InnerTube parsers pick the artist out of a bullet-separated subtitle
-        // ("Song • Artist • 5:06"). When a track has no artist run the segmentation slides and
-        // the *duration* lands in the artist slot, which then gets written here and persists —
-        // so the row keeps showing "5:06 • 5:06" (artist • duration) long after any parser is
-        // corrected. Filtering at the point of persistence covers all of those call sites at once
-        // instead of patching each parser and missing one.
+        // single guard for every source of song metadata
+
+        // several innertube parsers pick the artist out of a bullet-separated
+        // ("song • artist • 5:06") when a track has no artist run the segmentation
+        // the *duration* lands in the artist slot which then gets written here and
+        // so the row keeps showing "5:06 • 5:06" (artist • duration) long after any
+        // corrected filtering at the point of persistence covers all of those call
+        // instead of patching each parser and missing one
         mediaMetadata.artists.filterNot { it.name.looksLikeTimestampName() }.forEachIndexed { index, artist ->
             val artistId = artist.id ?: artistByName(artist.name)?.id ?: ArtistEntity.generateArtistId()
 
@@ -1654,7 +1645,7 @@ interface DatabaseDao {
             }.forEach(::upsert)
 
         albumPage.album.artists?.let { artists ->
-            // Recreate album artists
+            // recreate album artists
             albumArtistMaps(album.id).forEach(::delete)
             artists
                 .map { artist ->
@@ -1754,7 +1745,7 @@ interface DatabaseDao {
     }
 }
 
-/** m:ss, mm:ss or h:mm:ss — the shapes a duration run takes in a subtitle. */
+// m:ss mm:ss or h:mm:ss — the shapes a duration run takes in a subtitle
 private val TIMESTAMP_NAME_REGEX = Regex("""^\d{1,2}:\d{2}(:\d{2})?$""")
 
 private fun String.looksLikeTimestampName(): Boolean = TIMESTAMP_NAME_REGEX.matches(trim())

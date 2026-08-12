@@ -1,4 +1,4 @@
-// OnlineSearchScreen.kt
+// onlinesearchscreenkt
 // what is this for you ask its for online search screen ofc
 
 package com.example.musicfy.ui.screens.search

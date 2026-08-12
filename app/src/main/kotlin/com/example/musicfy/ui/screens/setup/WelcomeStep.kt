@@ -58,8 +58,8 @@ fun WelcomeStep(isHiding: Boolean = false) {
     var currentAnimation by remember { mutableStateOf(CurrentAnimation.Disc) }
     var thumbnails by remember { mutableStateOf<List<String>>(emptyList()) }
     
-    // Square cover art from YouTube Music, fetched once. The hardcoded i.ytimg list below is only
-    // a fallback — those are 16:9 video thumbnails, which look wrong cropped into the grid.
+    // square cover art from youtube music fetched once the hardcoded iytimg list
+    // a fallback — those are 16:9 video thumbnails which look wrong cropped into
     LaunchedEffect(Unit) {
         val fetched = withContext(Dispatchers.IO) {
             listOf("top hits", "classic rock", "j-pop", "pop hits 2020s")
@@ -125,15 +125,15 @@ fun WelcomeStep(isHiding: Boolean = false) {
     Box(
         modifier = Modifier.fillMaxSize().clipToBounds()
     ) {
-        // Morphing Dark Green/Black Gradient Background
+        // morphing dark green/black gradient background
         Canvas(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = bgAlpha }) {
             val center1 = Offset(size.width * 0.2f + (size.width * 0.6f * morphProgress), size.height * 0.3f)
             val center2 = Offset(size.width * 0.8f - (size.width * 0.4f * morphProgress), size.height * 0.7f + (size.height * 0.2f * morphProgress))
             
-            // Draw a base pure black
+            // draw a base pure black
             drawRect(Color.Black)
             
-            // Draw very subtle radial gradients for the glowing morph effect
+            // draw very subtle radial gradients for the glowing morph effect
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(Color(0xFF0A1F13).copy(alpha = 0.5f), Color.Transparent),
@@ -155,7 +155,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
             )
         }
 
-        // The Animation covering the upper right area
+        // the animation covering the upper right area
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -169,7 +169,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
                 })
             }
         }
-        // Progressive gradient overlay at the bottom covering the text area
+        // progressive gradient overlay at the bottom covering the text area
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -185,7 +185,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
                 )
         )
         
-        // The Text at bottom left - shifted up to avoid next button overlap
+        // the text at bottom left - shifted up to avoid next button overlap
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -224,7 +224,7 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
         label = "DiscRotation"
     )
 
-    // Gentle shake for the arm
+    // gentle shake for the arm
     val armShake by infiniteTransition.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
@@ -239,8 +239,8 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
     var isInteracting by remember { mutableStateOf(false) }
     var playDuration by remember { mutableLongStateOf(5000L) }
     
-    val discOffset = remember { Animatable(1f) } // 1f = hidden (top right), 0f = visible
-    val armBaseRotation = remember { Animatable(-90f) } // -90f = hidden, -15f = playing
+    val discOffset = remember { Animatable(1f) } // 1f = hidden (top right) 0f = visible
+    val armBaseRotation = remember { Animatable(-90f) } // -90f = hidden -15f = playing
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(isHiding) {
@@ -256,24 +256,24 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
             SpawningState.Hidden -> {
                 discOffset.snapTo(1f)
                 armBaseRotation.snapTo(-90f)
-                // Trigger transition to GridAnimation instead of spawning again
+                // trigger transition to gridanimation instead of spawning again
                 if (!isHiding) {
                     onSequenceComplete()
                 }
             }
             SpawningState.Spawning -> {
-                // Tail appears first from vertical to partially horizontal
+                // tail appears first from vertical to partially horizontal
                 coroutineScope.launch {
                     armBaseRotation.animateTo(-30f, tween(800, easing = FastOutSlowInEasing))
                 }
                 delay(400) // slight overlap
                 
-                // Disc slides in
+                // disc slides in
                 coroutineScope.launch {
                     discOffset.animateTo(0.0f, spring(dampingRatio = 0.6f, stiffness = 100f))
                 }
                 
-                // Tail goes to playing position
+                // tail goes to playing position
                 delay(300)
                 armBaseRotation.animateTo(-15f, spring(dampingRatio = 0.6f, stiffness = 200f))
                 currentState = SpawningState.Playing
@@ -283,15 +283,15 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                 currentState = SpawningState.Despawning
             }
             SpawningState.Despawning -> {
-                // Arm lifts up
+                // arm lifts up
                 armBaseRotation.animateTo(-30f, tween(400, easing = FastOutSlowInEasing))
                 
-                // Disc slides out
+                // disc slides out
                 coroutineScope.launch {
                     discOffset.animateTo(1.0f, spring(dampingRatio = 0.8f, stiffness = 60f))
                 }
                 delay(300)
-                // Arm retracts fully
+                // arm retracts fully
                 armBaseRotation.animateTo(-90f, tween(600, easing = FastOutSlowInEasing))
                 delay(600)
                 currentState = SpawningState.Hidden
@@ -304,56 +304,56 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
         val canvasHeight = constraints.maxHeight.toFloat()
         
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val cx = size.width + (discOffset.value * size.width * 1.5f) // increased to 1.5f so it stays hidden when scaled
+            val cx = size.width + (discOffset.value * size.width * 1.5f) // increased to 15f so it stays hidden when scaled
             val cy = size.height * 0.3f - (discOffset.value * size.height * 0.6f)
             val discCenter = Offset(cx, cy)
             val maxRadius = size.width * 0.85f
             
-            // Depth effect: scale up the disc as it moves away
+            // depth effect: scale up the disc as it moves away
             val discScale = 1.0f + (discOffset.value * 0.5f)
             
             scale(scale = discScale, pivot = discCenter) {
                 rotate(rotation, pivot = discCenter) {
-                    // Main disc
+                    // main disc
                     drawCircle(
                         color = Color(0xFF2A2A2A),
                         radius = maxRadius,
                         center = discCenter
                     )
-                    // Inner groove 1
+                    // inner groove 1
                     drawCircle(
                         color = Color(0xFF242424),
                         radius = maxRadius * 0.75f,
                         center = discCenter,
                         style = Stroke(width = 2.dp.toPx())
                     )
-                    // Inner groove 2
+                    // inner groove 2
                     drawCircle(
                         color = Color(0xFF242424),
                         radius = maxRadius * 0.5f,
                         center = discCenter,
                         style = Stroke(width = 2.dp.toPx())
                     )
-                    // Label area
+                    // label area
                     drawCircle(
                         color = Color(0xFF333333),
                         radius = maxRadius * 0.35f,
                         center = discCenter
                     )
-                    // Logo mark on the label to show rotation
+                    // logo mark on the label to show rotation
                     drawCircle(
                         color = Color(0xFF555555),
                         radius = maxRadius * 0.06f,
                         center = Offset(discCenter.x, discCenter.y - maxRadius * 0.2f)
                     )
-                    // Ring around hole
+                    // ring around hole
                     drawCircle(
                         color = Color(0xFF444444),
                         radius = maxRadius * 0.12f,
                         center = discCenter,
                         style = Stroke(width = 4.dp.toPx())
                     )
-                    // Center hole (background color)
+                    // center hole (background color)
                     drawCircle(
                         color = Color(0xFF121212),
                         radius = maxRadius * 0.08f,
@@ -362,7 +362,7 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                 }
             }
             
-            // Reader Arm
+            // reader arm
             val armBaseX = -size.width * 0.1f
             val armBaseY = size.height * 0.45f
             
@@ -373,7 +373,7 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                 val armEndX = armBaseX + armLength
                 val armEndY = armBaseY
                 
-                // Draw arm line
+                // draw arm line
                 drawLine(
                     color = Color(0xFF444444),
                     start = Offset(armBaseX, armBaseY),
@@ -382,7 +382,7 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                     cap = StrokeCap.Round
                 )
                 
-                // Draw stylus head (pill shape)
+                // draw stylus head (pill shape)
                 val headWidth = 80.dp.toPx()
                 val headHeight = 28.dp.toPx()
                 
@@ -395,7 +395,7 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
             }
         }
         
-        // Touch target overlay
+        // touch target overlay
         val angleRad = armBaseRotation.value * kotlin.math.PI / 180.0
         val armLength = canvasWidth * 0.8f
         val armBaseX = -canvasWidth * 0.1f
@@ -462,7 +462,7 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
     val pxSpacing = remember(density) { with(density) { spacing.toPx() } }
     
     val panOffset = remember { Animatable(0f) }
-    // Initialize animatables safely
+    // initialize animatables safely
     val scales = remember(thumbnails.size) { List(thumbnails.size) { Animatable(0f) } }
     var isForceHiding by remember { mutableStateOf(false) }
 
@@ -486,12 +486,12 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
         val totalCols = (thumbnails.size + 2) / 3
         val contentWidth = totalCols * (pxItemSize + pxSpacing)
         
-        // Pan leftwards slowly to give a scanning effect
+        // pan leftwards slowly to give a scanning effect
         launch {
             panOffset.animateTo(-contentWidth * 0.4f, tween(7000, easing = LinearEasing))
         }
         
-        // Stagger spawn based on column index
+        // stagger spawn based on column index
         thumbnails.forEachIndexed { index, _ ->
             launch {
                 val col = index / 3
@@ -500,9 +500,9 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
             }
         }
         
-        delay(6000) // Play for 6 seconds
+        delay(6000) // play for 6 seconds
         
-        // Despawn sequence
+        // despawn sequence
         val despawnJobs = thumbnails.mapIndexed { index, _ ->
             launch {
                 val col = index / 3
@@ -516,14 +516,14 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
     }
     
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // Start drawing higher up so top row clips slightly more
+        // start drawing higher up so top row clips slightly more
         val startY = -pxItemSize * 0.25f
         
         thumbnails.forEachIndexed { index, url ->
             val col = index / 3
             val row = index % 3
             
-            // Offset rows slightly to right for a masonry look
+            // offset rows slightly to right for a masonry look
             val rowOffset = if (row % 2 != 0) (pxItemSize + pxSpacing) * 0.5f else 0f
             
             val xPos = 60f + col * (pxItemSize + pxSpacing) + rowOffset
@@ -541,10 +541,10 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
                     }
                     .size(itemSize)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF242424)) // Fallback/loading color
+                    .background(Color(0xFF242424)) // fallback/loading color
             ) {
                 if (url.isNotEmpty()) {
-                    // Fades up as it decodes rather than snapping over the placeholder tile.
+                    // fades up as it decodes rather than snapping over the placeholder tile
                     FadeInCover(url = url, modifier = Modifier.fillMaxSize())
                 }
             }

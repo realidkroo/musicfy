@@ -1,4 +1,4 @@
-// YouTubeArtistMenu.kt
+// youtubeartistmenukt
 // this thing is for you tube artist menu
 
 package com.example.musicfy.ui.menu

@@ -1,4 +1,4 @@
-// SuggestionRegionSheet.kt
+// suggestionregionsheetkt
 // what is this for you ask its for suggestion region sheet ofc
 
 package com.example.musicfy.ui.screens.search.suggestions
@@ -38,7 +38,7 @@ fun SuggestionRegionSheet(
     
     val filteredRegions = remember(searchQuery) {
         SuggestionRegionSlugToName.toList()
-            .filter { it.first != "system" } // Filter out system from the main list
+            .filter { it.first != "system" } // filter out system from the main list
             .filter { it.second.contains(searchQuery, ignoreCase = true) }
     }
 
@@ -87,7 +87,7 @@ fun SuggestionRegionSheet(
                     .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(24.dp))
             ) {
-                // System Default Section
+                // system default section
                 item {
                     Text(
                         text = "System",

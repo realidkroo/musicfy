@@ -1,4 +1,4 @@
-// MediaSessionConstants.kt
+// mediasessionconstantskt
 // what is this for you ask its for media session constants ofc
 
 package com.example.musicfy.constants

@@ -1,4 +1,4 @@
-// LrcLibLyricsProvider.kt
+// lrcliblyricsproviderkt
 // this thing is part of lrc lib lyrics provider
 
 package com.example.musicfy.lyrics

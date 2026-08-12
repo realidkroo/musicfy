@@ -1,4 +1,4 @@
-// commiitem.kt
+// commiitemkt
 // what is this for you ask its for commiitem ofc
 
 package com.example.musicfy.core.commitscreen
@@ -44,7 +44,7 @@ import com.example.musicfy.R
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Left: Commit icon / type indicator
+        // left: commit icon / type indicator
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -62,12 +62,12 @@ import com.example.musicfy.R
             )
         }
 
-        // Center: Commit information
+        // center: commit information
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // Main commit message
+            // main commit message
             Text(
                 text = commit.message,
                 style = MaterialTheme.typography.bodyLarge,
@@ -77,7 +77,7 @@ import com.example.musicfy.R
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Author + date row
+            // author + date row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -101,7 +101,7 @@ import com.example.musicfy.R
                 )
             }
 
-            // Short SHA chip
+            // short sha chip
             Surface(
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = RoundedCornerShape(4.dp)
@@ -117,7 +117,7 @@ import com.example.musicfy.R
 
         Spacer(Modifier.width(4.dp))
 
-        // Right: Author avatar
+        // right: author avatar
         if (commit.authorAvatarUrl != null) {
             AsyncImage(
                 model = commit.authorAvatarUrl,
@@ -127,7 +127,7 @@ import com.example.musicfy.R
                     .clip(CircleShape)
             )
         } else {
-            // Fallback avatar with initials
+            // fallback avatar with initials
             Box(
                 modifier = Modifier
                     .size(36.dp)

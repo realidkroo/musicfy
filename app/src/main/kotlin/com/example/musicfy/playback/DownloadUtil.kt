@@ -1,4 +1,4 @@
-// DownloadUtil.kt
+// downloadutilkt
 // this thing is part of download util
 
 package com.example.musicfy.playback
@@ -163,7 +163,7 @@ constructor(
 
                 upsert(updatedSong)
 
-                // Pre-cache the high-res thumbnail immediately when download starts
+                // pre-cache the high-res thumbnail immediately when download starts
                 updatedSong.thumbnailUrl?.let { url ->
                     val request = ImageRequest.Builder(context)
                         .data(url)
@@ -236,18 +236,7 @@ constructor(
         downloads.value = result
     }
 
-    /**
-     * Observes one song's download.
-     *
-     * `downloads` is a StateFlow of the whole download map, so without [distinctUntilChanged]
-     * every subscriber re-emits on each progress tick of *any* active download — in a song list
-     * that means every visible row recomposes several times a second while one unrelated song
-     * downloads.
-     *
-     * This returns a new Flow instance per call, and `collectAsState` keys its collector on the
-     * flow instance. Call sites must therefore wrap it in `remember(songId)`, otherwise every
-     * recomposition tears down and relaunches a coroutine. That was happening in every song row.
-     */
+    // observes one song's download `downloads` is a stateflow of the whole download
     fun getDownload(songId: String): Flow<Download?> =
         downloads.map { it[songId] }.distinctUntilChanged()
 

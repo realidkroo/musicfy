@@ -1,4 +1,4 @@
-// NewMenuComponents.kt
+// newmenucomponentskt
 // what is this for you ask its for new menu components ofc
 
 package com.example.musicfy.ui.component
@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 
-// Enhanced Action Button - Material 3 Expressive Design
+// enhanced action button - material 3 expressive design
 @Composable
 fun NewActionButton(
     icon: @Composable () -> Unit,
@@ -118,7 +118,7 @@ fun NewActionButton(
     }
 }
 
-// Enhanced Menu Item - Material 3 Expressive Design
+// enhanced menu item - material 3 expressive design
 @Composable
 fun NewMenuItem(
     headlineContent: @Composable () -> Unit,
@@ -141,7 +141,7 @@ fun NewMenuItem(
     )
 }
 
-// Enhanced Menu Section Header - Material 3 Expressive Design
+// enhanced menu section header - material 3 expressive design
 @Composable
 fun NewMenuSectionHeader(
     text: String,
@@ -158,7 +158,7 @@ fun NewMenuSectionHeader(
     )
 }
 
-// Enhanced Action Grid - Material 3 Expressive Design
+// enhanced action grid - material 3 expressive design
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun NewActionGrid(
@@ -217,7 +217,7 @@ fun NewActionGrid(
     }
 }
 
-// Enhanced Action Data Class
+// enhanced action data class
 data class NewAction(
     val icon: @Composable () -> Unit,
     val text: String,
@@ -227,7 +227,7 @@ data class NewAction(
     val contentColor: Color = Color.Unspecified
 )
 
-// Enhanced Menu Content - Material 3 Expressive Design
+// enhanced menu content - material 3 expressive design
 @Composable
 fun NewMenuContent(
     headerContent: @Composable (() -> Unit)? = null,
@@ -239,13 +239,13 @@ fun NewMenuContent(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Header
+        // header
         headerContent?.invoke()
         
-        // Action Grid
+        // action grid
         actionGrid?.invoke()
         
-        // Divider if both header and actions exist
+        // divider if both header and actions exist
         if (headerContent != null && actionGrid != null) {
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 16.dp),
@@ -253,12 +253,12 @@ fun NewMenuContent(
             )
         }
         
-        // Menu Items
+        // menu items
         menuItems?.invoke()
     }
 }
 
-// Enhanced Icon Button - Material 3 Expressive Design
+// enhanced icon button - material 3 expressive design
 @Composable
 fun NewIconButton(
     icon: @Composable () -> Unit,
@@ -302,7 +302,7 @@ fun NewIconButton(
     }
 }
 
-// Enhanced Menu Container - Material 3 Expressive Design
+// enhanced menu container - material 3 expressive design
 @Composable
 fun NewMenuContainer(
     content: @Composable () -> Unit,

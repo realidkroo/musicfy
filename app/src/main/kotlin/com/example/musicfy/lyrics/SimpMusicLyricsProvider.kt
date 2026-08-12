@@ -1,4 +1,4 @@
-// SimpMusicLyricsProvider.kt
+// simpmusiclyricsproviderkt
 // what is this for you ask its for simp music lyrics provider ofc
 
 package com.example.musicfy.lyrics

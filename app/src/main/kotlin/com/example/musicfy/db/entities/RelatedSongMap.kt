@@ -1,4 +1,4 @@
-// RelatedSongMap.kt
+// relatedsongmapkt
 // what is this for you ask its for related song map ofc
 
 package com.example.musicfy.db.entities

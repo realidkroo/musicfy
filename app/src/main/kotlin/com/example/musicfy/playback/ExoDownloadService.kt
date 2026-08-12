@@ -1,4 +1,4 @@
-// ExoDownloadService.kt
+// exodownloadservicekt
 // this thing is part of exo download service
 
 package com.example.musicfy.playback
@@ -75,9 +75,7 @@ class ExoDownloadService : DownloadService(
         ).build()
 
 
-    /**
-     * This helper will outlive the lifespan of a single instance of [ExoDownloadService]
-     */
+    // this helper will outlive the lifespan of a single instance of
     class TerminalStateNotificationHelper(
         private val context: Context,
         private val notificationHelper: DownloadNotificationHelper,

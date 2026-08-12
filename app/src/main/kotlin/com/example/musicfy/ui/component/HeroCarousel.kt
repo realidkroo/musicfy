@@ -1,4 +1,4 @@
-// HeroCarousel.kt
+// herocarouselkt
 // this thing is for hero carousel
 
 package com.example.musicfy.ui.component
@@ -182,13 +182,13 @@ fun HeroCarousel(
     
     val carouselItems = remember(keepListening, lastPlayedSong, dailyDiscover) {
         buildList {
-            // Add the last played song
+            // add the last played song
             lastPlayedSong?.let { add(KeepListeningItem(it, isLastPlayed = true)) }
             
-            // Add Daily Discover recommendations
+            // add daily discover recommendations
             dailyDiscover?.take(5)?.forEach { add(DiscoverItem(it)) }
             
-            // Fill the rest up to 5 items with keepListening history
+            // fill the rest up to 5 items with keeplistening history
             if (size < 5) {
                 keepListening?.filterIsInstance<com.example.musicfy.db.entities.Song>()
                     ?.filter { song -> none { it is KeepListeningItem && it.mediaId == song.id } }
@@ -203,8 +203,8 @@ fun HeroCarousel(
     val carouselHeight = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
 
     if (carouselItems.isEmpty()) {
-        // Nothing to carousel means a clean setup: no last-played, no history, no Daily Discover.
-        // Onboard instead of showing an empty hole.
+        // nothing to carousel means a clean setup: no last-played no history no
+        // onboard instead of showing an empty hole
         val (username) = rememberPreference(UsernameKey, defaultValue = "")
         OnboardingHero(
             username = username,
@@ -359,7 +359,7 @@ fun HeroCarousel(
             }
         }
 
-        // Static dark gradient overlay
+        // static dark gradient overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -376,7 +376,7 @@ fun HeroCarousel(
                 )
         )
 
-        // Dynamic Text Overlay
+        // dynamic text overlay
         val currentMediaId by playerConnection.mediaMetadata.collectAsState()
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -425,7 +425,7 @@ fun HeroCarousel(
                             tint = Color.White,
                             modifier = Modifier
                                 .size(24.dp)
-                                .offset(x = if (playing) 0.dp else 2.dp) // Visually center the play triangle
+                                .offset(x = if (playing) 0.dp else 2.dp) // visually center the play triangle
                         )
                     }
                 }

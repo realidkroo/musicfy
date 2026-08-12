@@ -1,4 +1,4 @@
-// AlbumEntity.kt
+// albumentitykt
 // what is this for you ask its for album entity ofc
 
 package com.example.musicfy.db.entities

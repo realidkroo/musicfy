@@ -1,4 +1,4 @@
-// PlaylistSong.kt
+// playlistsongkt
 // this thing is part of playlist song
 
 package com.example.musicfy.db.entities

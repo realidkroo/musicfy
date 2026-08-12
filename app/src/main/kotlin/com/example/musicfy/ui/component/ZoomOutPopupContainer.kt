@@ -1,8 +1,8 @@
-// ZoomOutPopupContainer.kt
-// Generic version of the "whole screen shrinks into a rounded card behind a bottom sheet" effect
-// used by BetaNoticeContainer/BetaNoticeScreen — same animation math, but with the overlay content
-// as a slot instead of being hardcoded to the beta notice, so any full-screen route can reuse the
-// same "background zooms out" motion for its own popup.
+// zoomoutpopupcontainerkt
+// generic version of the "whole screen shrinks into a rounded card behind a
+// used by betanoticecontainer/betanoticescreen — same animation math but
+// as a slot instead of being hardcoded to the beta notice so any full-screen
+// same "background zooms out" motion for its own popup
 
 package com.example.musicfy.ui.component
 
@@ -33,14 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 
-/**
- * Global trigger for [ZoomOutPopupContainer], mounted ONCE at the app root (see MainActivity) as
- * a sibling composed *after* the persistent mini player / nav bar — that composition order is
- * what makes the popup draw on top of them. A screen deep in the NavHost can't get that same
- * z-ordering by wrapping its own local content: the mini player lives higher up in the tree, at
- * the same level as the NavHost itself, so any container a screen builds around its own content
- * is still fundamentally behind it. Calling [show] here instead reaches that higher mount point.
- */
+// global trigger for [zoomoutpopupcontainer] mounted once at the app root (see
 @Stable
 class ZoomOutOverlayState {
     var isVisible by mutableStateOf(false)

@@ -1,11 +1,11 @@
-// PlayerBackgroundStyles.kt
-// The three NEW player backdrops from the "Bg Style" section of the customization page.
-//
-// PlayerBackgroundStyle.COVER_GRADIENT is deliberately absent from this file. That style is
-// implemented by the blurred-artwork + liquid-warp block that already lives inside
-// MorphingCover, left exactly where and as it was — it is the default, so an install that never
-// opens the editor renders through the identical code path it always did. MorphingCover branches
-// to this file only for the other three.
+// playerbackgroundstyleskt
+// the three new player backdrops from the "bg style" section of the
+
+// playerbackgroundstylecover_gradient is deliberately absent from this file
+// implemented by the blurred-artwork + liquid-warp block that already lives
+// morphingcover left exactly where and as it was — it is the default so an
+// opens the editor renders through the identical code path it always did
+// to this file only for the other three
 
 package com.example.musicfy.ui.player.customize
 
@@ -44,12 +44,7 @@ import com.example.musicfy.ui.utils.resize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Renders [style]'s backdrop.
- *
- * Calling this with [PlayerBackgroundStyle.COVER_GRADIENT] draws nothing — see the file header;
- * MorphingCover keeps that case on its own original code path and never routes it here.
- */
+// renders [style]'s backdrop calling this with
 @Composable
 fun PlayerBackgroundContent(
     style: PlayerBackgroundStyle,
@@ -68,18 +63,7 @@ fun PlayerBackgroundContent(
     }
 }
 
-/**
- * [PlayerBackgroundContent] plus COVER_GRADIENT, which it does not draw.
- *
- * COVER_GRADIENT is the real thing — the same [CoverGradientBackdrop] the player itself renders,
- * warp shader and all — not a lookalike. An earlier version here drew a bigger blurred bitmap
- * with no warp, which made the editor's preview visibly disagree with the player it was
- * previewing.
- *
- * @param width / [height] the size to allocate the backdrop layer at. Pass the *stage's largest*
- *   size, not its current one: the layer is fixed-size by design and the caller's clip reveals
- *   more or less of it.
- */
+// [playerbackgroundcontent] plus cover_gradient which it does not draw
 @Composable
 fun PlayerBackgroundPreview(
     style: PlayerBackgroundStyle,
@@ -88,7 +72,7 @@ fun PlayerBackgroundPreview(
     height: Dp,
     animate: Boolean,
     modifier: Modifier = Modifier,
-    /** False skips building the AGSL program entirely — for previews too small to show it. */
+    // false skips building the agsl program entirely — for previews too small to show it
     warp: Boolean = true,
 ) {
     if (style != PlayerBackgroundStyle.COVER_GRADIENT) {
@@ -111,14 +95,14 @@ fun PlayerBackgroundPreview(
     }
 }
 
-/** "Simple gray color" — a flat fill, no artwork input at all. */
+// "simple gray color" — a flat fill no artwork input at all
 @Composable
 private fun SolidBackground(pureBlack: Boolean, modifier: Modifier = Modifier) {
     val color = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
     Box(modifier = modifier.background(color))
 }
 
-/** "Simple dark static gradient" — fixed colours, so it never changes between tracks. */
+// "simple dark static gradient" — fixed colours so it never changes between tracks
 @Composable
 private fun DarkGradientBackground(modifier: Modifier = Modifier) {
     val brush = remember {
@@ -131,15 +115,7 @@ private fun DarkGradientBackground(modifier: Modifier = Modifier) {
     Box(modifier = modifier.background(brush))
 }
 
-/**
- * "Apple music style cover morph" — a slow drift between six palette colours pulled from the
- * artwork, layered as overlapping radial gradients.
- *
- * Ported from the old player's APPLE_MUSIC branch (/old-player/PlayerBackground.kt), but built
- * from [PlayerColorExtractor.extractAppleMusicColors] and animated radial brushes rather than
- * that version's blurred-bitmap-plus-RuntimeShader stack: no offscreen bitmap, no AGSL, and it
- * works below API 33.
- */
+// "apple music style cover morph" — a slow drift between six palette colours
 @Composable
 private fun AppleMusicBackground(thumbnailUrl: String?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -148,8 +124,8 @@ private fun AppleMusicBackground(thumbnailUrl: String?, modifier: Modifier = Mod
 
     var palette by remember { mutableStateOf<List<Color>>(emptyList()) }
 
-    // Same load-and-extract shape as AlbumGradient.kt, which is the established call site for
-    // PlayerColorExtractor in this codebase.
+    // same load-and-extract shape as albumgradientkt which is the established
+    // playercolorextractor in this codebase
     LaunchedEffect(thumbnailUrl) {
         if (thumbnailUrl == null) {
             palette = emptyList()
@@ -178,8 +154,8 @@ private fun AppleMusicBackground(thumbnailUrl: String?, modifier: Modifier = Mod
         }
     }
 
-    // One clock for the whole mesh; each blob reads it at a different phase and radius, which is
-    // what keeps them from moving as a rigid group.
+    // one clock for the whole mesh; each blob reads it at a different phase and
+    // what keeps them from moving as a rigid group
     val transition = rememberInfiniteTransition(label = "appleMusicMorph")
     val drift by transition.animateFloat(
         initialValue = 0f,
@@ -210,20 +186,15 @@ private fun AppleMusicBackground(thumbnailUrl: String?, modifier: Modifier = Mod
 
 private const val BlobCount = 6
 
-/**
- * Draws [colors] as overlapping soft radial blobs whose centres orbit on the shared [phase].
- *
- * The phase is read inside the draw block, so the mesh animates without recomposing anything —
- * the same draw-phase-read discipline the rest of the player uses for its per-frame values.
- */
+// draws [colors] as overlapping soft radial blobs whose centres orbit on the
 private fun Modifier.drawColorBlobs(
     colors: List<Color>,
     phase: () -> Float,
 ): Modifier = drawBehind {
     val t = phase()
     colors.forEachIndexed { index, color ->
-        // Each blob gets its own orbit radius, speed multiplier and starting angle so the group
-        // never reads as a single rotating ring.
+        // each blob gets its own orbit radius speed multiplier and starting angle so
+        // never reads as a single rotating ring
         val angle = t * (0.6f + index * 0.17f) + index * 1.05f
         val orbitX = size.width * (0.20f + 0.06f * (index % 3))
         val orbitY = size.height * (0.14f + 0.05f * (index % 4))
@@ -242,7 +213,7 @@ private fun Modifier.drawColorBlobs(
             center = center,
         )
     }
-    // Keeps text legible over a bright palette, matching the old player's depth overlay.
+    // keeps text legible over a bright palette matching the old player's depth
     drawRect(
         brush = Brush.verticalGradient(
             listOf(Color.Black.copy(alpha = 0.10f), Color.Black.copy(alpha = 0.45f)),

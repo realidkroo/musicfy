@@ -1,12 +1,12 @@
-// PlayerProgressSlider.kt
-// Minimal seek slider + position/duration time row for the fullscreen player. Reference: the
-// old PlayerSlider.kt (now at /old-player/), which also handled Cast seeking, four slider
-// visual styles, a sleep-timer badge, and an audio-quality badge — all dropped here, this
-// player has none of that yet. Just the "new design" pill-track slider + time text.
-//
-// Scoped to its own [PlayerConnection.uiState.progressState] collection (a 15Hz ticker) so the
-// per-tick recomposition it requires stays local to this composable instead of forcing the
-// whole player to recompose ~15 times a second.
+// playerprogresssliderkt
+// minimal seek slider + position/duration time row for the fullscreen player
+// old playersliderkt (now at /old-player/) which also handled cast seeking
+// visual styles a sleep-timer badge and an audio-quality badge — all dropped
+// player has none of that yet just the "new design" pill-track slider + time
+
+// scoped to its own [playerconnectionuistateprogressstate] collection (a
+// per-tick recomposition it requires stays local to this composable instead
+// whole player to recompose ~15 times a second
 
 package com.example.musicfy.ui.player
 
@@ -48,9 +48,9 @@ fun PlayerProgressSlider(modifier: Modifier = Modifier) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val progress by playerConnection.uiState.progressState.collectAsState()
 
-    // While the user is actively dragging, the slider follows their finger instead of the live
-    // ticker; committed (via seekTo) and cleared only in onValueChangeFinished, so a fast drag
-    // never fights with progressState's own 66ms updates.
+    // while the user is actively dragging the slider follows their finger
+    // ticker; committed (via seekto) and cleared only in onvaluechangefinished
+    // never fights with progressstate's own 66ms updates
     var sliderPosition by remember { mutableStateOf<Long?>(null) }
     val displayedPosition = sliderPosition ?: progress.position
 

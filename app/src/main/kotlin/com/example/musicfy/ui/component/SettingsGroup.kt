@@ -1,11 +1,11 @@
-// SettingsGroup.kt
+// settingsgroupkt
 // what is this for you ask its for material3settings group ofc
-//
-// Two looks live here. Classic is the original one-card-per-row treatment and is still what the
-// main SettingsScreen renders. Grouped is the drill-down sub-settings look: a single continuous
-// card with no dividers, where any option whose sub-options are currently showing gets pulled
-// into a nested pill together with them, so the parent/child relationship is visible without a
-// divider or an indent.
+
+// two looks live here classic is the original one-card-per-row treatment and
+// main settingsscreen renders grouped is the drill-down sub-settings look: a
+// card with no dividers where any option whose sub-options are currently
+// into a nested pill together with them so the parent/child relationship is
+// divider or an indent
 
 package com.example.musicfy.ui.component
 
@@ -52,19 +52,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 enum class SettingsGroupStyle {
-    /** Original look: one card per row, hairline gaps. Used by the main settings page. */
+    // original look: one card per row hairline gaps used by the main settings page
     Classic,
 
-    /** Sub-settings look: one continuous card, no dividers, nested pills for sub-options. */
+    // sub-settings look: one continuous card no dividers nested pills for sub-options
     Grouped,
 }
 
-/**
- * A Material 3 Expressive style settings group component
- * @param title The title of the settings group
- * @param items List of settings items to display
- * @param style Which visual treatment to render — see [SettingsGroupStyle]
- */
+// a material 3 expressive style settings group component
 @Composable
 fun SettingsGroup(
     title: String? = null,
@@ -75,7 +70,7 @@ fun SettingsGroup(
         modifier = Modifier
             .fillMaxWidth()
     ) {
-        // Section title
+        // section title
         title?.let {
             Text(
                 text = it,
@@ -96,7 +91,7 @@ fun SettingsGroup(
 private fun ClassicItems(items: List<SettingsItem>) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(0.dp) // No separator!
+        verticalArrangement = Arrangement.spacedBy(0.dp) // no separator!
     ) {
         val visibleItems = items.filter { it.isVisible }
         items.forEach { item ->
@@ -105,7 +100,7 @@ private fun ClassicItems(items: List<SettingsItem>) {
                 enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
                 exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
             ) {
-                // Concept style: fully rounded separate cards
+                // concept style: fully rounded separate cards
                 val shape = RoundedCornerShape(20.dp)
 
                 Card(
@@ -125,16 +120,13 @@ private fun ClassicItems(items: List<SettingsItem>) {
     }
 }
 
-/** A parent option together with the sub-options that belong to it. */
+// a parent option together with the sub-options that belong to it
 private class ItemCluster(
     val parent: SettingsItem,
     val subs: MutableList<SettingsItem> = mutableListOf(),
 )
 
-/**
- * `isSubOption` items attach to the most recent non-sub item above them, which is exactly how the
- * screens already declare them — so no call site has to describe the nesting twice.
- */
+// `issuboption` items attach to the most recent non-sub item above them which is
 private fun clusterItems(items: List<SettingsItem>): List<ItemCluster> {
     val clusters = mutableListOf<ItemCluster>()
     items.forEach { item ->
@@ -177,8 +169,8 @@ private fun GroupedItems(items: List<SettingsItem>) {
 private fun ClusterRows(cluster: ItemCluster) {
     val hasVisibleSubs = cluster.subs.any { it.isVisible }
 
-    // Animated rather than branched so toggling a parent doesn't pop a hard-edged container in
-    // and out — the pill fades and insets in step with the sub-rows expanding.
+    // animated rather than branched so toggling a parent doesn't pop a
+    // and out — the pill fades and insets in step with the sub-rows expanding
     val pillAlpha by animateFloatAsState(
         targetValue = if (hasVisibleSubs) 1f else 0f,
         animationSpec = tween(300),
@@ -214,9 +206,7 @@ private fun ClusterRows(cluster: ItemCluster) {
     }
 }
 
-/**
- * Individual settings item row with Material 3 styling
- */
+// individual settings item row with material 3 styling
 @Composable
 private fun SettingsItemRow(
     item: SettingsItem,
@@ -232,11 +222,11 @@ private fun SettingsItemRow(
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icon with background
+        // icon with background
         item.icon?.let { icon ->
             Box(
                 modifier = Modifier
-                    .size(32.dp) // The circle in the concept is a bit smaller
+                    .size(32.dp) // the circle in the concept is a bit smaller
                     .clip(androidx.compose.foundation.shape.CircleShape)
                     .background(Color(0xFFE5E5EA)),
                 contentAlignment = Alignment.Center
@@ -277,7 +267,7 @@ private fun SettingsItemRow(
                                 Color(0xFF1C1C1E).copy(alpha = 0.38f)
                             else
                                 Color(0xFF1C1C1E),
-                            modifier = Modifier.size(16.dp) // Slightly smaller icon to fit in the 32dp circle
+                            modifier = Modifier.size(16.dp) // slightly smaller icon to fit in the 32dp circle
                         )
                     } else {
                         Image(
@@ -293,12 +283,12 @@ private fun SettingsItemRow(
             Spacer(modifier = Modifier.width(16.dp))
         }
 
-        // Title and description
+        // title and description
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            // Title content. Grouped (sub-settings) rows read smaller and greyer than Classic's
-            // full-strength white — the main settings page keeps its original weight untouched.
+            // title content grouped (sub-settings) rows read smaller and greyer than
+            // full-strength white — the main settings page keeps its original weight
             val titleBaseStyle = if (style == SettingsGroupStyle.Grouped) {
                 MaterialTheme.typography.titleSmall
             } else {
@@ -313,8 +303,8 @@ private fun SettingsItemRow(
                 item.title()
             }
 
-            // Description. descriptionText is the preferred form: it is capped to a single line
-            // here so a long string can never grow the row to two or three lines.
+            // description descriptiontext is the preferred form: it is capped to a
+            // here so a long string can never grow the row to two or three lines
             val descColor = if (!item.enabled) {
                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             } else {
@@ -336,15 +326,15 @@ private fun SettingsItemRow(
                     ProvideTextStyle(
                         MaterialTheme.typography.labelMedium.copy(color = descColor)
                     ) {
-                        // Attempt to wrap in something that limits lines, or rely on desc() to do it.
-                        // We will just provide the smaller text style.
+                        // attempt to wrap in something that limits lines or rely on desc() to do it
+                        // we will just provide the smaller text style
                         desc()
                     }
                 }
             }
         }
 
-        // Trailing content
+        // trailing content
         item.trailingContent?.let { trailing ->
             Spacer(modifier = Modifier.width(8.dp))
             trailing()
@@ -352,14 +342,12 @@ private fun SettingsItemRow(
     }
 }
 
-/**
- * Data class for Material 3 settings item
- */
+// data class for material 3 settings item
 data class SettingsItem(
     val icon: Painter? = null,
     val title: @Composable () -> Unit,
     val description: (@Composable () -> Unit)? = null,
-    /** Single-line subtitle. Preferred over [description] — takes precedence when both are set. */
+    // single-line subtitle preferred over [description] — takes precedence when both are set
     val descriptionText: String? = null,
     val trailingContent: (@Composable () -> Unit)? = null,
     val showBadge: Boolean = false,

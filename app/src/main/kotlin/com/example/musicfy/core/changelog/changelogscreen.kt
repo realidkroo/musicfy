@@ -1,4 +1,4 @@
-// changelogscreen.kt
+// changelogscreenkt
 // this thing is for changelogscreen
 
 package com.example.musicfy.core.changelog
@@ -175,7 +175,7 @@ fun ChangelogScreen(
                                         sections.add(ChangelogSection(title, items))
                                     }
                                 } else {
-                                    // Fallback: This is the old format (Array of Strings)
+                                    // fallback: this is the old format (array of strings)
                                     val item = changelogArray.optString(i, "")
                                     if (item.isNotBlank()) {
                                         if (sections.isEmpty() || sections[0].title.isNotBlank()) {
@@ -303,7 +303,7 @@ fun ChangelogScreen(
                 .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom))
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Version Selection Chips
+                // version selection chips
                 if (availableReleases.isNotEmpty()) {
                     Row(
                         modifier = Modifier
@@ -368,7 +368,7 @@ fun ChangelogScreen(
                             .verticalScroll(rememberScrollState())
                     ) {
                         if (isLoading && availableReleases.isEmpty()) {
-                            // Show nothing or a small loader while initial releases are fetching
+                            // show nothing or a small loader while initial releases are fetching
                         } else {
                             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                                 Row(
@@ -463,7 +463,7 @@ fun ChangelogScreen(
                 }
             }
 
-            // The Loading Indicator at the top center
+            // the loading indicator at the top center
             Box(
                 Modifier
                     .align(Alignment.TopCenter)

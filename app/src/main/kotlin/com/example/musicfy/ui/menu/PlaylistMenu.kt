@@ -1,4 +1,4 @@
-// PlaylistMenu.kt
+// playlistmenukt
 // the file functioned as playlist menu
 
 package com.example.musicfy.ui.menu
@@ -229,12 +229,12 @@ fun PlaylistMenu(
                         showDeletePlaylistDialog = false
                         onDismiss()
                         database.transaction {
-                            // First toggle the like using the same logic as the like button
+                            // first toggle the like using the same logic as the like button
                             if (playlist.playlist.bookmarkedAt != null) {
-                                // Using the same toggleLike() method that's used in the like button
+                                // using the same togglelike() method that's used in the like button
                                 update(playlist.playlist.toggleLike())
                             }
-                            // Then delete the playlist
+                            // then delete the playlist
                             delete(playlist.playlist)
                         }
 

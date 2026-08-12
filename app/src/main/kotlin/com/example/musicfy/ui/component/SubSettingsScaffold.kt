@@ -1,9 +1,9 @@
-// SubSettingsScaffold.kt
-// Shared chrome for the drill-down settings pages (appearance / playback / experimental /
-// advanced audio). The large page title doesn't scroll away — it morphs continuously into the
-// slot beside the back button, with a progressive blur building underneath it as content
-// passes below. The main SettingsScreen deliberately does NOT use this: it keeps its own
-// profile-header treatment.
+// subsettingsscaffoldkt
+// shared chrome for the drill-down settings pages (appearance / playback /
+// advanced audio) the large page title doesn't scroll away — it morphs
+// slot beside the back button with a progressive blur building underneath it
+// passes below the main settingsscreen deliberately does not use this: it
+// profile-header treatment
 
 package com.example.musicfy.ui.component
 
@@ -65,56 +65,37 @@ import kotlin.math.sin
 private val PagePadding = 20.dp
 private val BackButtonSize = 40.dp
 
-/** Gap between the status bar and the back button — measured *below* the inset, not through it. */
+// gap between the status bar and the back button — measured *below* the inset not through it
 private val HeaderTopPadding = 16.dp
 
-/** Vertical centre of the back button, measured from the top of the header. */
+// vertical centre of the back button measured from the top of the header
 private val BackButtonCenterY = HeaderTopPadding + BackButtonSize / 2
 
-/** Where the big title sits before any scrolling: below the back button. */
+// where the big title sits before any scrolling: below the back button
 private val ExpandedTitleTop = HeaderTopPadding + BackButtonSize + 12.dp
 
-/** Collapsed, the title tucks into the gap to the right of the back button. */
+// collapsed the title tucks into the gap to the right of the back button
 private val CollapsedTitleX = BackButtonSize + 14.dp
 
-/**
- * Header footprint below the status bar — sized to just clear the title with a small margin,
- * not the ~30dp of extra empty space the previous height left. Content starts below this plus
- * the inset.
- */
+// header footprint below the status bar — sized to just clear the title with a
 private val ExpandedHeaderHeight = 118.dp
 
-/**
- * headlineLarge is ~32sp; 0.62 lands it near 20sp, which reads as a normal top-bar title
- * without ever swapping text styles mid-animation (a style swap would pop, a scale won't).
- */
+// headlinelarge is ~32sp; 062 lands it near 20sp which reads as a normal top-bar
 private const val CollapsedTitleScale = 0.62f
 
-/** Scroll distance over which the title finishes migrating up beside the back button. */
+// scroll distance over which the title finishes migrating up beside the back button
 private const val CollapseDistanceDp = 96f
 
-/** Requested easing curve for the title morph: cubic-bezier(0.5, 0.45, 0, 1). */
+// requested easing curve for the title morph: cubic-bezier(05 045 0 1)
 private val TitleMorphEasing = CubicBezierEasing(0.5f, 0.45f, 0f, 1f)
 
-/** Duration of each eased step while chasing a moving scroll target. */
+// duration of each eased step while chasing a moving scroll target
 private const val TitleMorphStepMillis = 1000
 
-/**
- * Peak defocus at the midpoint of the morph (sin(progress * PI) is 0 at both ends, 1 at the
- * middle) — the title visibly softens as it crosses through the transition, then sharpens again,
- * rather than staying crisp through what would otherwise be a purely geometric move.
- */
+// peak defocus at the midpoint of the morph (sin(progress * pi) is 0 at both ends
 private const val TitleMorphMaxBlurPx = 26f
 
-/**
- * The header's glass effect (blur + darkening scrim) ramps over this much shorter distance,
- * independent of the slower title migration above. Sharing one distance for both was the actual
- * bug behind "sharp text with a glow": at any modest scroll short of the full 96dp, blur radius
- * (36f * progress) was still tiny — e.g. ~7px at 20% progress — while the scrim had already
- * started darkening, so legible text just got a dark tint instead of turning into a proper
- * frosted blur. The glass needs to hit full strength almost immediately on scroll; the title can
- * take its time migrating separately.
- */
+// the header's glass effect (blur + darkening scrim) ramps over this much shorter
 private const val BlurRampDistanceDp = 28f
 
 @Composable
@@ -127,32 +108,32 @@ fun SubSettingsScaffold(
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
     val glassState = remember { GlassState() }
-    // Same opaque-foundation pattern SettingsScreen uses for its own header blur — matching it
-    // exactly is what makes the ProgressiveGlassBackground call below behave the same way.
+    // same opaque-foundation pattern settingsscreen uses for its own header blur
+    // exactly is what makes the progressiveglassbackground call below behave the
     val headerFoundationColor = if (isSystemInDarkTheme()) Color.Black else MaterialTheme.colorScheme.surface
 
-    // Read as lambdas rather than captured values so the graphicsLayer/blur below re-read them
-    // during the draw phase instead of forcing recomposition on every scroll pixel.
+    // read as lambdas rather than captured values so the graphicslayer/blur
+    // during the draw phase instead of forcing recomposition on every scroll
     val collapseDistancePx = with(density) { CollapseDistanceDp.dp.toPx() }
     val progressProvider = { (scrollState.value / collapseDistancePx).coerceIn(0f, 1f) }
 
-    // Deliberately separate from progressProvider — see BlurRampDistanceDp above.
+    // deliberately separate from progressprovider — see blurrampdistancedp above
     val blurRampPx = with(density) { BlurRampDistanceDp.dp.toPx() }
     val blurProgressProvider = { (scrollState.value / blurRampPx).coerceIn(0f, 1f) }
 
-    // The morph target depends on the title's own measured height, so the collapsed position
-    // can centre it against the back button exactly instead of guessing at a font metric.
+    // the morph target depends on the title's own measured height so the
+    // can centre it against the back button exactly instead of guessing at a
     var titleHeightPx by remember { mutableIntStateOf(0) }
 
-    // The title no longer maps 1:1 to raw scroll position — that read directly like a scrollbar
-    // (freezes exactly where your finger stopped, no sense of motion). This instead chases the
-    // scroll-derived target through an Animatable: every new target retriggers a tween along the
-    // requested cubic-bezier(0.5, 0.45, 0, 1) curve, and because Animatable.animateTo interrupts
-    // whatever's already in flight, a continuous scroll just keeps redirecting it toward the
-    // newest target — a fast-scrolling bounce/overshoot was tried here and pulled back out, so
-    // this is plain eased chasing the whole way, no spring. Once scrolling stops and nothing new
-    // arrives, the one in-flight tween simply finishes and holds — which is what makes it stop
-    // cleanly the instant scrolling does, with no extra "settle" step tacked on.
+    // the title no longer maps 1:1 to raw scroll position — that read directly
+    // (freezes exactly where your finger stopped no sense of motion) this
+    // scroll-derived target through an animatable: every new target retriggers a
+    // requested cubic-bezier(05 045 0 1) curve and because animatableanimateto
+    // whatever's already in flight a continuous scroll just keeps redirecting it
+    // newest target — a fast-scrolling bounce/overshoot was tried here and
+    // this is plain eased chasing the whole way no spring once scrolling stops
+    // arrives the one in-flight tween simply finishes and holds — which is what
+    // cleanly the instant scrolling does with no extra "settle" step tacked on
     val animatedTitleProgress = remember { Animatable(0f) }
     LaunchedEffect(scrollState) {
         snapshotFlow { progressProvider() }
@@ -165,8 +146,8 @@ fun SubSettingsScaffold(
     }
 
     val bottomInset = LocalPlayerAwareWindowInsets.current.asPaddingValues()
-    // The header lives under the status bar, so every vertical metric below is offset by it —
-    // without this the back button and title drew straight through the clock and signal icons.
+    // the header lives under the status bar so every vertical metric below is
+    // without this the back button and title drew straight through the clock and
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val totalHeaderHeight = statusBarTop + ExpandedHeaderHeight
 
@@ -174,25 +155,25 @@ fun SubSettingsScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                // Always record, never gate on scroll. Gating left the RenderNode without a
-                // display list until something forced an unrelated recomposition (confirmed by
-                // toggling the global Blur switch making blur start working) — a settings list
-                // is cheap enough to double-draw that this isn't worth chasing further.
+                // always record never gate on scroll gating left the rendernode without a
+                // display list until something forced an unrelated recomposition (confirmed
+                // toggling the global blur switch making blur start working) — a settings
+                // is cheap enough to double-draw that this isn't worth chasing further
                 .glassRoot(glassState, isActive = { true })
                 .verticalScroll(scrollState)
                 .padding(horizontal = PagePadding)
         ) {
             Spacer(modifier = Modifier.height(totalHeaderHeight))
             content()
-            // Clears the (now always visible) bottom navigation bar and mini-player.
+            // clears the (now always visible) bottom navigation bar and mini-player
             Spacer(modifier = Modifier.height(bottomInset.calculateBottomPadding() + 24.dp))
         }
 
-        // Blur sits between the content and the chrome so the title/back button stay crisp on
-        // top of it. ProgressiveGlassBackground itself is left at full strength — untouched by
-        // the gradient below — because masking the blur's own opacity to control darkness was
-        // the actual bug two attempts ago: it coupled "how dark" to "how visible the blur is",
-        // so turning one down turned the other down with it.
+        // blur sits between the content and the chrome so the title/back button stay
+        // top of it progressiveglassbackground itself is left at full strength —
+        // the gradient below — because masking the blur's own opacity to control
+        // the actual bug two attempts ago: it coupled "how dark" to "how visible the
+        // so turning one down turned the other down with it
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -209,14 +190,14 @@ fun SubSettingsScaffold(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Darkening painted on top, normally (not a mask) — a real paint this time, not the
-            // no-op from the very first attempt. That one failed because foundationColor was
-            // fully opaque black, so black-on-black is invisible regardless of alpha. Now the
-            // layer underneath is blurred real content (whatever colours/brightness the scrolled
-            // rows actually have), so a semi-transparent black tint on top genuinely darkens it.
-            //
-            // Darker peak, longer reach: stronger at the top edge and the taper now runs to 75%
-            // of the header's height instead of clearing out by 55%.
+            // darkening painted on top normally (not a mask) — a real paint this time
+            // no-op from the very first attempt that one failed because foundationcolor
+            // fully opaque black so black-on-black is invisible regardless of alpha now
+            // layer underneath is blurred real content (whatever colours/brightness the
+            // rows actually have) so a semi-transparent black tint on top genuinely
+
+            // darker peak longer reach: stronger at the top edge and the taper now runs
+            // of the header's height instead of clearing out by 55%
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -232,8 +213,8 @@ fun SubSettingsScaffold(
             )
         }
 
-        // Fixed chrome. This Box adds no pointer-input modifier of its own, so only the back
-        // button actually consumes touches — content scrolling underneath stays interactive.
+        // fixed chrome this box adds no pointer-input modifier of its own so only
+        // button actually consumes touches — content scrolling underneath stays
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -267,12 +248,12 @@ fun SubSettingsScaffold(
                 modifier = Modifier
                     .onSizeChanged { titleHeightPx = it.height }
                     .graphicsLayer {
-                        // The animated (eased/spring-settled) value, not raw scroll — see
-                        // animatedTitleProgress above.
+                        // the animated (eased/spring-settled) value not raw scroll — see
+                        // animatedtitleprogress above
                         val p = animatedTitleProgress.value
-                        // Anchor the scale to the top-left corner so the only thing moving the
+                        // anchor the scale to the top-left corner so the only thing moving the
                         // glyphs is the translation below — scaling about the centre would make
-                        // the text drift sideways as it shrinks.
+                        // the text drift sideways as it shrinks
                         transformOrigin = TransformOrigin(0f, 0f)
                         val scale = lerp(1f, CollapsedTitleScale, p)
                         scaleX = scale

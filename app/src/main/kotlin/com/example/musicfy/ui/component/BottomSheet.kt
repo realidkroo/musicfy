@@ -1,4 +1,4 @@
-// BottomSheet.kt
+// bottomsheetkt
 // this thing is part of bottom sheet
 
 package com.example.musicfy.ui.component
@@ -79,10 +79,7 @@ private val PlayerSheetHorizontalAnimationSpec = spring<Float>(
     stiffness = 90f
 )
 
-/**
- * Bottom Sheet
- * Modified from [ViMusic](https://github.com/vfsfitvnm/ViMusic)
- */
+// bottom sheet modified from [vimusic](https://githubcom/vfsfitvnm/vimusic)
 @Composable
 fun BottomSheet(
     state: BottomSheetState,
@@ -187,7 +184,7 @@ fun BottomSheet(
                 }
             }
         } else {
-            // iOS Pill Morphing Transition
+            // ios pill morphing transition
             val playerConnection = LocalPlayerConnection.current
 
             val coroutineScope = rememberCoroutineScope()
@@ -226,7 +223,7 @@ fun BottomSheet(
                     .fillMaxSize()
                     .nestedScroll(remember(state) { state.preUpPostDownNestedScrollConnection })
             ) {
-                // Expanding clipping container anchored to bottom
+                // expanding clipping container anchored to bottom
                 Box(
                     modifier = Modifier
                         .align(androidx.compose.ui.Alignment.BottomCenter)
@@ -282,7 +279,7 @@ fun BottomSheet(
                                 onDrag = { change, dragAmount ->
                                     velocityTracker.addPointerInputChange(change)
                                     
-                                    // If dragging mostly horizontally, resist vertical scrolling!
+                                    // if dragging mostly horizontally resist vertical scrolling!
                                     if (kotlin.math.abs(dragAmount.x) > kotlin.math.abs(dragAmount.y) && state.isCollapsed) {
                                         totalHorizontalDrag += dragAmount.x
                                         val resistance = 1f - (kotlin.math.abs(state.horizontalOffset) / (size.width / 2f)).coerceIn(0f, 0.8f)
@@ -329,38 +326,38 @@ fun BottomSheet(
                             )
                         }
                 ) {
-                    // Box is now FIXED size (maxWidth x expandedBound), avoiding all recomposition!
+                    // box is now fixed size (maxwidth x expandedbound) avoiding all
                     
-                    // Gated on isDismissed, NOT isCollapsed.
-                    //
-                    // isCollapsed is `value == collapsedBound`, so it flips false the instant the
-                    // finger moves the sheet by one pixel. Both of these then flipped true in the
-                    // same frame, which composed background() and the entire player subtree
-                    // (SeamBlur + PlayerControls + PlayerBottomCardStack) from scratch on the
+                    // gated on isdismissed not iscollapsed
+
+                    // iscollapsed is `value == collapsedbound` so it flips false the instant the
+                    // finger moves the sheet by one pixel both of these then flipped true in the
+                    // same frame which composed background() and the entire player subtree
+                    // (seamblur + playercontrols + playerbottomcardstack) from scratch on the
                     // first frame of the drag — a full build+measure+layout of the player while
-                    // the user was already expecting motion. That was the swipe-up stutter.
-                    //
-                    // Moving the gate to isDismissed mounts that subtree once, when a track loads
-                    // and the pill appears, so the drag itself only does draw-phase work.
-                    //
-                    // Safe with respect to touch and overdraw: this content lives inside the
-                    // expanding container above, which is expandedBound tall and translated down
-                    // by (expandedBound - value). While collapsed that puts everything below the
-                    // 64dp pill off-screen, and Compose hit-testing applies graphicsLayer
-                    // translation, so nothing here can intercept taps meant for the miniplayer or
-                    // the nav bar. clip = true keeps it from drawing, too.
+                    // the user was already expecting motion that was the swipe-up stutter
+
+                    // moving the gate to isdismissed mounts that subtree once when a track loads
+                    // and the pill appears so the drag itself only does draw-phase work
+
+                    // safe with respect to touch and overdraw: this content lives inside the
+                    // expanding container above which is expandedbound tall and translated down
+                    // by (expandedbound - value) while collapsed that puts everything below the
+                    // 64dp pill off-screen and compose hit-testing applies graphicslayer
+                    // translation so nothing here can intercept taps meant for the miniplayer or
+                    // the nav bar clip = true keeps it from drawing too
                     val showBackground by remember { derivedStateOf { !state.isDismissed } }
                     val showControls by remember { derivedStateOf { !state.isDismissed } }
 
-                    // Layer 2: Player background
+                    // layer 2: player background
                     if (showBackground) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    // Keep the background opaque throughout the morph. The
+                                    // keep the background opaque throughout the morph the
                                     // clipped sheet grows to reveal it while this subtle zoom
-                                    // settles it into the final player composition.
+                                    // settles it into the final player composition
                                     val p = state.progress.coerceIn(0f, 1f)
                                     scaleX = 1.10f - (0.10f * p)
                                     scaleY = 1.10f - (0.10f * p)
@@ -370,7 +367,7 @@ fun BottomSheet(
                         }
                     }
 
-                    // Layer 3: Shared content
+                    // layer 3: shared content
                     if (sharedContent != null) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -378,23 +375,23 @@ fun BottomSheet(
                         )
                     }
 
-                    // Layer 4: Full player controls
-                    // Alpha-only fade avoids layout changes every frame
+                    // layer 4: full player controls
+                    // alpha-only fade avoids layout changes every frame
                     if (showControls) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    // Smooth alpha fade: 0f when progress < 0.25f, scaling to 1f at progress > 0.85f
+                                    // smooth alpha fade: 0f when progress < 025f scaling to 1f at progress > 085f
                                     alpha = ((state.progress.coerceIn(0f, 1f) - 0.25f) / 0.60f).coerceIn(0f, 1f)
                                 }
                         ) {
                             content()
                         }
                     }
-                } // Close expanding clipping container
+                } // close expanding clipping container
 
-                // MiniPlayer content drawn OUTSIDE the expanding container so it doesn't get clipped!
+                // miniplayer content drawn outside the expanding container so it doesn't get
                 if (!isPillTransition && !state.isExpanded && (onDismiss == null || !state.isDismissed)) {
                     Box(
                         modifier = Modifier
@@ -631,9 +628,9 @@ fun rememberBottomSheetState(
 
         BottomSheetState(
             draggableState = DraggableState { delta ->
-                // Pointer events can arrive faster than the normal main-dispatch queue is
-                // drained on 120 Hz devices. Start the tiny snap operation immediately so the
-                // sheet follows the finger instead of accumulating one-frame delays.
+                // pointer events can arrive faster than the normal main-dispatch queue is
+                // drained on 120 hz devices start the tiny snap operation immediately so the
+                // sheet follows the finger instead of accumulating one-frame delays
                 coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
                     animatable.snapTo(animatable.value - with(density) { delta.toDp() })
                 }

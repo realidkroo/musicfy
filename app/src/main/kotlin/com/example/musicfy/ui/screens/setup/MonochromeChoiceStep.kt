@@ -27,11 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.R
 
-/**
- * Setup step asking whether to turn on the Monochrome backend. The answer is given by the wizard's
- * bottom buttons — "No" is the highlighted primary, since the backend is optional and its
- * connectivity probe can fail.
- */
+// setup step asking whether to turn on the monochrome backend the answer is given
 @Composable
 fun MonochromeChoiceStep() {
     Column(

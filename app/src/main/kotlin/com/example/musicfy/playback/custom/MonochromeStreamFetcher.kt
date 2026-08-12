@@ -67,10 +67,10 @@ class MonochromeStreamFetcher(
 
         var lastError: Exception? = null
 
-        // Try instances in a shuffled order for basic load balancing, or just sequentially
+        // try instances in a shuffled order for basic load balancing or just
         for (instance in instances.shuffled()) {
             try {
-                // 1. Search for the track
+                // 1 search for the track
                 val searchUrl = "$instance/search/".toHttpUrlOrNull()?.newBuilder()
                     ?.addQueryParameter("s", query)
                     ?.build() ?: continue
@@ -85,7 +85,7 @@ class MonochromeStreamFetcher(
 
                 val searchBody = searchResponse.body?.string() ?: continue
                 val searchJson = JSONObject(searchBody)
-                // Monochrome's "s" (track) search returns items under data.items
+                // monochrome's "s" (track) search returns items under dataitems
                 val items = searchJson.optJSONObject("data")?.optJSONArray("items")
 
                 if (items == null || items.length() == 0) {
@@ -100,7 +100,7 @@ class MonochromeStreamFetcher(
 
                 Timber.tag("MonochromeFetcher").d("Found track ID $trackId for query $query")
 
-                // 2. Fetch the stream manifest using streaming instances
+                // 2 fetch the stream manifest using streaming instances
                 for (streamingInstance in streamingInstances.shuffled()) {
                     try {
                         val manifestUrlBuilder = "$streamingInstance/trackManifests/".toHttpUrlOrNull()?.newBuilder()
@@ -120,7 +120,7 @@ class MonochromeStreamFetcher(
                         }
 
                         val manifestBody = manifestResponse.body?.string() ?: continue
-                        // Response is a JSON:API envelope: { data: { data: { attributes: { uri: <signed manifest url> } } } }
+                        // response is a json:api envelope: { data: { data: { attributes: { uri:
                         val signedManifestUri = JSONObject(manifestBody)
                             .optJSONObject("data")
                             ?.optJSONObject("data")
@@ -151,8 +151,8 @@ class MonochromeStreamFetcher(
                     }
                 }
 
-                // 3. Fallback: legacy /track/ endpoint hosted directly on the search API
-                // (base64-encoded manifest), used when the dedicated streaming/CDN hosts are down.
+                // 3 fallback: legacy /track/ endpoint hosted directly on the search api
+                // (base64-encoded manifest) used when the dedicated streaming/cdn hosts are
                 try {
                     val legacyUrl = "$instance/track/".toHttpUrlOrNull()?.newBuilder()
                         ?.addQueryParameter("id", trackId)
@@ -190,8 +190,8 @@ class MonochromeStreamFetcher(
         try {
             val trimmed = manifestText.trim()
 
-            // The signed manifest URI is usually fetched as plain text: either a JSON
-            // object with a "urls" array, or a raw DASH MPD XML document.
+            // the signed manifest uri is usually fetched as plain text: either a json
+            // object with a "urls" array or a raw dash mpd xml document
             if (trimmed.startsWith("{")) {
                 val json = JSONObject(trimmed)
                 val urls = json.optJSONArray("urls")
@@ -208,8 +208,8 @@ class MonochromeStreamFetcher(
                 return CustomStreamResult(streamUrl = dashUrl, isDash = true, source = "Monochrome")
             }
 
-            // Fall back to treating it as base64 encoded JSON/XML, in case an instance
-            // still returns the older inline-manifest format.
+            // fall back to treating it as base64 encoded json/xml in case an instance
+            // still returns the older inline-manifest format
             val decodedBytes = android.util.Base64.decode(manifestText, android.util.Base64.DEFAULT)
             val decodedString = String(decodedBytes)
 
@@ -226,7 +226,7 @@ class MonochromeStreamFetcher(
                 return CustomStreamResult(streamUrl = dashUrl, isDash = true, source = "Monochrome")
             }
 
-            // Try matching a URL with regex as a last resort
+            // try matching a url with regex as a last resort
             val urlPattern = java.util.regex.Pattern.compile("https?://[\\w\\-.~:?#\\[\\]@!$&'()*+,;=%/]+")
             val matcher = urlPattern.matcher(decodedString)
             if (matcher.find()) {

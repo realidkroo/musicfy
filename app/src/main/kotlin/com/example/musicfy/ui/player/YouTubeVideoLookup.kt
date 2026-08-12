@@ -1,7 +1,7 @@
-// YouTubeVideoLookup.kt
-// Finds the official YouTube music video (not a lyrics video / user upload) for a track by
-// title+artist, resolves it to a playable video stream URL, and caches the result per mediaId
-// — same shape as CanvasArtworkUtils.kt's CanvasArtworkPlaybackCache.
+// youtubevideolookupkt
+// finds the official youtube music video (not a lyrics video / user upload)
+// title+artist resolves it to a playable video stream url and caches the
+// — same shape as canvasartworkutilskt's canvasartworkplaybackcache
 
 package com.example.musicfy.ui.player
 
@@ -10,20 +10,13 @@ import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
 import com.example.musicfy.utils.YTPlayerUtils
 
-/**
- * Resolved official-music-video result: the video's own id (needed separately to fetch its
- * transcript for lyrics-sync) alongside the playable stream URL.
- */
+// resolved official-music-video result: the video's own id (needed separately to
 data class OfficialMusicVideo(
     val videoId: String,
     val streamUrl: String,
 )
 
-/**
- * Caches the resolved video per track. A cached `null` means "looked up, no official music video
- * found" — distinct from "never looked up" (absence of the key) — so a track without an OMV isn't
- * re-searched on every recomposition.
- */
+// caches the resolved video per track a cached `null` means "looked up no
 object YouTubeVideoUrlCache {
     private const val maxSize = 64
     private val map = LinkedHashMap<String, OfficialMusicVideo?>(maxSize, 0.75f, true)
@@ -50,12 +43,7 @@ object YouTubeVideoUrlCache {
     }
 }
 
-/**
- * Searches YouTube Music's "Videos" tab for `title artist`, picks the first official-music-video
- * result whose title/artist plausibly matches, and resolves it to a playable stream URL. Returns
- * null on no match or any resolution failure — this is a cosmetic feature, so failures should
- * fall back to the static cover, not surface an error.
- */
+// searches youtube music's "videos" tab for `title artist` picks the first
 suspend fun findOfficialMusicVideo(title: String, artist: String): OfficialMusicVideo? {
     if (title.isBlank() || artist.isBlank()) return null
 

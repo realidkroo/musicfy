@@ -1,4 +1,4 @@
-// MusicfyNotificationProvider.kt
+// musicfynotificationproviderkt
 // the file functioned as musicfy notification provider
 
 package com.example.musicfy.core.updater.downloadmanager
@@ -19,10 +19,7 @@ import com.google.common.collect.ImmutableList
 import com.example.musicfy.R
 import java.util.Locale
 
-/**
- * A custom MediaNotification.Provider that delegates to DefaultMediaNotificationProvider
- * and adds Android 16 Status Chips (Live Updates) support.
- */
+// a custom medianotificationprovider that delegates to
 @OptIn(UnstableApi::class)
 class MusicfyNotificationProvider(
     private val context: Context,
@@ -38,9 +35,7 @@ class MusicfyNotificationProvider(
         channelNameResourceId
     )
 
-    /**
-     * Set the small icon for the notification. This is used by MusicService.
-     */
+    // set the small icon for the notification this is used by musicservice
     fun setSmallIcon(iconResId: Int): MusicfyNotificationProvider {
         defaultProvider.setSmallIcon(iconResId)
         return this
@@ -52,7 +47,7 @@ class MusicfyNotificationProvider(
         actionFactory: MediaNotification.ActionFactory,
         onNotificationChangedCallback: MediaNotification.Provider.Callback,
     ): MediaNotification {
-        // Get the default notification built by Media3
+        // get the default notification built by media3
         val mediaNotification = defaultProvider.createNotification(
             mediaSession,
             customLayout,
@@ -60,7 +55,7 @@ class MusicfyNotificationProvider(
             onNotificationChangedCallback
         )
 
-        // Android 16 Status Chips implementation (API 36 or "Baklava")
+        // android 16 status chips implementation (api 36 or "baklava")
         val isAndroid16 = Build.VERSION.SDK_INT >= 36 || Build.VERSION.CODENAME == "Baklava"
 
         if (isAndroid16) {
@@ -70,7 +65,7 @@ class MusicfyNotificationProvider(
             val durationMs = player.duration
             val currentPosMs = player.currentPosition
 
-            // Format duration for the chip (e.g., "5:20")
+            // format duration for the chip (eg "5:20")
             val formattedTime = if (durationMs != C.TIME_UNSET && durationMs > 0) {
                 val totalSeconds = durationMs / 1000
                 val minutes = totalSeconds / 60
@@ -80,33 +75,33 @@ class MusicfyNotificationProvider(
                 null
             }
 
-            // Use platform Builder to recover and modify the notification
+            // use platform builder to recover and modify the notification
             val notification = mediaNotification.notification
             val builder = Notification.Builder.recoverBuilder(context, notification)
 
-            // Essential for Android 16 Status Chips (Live Updates)
+            // essential for android 16 status chips (live updates)
             builder.setOngoing(true)
             builder.setCategory(Notification.CATEGORY_TRANSPORT)
 
-            // Research suggests colorized should be false for promoted notifications in some cases
-            // but for music it might be okay. Let's try false first for better promotion.
+            // research suggests colorized should be false for promoted notifications in
+            // but for music it might be okay let's try false first for better promotion
             builder.setColorized(false)
 
-            // Ensure we have a small icon (required for chip)
+            // ensure we have a small icon (required for chip)
             builder.setSmallIcon(R.drawable.musicfy_notification)
 
-            // Promote to Live Update
+            // promote to live update
             setRequestPromotedOngoingSafely(builder, true)
 
-            // Fallback: also set via extras just in case reflection fails
+            // fallback: also set via extras just in case reflection fails
             builder.getExtras().putBoolean("android.requestPromotedOngoing", true)
 
             if (isPlaying) {
-                // Set the chip text (e.g., the track duration)
+                // set the chip text (eg the track duration)
                 setShortCriticalTextSafely(builder, formattedTime ?: context.getString(R.string.playing_status))
 
                 if (durationMs != C.TIME_UNSET && durationMs > 0) {
-                    // Set 'when' to the completion time of the track for a live countdown
+                    // set 'when' to the completion time of the track for a live countdown
                     val remainingMs = durationMs - currentPosMs
                     val endTime = System.currentTimeMillis() + remainingMs
                     builder.setWhen(endTime)
@@ -117,16 +112,16 @@ class MusicfyNotificationProvider(
                     builder.setShowWhen(true)
                 }
             } else {
-                // When paused, show "Paused" or static duration in the chip
+                // when paused show "paused" or static duration in the chip
                 setShortCriticalTextSafely(builder, formattedTime ?: context.getString(R.string.paused_status))
                 builder.setShowWhen(false)
                 builder.setUsesChronometer(false)
             }
 
-            // Re-build the notification
+            // re-build the notification
             val updatedNotification = builder.build()
 
-            // Re-attach the media session token if it was lost during build()
+            // re-attach the media session token if it was lost during build()
             if (Build.VERSION.SDK_INT >= 33) {
                 mediaNotification.notification.extras.getParcelable(
                     Notification.EXTRA_MEDIA_SESSION,
@@ -175,7 +170,7 @@ class MusicfyNotificationProvider(
 
     private fun setRequestPromotedOngoingSafely(builder: Notification.Builder, promoted: Boolean) {
         try {
-            // Try different possible method names from various previews
+            // try different possible method names from various previews
             val methodNames = arrayOf("setRequestPromotedOngoing", "setPromotedOngoing", "setOngoingActivity")
             var success = false
             for (name in methodNames) {

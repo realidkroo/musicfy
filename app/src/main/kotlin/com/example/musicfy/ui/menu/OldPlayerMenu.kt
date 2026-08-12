@@ -1,4 +1,4 @@
-// OldPlayerMenu.kt
+// oldplayermenukt
 // this thing is for old player menu
 
 package com.example.musicfy.ui.menu
@@ -85,7 +85,7 @@ fun OldPlayerMenu(
     val coroutineScope = rememberCoroutineScope()
     val playerVolume = playerConnection.service.playerVolume.collectAsState()
 
-    // Cast state for volume control
+    // cast state for volume control
     val castHandler = remember(playerConnection) {
         try {
             playerConnection.service.castConnectionHandler
@@ -98,8 +98,8 @@ fun OldPlayerMenu(
     val castDeviceName by castHandler?.castDeviceName?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
 
     val downloadUtil = LocalDownloadUtil.current
-    // remember(id): getDownload() returns a new Flow each call, so an
-    // unremembered collectAsState relaunches its coroutine every recomposition.
+    // remember(id): getdownload() returns a new flow each call so an
+    // unremembered collectasstate relaunches its coroutine every recomposition
     val download by remember(downloadUtil, mediaMetadata.id) {
         downloadUtil.getDownload(mediaMetadata.id)
     }.collectAsState(initial = null)
@@ -171,7 +171,7 @@ fun OldPlayerMenu(
             .padding(horizontal = 24.dp)
             .padding(top = 24.dp, bottom = 6.dp),
     ) {
-        // Show Cast indicator when casting
+        // show cast indicator when casting
         if (isCasting && castDeviceName != null) {
             Row(
                 horizontalArrangement = Arrangement.Center,
@@ -223,7 +223,7 @@ fun OldPlayerMenu(
             bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
-        // Share & Playlist Add
+        // share & playlist add
         item {
             val startingRadioText = stringResource(R.string.starting_radio)
             NewActionGrid(
@@ -289,11 +289,11 @@ fun OldPlayerMenu(
 
         item { Spacer(modifier = Modifier.height(8.dp)) }
 
-        // Core Old Player Items
+        // core old player items
         item {
             Material3MenuGroup(
                 items = buildList {
-                    // Shuffle
+                    // shuffle
                     if (true) {
                         add(
                             Material3MenuItemData(
@@ -314,7 +314,7 @@ fun OldPlayerMenu(
                         )
                     }
 
-                    // Download
+                    // download
                     when (download?.state) {
                         Download.STATE_COMPLETED -> {
                             add(
@@ -373,7 +373,7 @@ fun OldPlayerMenu(
                         }
                     }
 
-                    // Like
+                    // like
                     val isLiked = currentSong?.song?.liked == true
                     add(
                         Material3MenuItemData(
@@ -393,7 +393,7 @@ fun OldPlayerMenu(
                         )
                     )
 
-                    // Repeat
+                    // repeat
                     if (true) {
                         add(
                             Material3MenuItemData(
@@ -424,7 +424,7 @@ fun OldPlayerMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // Artist & Add to library
+        // artist & add to library
         item {
             Material3MenuGroup(
                 items = buildList {
@@ -459,7 +459,7 @@ fun OldPlayerMenu(
                         )
                     }
 
-                    // Add to Library option
+                    // add to library option
                     val isInLibrary = librarySong?.song?.inLibrary != null
                     add(
                         Material3MenuItemData(
@@ -495,7 +495,7 @@ fun OldPlayerMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // details, eq, adv
+        // details eq adv
         item {
             Material3MenuGroup(
                 items = buildList {

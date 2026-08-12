@@ -1,4 +1,4 @@
-// DiscordRPC.kt
+// discordrpckt
 // what is this for you ask its for discord rpc ofc
 
 package com.example.musicfy.utils
@@ -101,10 +101,7 @@ class DiscordRPC(
     companion object {
         private const val APPLICATION_ID = "1411019391843172514"
 
-        /**
-         * Resolves template variables in text.
-         * Supported: {song_name}, {artist_name}, {album_name}
-         */
+        // resolves template variables in text supported: {song_name} {artist_name}
         fun resolveVariables(text: String, song: Song): String {
             return text
                 .replace("{song_name}", song.song.title)

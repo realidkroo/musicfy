@@ -1,4 +1,4 @@
-// BrowseScreen.kt
+// browsescreenkt
 // the file functioned as browse screen
 
 package com.example.musicfy.ui.screens
@@ -64,7 +64,7 @@ package com.example.musicfy.ui.screens
      val coroutineScope = rememberCoroutineScope()
      val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
-     // Deduplicated once per emission instead of on every recomposition of this screen.
+     // deduplicated once per emission instead of on every recomposition of this
      val distinctItems = remember(items) { items?.distinctBy { it.id } }
  
      LazyVerticalGrid(
@@ -90,7 +90,7 @@ package com.example.musicfy.ui.screens
                                      is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
                                      is ArtistItem -> navController.navigate("artist/${item.id}")
                                      else -> {
-                                         // Do nothing
+                                         // do nothing
                                      }
                                  }
                              },
@@ -123,7 +123,7 @@ package com.example.musicfy.ui.screens
                                          }
  
                                          else -> {
-                                             // Do nothing
+                                             // do nothing
                                          }
                                      }
                                  }

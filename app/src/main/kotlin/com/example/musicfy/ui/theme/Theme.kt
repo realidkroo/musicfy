@@ -1,4 +1,4 @@
-// Theme.kt
+// themekt
 // this thing is for theme
 
 package com.example.musicfy.ui.theme
@@ -27,7 +27,7 @@ import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
 
-val DefaultThemeColor = Color(0xFF8E8E8E) // Gray
+val DefaultThemeColor = Color(0xFF8E8E8E) // gray
 
 @Composable
 fun MusicfyTheme(
@@ -37,20 +37,20 @@ fun MusicfyTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    // Determine if system dynamic colors should be used (Android S+ and default theme color)
+    // determine if system dynamic colors should be used (android s+ and default
     val useSystemDynamicColor = false
 
-    // Select the appropriate color scheme generation method
+    // select the appropriate color scheme generation method
     val baseColorScheme = if (useSystemDynamicColor) {
-        // Use standard Material 3 dynamic color functions for system wallpaper colors
+        // use standard material 3 dynamic color functions for system wallpaper colors
         if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
         /*
-        // Use materialKolor only when a specific seed color is provided
+        // use materialkolor only when a specific seed color is provided
         rememberDynamicColorScheme(
-            seedColor = themeColor, // themeColor is guaranteed non-default here
+            seedColor = themeColor, // themecolor is guaranteed non-default here
             isDark = darkTheme,
-            style = PaletteStyle.TonalSpot // Keep existing style
+            style = PaletteStyle.TonalSpot // keep existing style
         )
         */
         if (darkTheme) {
@@ -92,7 +92,7 @@ fun MusicfyTheme(
         }
     }
 
-    // Apply pureBlack modification if needed, similar to original logic
+    // apply pureblack modification if needed similar to original logic
     val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
         if (darkTheme && pureBlack) {
             baseColorScheme.pureBlack(true)
@@ -101,10 +101,10 @@ fun MusicfyTheme(
         }
     }
 
-    // Use standard MaterialTheme instead of MaterialExpressiveTheme
+    // use standard materialtheme instead of materialexpressivetheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography, // Use the defined AppTypography
+        typography = AppTypography, // use the defined apptypography
     ) {
         ProvideTextStyle(
             value = AppTypography.bodyLarge,

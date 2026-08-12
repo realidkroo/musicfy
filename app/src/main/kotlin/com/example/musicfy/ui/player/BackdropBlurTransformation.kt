@@ -1,8 +1,8 @@
-// BackdropBlurTransformation.kt
-// Bakes a blur into a Coil-loaded bitmap once, off the main thread, instead of applying a live
-// RenderEffect blur on every frame. Meant for tiny source bitmaps (e.g. a 48x48 downsample) that
-// get stretched way up on screen — a few pixels of blur here reads as a large soft blur once
-// magnified, at a tiny fraction of the cost of blurring the final on-screen resolution live.
+// backdropblurtransformationkt
+// bakes a blur into a coil-loaded bitmap once off the main thread instead of
+// rendereffect blur on every frame meant for tiny source bitmaps (eg a 48x48
+// get stretched way up on screen — a few pixels of blur here reads as a
+// magnified at a tiny fraction of the cost of blurring the final on-screen
 
 package com.example.musicfy.ui.player
 
@@ -24,7 +24,7 @@ class BackdropBlurTransformation(private val radiusPx: Int) : Transformation() {
         val pixels = IntArray(width * height)
         input.getPixels(pixels, 0, width, 0, 0, width, height)
 
-        // Three box-blur passes approximate a Gaussian blur closely enough for this use case.
+        // three box-blur passes approximate a gaussian blur closely enough for this
         repeat(3) {
             boxBlurHorizontal(pixels, width, height, radiusPx)
             boxBlurVertical(pixels, width, height, radiusPx)

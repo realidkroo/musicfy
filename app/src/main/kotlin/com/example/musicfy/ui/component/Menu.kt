@@ -1,4 +1,4 @@
-// Menu.kt
+// menukt
 // what is this for you ask its for menu ofc
 
 package com.example.musicfy.ui.component

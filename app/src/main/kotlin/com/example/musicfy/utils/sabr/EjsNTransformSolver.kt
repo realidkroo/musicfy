@@ -1,4 +1,4 @@
-// EjsNTransformSolver.kt
+// ejsntransformsolverkt
 // this thing is for ejs ntransform solver
 
 package com.example.musicfy.utils.sabr
@@ -21,22 +21,13 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/**
- * Standalone EJS-based n-parameter transform solver for SABR URLs.
- *
- * Uses the same AST-based approach as yt-dlp's EJS solver (meriyah + astring +
- * yt.solver.core.js) to reliably extract and execute the n-transform function
- * from the YouTube player JS.
- */
+// standalone ejs-based n-parameter transform solver for sabr urls uses the same
 object EjsNTransformSolver {
     private const val TAG = "musicfy_EjsNSolver"
 
     private var solverWebView: SolverWebView? = null
 
-    /**
-     * Transform the 'n' parameter in a SABR streaming URL.
-     * Returns the URL with the transformed 'n' value, or the original URL if transform fails.
-     */
+    // transform the 'n' parameter in a sabr streaming url returns the url with the
     suspend fun transformNParamInUrl(url: String): String {
         val nMatch = Regex("[?&]n=([^&]+)").find(url)
         if (nMatch == null) {

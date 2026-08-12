@@ -1,5 +1,5 @@
-// ComingSoonScreen.kt
-// generic placeholder destination for sections that don't have a real page behind them yet
+// comingsoonscreenkt
+// generic placeholder destination for sections that don't have a real page
 
 package com.example.musicfy.ui.screens
 

@@ -1,4 +1,4 @@
-// TextPlaceholder.kt
+// textplaceholderkt
 // this thing is for text placeholder
 
 package com.example.musicfy.ui.component.shimmer

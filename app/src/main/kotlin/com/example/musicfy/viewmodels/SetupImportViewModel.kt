@@ -1,7 +1,7 @@
-// SetupImportViewModel.kt
-// Thin Hilt bridge so the setup wizard's Compose tree can reach the singleton
-// MusicImportService (same shape as EqualizerViewModel wrapping EqualizerService) — the import
-// itself keeps running in the service's own scope even if this ViewModel/the wizard is torn down.
+// setupimportviewmodelkt
+// thin hilt bridge so the setup wizard's compose tree can reach the singleton
+// musicimportservice (same shape as equalizerviewmodel wrapping
+// itself keeps running in the service's own scope even if this viewmodel/the
 
 package com.example.musicfy.viewmodels
 

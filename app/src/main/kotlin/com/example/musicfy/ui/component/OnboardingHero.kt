@@ -1,7 +1,7 @@
-// OnboardingHero.kt
-// The hero shown in place of HeroCarousel when there is nothing to carousel yet — a brand-new
-// install with no last-played song, no Daily Discover and no listening history. Same cover-grid
-// concept as the setup wizard's welcome screen, but permanently looping, tilted, and blurred.
+// onboardingherokt
+// the hero shown in place of herocarousel when there is nothing to carousel
+// install with no last-played song no daily discover and no listening
+// concept as the setup wizard's welcome screen but permanently looping
 
 package com.example.musicfy.ui.component
 
@@ -65,10 +65,6 @@ import kotlinx.coroutines.withContext
 
 private const val TILT_DEGREES = 40f
 
-/**
- * @param username shown in the greeting; blank is fine, the greeting just drops the name.
- * @param onGetStarted invoked by the "here" pill — wired to the search tab.
- */
 @Composable
 fun OnboardingHero(
     username: String,
@@ -99,7 +95,7 @@ fun OnboardingHero(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Scrim so the copy stays readable over whatever art loads.
+        // scrim so the copy stays readable over whatever art loads
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -172,10 +168,7 @@ fun OnboardingHero(
     }
 }
 
-/**
- * Cover art that fades up once it has actually decoded, instead of snapping in over the empty
- * placeholder tile the moment the network returns.
- */
+// cover art that fades up once it has actually decoded instead of snapping in
 @Composable
 fun FadeInCover(
     url: String,
@@ -197,10 +190,7 @@ fun FadeInCover(
     )
 }
 
-/**
- * Three columns of cover art, tilted and drifting upward forever. The blur radius breathes rather
- * than sitting still so the wall reads as alive even while the drift is slow.
- */
+// three columns of cover art tilted and drifting upward forever the blur radius
 @Composable
 private fun TiltedCoverWall(
     covers: List<String>,
@@ -235,7 +225,7 @@ private fun TiltedCoverWall(
         modifier = modifier
             .graphicsLayer {
                 rotationZ = TILT_DEGREES
-                // Overscale so the rotated wall still covers the corners of the hero.
+                // overscale so the rotated wall still covers the corners of the hero
                 scaleX = 2.1f
                 scaleY = 2.1f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -254,8 +244,8 @@ private fun TiltedCoverWall(
             horizontalArrangement = Arrangement.spacedBy(spacing)
         ) {
             repeat(3) { column ->
-                // Each column is offset a little so the wall doesn't read as one rigid block, and
-                // the loop is seamless because the strip repeats its own contents twice.
+                // each column is offset a little so the wall doesn't read as one rigid block
+                // the loop is seamless because the strip repeats its own contents twice
                 val strip = remember(covers, column) {
                     val rotated = covers.drop(column * 2) + covers.take(column * 2)
                     (rotated + rotated).take(12)

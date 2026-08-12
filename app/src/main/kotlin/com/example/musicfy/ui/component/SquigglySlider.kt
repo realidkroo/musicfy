@@ -1,13 +1,7 @@
-// SquigglySlider.kt
+// squigglysliderkt
 // the file functioned as squiggly slider
 
-/**
- * musicfy Project (C) 2026
- * Licensed under GPL-3.0 | See git history for contributors
- * 
- * Squiggly Slider - ported from mpvEx project
- * https://github.com/marlboro-advance/mpvEx
- */
+// musicfy project (c) 2026 licensed under gpl-30 | see git history for
 
 package com.example.musicfy.ui.component
 
@@ -66,27 +60,27 @@ fun SquigglySlider(
     val duration = valueRange.endInclusive - valueRange.start
     val position = currentValue - valueRange.start
 
-    // Animation state
+    // animation state
     var phaseOffset by remember { mutableFloatStateOf(0f) }
     var heightFraction by remember { mutableFloatStateOf(if (isPlaying) 1f else 0f) }
 
     val scope = rememberCoroutineScope()
 
-    // Wave parameters
+    // wave parameters
     val waveLength = 80f
     val lineAmplitude = 6f
-    val phaseSpeed = 24f // Faster wave movement to match old squiggly
+    val phaseSpeed = 24f // faster wave movement to match old squiggly
     val transitionPeriods = 1.5f
     val minWaveEndpoint = 0f
     val matchedWaveEndpoint = 1f
     val transitionEnabled = true
 
-    // Animate height fraction based on playing state and dragging state
+    // animate height fraction based on playing state and dragging state
     LaunchedEffect(isPlaying, isDragging) {
         scope.launch {
             val shouldFlatten = !isPlaying || isDragging
             val targetHeight = if (shouldFlatten) 0f else 1f
-            val animDuration = if (shouldFlatten) 150 else 200 // Faster appear/disappear
+            val animDuration = if (shouldFlatten) 150 else 200 // faster appear/disappear
             val startDelay = if (shouldFlatten) 0L else 30L
 
             delay(startDelay)
@@ -104,7 +98,7 @@ fun SquigglySlider(
         }
     }
 
-    // Animate wave movement only when playing
+    // animate wave movement only when playing
     LaunchedEffect(isPlaying) {
         if (!isPlaying) return@LaunchedEffect
 
@@ -174,7 +168,7 @@ fun SquigglySlider(
             val totalProgressPx = totalWidth * progress
             val centerY = size.height / 2f
 
-            // Calculate wave progress
+            // calculate wave progress
             val waveProgressPx = if (!transitionEnabled || progress > matchedWaveEndpoint) {
                 totalWidth * progress
             } else {
@@ -182,7 +176,7 @@ fun SquigglySlider(
                 totalWidth * (minWaveEndpoint + (matchedWaveEndpoint - minWaveEndpoint) * t)
             }
 
-            // Helper function to compute amplitude
+            // helper function to compute amplitude
             fun computeAmplitude(x: Float, sign: Float): Float {
                 return if (transitionEnabled) {
                     val length = transitionPeriods * waveLength
@@ -193,7 +187,7 @@ fun SquigglySlider(
                 }
             }
 
-            // Build wavy path for played portion
+            // build wavy path for played portion
             val path = Path()
             val waveStart = -phaseOffset - waveLength / 2f
             val waveEnd = if (transitionEnabled) totalWidth else waveProgressPx
@@ -224,7 +218,7 @@ fun SquigglySlider(
                 currentX = nextX
             }
 
-            // Draw path up to progress position using clipping
+            // draw path up to progress position using clipping
             val clipTop = lineAmplitude + strokeWidth
 
             val disabledAlpha = 77f / 255f
@@ -247,19 +241,19 @@ fun SquigglySlider(
                 }
             }
 
-            // Played segment
+            // played segment
             drawPathSegment(0f, totalProgressPx, primaryColor)
 
-            // Unplayed segment
+            // unplayed segment
             drawPathSegment(totalProgressPx, totalWidth, inactiveTrackColor)
 
-            // Helper function to get wave Y position at any X
+            // helper function to get wave y position at any x
             fun getWaveY(x: Float): Float {
                 val phase = (x - waveStart) / waveLength
                 val waveCycle = phase - kotlin.math.floor(phase)
                 val waveValue = kotlin.math.cos(waveCycle * 2f * kotlin.math.PI.toFloat())
                 
-                // Calculate amplitude coefficient at this x position
+                // calculate amplitude coefficient at this x position
                 val ampCoeff = if (transitionEnabled) {
                     val length = transitionPeriods * waveLength
                     ((waveProgressPx + length / 2f - x) / length).coerceIn(0f, 1f)
@@ -270,14 +264,14 @@ fun SquigglySlider(
                 return centerY + waveValue * lineAmplitude * heightFraction * ampCoeff
             }
 
-            // Draw round cap at start (synced with wave)
+            // draw round cap at start (synced with wave)
             drawCircle(
                 color = primaryColor,
                 radius = capRadius,
                 center = Offset(0f, getWaveY(0f)),
             )
 
-            // Draw round cap at end (only right half, synced with wave movement)
+            // draw round cap at end (only right half synced with wave movement)
             val endWaveY = getWaveY(totalWidth)
             clipRect(
                 left = totalWidth,
@@ -292,7 +286,7 @@ fun SquigglySlider(
                 )
             }
 
-            // Vertical Bar Thumb
+            // vertical bar thumb
             val barHalfHeight = (lineAmplitude + strokeWidth)
             val barWidth = 5.dp.toPx()
 

@@ -1,4 +1,4 @@
-// ScrollUtils.kt
+// scrollutilskt
 // what is this for you ask its for scroll utils ofc
 
 package com.example.musicfy.ui.utils

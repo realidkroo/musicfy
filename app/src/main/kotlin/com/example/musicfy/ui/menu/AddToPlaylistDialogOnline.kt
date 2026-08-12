@@ -1,4 +1,4 @@
-// AddToPlaylistDialogOnline.kt
+// addtoplaylistdialogonlinekt
 // this thing is for add to playlist dialog online
 
 package com.example.musicfy.ui.menu
@@ -75,7 +75,7 @@ fun AddToPlaylistDialogOnline(
     isVisible: Boolean,
     allowSyncing: Boolean = true,
     initialTextFieldValue: String? = null,
-    songs: SnapshotStateList<Song>, // list of song ids. Songs should be inserted to database in this function.
+    songs: SnapshotStateList<Song>, // list of song ids songs should be inserted to database in this function
     onDismiss: () -> Unit,
     onProgressStart: (Boolean) -> Unit,
     onPercentageChange: (Int) -> Unit,
@@ -368,10 +368,10 @@ fun AddToPlaylistDialogOnline(
                     title = stringResource(R.string.liked_songs),
                     thumbnailContent = {
                         Image(
-                            painter = painterResource(id = R.drawable.favorite), // The XML image
+                            painter = painterResource(id = R.drawable.favorite), // the xml image
                             contentDescription = null,
-                            modifier = Modifier.size(40.dp), // Adjust size as needed
-                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground) // Optional tinting
+                            modifier = Modifier.size(40.dp), // adjust size as needed
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground) // optional tinting
                         )
                     },
                     trailingContent = {}

@@ -1,9 +1,9 @@
-// LineSlider.kt
-// The plain track-and-fill slider the concepts use — a rounded line that fills from the left,
-// with no thumb, no ripple and no Material chrome.
-//
-// Material3's Slider brings a visible thumb, a state layer and its own touch target sizing, none
-// of which match the sheets these appear in. This is a drag surface over two rounded rects.
+// linesliderkt
+// the plain track-and-fill slider the concepts use — a rounded line that
+// with no thumb no ripple and no material chrome
+
+// material3's slider brings a visible thumb a state layer and its own touch
+// of which match the sheets these appear in this is a drag surface over two
 
 package com.example.musicfy.ui.player.menu
 
@@ -29,17 +29,13 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/**
- * @param value 0..1.
- * @param onValueChange fired continuously while dragging and once on tap.
- */
 @Composable
 fun LineSlider(
     value: Float,
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     trackHeight: Dp = 6.dp,
-    // Touch target is taller than the line itself; a 6dp-tall strip is unusable otherwise.
+    // touch target is taller than the line itself; a 6dp-tall strip is unusable
     touchHeight: Dp = 28.dp,
     activeColor: Color = Color.White,
     inactiveColor: Color = Color.White.copy(alpha = 0.22f),
@@ -66,8 +62,8 @@ fun LineSlider(
                 detectTapGestures { offset -> report(offset.x) }
             }
             .pointerInput(Unit) {
-                // Reports from the absolute position rather than accumulating deltas, so the
-                // fill always sits exactly under the finger even after a fast drag.
+                // reports from the absolute position rather than accumulating deltas so the
+                // fill always sits exactly under the finger even after a fast drag
                 detectHorizontalDragGestures(
                     onDragStart = { offset -> report(offset.x) },
                     onHorizontalDrag = { change, _ -> report(change.position.x) },

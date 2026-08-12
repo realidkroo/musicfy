@@ -24,11 +24,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import com.example.musicfy.constants.DisableBlurKey
 import com.example.musicfy.utils.rememberPreference
 
-/**
- * RenderNode-based glass blur system ported from weatherify.
- * Captures the rendered content of a root composable and allows
- * re-drawing it with native hardware blur in other locations.
- */
+// rendernode-based glass blur system ported from weatherify captures the rendered
 @Stable
 class GlassState {
     var renderNode by mutableStateOf<RenderNode?>(null)
@@ -57,12 +53,12 @@ fun Modifier.glassRoot(state: GlassState, isActive: () -> Boolean = { true }): M
 
         onDrawWithContent {
             val drawContextCanvas = drawContext.canvas
-            // Recording into the RenderNode and immediately redrawing it back onto the real
-            // canvas is a full duplicate draw pass of this subtree's content. Skip it whenever
-            // nothing downstream is currently reading the captured node (isActive is a draw-phase
-            // read, same category as the provider lambdas consumers pass in, so checking it here
-            // never triggers recomposition) — falls back to the plain drawContent() path, which is
-            // exactly what already happens today when there's no consumer or on pre-API-31 devices.
+            // recording into the rendernode and immediately redrawing it back onto the
+            // canvas is a full duplicate draw pass of this subtree's content skip it
+            // nothing downstream is currently reading the captured node (isactive is a
+            // read same category as the provider lambdas consumers pass in so checking
+            // never triggers recomposition) — falls back to the plain drawcontent() path
+            // exactly what already happens today when there's no consumer or on
             if (node != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && isActive()) {
                 val nativeCanvas = node.beginRecording()
                 val composeCanvas = Canvas(nativeCanvas)
@@ -89,19 +85,19 @@ fun GlassPillBackground(
     tint: Color = Color.Transparent,
     foundationColor: Color? = null,
     shape: Shape? = null,
-    // DECAL (the default) samples transparent past the layer's own bounds, which is what you
-    // want when the layer is meant to fade out at its edges (e.g. a pill floating over content).
-    // CLAMP instead replicates the edge pixel outward, so a layer whose bounds coincide with the
-    // area you actually want blurred edge-to-edge (no fade) reads as fully blurred right up to
-    // its true boundary — use it wherever the caller's own bounds ARE the intended blur extent.
+    // decal (the default) samples transparent past the layer's own bounds which
+    // want when the layer is meant to fade out at its edges (eg a pill floating
+    // clamp instead replicates the edge pixel outward so a layer whose bounds
+    // area you actually want blurred edge-to-edge (no fade) reads as fully
+    // its true boundary — use it wherever the caller's own bounds are the
     tileMode: android.graphics.Shader.TileMode = android.graphics.Shader.TileMode.DECAL,
     modifier: Modifier = Modifier
 ) {
     var position by remember { mutableStateOf(Offset.Zero) }
-    // "Disable blur" replaces the actual blurred capture with a flat foundationColor/tint
-    // fallback everywhere in the app — same gate for every consumer of this primitive
-    // (nav bar, mini-player pill, profile menu, detail top bar, home top bar, settings),
-    // rather than each call site reimplementing its own on/off branch.
+    // "disable blur" replaces the actual blurred capture with a flat
+    // fallback everywhere in the app — same gate for every consumer of this
+    // (nav bar mini-player pill profile menu detail top bar home top bar
+    // rather than each call site reimplementing its own on/off branch
     val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
 
     androidx.compose.foundation.Canvas(
@@ -156,7 +152,7 @@ fun ProgressiveGlassBackground(
     Box(modifier = modifier) {
         for (i in 1..steps) {
             val fraction = i.toFloat() / steps
-            // Quadratic curve for smoother visual radius growth
+            // quadratic curve for smoother visual radius growth
             val radiusProvider = { maxBlurRadius() * (fraction * fraction) }
             
             val fadeStart = (i - 1).toFloat() / steps

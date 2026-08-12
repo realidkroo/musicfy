@@ -1,4 +1,4 @@
-// ChartsViewModel.kt
+// chartsviewmodelkt
 // this thing is for charts view model
 
 package com.example.musicfy.viewmodels

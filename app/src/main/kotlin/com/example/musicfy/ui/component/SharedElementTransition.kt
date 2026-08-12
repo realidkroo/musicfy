@@ -1,13 +1,13 @@
-// SharedElementTransition.kt
-// Infrastructure for the album/playlist cover "expand into place" open transition —
-// the tapped grid cover morphs into the destination screen's header cover instead of
-// the generic slide+fade every other route uses. `SharedTransitionScope` and
-// `AnimatedVisibilityScope` aren't otherwise ambient inside a NavHost's destinations,
-// so — same convention as this app's other CompositionLocals (LocalPlayerConnection,
-// LocalDatabase, etc.) — they're provided once (MainActivity.kt wraps NavHost in
-// SharedTransitionLayout; NavigationBuilder.kt provides the per-destination
-// AnimatedContentScope) and read here via `homeSharedElement`, rather than threading
-// two new parameters through every grid-item composable and destination screen.
+// sharedelementtransitionkt
+// infrastructure for the album/playlist cover "expand into place" open
+// the tapped grid cover morphs into the destination screen's header cover
+// the generic slide+fade every other route uses `sharedtransitionscope` and
+// `animatedvisibilityscope` aren't otherwise ambient inside a navhost's
+// so — same convention as this app's other compositionlocals
+// localdatabase etc) — they're provided once (mainactivitykt wraps navhost in
+// sharedtransitionlayout; navigationbuilderkt provides the per-destination
+// animatedcontentscope) and read here via `homesharedelement` rather than
+// two new parameters through every grid-item composable and destination
 
 package com.example.musicfy.ui.component
 
@@ -23,9 +23,9 @@ val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { nu
 
 val LocalNavAnimatedContentScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
-// No-ops (returns the modifier unchanged) when `key` is null or when called outside
-// the shared-transition NavHost (e.g. a preview) — safe to apply unconditionally at
-// call sites that only sometimes want to participate.
+// no-ops (returns the modifier unchanged) when `key` is null or when called
+// the shared-transition navhost (eg a preview) — safe to apply
+// call sites that only sometimes want to participate
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun Modifier.homeSharedElement(key: String?): Modifier {

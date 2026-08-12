@@ -1,4 +1,4 @@
-// RoundedStarShape.kt
+// roundedstarshapekt
 // this thing is part of rounded star shape
 
 package com.example.musicfy.core.shapes
@@ -14,16 +14,7 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-/**
- * Shape describing star with rounded corners
- *
- * Note: The shape draws within the minimum of provided width and height so can't be used to create stretched shape.
- *
- * @param sides number of sides.
- * @param curve a double value between 0.0 - 1.0 for modifying star curve.
- * @param rotation  value between 0 - 360
- * @param iterations a value between 0 - 360 that determines the quality of star shape.
- */
+// shape describing star with rounded corners note: the shape draws within the
 class RoundedStarShape(
     private val sides: Int,
     private val curve: Double = 0.09,

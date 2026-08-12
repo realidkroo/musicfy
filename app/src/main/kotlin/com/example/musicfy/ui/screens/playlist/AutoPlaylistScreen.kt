@@ -1,4 +1,4 @@
-// AutoPlaylistScreen.kt
+// autoplaylistscreenkt
 // this thing is for auto playlist screen
 
 package com.example.musicfy.ui.screens.playlist
@@ -666,8 +666,8 @@ private fun AutoPlaylistHeader(
     com.example.musicfy.ui.component.detail.PlaylistScreenHeader(
         thumbnailUrl = songs.firstOrNull { !it.song.thumbnailUrl.isNullOrEmpty() }?.song?.thumbnailUrl,
         title = name,
-        // No creator name for these — Liked/Downloaded/Uploaded are auto-generated
-        // system views, not a "playlist you made" with a name worth attaching.
+        // no creator name for these — liked/downloaded/uploaded are auto-generated
+        // system views not a "playlist you made" with a name worth attaching
         userName = "",
         description = staticDescription,
         isPlaying = isPlaying,

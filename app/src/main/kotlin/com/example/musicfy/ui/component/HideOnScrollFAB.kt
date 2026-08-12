@@ -1,4 +1,4 @@
-// HideOnScrollFAB.kt
+// hideonscrollfabkt
 // the file functioned as hide on scroll fab
 
 package com.example.musicfy.ui.component

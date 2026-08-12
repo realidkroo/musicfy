@@ -1,4 +1,4 @@
-// PlayerMenu.kt
+// playermenukt
 // what is this for you ask its for player menu ofc
 
 package com.example.musicfy.ui.menu
@@ -115,7 +115,7 @@ fun PlayerMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsState()
     
-    // Cast state for volume control - safely access castConnectionHandler to prevent crashes
+    // cast state for volume control - safely access castconnectionhandler to
     val castHandler = remember(playerConnection) {
         try {
             playerConnection.service.castConnectionHandler
@@ -131,8 +131,8 @@ fun PlayerMenu(
     val coroutineScope = rememberCoroutineScope()
 
     val downloadUtil = LocalDownloadUtil.current
-    // remember(id): getDownload() returns a new Flow each call, so an
-    // unremembered collectAsState relaunches its coroutine every recomposition.
+    // remember(id): getdownload() returns a new flow each call so an
+    // unremembered collectasstate relaunches its coroutine every recomposition
     val download by remember(downloadUtil, mediaMetadata.id) {
         downloadUtil.getDownload(mediaMetadata.id)
     }.collectAsState(initial = null)
@@ -244,7 +244,7 @@ fun PlayerMenu(
                 showSleepTimerDialog = false
             },
             onReset = {
-                sleepTimerValue = 30f // Default value
+                sleepTimerValue = 30f // default value
             },
             content = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -289,7 +289,7 @@ fun PlayerMenu(
                 .padding(horizontal = 24.dp)
                 .padding(top = 24.dp, bottom = 6.dp),
         ) {
-            // Show Cast indicator when casting
+            // show cast indicator when casting
             if (isCasting && castDeviceName != null) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -467,7 +467,7 @@ fun PlayerMenu(
                             )
                         )
                     }
-                    // Add to Library option
+                    // add to library option
                     val isInLibrary = librarySong?.song?.inLibrary != null
                     add(
                         Material3MenuItemData(

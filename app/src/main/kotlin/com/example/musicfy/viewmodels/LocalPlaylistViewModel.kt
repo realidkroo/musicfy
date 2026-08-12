@@ -1,4 +1,4 @@
-// LocalPlaylistViewModel.kt
+// localplaylistviewmodelkt
 // this thing is for local playlist view model
 
 package com.example.musicfy.viewmodels
@@ -91,7 +91,7 @@ constructor(
 
     init {
         viewModelScope.launch {
-            // Trigger sync in background if it's a YouTube synced playlist
+            // trigger sync in background if it's a youtube synced playlist
             playlist.first { it != null }?.playlist?.browseId?.let { browseId ->
                 syncUtils.syncPlaylist(browseId, playlistId)
             }

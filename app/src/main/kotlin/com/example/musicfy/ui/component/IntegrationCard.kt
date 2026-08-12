@@ -1,4 +1,4 @@
-// IntegrationCard.kt
+// integrationcardkt
 // this thing is for integration card
 
 package com.example.musicfy.ui.component
@@ -32,11 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 
-/**
- * A Material 3 Expressive style settings group component
- * @param title The title of the settings group
- * @param items List of settings items to display
- */
+// a material 3 expressive style settings group component
 @Composable
 fun IntegrationCard(
     title: String? = null,
@@ -46,7 +42,7 @@ fun IntegrationCard(
         modifier = Modifier
             .fillMaxWidth()
     ) {
-        // Section title
+        // section title
         title?.let {
             Text(
                 text = it,
@@ -56,7 +52,7 @@ fun IntegrationCard(
             )
         }
 
-        // Settings items
+        // settings items
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -86,9 +82,7 @@ fun IntegrationCard(
     }
 }
 
-/**
- * Individual settings item row with Material 3 styling
- */
+// individual settings item row with material 3 styling
 @Composable
 private fun IntegrationCardItemRow(
     item: IntegrationCardItem
@@ -103,7 +97,7 @@ private fun IntegrationCardItemRow(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icon with background
+        // icon with background
         item.icon?.let { icon ->
             Box(
                 modifier = Modifier
@@ -150,16 +144,16 @@ private fun IntegrationCardItemRow(
             Spacer(modifier = Modifier.width(16.dp))
         }
 
-        // Title and description
+        // title and description
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            // Title content
+            // title content
             ProvideTextStyle(MaterialTheme.typography.titleMedium) {
                 item.title()
             }
 
-            // Description if provided
+            // description if provided
             item.description?.let { desc ->
                 Spacer(modifier = Modifier.height(2.dp))
                 ProvideTextStyle(
@@ -172,7 +166,7 @@ private fun IntegrationCardItemRow(
             }
         }
 
-        // Trailing content
+        // trailing content
         item.trailingContent?.let { trailing ->
             Spacer(modifier = Modifier.width(8.dp))
             trailing()
@@ -180,9 +174,7 @@ private fun IntegrationCardItemRow(
     }
 }
 
-/**
- * Data class for Material 3 settings item
- */
+// data class for material 3 settings item
 data class IntegrationCardItem(
     val icon: Painter? = null,
     val title: @Composable () -> Unit,

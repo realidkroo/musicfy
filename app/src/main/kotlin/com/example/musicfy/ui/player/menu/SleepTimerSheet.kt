@@ -1,16 +1,16 @@
-// SleepTimerSheet.kt
-// Sleep timer, in two stages: a compact card showing the duration with a chevron, which expands
-// into a picker.
-//
-// The picker is Material3's TimeInput — the keyboard half of the standard Android clock picker.
-// A hand-rolled odometer sat here first and was not worth it: a rolling display is not a control,
-// so it needed a separate gesture bolted on to actually change anything, and every bug in it was
-// in that seam. Typed entry is unambiguous, accessible for free, and the platform maintains it.
-//
-// Hours and minutes only, no seconds: the service's SleepTimer.start takes whole minutes, so a
-// seconds field would have been a control that quietly rounds away.
-//
-// The service already owns the timer itself (playback/SleepTimer.kt) — this only drives it.
+// sleeptimersheetkt
+// sleep timer in two stages: a compact card showing the duration with a
+// into a picker
+
+// the picker is material3's timeinput — the keyboard half of the standard
+// a hand-rolled odometer sat here first and was not worth it: a rolling
+// so it needed a separate gesture bolted on to actually change anything and
+// in that seam typed entry is unambiguous accessible for free and the
+
+// hours and minutes only no seconds: the service's sleeptimerstart takes
+// seconds field would have been a control that quietly rounds away
+
+// the service already owns the timer itself (playback/sleeptimerkt) — this
 
 package com.example.musicfy.ui.player.menu
 
@@ -76,7 +76,7 @@ fun SleepTimerSheet(onDismiss: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val sleepTimer = playerConnection.service.sleepTimer
 
-    // Collapsed = the summary card with the chevron; expanded = the hh/mm/ss odometer.
+    // collapsed = the summary card with the chevron; expanded = the hh/mm/ss
     var expanded by remember { mutableStateOf(false) }
 
     val timeState = androidx.compose.material3.rememberTimePickerState(
@@ -93,7 +93,7 @@ fun SleepTimerSheet(onDismiss: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
                 .padding(top = 10.dp, bottom = 28.dp)
-                // The card grows into the picker rather than the sheet jumping to a new size.
+                // the card grows into the picker rather than the sheet jumping to a new size
                 .animateContentSize(animationSpec = tween(420, easing = SheetEasing))
         ) {
             Text(
@@ -106,7 +106,7 @@ fun SleepTimerSheet(onDismiss: () -> Unit) {
             Spacer(modifier = Modifier.height(14.dp))
 
             if (!expanded) {
-                // Stage one: the duration as one line, tap anywhere to open the picker.
+                // stage one: the duration as one line tap anywhere to open the picker
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier

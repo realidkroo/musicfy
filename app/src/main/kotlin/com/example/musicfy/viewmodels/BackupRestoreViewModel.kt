@@ -1,4 +1,4 @@
-// BackupRestoreViewModel.kt
+// backuprestoreviewmodelkt
 // the file functioned as backup restore view model
 
 package com.example.musicfy.viewmodels
@@ -80,7 +80,7 @@ class BackupRestoreViewModel @Inject constructor(
             Timber.tag("RESTORE").i("Starting restore from URI: $uri")
             context.applicationContext.contentResolver.openInputStream(uri)?.use { raw ->
                 raw.zipInputStream().use { inputStream ->
-                    var entry = tryOrNull { inputStream.nextEntry } // prevent ZipException
+                    var entry = tryOrNull { inputStream.nextEntry } // prevent zipexception
                     var foundAny = false
                     while (entry != null) {
                         Timber.tag("RESTORE").i("Found zip entry: ${entry.name}")
@@ -96,7 +96,7 @@ class BackupRestoreViewModel @Inject constructor(
                             InternalDatabase.DB_NAME -> {
                                 Timber.tag("RESTORE").i("Restoring DB (entry = ${entry.name})")
                                 foundAny = true
-                                // capture path before closing DB to avoid reopening race
+                                // capture path before closing db to avoid reopening race
                                 val dbPath = database.openHelper.writableDatabase.path
                                 runBlocking(Dispatchers.IO) { database.checkpoint() }
                                 database.close()
@@ -110,7 +110,7 @@ class BackupRestoreViewModel @Inject constructor(
                                 Timber.tag("RESTORE").i("Skipping unexpected entry: ${entry.name}")
                             }
                         }
-                        entry = tryOrNull { inputStream.nextEntry } // prevent ZipException
+                        entry = tryOrNull { inputStream.nextEntry } // prevent zipexception
                     }
                     if (!foundAny) {
                         Timber.tag("RESTORE").w("No expected entries found in archive")
@@ -197,7 +197,7 @@ class BackupRestoreViewModel @Inject constructor(
                                 )
                                 songs.add(mockSong)
 
-                                // Update log with last 3 songs
+                                // update log with last 3 songs
                                 val logEntry = ConvertedSongLog(
                                     title = title,
                                     artists = artists.joinToString(", ") { it.name },
@@ -211,7 +211,7 @@ class BackupRestoreViewModel @Inject constructor(
                         }
                     }
 
-                    // Update progress
+                    // update progress
                     val progress = ((index + 1) * 100) / totalLines
                     onProgress(progress.coerceIn(0, 99))
                 }
@@ -237,7 +237,7 @@ class BackupRestoreViewModel @Inject constructor(
     }
 
     fun importPlaylistFromCsv(context: Context, uri: Uri): ArrayList<Song> {
-        // Legacy method for compatibility
+        // legacy method for compatibility
         return importPlaylistFromCsv(context, uri, CsvImportState())
     }
 

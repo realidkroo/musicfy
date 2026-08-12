@@ -1,4 +1,4 @@
-// AudioResampler.kt
+// audioresamplerkt
 // the file functioned as audio resampler
 
 package com.example.musicfy.recognition
@@ -13,9 +13,7 @@ import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/**
- * Data class representing decoded audio data with its properties.
- */
+// data class representing decoded audio data with its properties
 data class DecodedAudio(
     val data: ByteArray,
     val channelCount: Int,
@@ -41,10 +39,7 @@ data class DecodedAudio(
     }
 }
 
-/**
- * Audio resampler using Media3 SonicAudioProcessor.
- * Resamples audio to the required sample rate for fingerprinting.
- */
+// audio resampler using media3 sonicaudioprocessor resamples audio to the
 @OptIn(UnstableApi::class)
 object AudioResampler {
 

@@ -1,4 +1,4 @@
-// AdvancedAudioSettingsScreen.kt
+// advancedaudiosettingsscreenkt
 package com.example.musicfy.ui.screens.settings
 import com.example.musicfy.ui.component.AppSwitch
 
@@ -139,7 +139,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     )
                 )
 
-                // Audio Quality (Override)
+                // audio quality (override)
                 Text(
                     text = "Streaming Quality",
                     style = MaterialTheme.typography.titleMedium,
@@ -187,7 +187,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     )
                 )
 
-                // Amazon Music
+                // amazon music
                 Text(
                     text = "Amazon Music",
                     style = MaterialTheme.typography.titleMedium,
@@ -225,7 +225,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                 )
 
-                // Deezer Fallback
+                // deezer fallback
                 Text(
                     text = "Deezer Fallback",
                     style = MaterialTheme.typography.titleMedium,
@@ -256,7 +256,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                 )
 
-                // Instance Manager
+                // instance manager
                 Text(
                     text = "API Instances",
                     style = MaterialTheme.typography.titleLarge,
@@ -269,7 +269,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     InstanceListManager("Streaming Instances", streamingInstances, onStreamingInstancesChange)
                 }
 
-                // Amazon music instances use the monochrome list
+                // amazon music instances use the monochrome list
                 
                 Spacer(modifier = Modifier.height(40.dp))
             }

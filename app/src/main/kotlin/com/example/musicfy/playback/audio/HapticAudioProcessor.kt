@@ -10,9 +10,7 @@ import java.nio.ByteOrder
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-/**
- * AudioProcessor that detects strong beats (like bass hits) and triggers haptic feedback callbacks.
- */
+// audioprocessor that detects strong beats (like bass hits) and triggers haptic
 @UnstableApi
 @Suppress("DEPRECATION")
 class HapticAudioProcessor(
@@ -35,18 +33,18 @@ class HapticAudioProcessor(
     @Volatile
     var focus: HapticFocus = HapticFocus.VIBE
 
-    // Haptic parameters
+    // haptic parameters
     private var smoothedAmplitude: Float = 0f
     
     private var lastVibrateTimeMs: Long = 0
-    private val hapticUpdateIntervalMs: Long = 30 // Send vibration command every 30ms
+    private val hapticUpdateIntervalMs: Long = 30 // send vibration command every 30ms
     
-    // Kick detection & Filtering
+    // kick detection & filtering
     private var longTermRms: Double = 0.0
     private var shortTermRms: Double = 0.0
     private var lastKickTimeMs: Long = 0
 
-    // Filter states
+    // filter states
     private var filterState1: Double = 0.0
     private var filterState2: Double = 0.0
 
@@ -97,22 +95,22 @@ class HapticAudioProcessor(
                 val filteredValue = when (focus) {
                     HapticFocus.BALANCE -> sampleValue
                     HapticFocus.BASS -> {
-                        // Low pass filter ~ 250Hz (alpha ~ 0.034 at 44.1kHz)
+                        // low pass filter ~ 250hz (alpha ~ 0034 at 441khz)
                         filterState1 = filterState1 + 0.034 * (sampleValue - filterState1)
                         filterState1
                     }
                     HapticFocus.VOCAL -> {
-                        // Band pass: HP at 300Hz (alpha ~ 0.959), LP at 3000Hz (alpha ~ 0.298)
+                        // band pass: hp at 300hz (alpha ~ 0959) lp at 3000hz (alpha ~ 0298)
                         val hp = 0.959 * (filterState1 + sampleValue - filterState2)
                         filterState2 = sampleValue
                         filterState1 = hp
-                        // LP
+                        // lp
                         val lp = filterState3 + 0.298 * (hp - filterState3)
                         filterState3 = lp
                         lp
                     }
                     HapticFocus.VIBE -> {
-                        // Low pass ~ 1000Hz (alpha ~ 0.12)
+                        // low pass ~ 1000hz (alpha ~ 012)
                         filterState1 = filterState1 + 0.12 * (sampleValue - filterState1)
                         filterState1
                     }
@@ -151,13 +149,13 @@ class HapticAudioProcessor(
         
         val finalAmplitude = smoothedAmplitude.toInt().coerceIn(0, 255)
 
-        // Highlight (Transient) Detection
+        // highlight (transient) detection
         shortTermRms = (shortTermRms * 0.6) + (rms * 0.4)
         longTermRms = (longTermRms * 0.98) + (rms * 0.02)
         val currentTime = System.currentTimeMillis()
         
         var isHighlight = false
-        // Vibrate mainly on transients (highlights)
+        // vibrate mainly on transients (highlights)
         if (shortTermRms > (longTermRms * 1.6) && shortTermRms > 1500.0) {
             if (currentTime - lastKickTimeMs > 150) {
                 isHighlight = true
@@ -169,10 +167,10 @@ class HapticAudioProcessor(
             lastVibrateTimeMs = currentTime
             
             if (isHighlight) {
-                // Strong pulse on highlights
+                // strong pulse on highlights
                 onHapticUpdate(finalAmplitude.coerceAtLeast(150), true)
             } else if (finalAmplitude > 40) {
-                // Very subtle background vibration instead of continuous buzzing
+                // very subtle background vibration instead of continuous buzzing
                 onHapticUpdate(finalAmplitude / 4, false)
             }
         }

@@ -1,4 +1,4 @@
-// ArtistEntity.kt
+// artistentitykt
 // this thing is part of artist entity
 
 package com.example.musicfy.db.entities

@@ -1,4 +1,4 @@
-// Qualifiers.kt
+// qualifierskt
 // this thing is part of qualifiers
 
 package com.example.musicfy.di

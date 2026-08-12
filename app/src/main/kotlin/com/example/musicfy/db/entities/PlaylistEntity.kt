@@ -1,4 +1,4 @@
-// PlaylistEntity.kt
+// playlistentitykt
 // the file functioned as playlist entity
 
 package com.example.musicfy.db.entities

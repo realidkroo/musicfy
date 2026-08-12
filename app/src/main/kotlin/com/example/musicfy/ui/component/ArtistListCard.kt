@@ -1,6 +1,6 @@
-// ArtistListCard.kt
-// this thing is for the unified "Artist List" home section - one compound card per artist:
-// avatar + name header, a row of covers, and a row of related artist circles below.
+// artistlistcardkt
+// this thing is for the unified "artist list" home section - one compound
+// avatar + name header a row of covers and a row of related artist circles
 
 package com.example.musicfy.ui.component
 
@@ -153,7 +153,7 @@ fun ArtistListCard(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top section (Artist Avatar + text)
+            // top section (artist avatar + text)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 24.dp, top = 24.dp, end = 24.dp)
@@ -196,7 +196,7 @@ fun ArtistListCard(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Middle section: 3 enlarged songs
+            // middle section: 3 enlarged songs
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier
@@ -224,7 +224,7 @@ fun ArtistListCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Bottom section: 2 HUGE circles clipping off
+            // bottom section: 2 huge circles clipping off
             Row(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
                 modifier = Modifier

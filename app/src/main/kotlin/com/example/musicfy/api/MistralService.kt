@@ -1,4 +1,4 @@
-// MistralService.kt
+// mistralservicekt
 // this thing is part of mistral service
 
 package com.example.musicfy.api
@@ -184,19 +184,19 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         if (!content.isNullOrBlank()) {
                             var translatedLines: List<String>? = null
 
-                            // Strategy 1: Try direct JSON parsing
+                            // strategy 1: try direct json parsing
                             try {
                                 val jsonArray = JSONArray(content)
                                 translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                             } catch (e: Exception) {
-                                // Strategy 2: Extract JSON from markdown code blocks
+                                // strategy 2: extract json from markdown code blocks
                                 content = content.replace("```json", "").replace("```", "").trim()
 
                                 try {
                                     val jsonArray = JSONArray(content)
                                     translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                                 } catch (e2: Exception) {
-                                    // Strategy 3: Find first [ and last ]
+                                    // strategy 3: find first [ and last ]
                                     val startIdx = content.indexOf('[')
                                     val endIdx = content.lastIndexOf(']')
 
@@ -206,7 +206,7 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                             val jsonArray = JSONArray(jsonString)
                                             translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                                         } catch (e3: Exception) {
-                                            // Strategy 4: Manual line-by-line parsing as last resort
+                                            // strategy 4: manual line-by-line parsing as last resort
                                             translatedLines =
                                                 content
                                                     .lines()
@@ -222,7 +222,7 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                     translatedLines.size == lineCount -> Result.success(translatedLines)
                                     translatedLines.size > lineCount -> Result.success(translatedLines.take(lineCount))
                                     else -> {
-                                        // Pad with empty strings if we got fewer lines
+                                        // pad with empty strings if we got fewer lines
                                         val paddedLines = translatedLines.toMutableList()
                                         while (paddedLines.size < lineCount) {
                                             paddedLines.add("")

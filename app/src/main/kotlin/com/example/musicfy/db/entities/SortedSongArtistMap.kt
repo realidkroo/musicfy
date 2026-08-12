@@ -1,4 +1,4 @@
-// SortedSongArtistMap.kt
+// sortedsongartistmapkt
 // what is this for you ask its for sorted song artist map ofc
 
 package com.example.musicfy.db.entities

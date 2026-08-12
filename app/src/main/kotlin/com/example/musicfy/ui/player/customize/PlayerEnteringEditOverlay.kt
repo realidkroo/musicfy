@@ -1,12 +1,12 @@
-// PlayerEnteringEditOverlay.kt
-// The beat between "you held the artwork" and "here are the parts you can edit": the player
-// blurs out behind a single line of text, holds, then fades away into the selection layer.
-//
-// The blur itself is NOT drawn here. It is a RenderEffect on the whole player subtree (see
-// BottomSheetPlayer, which owns both), because the concept frame blurs everything — artwork,
-// title, progress bar, transport buttons — and this overlay has to stay sharp on top of it.
-// Drawing a blurred copy from the GlassKit capture would only have covered the controls rather
-// than blurring them, since that capture is scoped to MorphingCover's subtree.
+// playerenteringeditoverlaykt
+// the beat between "you held the artwork" and "here are the parts you can
+// blurs out behind a single line of text holds then fades away into the
+
+// the blur itself is not drawn here it is a rendereffect on the whole player
+// bottomsheetplayer which owns both) because the concept frame blurs
+// title progress bar transport buttons — and this overlay has to stay sharp
+// drawing a blurred copy from the glasskit capture would only have covered
+// than blurring them since that capture is scoped to morphingcover's subtree
 
 package com.example.musicfy.ui.player.customize
 
@@ -37,24 +37,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-/** How long the message stays fully up before it starts leaving. */
+// how long the message stays fully up before it starts leaving
 private const val HoldMillis = 2_200L
 
-/** Fade used both on the way in and on the way out. */
+// fade used both on the way in and on the way out
 private const val FadeMillis = 360
 
-/**
- * Total time from long press to the selection layer: [FadeMillis] in, [HoldMillis] held,
- * [FadeMillis] out — smooth edit mode entry with dark overlay and blurred background.
- */
+// total time from long press to the selection layer: [fademillis] in [holdmillis]
 @Composable
 fun PlayerEnteringEditOverlay(
     onFinished: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Without this, back during the hold falls through to the sheet's own handler and collapses
-    // the player instead of simply calling the long press off.
+    // without this back during the hold falls through to the sheet's own handler
+    // the player instead of simply calling the long press off
     androidx.activity.compose.BackHandler(onBack = onCancel)
 
     var visible by remember { mutableStateOf(false) }
@@ -72,8 +69,8 @@ fun PlayerEnteringEditOverlay(
         visible = true
         delay(HoldMillis + FadeMillis)
         visible = false
-        // Hands over only once this layer has actually faded, so the outlines appear against a
-        // clean screen instead of crossing through the message.
+        // hands over only once this layer has actually faded so the outlines appear
+        // clean screen instead of crossing through the message
         delay(FadeMillis.toLong())
         onFinished()
     }
@@ -82,8 +79,8 @@ fun PlayerEnteringEditOverlay(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()
-            // Nothing is interactive for the duration — including the sheet's own drag handling,
-            // which lives on an ancestor and would otherwise still collapse the player.
+            // nothing is interactive for the duration — including the sheet's own drag
+            // which lives on an ancestor and would otherwise still collapse the player
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -91,10 +88,10 @@ fun PlayerEnteringEditOverlay(
                     }
                 }
             }
-            // drawBehind, not background(): `background(Color.copy(alpha = ... * alpha))`
-            // evaluates the fade in COMPOSITION, so this full-screen overlay recomposed and
-            // rebuilt its whole modifier chain on every frame of the fade. Inside the lambda the
-            // same read happens in the draw phase and costs a repaint instead.
+            // drawbehind not background(): `background(colorcopy(alpha =  * alpha))`
+            // evaluates the fade in composition so this full-screen overlay recomposed
+            // rebuilt its whole modifier chain on every frame of the fade inside the
+            // same read happens in the draw phase and costs a repaint instead
             .drawBehind { drawRect(Color.Black.copy(alpha = 0.52f * alpha)) }
     ) {
         Text(

@@ -1,11 +1,11 @@
-// DiscCoverStack.kt
-// Composes the pieces of a disc cover style into the thing MorphingCover actually places in the
-// artwork box: the platter (possibly two of them, mid-swap), the tonearm, the idle spin clock,
-// and the preferences that drive all three.
-//
-// MorphingCover calls this ONLY for styles where PlayerCoverStyle.isDisc is true. The
-// edge-to-edge and squared styles keep using the artwork stack that was already there, untouched
-// — the point of this file is to be additive, not to re-route the existing player.
+// disccoverstackkt
+// composes the pieces of a disc cover style into the thing morphingcover
+// artwork box: the platter (possibly two of them mid-swap) the tonearm the
+// and the preferences that drive all three
+
+// morphingcover calls this only for styles where playercoverstyleisdisc is
+// edge-to-edge and squared styles keep using the artwork stack that was
+// — the point of this file is to be additive not to re-route the existing
 
 package com.example.musicfy.ui.player.customize
 
@@ -27,15 +27,10 @@ import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.utils.rememberPreference
 import kotlinx.coroutines.isActive
 
-/** Degrees per second at rest. A real 33⅓ rpm platter (200°/s) reads as a blur at this size. */
+// degrees per second at rest a real 33⅓ rpm platter (200°/s) reads as a blur at this size
 private const val SpinDegreesPerSecond = 26f
 
-/**
- * @param spinActive whether the idle rotation clock should run at all. The caller computes this
- *   with derivedStateOf from the sheet's own progress, exactly like MorphingCover's existing
- *   `warpClockActive` — an always-mounted composable must not keep waking Choreographer 60×/s
- *   while the player sits collapsed in the mini pill.
- */
+// with derivedstateof from the sheet's own progress exactly like morphingcover's
 @Composable
 fun DiscCoverStack(
     style: PlayerCoverStyle,
@@ -57,19 +52,19 @@ fun DiscCoverStack(
         queueIndex = queueIndex,
     )
 
-    // Accumulated platter angle. A plain float state written from the frame clock and read only
-    // inside graphicsLayer — never destructured with `by` at composable scope, which would
-    // recompose this whole subtree every single frame.
+    // accumulated platter angle a plain float state written from the frame clock
+    // inside graphicslayer — never destructured with `by` at composable scope
+    // recompose this whole subtree every single frame
     val angle = remember { mutableFloatStateOf(0f) }
     val lastFrameNanos = remember { mutableLongStateOf(0L) }
 
-    // spinActive already carries the caller's own gating (sheet progress, lyrics progress),
-    // so a platter that has dissolved into the square artwork stops costing a frame clock.
+    // spinactive already carries the caller's own gating (sheet progress lyrics
+    // so a platter that has dissolved into the square artwork stops costing a
     val spinning = rotatingEnabled && isPlaying && spinActive
     LaunchedEffect(spinning) {
         if (!spinning) {
-            // Drop the anchor so the next run measures from its own first frame instead of
-            // jumping the platter forward by however long playback was paused.
+            // drop the anchor so the next run measures from its own first frame instead
+            // jumping the platter forward by however long playback was paused
             lastFrameNanos.longValue = 0L
             return@LaunchedEffect
         }
@@ -86,7 +81,7 @@ fun DiscCoverStack(
     }
 
     Box(modifier = modifier) {
-        // Departing disc. Only mounted while a swap is actually in flight.
+        // departing disc only mounted while a swap is actually in flight
         val outgoing = skip.outgoingArtworkUrl
         if (outgoing != null) {
             DiscCover(

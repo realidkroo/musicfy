@@ -1,11 +1,11 @@
-// PoTokenException.kt
+// potokenexceptionkt
 // this thing is part of po token exception
 
 package com.example.musicfy.utils.potoken
 
 class PoTokenException(message: String) : Exception(message)
 
-// to be thrown if the WebView provided by the system is broken
+// to be thrown if the webview provided by the system is broken
 class BadWebViewException(message: String) : Exception(message)
 
 fun buildExceptionForJsError(error: String): Exception {

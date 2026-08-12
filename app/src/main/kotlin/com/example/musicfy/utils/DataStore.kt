@@ -1,4 +1,4 @@
-// DataStore.kt
+// datastorekt
 // this thing is for data store
 
 package com.example.musicfy.utils
@@ -28,55 +28,24 @@ import kotlin.properties.ReadOnlyProperty
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-/**
- * Process-wide in-memory mirror of the preferences file.
- *
- * Why this exists: `dataStore[key]` used to be `runBlocking(Dispatchers.IO) { data.first() }`.
- * Even once DataStore's own cache is warm, that still parks the calling thread while it hops to
- * the IO dispatcher and back. There are ~180 `rememberPreference` call sites, 19 of them on a
- * single settings screen, and every one paid that round-trip on the main thread during
- * composition. That is what made opening Settings hitch.
- *
- * Separately, each `rememberPreference` used to build its own `dataStore.data.map { }` chain and
- * collect it with `collectAsState`, so a screen with 19 preferences launched 19 coroutines and
- * held 19 collectors on the DataStore pipeline.
- *
- * Both problems collapse into one shared snapshot-state mirror: a single collector keeps
- * [snapshot] current, reads are plain map lookups against memory, and composables observe their
- * own key through `derivedStateOf` so a write to one preference only invalidates the composables
- * that actually read that preference.
- *
- * The public read API ([get]) is unchanged, so every existing call site benefits without edits.
- */
+// process-wide in-memory mirror of the preferences file why this exists:
 object PreferencesCache {
-    /**
-     * Snapshot state so Compose can subscribe. Written from a background collector, which is
-     * safe — snapshot writes are thread-safe and readers observe the new value once the global
-     * snapshot advances.
-     */
+    // snapshot state so compose can subscribe written from a background collector
     private val snapshotState = mutableStateOf(emptyPreferences())
 
-    /**
-     * Plain mirror for non-Compose callers, so they never touch the snapshot system. Reading
-     * snapshot state outside composition would register a dependency in whatever snapshot
-     * happens to be current, which is not what a ViewModel or a lyrics provider wants.
-     */
+    // plain mirror for non-compose callers so they never touch the snapshot system
     @Volatile
     private var plain: Preferences = emptyPreferences()
 
     @Volatile
     private var warm: Boolean = false
 
-    /** Scope for preference writes. Deliberately not tied to any composition — see [set]. */
+    // scope for preference writes deliberately not tied to any composition — see [set]
     private val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val snapshot: State<Preferences> get() = snapshotState
 
-    /**
-     * Starts the single collector that keeps the mirror current. Call once from Application
-     * startup. Undispatched so that when DataStore can serve the first emission from its own
-     * cache, the mirror is populated before startup continues.
-     */
+    // starts the single collector that keeps the mirror current call once from
     fun start(context: Context, scope: CoroutineScope) {
         val store = context.applicationContext.dataStore
         scope.launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
@@ -88,13 +57,7 @@ object PreferencesCache {
         }
     }
 
-    /**
-     * Current preferences.
-     *
-     * Falls back to a single blocking read if something asks before the collector's first
-     * emission. That fallback is self-limiting: it populates the mirror, so across the whole
-     * process it can happen at most once instead of once per call site.
-     */
+    // current preferences falls back to a single blocking read if something asks
     fun current(store: DataStore<Preferences>): Preferences {
         if (warm) return plain
         val prefs = runBlocking(Dispatchers.IO) { store.data.first() }
@@ -105,8 +68,8 @@ object PreferencesCache {
     }
 
     fun <T> set(store: DataStore<Preferences>, key: Preferences.Key<T>, value: T) {
-        // Intentionally not rememberCoroutineScope(): a toggle that dismisses its own dialog
-        // would otherwise cancel its own write when the composable left composition.
+        // intentionally not remembercoroutinescope(): a toggle that dismisses its
+        // would otherwise cancel its own write when the composable left composition
         writeScope.launch {
             store.edit { it[key] = value }
         }
@@ -133,21 +96,15 @@ inline fun <reified T : Enum<T>> enumPreference(
     defaultValue: T,
 ) = ReadOnlyProperty<Any?, T> { _, _ -> context.dataStore[key].toEnum(defaultValue) }
 
-/**
- * Observes a single preference.
- *
- * No coroutine and no flow per call site. `derivedStateOf` recomputes a map lookup whenever any
- * preference changes but only invalidates its readers when *this* key's value actually changes,
- * so toggling one setting no longer recomposes every other setting row on screen.
- */
+// observes a single preference no coroutine and no flow per call site
 @Composable
 fun <T> rememberPreference(
     key: Preferences.Key<T>,
     defaultValue: T,
 ): MutableState<T> {
     val store = LocalContext.current.applicationContext.dataStore
-    // Seeds the mirror before the first read so the first frame shows the stored value rather
-    // than the default. A no-op once the process is warm.
+    // seeds the mirror before the first read so the first frame shows the stored
+    // than the default a no-op once the process is warm
     PreferencesCache.current(store)
 
     val valueState = remember(key, defaultValue) {

@@ -45,7 +45,7 @@ fun ImportProviderStep() {
             .padding(start = 32.dp, end = 32.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        // Tune My Music ──wiggle──> musicfy, mirroring the concept art.
+        // tune my music ──wiggle──> musicfy mirroring the concept art
         Row(verticalAlignment = Alignment.CenterVertically) {
             Image(
                 painter = painterResource(R.drawable.tune_my_music),
@@ -97,27 +97,7 @@ fun ImportProviderStep() {
     }
 }
 
-/**
- * The hand-drawn squiggle-with-arrowhead from the concept: a flat lead-in, two waves, then a
- * short straight run into the head. Drawn rather than shipped as a vector so it scales with the
- * row and picks up the text colour.
- *
- * The wave itself continuously ripples left-to-right, toward the musicfy icon it points at — a
- * small bit of life that reinforces "your data is travelling this direction" instead of sitting
- * as a static squiggle between the two app icons.
- *
- * Each of the four bumps gets its own amplitude driven by the SAME looping [phase], just sampled
- * at a different offset — so the peaks swell and settle in sequence, left bump first, reading as
- * one ripple travelling along the path rather than four things independently pulsing. Only the
- * peak height (the cubic's control-point Y) is scaled; every segment's start/end point is always
- * exactly (x, midY), so the curve can never show a seam no matter what the amplitude is doing —
- * unlike shifting the wave's x-phase, which would fight the fixed start/end anchors instead.
- *
- * [phase] runs 0→1 on a plain linear loop (tween + RepeatMode.Restart): because the driving
- * function is `sin(2*PI*phase - offset)`, phase 0 and phase 1 land on the exact same value, so the
- * restart is invisible — the ripple reads as one continuous, endless flow rather than a
- * cycle-and-snap-back.
- */
+// the hand-drawn squiggle-with-arrowhead from the concept: a flat lead-in two
 @Composable
 private fun WiggleArrow(
     modifier: Modifier = Modifier,
@@ -140,12 +120,12 @@ private fun WiggleArrow(
         val midY = h / 2f
         val strokeWidth = (h * 0.13f).coerceAtLeast(2f)
 
-        // Wave occupies the middle stretch; the tail and the head sit on the baseline.
+        // wave occupies the middle stretch; the tail and the head sit on the baseline
         val waveStart = w * 0.05f
         val waveEnd = w * 0.72f
-        // A touch taller than the original static wave, and the per-bump travel below pushes it
-        // higher still at each bump's own peak moment — "more wiggle" without the baseline ever
-        // looking cramped.
+        // a touch taller than the original static wave and the per-bump travel below
+        // higher still at each bump's own peak moment — "more wiggle" without the
+        // looking cramped
         val amplitude = h * 0.48f
         val waveWidth = waveEnd - waveStart
         val halfWave = waveWidth / 4f
@@ -157,9 +137,9 @@ private fun WiggleArrow(
             var up = true
             repeat(4) { bumpIndex ->
                 val nextX = x + halfWave
-                // Never fully flat, never doubled — a smooth 0.55..1.15 envelope so the ripple is
-                // always visibly moving without any bump vanishing to a flat line or overshooting
-                // into a spike.
+                // never fully flat never doubled — a smooth 055115 envelope so the ripple is
+                // always visibly moving without any bump vanishing to a flat line or
+                // into a spike
                 val travel = 0.55f + 0.60f * ((1f + kotlin.math.sin(twoPi * phase - bumpIndex * 0.9f)) / 2f)
                 val peakY = if (up) midY - amplitude * travel else midY + amplitude * travel
                 cubicTo(
@@ -179,7 +159,7 @@ private fun WiggleArrow(
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
 
-        // Arrowhead
+        // arrowhead
         val headSize = h * 0.34f
         val tipX = w - strokeWidth / 2f
         drawPath(

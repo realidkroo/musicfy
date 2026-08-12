@@ -42,11 +42,11 @@ object ArtistImageResolver {
     }
 
     private fun fetchAppleArtwork(artistName: String): String? {
-        // Try getting actual artist profile image first
+        // try getting actual artist profile image first
         val artistImage = fetchAppleArtistProfile(artistName)
         if (artistImage != null) return artistImage
 
-        // Fallback to album artwork via song search
+        // fallback to album artwork via song search
         return fetchAppleAlbumArtwork(artistName)
     }
 

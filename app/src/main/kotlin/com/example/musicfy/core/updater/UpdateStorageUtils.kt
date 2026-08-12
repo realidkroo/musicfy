@@ -1,4 +1,4 @@
-// UpdateStorageUtils.kt
+// updatestorageutilskt
 // what is this for you ask its for update storage utils ofc
 
 package com.example.musicfy.core.updater
@@ -7,9 +7,7 @@ import android.content.Context
 import android.os.Environment
 import java.io.File
 
-/**
- * Utility functions for managing downloaded updater APKs.
- */
+// utility functions for managing downloaded updater apks
 
 fun getDownloadedApksDir(context: Context): File {
     return File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "musicfy_updates")

@@ -18,9 +18,9 @@ class TurnstileSolver(private val context: Context) {
 
     private var cachedToken: String? = null
     private var tokenTimestamp: Long = 0L
-    // Only one WebView-based solve/fetch may run at a time. Concurrent retries (e.g. from
-    // ExoPlayer's auto-retry-on-error) would otherwise spin up many WebViews at once, which
-    // looks like abuse to Cloudflare Turnstile and gets tokens rejected.
+    // only one webview-based solve/fetch may run at a time concurrent retries
+    // exoplayer's auto-retry-on-error) would otherwise spin up many webviews at
+    // looks like abuse to cloudflare turnstile and gets tokens rejected
     private val solveMutex = Mutex()
 
     @Synchronized
@@ -39,7 +39,7 @@ class TurnstileSolver(private val context: Context) {
         }
 
         return solveMutex.withLock {
-        // Another caller may have solved it while we were waiting for the lock.
+        // another caller may have solved it while we were waiting for the lock
         if (!forceRefresh) {
             getCachedToken()?.let { return@withLock it }
         }
@@ -154,19 +154,13 @@ class TurnstileSolver(private val context: Context) {
         }
     }
 
-    /**
-     * Solves Turnstile, exchanges the raw widget response for a backend JWT via [exchangeUrl],
-     * then fetches [targetUrl] with that JWT — all from the same WebView JS context. The
-     * exchanged JWT is bound (server-side) to a fingerprint captured during the solve, so the
-     * exchange and the final request must both originate from this WebView, not a separate
-     * OkHttp connection, or the server rejects the JWT as invalid despite it being well-formed.
-     */
+    // solves turnstile exchanges the raw widget response for a backend jwt via
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun fetchWithTurnstile(siteKey: String, exchangeUrl: String, targetUrl: String, forceRefresh: Boolean = false): Pair<Int, String?>? {
         return solveMutex.withLock {
-        // Exchange tokens are single-use at Cloudflare's edge — never reuse a cached raw
-        // token here (unlike getTurnstileToken's cache, which is for callers that only need
-        // the token's presence, not a working exchange).
+        // exchange tokens are single-use at cloudflare's edge — never reuse a cached
+        // token here (unlike getturnstiletoken's cache which is for callers that
+        // the token's presence not a working exchange)
 
         withTimeoutOrNull(20000) { // 20 seconds max
             val deferred = CompletableDeferred<Pair<Int, String?>?>()
@@ -321,12 +315,7 @@ class TurnstileSolver(private val context: Context) {
         }
     }
 
-    /**
-     * Same fingerprint-bound exchange as [fetchWithTurnstile], but for APIs (like Monochrome
-     * Playback) whose final request is a JSON POST with a Bearer session token rather than a
-     * GET with an X-Turnstile-JWT header, and whose exchange body field is `turnstile_token`
-     * instead of `cf_turnstile_response`.
-     */
+    // same fingerprint-bound exchange as [fetchwithturnstile] but for apis (like
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun fetchPlaybackWithTurnstile(
         siteKey: String,
@@ -336,8 +325,8 @@ class TurnstileSolver(private val context: Context) {
         forceRefresh: Boolean = false
     ): Pair<Int, String?>? {
         return solveMutex.withLock {
-        // Exchange tokens are single-use at Cloudflare's edge — always solve fresh, never
-        // reuse a cached raw token across exchange attempts.
+        // exchange tokens are single-use at cloudflare's edge — always solve fresh
+        // reuse a cached raw token across exchange attempts
 
         withTimeoutOrNull(20000) { // 20 seconds max
             val deferred = CompletableDeferred<Pair<Int, String?>?>()

@@ -1,4 +1,4 @@
-// ArtistScreen.kt
+// artistscreenkt
 // this thing is for artist screen
 
 package com.example.musicfy.ui.screens.artist
@@ -178,7 +178,7 @@ fun ArtistScreen(
     var showLocal by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
 
-    // Calculate the offset value outside of the offset lambda
+    // calculate the offset value outside of the offset lambda
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
     val headerOffset = with(density) {
         -(systemBarsTopPadding + AppBarHeight).roundToPx()
@@ -191,7 +191,7 @@ fun ArtistScreen(
     }
 
     LaunchedEffect(libraryArtist) {
-        // always show local page for local artists. Show local page remote artist when offline
+        // always show local page for local artists show local page remote artist
         showLocal = libraryArtist?.artist?.isLocal == true
     }
 
@@ -210,7 +210,7 @@ fun ArtistScreen(
                                 IntOffset(x = 0, y = headerOffset)
                             }
                     ) {
-                        // Artist Image Placeholder
+                        // artist image placeholder
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -227,13 +227,13 @@ fun ArtistScreen(
                                     ),
                             )
                         }
-                        // Artist Name and Controls Section
+                        // artist name and controls section
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
-                            // Artist Name Placeholder
+                            // artist name placeholder
                             TextPlaceholder(
                                 height = 36.dp,
                                 modifier = Modifier
@@ -241,12 +241,12 @@ fun ArtistScreen(
                                     .padding(bottom = 16.dp)
                             )
 
-                            // Buttons Row Placeholder
+                            // buttons row placeholder
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Subscribe Button Placeholder
+                                // subscribe button placeholder
                                 ButtonPlaceholder(
                                     modifier = Modifier
                                         .width(120.dp)
@@ -255,19 +255,19 @@ fun ArtistScreen(
 
                                 Spacer(modifier = Modifier.weight(1f))
 
-                                // Right side buttons
+                                // right side buttons
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Radio Button Placeholder
+                                    // radio button placeholder
                                     ButtonPlaceholder(
                                         modifier = Modifier
                                             .width(100.dp)
                                             .height(52.dp)
                                     )
 
-                                    // Shuffle Button Placeholder
+                                    // shuffle button placeholder
                                     Box(
                                         modifier = Modifier
                                             .size(52.dp)
@@ -280,7 +280,7 @@ fun ArtistScreen(
                                 }
                             }
                         }
-                        // Songs List Placeholder
+                        // songs list placeholder
                         repeat(6) {
                             ListItemPlaceHolder()
                         }
@@ -301,7 +301,7 @@ fun ArtistScreen(
                     }
 
                     Box {
-                        // Artist Image with offset
+                        // artist image with offset
                         if (thumbnail != null || backgroundVideoUrl != null) {
                             Box(
                                 modifier = Modifier
@@ -337,15 +337,15 @@ fun ArtistScreen(
                             }
                         }
 
-                        // Artist Name and Controls Section - positioned at bottom of image
+                        // artist name and controls section - positioned at bottom of image
 
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(
                                     top = if (thumbnail != null) {
-                                        // Position content at the bottom part of the image
-                                        // Using screen width to calculate aspect ratio height minus overlap
+                                        // position content at the bottom part of the image
+                                        // using screen width to calculate aspect ratio height minus overlap
                                         LocalResources.current.displayMetrics.widthPixels.let { screenWidth ->
                                             with(density) {
                                                 ((screenWidth / 1.2f) - 144).toDp()
@@ -366,7 +366,7 @@ fun ArtistScreen(
                                     modifier = Modifier.padding(bottom = 16.dp)
                                 ) {
 
-                                    //artist video
+                                    // artist video
                                     if (showArtistVideo && !(showArtistBackgroundVideo && backgroundVideoUrl != null)) {
                                         artistVideoUrl?.let { videoUrl ->
                                             artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
@@ -390,7 +390,7 @@ fun ArtistScreen(
 
                                     Spacer(modifier = Modifier.width(5.dp))
 
-                                    // Artist Name
+                                    // artist name
                                     Text(
                                         text = artistName ?: "Unknown",
                                         style = MaterialTheme.typography.headlineLarge,
@@ -491,7 +491,7 @@ fun ArtistScreen(
                                     }
                                 }
 
-                                // Buttons Row
+                                // buttons row
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -500,7 +500,7 @@ fun ArtistScreen(
                                         ButtonGroupDefaults.ConnectedSpaceBetween
                                     )
                                 ) {
-                                    // Subscribe Button
+                                    // subscribe button
                                     ToggleButton(
                                         checked = libraryArtist?.artist?.bookmarkedAt != null,
                                         onCheckedChange = {
@@ -557,7 +557,7 @@ fun ArtistScreen(
                                         )
                                     }
 
-                                    // Radio Button
+                                    // radio button
                                     if (!showLocal) {
                                         artistPage?.artist?.radioEndpoint?.let { radioEndpoint ->
                                             ToggleButton(
@@ -585,7 +585,7 @@ fun ArtistScreen(
                                         }
                                     }
 
-                                    // Shuffle Button
+                                    // shuffle button
                                     if (!showLocal) {
                                         artistPage?.artist?.shuffleEndpoint?.let { shuffleEndpoint ->
                                             ToggleButton(
@@ -875,7 +875,7 @@ fun ArtistScreen(
                                             },
                                             isPlaying = isPlaying,
                                             coroutineScope = coroutineScope,
-                                            thumbnailRatio = 1f, // Use square thumbnails for all items in horizontal scroll
+                                            thumbnailRatio = 1f, // use square thumbnails for all items in horizontal scroll
                                             modifier = Modifier
                                                 .combinedClickable(
                                                     onClick = {
@@ -944,7 +944,7 @@ fun ArtistScreen(
         val isScrollingUp = lazyListState.isScrollingUp()
         val showLocalFab = librarySongs.isNotEmpty() && libraryArtist?.artist?.isLocal != true
         
-        // Library/Local Toggle FAB
+        // library/local toggle fab
         HideOnScrollFAB(
             visible = showLocalFab,
             lazyListState = lazyListState,
@@ -955,7 +955,7 @@ fun ArtistScreen(
             }
         )
         
-        // Play All FAB (Stacked above Library/Local FAB if visible)
+        // play all fab (stacked above library/local fab if visible)
         val canPlayAll = (
             (showLocal && librarySongs.isNotEmpty()) || 
             (!showLocal && artistPage?.sections?.any { 
@@ -974,8 +974,8 @@ fun ArtistScreen(
                         LocalPlayerAwareWindowInsets.current
                             .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                     )
-                    // Add padding to position it above the other FAB (56dp height + 16dp padding + 8dp spacing)
-                    // If the other FAB is visible.
+                    // add padding to position it above the other fab (56dp height + 16dp padding
+                    // if the other fab is visible
                     .padding(bottom = if (showLocalFab) 64.dp else 0.dp)
             ) {
                 val onPlayAllClick: () -> Unit = {
@@ -1007,7 +1007,7 @@ fun ArtistScreen(
                                             )
                                         )
                                     } else {
-                                        // Fallback to loaded items
+                                        // fallback to loaded items
                                         val songs = songSection.items.filterIsInstance<SongItem>().map { it.toMediaItem() }
                                         if (songs.isNotEmpty()) {
                                             playerConnection.playQueue(
@@ -1021,7 +1021,7 @@ fun ArtistScreen(
                                 }
                             }
                             } else if (songSection != null) {
-                            // Use loaded items if no more endpoint
+                            // use loaded items if no more endpoint
                             val songs = songSection.items.filterIsInstance<SongItem>().map { it.toMediaItem() }
                             playerConnection.playQueue(
                                 ListQueue(
@@ -1030,14 +1030,14 @@ fun ArtistScreen(
                                 )
                             )
                         } else {
-                            // Fallback to shuffle endpoint (stripped) if no song section found
+                            // fallback to shuffle endpoint (stripped) if no song section found
                             val shuffleEndpoint = artistPage.artist.shuffleEndpoint
                             if (shuffleEndpoint != null) {
                                 val endpoint = if (shuffleEndpoint.playlistId != null) {
                                     WatchEndpoint(
                                         playlistId = shuffleEndpoint.playlistId,
-                                        params = null, // Remove shuffle params to play in order
-                                        videoId = null // Ensure videoId is null to start from beginning of playlist
+                                        params = null, // remove shuffle params to play in order
+                                        videoId = null // ensure videoid is null to start from beginning of playlist
                                     )
                                 } else {
                                     shuffleEndpoint
@@ -1050,7 +1050,7 @@ fun ArtistScreen(
 
                 if (showLocalFab) {
                      androidx.compose.material3.SmallFloatingActionButton(
-                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp), // Align center with standard FAB (56dp vs 48dp)
+                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp), // align center with standard fab (56dp vs 48dp)
                         onClick = onPlayAllClick
                     ) {
                         Icon(

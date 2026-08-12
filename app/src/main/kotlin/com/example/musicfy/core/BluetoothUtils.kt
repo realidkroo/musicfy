@@ -1,4 +1,4 @@
-// BluetoothUtils.kt
+// bluetoothutilskt
 // this thing is part of bluetooth utils
 
 package com.example.musicfy.core
@@ -9,9 +9,7 @@ import android.media.AudioManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 
-/**
- * Checks if Bluetooth headphones (A2DP or SCO) are currently connected.
- */
+// checks if bluetooth headphones (a2dp or sco) are currently connected
 fun isBluetoothHeadphoneConnected(context: Context): Boolean {
     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -22,22 +20,17 @@ fun isBluetoothHeadphoneConnected(context: Context): Boolean {
                     device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
         }
     } else {
-        // For older Android versions, use deprecated method
+        // for older android versions use deprecated method
         @Suppress("DEPRECATION")
         audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn
     }
 }
-/**
- * Returns the name of the currently connected Bluetooth audio device, or null if none.
- */
-/**
- * Returns the name of the currently connected Bluetooth audio device, or null if none.
- * Only returns the name if Bluetooth is the ACTIVE audio output.
- */
+// returns the name of the currently connected bluetooth audio device or null if
+// returns the name of the currently connected bluetooth audio device or null if
 fun getConnectedBluetoothDeviceName(context: Context): String? {
     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
-    // Check if Bluetooth is actually the active route
+    // check if bluetooth is actually the active route
     val isBluetoothActive = audioManager.isBluetoothA2dpOn || audioManager.isBluetoothScoOn
     if (!isBluetoothActive) return null
 
@@ -53,9 +46,7 @@ fun getConnectedBluetoothDeviceName(context: Context): String? {
     }
 }
 
-/**
- * Returns true if the device name suggests it is a pair of earbuds (buds).
- */
+// returns true if the device name suggests it is a pair of earbuds (buds)
 fun isBuds(name: String?): Boolean {
     if (name == null) return false
     val lowerName = name.lowercase()
@@ -67,9 +58,7 @@ fun isBuds(name: String?): Boolean {
            lowerName.contains("pods")
 }
 
-/**
- * Returns true if the device name suggests it is a speaker.
- */
+// returns true if the device name suggests it is a speaker
 fun isSpeaker(name: String?): Boolean {
     if (name == null) return false
     val lowerName = name.lowercase()

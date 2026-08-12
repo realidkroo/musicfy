@@ -1,4 +1,4 @@
-// CoilBitmapLoader.kt
+// coilbitmaploaderkt
 // the file functioned as coil bitmap loader
 
 package com.example.musicfy.utils

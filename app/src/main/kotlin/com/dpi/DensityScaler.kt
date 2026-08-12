@@ -1,4 +1,4 @@
-// DensityScaler.kt
+// densityscalerkt
 // this thing is for density scaler
 
 package com.dpi
@@ -6,17 +6,7 @@ package com.dpi
 import android.content.Context
 import timber.log.Timber
 
-/**
- * DensityScaler - Main entry point for screen density scaling.
- *
- * Reads scale factor from user preferences with default of 1.0f (100% native).
- *
- * Supported scale factors:
- * - 1.0f (100%) - Native density (default)
- * - 0.75f (75%) - Compact
- * - 0.65f (65%) - Very Compact
- * - 0.55f (55%) - Ultra Compact
- */
+// densityscaler - main entry point for screen density scaling reads scale factor
 class DensityScaler : BaseLifecycleContentProvider() {
 
     override fun onCreate(): Boolean {
@@ -31,10 +21,7 @@ class DensityScaler : BaseLifecycleContentProvider() {
         private const val KEY_DENSITY_SCALE = "density_scale_factor"
         private const val DEFAULT_SCALE_FACTOR = 1.0f
 
-        /**
-         * Reads the density scale factor from SharedPreferences.
-         * Uses SharedPreferences instead of DataStore for synchronous access during ContentProvider initialization.
-         */
+        // reads the density scale factor from sharedpreferences uses sharedpreferences
         private fun getScaleFactorFromPreferences(context: Context): Float {
             return try {
                 val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
