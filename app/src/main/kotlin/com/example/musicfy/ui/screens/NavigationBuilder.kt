@@ -121,18 +121,18 @@ fun NavGraphBuilder.navigationBuilder(
 ) {
     composable(
         route = Screens.Home.route,
-        // popping back from a detail screen (album/playlist/liked) should read as
-        // that screen shrinking away to reveal home — which was already sitting there
-        // underneath the whole time the same way the ios home screen doesn't animate
-        // in when you close an app it's just uncovered so home itself gets no
-        // scale/motion of its own (that was fighting the reveal reading as two
-        // separate movements) — just a quick fade so the cut isn't jarring instead
-        // of the navhost-level default tab-slide (which is for switching between
-        // bottom-nav tabs not this back-navigation case)
+        // popping back from a detail screen album playlist liked should read as
+        // that screen shrinking away to reveal home which was already sitting there
+        // underneath the whole time the same way the ios home screen doesn t animate
+        // in when you close an app it s just uncovered so home itself gets no
+        // scale motion of its own that was fighting the reveal reading as two
+        // separate movements just a quick fade so the cut isn t jarring instead
+        // of the navhost level default tab slide which is for switching between
+        // bottom nav tabs not this back navigation case
         popEnterTransition = { fadeIn(tween(150)) },
     ) {
-        // needed on the source side too not just destination routes —
-        // on a grid cover no-ops without a real animatedvisibilityscope on both ends
+        // needed on the source side too not just destination routes
+        // on a grid cover no ops without a real animatedvisibilityscope on both ends
         // the transition and this route was the one missing it entirely
         CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
             HomeScreen(navController = navController, snackbarHostState = snackbarHostState)
@@ -148,10 +148,10 @@ fun NavGraphBuilder.navigationBuilder(
         ),
     ) { backStackEntry ->
         val sectionId = backStackEntry.arguments?.getString("sectionId") ?: return@composable
-        // scoped to home's own back-stack entry (not the activity) so this reads the
-        // same homeviewmodel instance homescreen already loaded — previously this
+        // scoped to home s own back stack entry not the activity so this reads the
+        // same homeviewmodel instance homescreen already loaded previously this
         // second independent instance with its own random seed so this screen could
-        // different community playlists / all-time-hits than what was tapped on home
+        // different community playlists all time hits than what was tapped on home
         // looked slow because it was racing its own redundant network fetch
         val homeViewModel: HomeViewModel = hiltViewModel(navController.getBackStackEntry(Screens.Home.route))
         SectionDetailScreen(
@@ -166,7 +166,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("artist_list_detail") {
-        // same reasoning as section_detail above — share home's own instance
+        // same reasoning as section_detail above share home s own instance
         val homeViewModel: HomeViewModel = hiltViewModel(navController.getBackStackEntry(Screens.Home.route))
         ArtistListDetailScreen(
             navController = navController,
@@ -293,20 +293,20 @@ fun NavGraphBuilder.navigationBuilder(
                 type = NavType.StringType
             },
         ),
-        // plain fade instead of the navhost-level slide — the cover's own
-        // morph (see ui/component/sharedelementtransitionkt) is the transition here;
-        // competing whole-screen slide would fight it
+        // plain fade instead of the navhost level slide the cover s own
+        // morph see ui component sharedelementtransitionkt is the transition here
+        // competing whole screen slide would fight it
         enterTransition = { fadeIn(tween(300)) },
         exitTransition = { fadeOut(tween(200)) },
         popEnterTransition = { fadeIn(tween(300)) },
-        // closing: the whole screen (everything except the shared-element cover
-        // which sharedtransitionlayout animates independently in its own overlay)
-        // shrinks + fades instead of just fading in place — reads as "zooming out"
+        // closing the whole screen everything except the shared element cover
+        // which sharedtransitionlayout animates independently in its own overlay
+        // shrinks + fades instead of just fading in place reads as zooming out
         // rather than sliding away
-        // shrinks toward the top of the screen (roughly where the cover itself is
-        // heading back to) instead of the screen's center and fades out quickly —
+        // shrinks toward the top of the screen roughly where the cover itself is
+        // heading back to instead of the screen s center and fades out quickly
         // reads as this screen collapsing away toward the cover rather than a
-        // generic center-anchored zoom
+        // generic center anchored zoom
         popExitTransition = {
             scaleOut(
                 animationSpec = tween(260),
@@ -382,14 +382,14 @@ fun NavGraphBuilder.navigationBuilder(
         enterTransition = { fadeIn(tween(300)) },
         exitTransition = { fadeOut(tween(200)) },
         popEnterTransition = { fadeIn(tween(300)) },
-        // closing: the whole screen (everything except the shared-element cover
-        // which sharedtransitionlayout animates independently in its own overlay)
-        // shrinks + fades instead of just fading in place — reads as "zooming out"
+        // closing the whole screen everything except the shared element cover
+        // which sharedtransitionlayout animates independently in its own overlay
+        // shrinks + fades instead of just fading in place reads as zooming out
         // rather than sliding away
-        // shrinks toward the top of the screen (roughly where the cover itself is
-        // heading back to) instead of the screen's center and fades out quickly —
+        // shrinks toward the top of the screen roughly where the cover itself is
+        // heading back to instead of the screen s center and fades out quickly
         // reads as this screen collapsing away toward the cover rather than a
-        // generic center-anchored zoom
+        // generic center anchored zoom
         popExitTransition = {
             scaleOut(
                 animationSpec = tween(260),
@@ -413,14 +413,14 @@ fun NavGraphBuilder.navigationBuilder(
         enterTransition = { fadeIn(tween(300)) },
         exitTransition = { fadeOut(tween(200)) },
         popEnterTransition = { fadeIn(tween(300)) },
-        // closing: the whole screen (everything except the shared-element cover
-        // which sharedtransitionlayout animates independently in its own overlay)
-        // shrinks + fades instead of just fading in place — reads as "zooming out"
+        // closing the whole screen everything except the shared element cover
+        // which sharedtransitionlayout animates independently in its own overlay
+        // shrinks + fades instead of just fading in place reads as zooming out
         // rather than sliding away
-        // shrinks toward the top of the screen (roughly where the cover itself is
-        // heading back to) instead of the screen's center and fades out quickly —
+        // shrinks toward the top of the screen roughly where the cover itself is
+        // heading back to instead of the screen s center and fades out quickly
         // reads as this screen collapsing away toward the cover rather than a
-        // generic center-anchored zoom
+        // generic center anchored zoom
         popExitTransition = {
             scaleOut(
                 animationSpec = tween(260),
@@ -444,14 +444,14 @@ fun NavGraphBuilder.navigationBuilder(
         enterTransition = { fadeIn(tween(300)) },
         exitTransition = { fadeOut(tween(200)) },
         popEnterTransition = { fadeIn(tween(300)) },
-        // closing: the whole screen (everything except the shared-element cover
-        // which sharedtransitionlayout animates independently in its own overlay)
-        // shrinks + fades instead of just fading in place — reads as "zooming out"
+        // closing the whole screen everything except the shared element cover
+        // which sharedtransitionlayout animates independently in its own overlay
+        // shrinks + fades instead of just fading in place reads as zooming out
         // rather than sliding away
-        // shrinks toward the top of the screen (roughly where the cover itself is
-        // heading back to) instead of the screen's center and fades out quickly —
+        // shrinks toward the top of the screen roughly where the cover itself is
+        // heading back to instead of the screen s center and fades out quickly
         // reads as this screen collapsing away toward the cover rather than a
-        // generic center-anchored zoom
+        // generic center anchored zoom
         popExitTransition = {
             scaleOut(
                 animationSpec = tween(260),
@@ -487,7 +487,7 @@ fun NavGraphBuilder.navigationBuilder(
         TopPlaylistScreen(navController, scrollBehavior)
     }
 
-    // the mood/genre page opened from the search grids distinct from
+    // the mood genre page opened from the search grids distinct from
     // which stays as the plain grid used by everything else that browses a
     composable(
         route = "genre/{browseId}?params={params}",
@@ -550,7 +550,7 @@ private fun LibraryTabScreen(navController: NavHostController) {
     val playlists by database.playlists(PlaylistSortType.SONG_COUNT, descending = true)
         .collectAsState(initial = emptyList())
 
-    var importProgress by remember { mutableFloatStateOf(-1f) } // -1 = not importing
+    var importProgress by remember { mutableFloatStateOf(-1f) } // 1 = not importing
     var isImporting by remember { mutableStateOf(false) }
 
     val automaticPlaylists = remember(songs) {
@@ -600,7 +600,7 @@ private fun LibraryTabScreen(navController: NavHostController) {
                             Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
 
-                        // extract metadata (includes artwork + mime type)
+                        // extract metadata includes artwork + mime type
                         val metadata = withContext(Dispatchers.IO) {
                             extractAudioMetadata(context, uri)
                         }
@@ -926,7 +926,7 @@ private fun extractAudioMetadata(
             embeddedArtwork = embeddedArtwork,
         )
     } catch (e: Exception) {
-        // fallback: use filename as title
+        // fallback use filename as title
         LocalAudioMetadata(
             title = uri.lastPathSegment?.substringBeforeLast('.') ?: "Unknown",
             artist = "Unknown Artist",

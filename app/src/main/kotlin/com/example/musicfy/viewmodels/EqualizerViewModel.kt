@@ -1,7 +1,7 @@
 // equalizerviewmodelkt
 // backs the new equalizerscreen the dsp itself
-// and its manager (equalizerservice) already existed and were already wired
-// exoplayer instances — this is just the first ui ever built for it in
+// and its manager equalizerservice already existed and were already wired
+// exoplayer instances this is just the first ui ever built for it in
 
 package com.example.musicfy.viewmodels
 

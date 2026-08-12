@@ -7,14 +7,14 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class FilterType {
-    // peaking filter - boosts or cuts around a center frequency
+    // peaking filter boosts or cuts around a center frequency
     PK,
-    // low-shelf filter - affects frequencies below the cutoff
+    // low shelf filter affects frequencies below the cutoff
     LSC,
-    // high-shelf filter - affects frequencies above the cutoff
+    // high shelf filter affects frequencies above the cutoff
     HSC,
-    // low-pass filter - attenuates frequencies above the cutoff
+    // low pass filter attenuates frequencies above the cutoff
     LPQ,
-    // high-pass filter - attenuates frequencies below the cutoff
+    // high pass filter attenuates frequencies below the cutoff
     HPQ
 }

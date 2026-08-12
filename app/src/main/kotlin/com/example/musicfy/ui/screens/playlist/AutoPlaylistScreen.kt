@@ -666,8 +666,8 @@ private fun AutoPlaylistHeader(
     com.example.musicfy.ui.component.detail.PlaylistScreenHeader(
         thumbnailUrl = songs.firstOrNull { !it.song.thumbnailUrl.isNullOrEmpty() }?.song?.thumbnailUrl,
         title = name,
-        // no creator name for these — liked/downloaded/uploaded are auto-generated
-        // system views not a "playlist you made" with a name worth attaching
+        // no creator name for these liked downloaded uploaded are auto generated
+        // system views not a playlist you made with a name worth attaching
         userName = "",
         description = staticDescription,
         isPlaying = isPlaying,

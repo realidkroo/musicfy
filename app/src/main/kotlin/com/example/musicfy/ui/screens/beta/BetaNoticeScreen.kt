@@ -32,7 +32,7 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
     var cooldownProgress by remember { mutableFloatStateOf(0f) }
     var isCooldownFinished by remember { mutableStateOf(false) }
 
-    // 5-second cooldown timer
+    // 5 second cooldown timer
     LaunchedEffect(Unit) {
         val totalTime = 5000L
         val updateInterval = 16L // ~60fps
@@ -50,7 +50,7 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-            .background(Color(0xFF161616)) // dark gray/black surface
+            .background(Color(0xFF161616)) // dark gray black surface
     ) {
         // drag handle
         Box(
@@ -121,8 +121,8 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
                 fontWeight = FontWeight.Medium
             )
 
-            // musicfy targets android 12 (api 31) and up — below that be upfront that
-            // are expected and likely won't get a real look rather than silently
+            // musicfy targets android 12 api 31 and up below that be upfront that
+            // are expected and likely won t get a real look rather than silently
             if (Build.VERSION.SDK_INT < 31) {
                 Spacer(modifier = Modifier.height(16.dp))
                 val androidVersionName = androidVersionNameFor(Build.VERSION.SDK_INT)
@@ -179,7 +179,7 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            // cooldown / ok button
+            // cooldown ok button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -219,8 +219,8 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
     }
 }
 
-// android version name + the calendar year each one shipped for the "you're
-// version" notice above only covers minsdk (26) through the app's target
+// android version name + the calendar year each one shipped for the you re
+// version notice above only covers minsdk 26 through the app s target
 // notice never renders above that so nothing newer needs an entry
 private fun androidVersionNameFor(sdkInt: Int): String = when (sdkInt) {
     26 -> "8.0 (Oreo)"

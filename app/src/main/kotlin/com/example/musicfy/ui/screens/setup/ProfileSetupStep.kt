@@ -61,7 +61,7 @@ fun ProfileSetupStep(
         
         Spacer(modifier = Modifier.height(40.dp)) // adjusted
         
-        // profile picture placeholder (visuals drawn by setupwizardscreen overlay
+        // profile picture placeholder visuals drawn by setupwizardscreen overlay
         Box(
             modifier = Modifier
                 .size(140.dp)
@@ -80,8 +80,8 @@ fun ProfileSetupStep(
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        // a plain basictextfield instead of outlinedtextfield: the material field
-        // for a label/placeholder so squeezing it into 48dp clipped the typed text
+        // a plain basictextfield instead of outlinedtextfield the material field
+        // for a label placeholder so squeezing it into 48dp clipped the typed text
         BasicTextField(
             value = username,
             onValueChange = onUsernameChange,

@@ -1,17 +1,17 @@
 // searchscreenkt
-// the search tab's landing page rebuilt from scratch on the primitives in
+// the search tab s landing page rebuilt from scratch on the primitives in
 
 // three states live on this one screen and the search field never moves
 // declared once in the shared top bar so tapping it does not hand over to a
-// the old m3 `searchbar` did (that component swapped its inline bar for a
-// which is what made the caret jump and the keyboard flicker on open):
+// the old m3 searchbar did that component swapped its inline bar for a
+// which is what made the caret jump and the keyboard flicker on open
 
-// browse   — moods and genres grids; scrolling collapses the "search" title
-// history  — field focused nothing typed
-// suggest  — field focused with a query: suggestions plus top results
+// browse moods and genres grids scrolling collapses the search title
+// history field focused nothing typed
+// suggest field focused with a query suggestions plus top results
 
 // nothing here uses material 3 components the old version was built on
-// secondarytabrow + tab + circularwavyprogressindicator; all of it is gone
+// secondarytabrow + tab + circularwavyprogressindicator all of it is gone
 
 package com.example.musicfy.ui.screens.search
 
@@ -123,7 +123,7 @@ fun SearchScreen(
     val suggestionState by suggestionViewModel.viewState.collectAsState()
 
     // only pushed while the field is open keeping it fed while browsing would
-    // request (and a history query) for text the user cannot even see
+    // request and a history query for text the user cannot even see
     LaunchedEffect(active, query.text) {
         if (active) suggestionViewModel.query.value = query.text
     }
@@ -134,7 +134,7 @@ fun SearchScreen(
 
     val collapse = rememberCollapseProgress(browseListState)
     // same curve and duration as the scroll collapse so opening the field and
-    // move the bar identically — a shorter different easing here made the two
+    // move the bar identically a shorter different easing here made the two
     // unrelated animations depending on how the bar happened to get to the top
     val activeProgress = animateFloatAsState(
         targetValue = if (active) 1f else 0f,
@@ -144,8 +144,8 @@ fun SearchScreen(
         ),
         label = "searchActive",
     )
-    // one value drives the whole bar: scrolled-away or opened-for-input both put
-    // top read through a lambda so every consumer resolves it in the draw/layout
+    // one value drives the whole bar scrolled away or opened for input both put
+    // top read through a lambda so every consumer resolves it in the draw layout
     val progressProvider = remember(collapse, activeProgress) {
         { maxOf(collapse.value, activeProgress.value) }
     }
@@ -189,7 +189,7 @@ fun SearchScreen(
     }
 
     // focus follows the state rather than the state following focus so
-    // the field back-navigating into an open field) all take the same path
+    // the field back navigating into an open field all take the same path
     LaunchedEffect(active) {
         if (active) {
             runCatching { focusRequester.requestFocus() }
@@ -327,7 +327,7 @@ fun SearchScreen(
 // browse state
 // ───────────────────────────────────────────────────────────────────────────
 
-// moods and genres two tiles to a row rows are pre-chunked into list items rather
+// moods and genres two tiles to a row rows are pre chunked into list items rather
 @Composable
 private fun SearchBrowseContent(
     listState: LazyListState,
@@ -408,7 +408,7 @@ private fun SearchBrowseContent(
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-// active state: history or suggestions + top results
+// active state history or suggestions + top results
 // ───────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -518,7 +518,7 @@ private fun SearchActiveContent(
     }
 }
 
-// small tappable glyph used at the end of a suggestion/history row
+// small tappable glyph used at the end of a suggestion history row
 @Composable
 private fun RowGlyph(icon: Int, onClick: () -> Unit) {
     Box(
@@ -537,7 +537,7 @@ private fun RowGlyph(icon: Int, onClick: () -> Unit) {
     }
 }
 
-// a recommended item under "top result" while typing: artwork title and what kind of thing it is
+// a recommended item under top result while typing artwork title and what kind of thing it is
 @Composable
 private fun SuggestionResultRow(
     item: YTItem,

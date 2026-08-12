@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-########################################################
-# build-fftw-android.sh
-# Downloads FFTW sources and builds static libfftw3.a for Android ABIs and installs into:
-#   <OUT_BASE>/<android_abi>/(include|lib)
+# #######################################################
+# build fftw android sh
+# downloads fftw sources and builds static libfftw3 a for android abis and installs into
+# <out_base> <android_abi> include|lib
 #
-# Defaults:
-#  - Path to Android NDK: ANDROID_NDK_HOME
-#  - Output install root: ./fftw-android
-#  - FFTW version: 3.3.10
-#  - API: 26
-#  - ABIS: arm64, armv7-a, x86_64, x86
+# defaults
+# path to android ndk android_ndk_home
+# output install root fftw android
+# fftw version 3 3 10
+# api 26
+# abis arm64 armv7 a x86_64 x86
 #
-# Usage:
-#   ./build-fftw-android.sh
-#   ./build-fftw-android.sh --ndk /path/to/ndk --out /tmp/out --version 3.3.10 --api 26
-########################################################
+# usage
+# build fftw android sh
+# build fftw android sh ndk path to ndk out tmp out version 3 3 10 api 26
+# #######################################################
 
-# Defaults
+# defaults
 FFTW_VERSION="${FFTW_VERSION:-3.3.10}"
 FFTW_BASE_URL="${FFTW_BASE_URL:-https://www.fftw.org}"
 FFTW_TARBALL="fftw-${FFTW_VERSION}.tar.gz"
@@ -47,7 +47,7 @@ EOF
   exit 1
 }
 
-# Parse CLI
+# parse cli
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --ndk) NDK_DIR="$2"; shift 2;;
@@ -67,7 +67,7 @@ echo "Android API: ${API}"
 echo "Archs: ${ARCHS[*]}"
 echo
 
-# Validate NDK
+# validate ndk
 if [[ -z "${NDK_DIR}" ]]; then
   if [[ -n "${ANDROID_NDK_HOME:-}" ]]; then
     NDK_DIR="${ANDROID_NDK_HOME}"
@@ -96,7 +96,7 @@ TARBALL_PATH="${WORKDIR}/${FFTW_TARBALL}"
 MD5_URL="${FFTW_URL}.md5sum"
 MD5_PATH="${WORKDIR}/${FFTW_TARBALL}.md5sum"
 
-# Download tarball if absent
+# download tarball if absent
 if [[ -f "${TARBALL_PATH}" ]]; then
   echo "Tarball already exists: ${TARBALL_PATH}"
 else
@@ -111,7 +111,7 @@ else
   fi
 fi
 
-# Download md5sum
+# download md5sum
 echo "Downloading MD5 checksum from ${MD5_URL} ..."
 if command -v curl >/dev/null 2>&1; then
   curl -fSL -o "${MD5_PATH}" "${MD5_URL}"
@@ -124,7 +124,7 @@ if [[ ! -f "${MD5_PATH}" ]]; then
   exit 1
 fi
 
-# Parse MD5 from file
+# parse md5 from file
 EXPECTED_MD5="$(tr -d '\r\n' < "${MD5_PATH}" | sed -E 's/.*([a-fA-F0-9]{32}).*/\1/')"
 if [[ -z "${EXPECTED_MD5}" ]]; then
   echo "ERROR: could not parse MD5 from ${MD5_PATH}"
@@ -133,7 +133,7 @@ fi
 
 echo "Expected MD5: ${EXPECTED_MD5}"
 
-# Compute local MD5
+# compute local md5
 compute_md5() {
   command -v md5sum >/dev/null 2>&1 || { echo "ERROR: md5sum not found" >&2; return 1; }
   md5sum "$1" | awk '{print $1}'
@@ -149,7 +149,7 @@ if [[ "${LOCAL_MD5,,}" != "${EXPECTED_MD5,,}" ]]; then
 fi
 echo "MD5 verified OK."
 
-# Extract
+# extract
 echo "Extracting ${TARBALL_PATH}..."
 tar -xzf "${TARBALL_PATH}"
 SRC_DIR="${WORKDIR}/fftw-${FFTW_VERSION}"
@@ -158,7 +158,7 @@ if [[ ! -d "${SRC_DIR}" ]]; then
   exit 1
 fi
 
-# mapping: arch key -> triple + android ABI
+# mapping arch key > triple + android abi
 declare -A TRIPLE_MAP
 declare -A ABI_MAP
 TRIPLE_MAP["arm64"]="aarch64-linux-android"
@@ -173,7 +173,7 @@ ABI_MAP["x86_64"]="x86_64"
 TRIPLE_MAP["x86"]="i686-linux-android"
 ABI_MAP["x86"]="x86"
 
-# Tools from NDK
+# tools from ndk
 AR="$PREBUILD/bin/llvm-ar"
 RANLIB="$PREBUILD/bin/llvm-ranlib"
 STRIP="$PREBUILD/bin/llvm-strip"
@@ -248,17 +248,17 @@ for ARCH in "${ARCHS[@]}"; do
 
   popd >/dev/null
 
-  # Cleanup build dir
+  # cleanup build dir
   rm -rf "${BUILD_DIR}"
 
   echo "Installed ABI ${ANDROID_ABI} -> ${INSTALL_DIR}"
   echo
 done
 
-# Cleanup sources and tarball
+# cleanup sources and tarball
 rm -rf "${SRC_DIR}"
 rm -f "${TARBALL_PATH}" "${MD5_PATH}"
-# Remove workdir (it should be empty now)
+# remove workdir it should be empty now
 rmdir "${WORKDIR}" >/dev/null 2>&1 || true
 
 echo "FFTW compiled. Install root: ${OUT_BASE}"

@@ -1,4 +1,4 @@
-// SearchSuggestionPage.kt
+// searchsuggestionpage kt
 // this thing is part of search suggestion page
 
 package com.music.innertube.pages

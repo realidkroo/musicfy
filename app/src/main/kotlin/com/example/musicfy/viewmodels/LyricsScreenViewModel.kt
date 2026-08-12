@@ -1,8 +1,8 @@
 // lyricsscreenviewmodelkt
-// fetch-and-cache glue for the full lyrics page: reads
-// first and only reaches for the network via lyricshelper if nothing's
-// song — same fetch+upsert shape as lyricsmenuviewmodelrefetchlyrics /
-// auto-fetch so results land in the same table either path writes
+// fetch and cache glue for the full lyrics page reads
+// first and only reaches for the network via lyricshelper if nothing s
+// song same fetch+upsert shape as lyricsmenuviewmodelrefetchlyrics
+// auto fetch so results land in the same table either path writes
 
 package com.example.musicfy.viewmodels
 

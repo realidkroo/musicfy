@@ -1054,8 +1054,8 @@ fun LocalPlaylistScreen(
                 }
             )
         } else {
-            // collapsing top bar: plain back button while the hero cover is visible
-            // morphing into a compact bar (mini cover + title blurred backdrop) as
+            // collapsing top bar plain back button while the hero cover is visible
+            // morphing into a compact bar mini cover + title blurred backdrop as
             // the user scrolls past it
             DetailCollapsingTopBar(
                 progress = collapseState.morphProgress,
@@ -1437,9 +1437,9 @@ fun uriToByteArray(context: Context, uri: Uri): ByteArray? {
     }
 }
 
-// minimal local-library song picker for the new "add music" row — no
-// entry point existed before (the only prior flow was the reverse: a song's
-// "add to playlist" menu action) local library only not a full yt
+// minimal local library song picker for the new add music row no
+// entry point existed before the only prior flow was the reverse a song s
+// add to playlist menu action local library only not a full yt
 @Composable
 private fun AddSongsToPlaylistDialog(
     playlistId: String,

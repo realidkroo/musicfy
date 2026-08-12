@@ -1,26 +1,23 @@
-// LyricsResponse.kt
+// lyricsresponse kt
 // what is this for you ask its for lyrics response ofc
 
 package com.music.youlyplus.models
 
 import kotlinx.serialization.Serializable
 
-/**
- * Response model for the LyricsPlus / KPoe API (/v2/lyrics/get).
- * Fields mirror what YouLyPlus extension parses from the backend.
- */
+// response model for the lyricsplus kpoe api v2 lyrics get fields mirror what youlyplus extension parses from the backend
 @Serializable
 data class LyricsResponse(
-    // LRCLib style
+    // lrclib style
     val id: Int? = null,
     val syncedLyrics: String? = null,
     val plainLyrics: String? = null,
 
-    // KPoe style (array of lines)
+    // kpoe style array of lines
     val lyrics: List<LyricsItem>? = null,
     val type: String? = null,
 
-    // Common metadata
+    // common metadata
     val trackName: String? = null,
     val artistName: String? = null,
     val albumName: String? = null,

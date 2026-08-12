@@ -1,8 +1,8 @@
 // playbackspeedsheetkt
-// speed and pitch driven straight into exoplayer's playbackparameters
+// speed and pitch driven straight into exoplayer s playbackparameters
 
-// speed and pitch are separate axes on purpose: moving speed alone is the
-// plays faster without the chipmunk effect because media3 time-stretches)
+// speed and pitch are separate axes on purpose moving speed alone is the
+// plays faster without the chipmunk effect because media3 time stretches
 // when you actually want that shift
 
 package com.example.musicfy.ui.player.menu
@@ -53,7 +53,7 @@ fun PlaybackSpeedSheet(onDismiss: () -> Unit) {
     val speed = remember { mutableFloatStateOf(player.playbackParameters.speed) }
     val pitch = remember { mutableFloatStateOf(player.playbackParameters.pitch) }
 
-    // both axes go in together — playbackparameters is a single value so setting
+    // both axes go in together playbackparameters is a single value so setting
     // stale copy of the other would quietly reset it
     fun apply() {
         player.playbackParameters = PlaybackParameters(
@@ -146,8 +146,8 @@ private fun ValueSlider(label: String, value: Float, onValueChange: (Float) -> U
         }
         Spacer(modifier = Modifier.height(6.dp))
         LineSlider(
-            // the slider works in 01; the 025×-2× range is mapped in and out here
-            // 005 so the number under your finger is one you'd actually choose
+            // the slider works in 01 the 025× 2× range is mapped in and out here
+            // 005 so the number under your finger is one you d actually choose
             value = ((value - SpeedMin) / (SpeedMax - SpeedMin)).coerceIn(0f, 1f),
             onValueChange = { fraction ->
                 val raw = SpeedMin + fraction * (SpeedMax - SpeedMin)

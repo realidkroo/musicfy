@@ -231,7 +231,7 @@ fun PlaylistMenu(
                         database.transaction {
                             // first toggle the like using the same logic as the like button
                             if (playlist.playlist.bookmarkedAt != null) {
-                                // using the same togglelike() method that's used in the like button
+                                // using the same togglelike method that s used in the like button
                                 update(playlist.playlist.toggleLike())
                             }
                             // then delete the playlist

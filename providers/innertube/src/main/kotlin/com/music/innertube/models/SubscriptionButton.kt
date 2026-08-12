@@ -1,4 +1,4 @@
-// SubscriptionButton.kt
+// subscriptionbutton kt
 // this thing is for subscription button
 
 package com.music.innertube.models

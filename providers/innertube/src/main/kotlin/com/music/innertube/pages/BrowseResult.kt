@@ -1,4 +1,4 @@
-// BrowseResult.kt
+// browseresult kt
 // the file functioned as browse result
 
 package com.music.innertube.pages

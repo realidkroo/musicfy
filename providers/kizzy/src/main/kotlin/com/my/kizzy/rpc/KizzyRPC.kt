@@ -1,4 +1,4 @@
-// KizzyRPC.kt
+// kizzyrpc kt
 // the file functioned as kizzy rpc
 
 /*
@@ -27,9 +27,7 @@ import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import org.json.JSONObject
 
-/**
- * Modified by Zion Huang
- */
+// modified by zion huang
 open class KizzyRPC(
     private val token: String,
     os: String = "Android",

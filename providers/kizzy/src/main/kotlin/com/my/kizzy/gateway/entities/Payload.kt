@@ -1,4 +1,4 @@
-// Payload.kt
+// payload kt
 // this thing is for payload
 
 package com.my.kizzy.gateway.entities

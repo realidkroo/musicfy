@@ -1,4 +1,4 @@
-// HomePage.kt
+// homepage kt
 // this thing is part of home page
 
 package com.music.innertube.pages

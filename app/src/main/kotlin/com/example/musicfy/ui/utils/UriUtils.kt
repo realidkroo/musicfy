@@ -8,7 +8,7 @@ import android.widget.Toast
 import androidx.compose.ui.platform.UriHandler
 import com.example.musicfy.R
 
-// safely opens a uri using the provided [urihandler] if the uri cannot be handled
+// safely opens a uri using the provided urihandler if the uri cannot be handled
 fun UriHandler.safeOpenUri(context: Context, uri: String) {
     if (uri.isBlank()) return
     

@@ -1,4 +1,4 @@
-// GetQueueBody.kt
+// getqueuebody kt
 // what is this for you ask its for get queue body ofc
 
 package com.music.innertube.models.body

@@ -32,8 +32,8 @@ fun RandomizeGridItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // when isloading is true multiplier goes to 0 (moving dots to center)
-    // when isloading is false multiplier goes to 1 (moving dots to corners)
+    // when isloading is true multiplier goes to 0 moving dots to center
+    // when isloading is false multiplier goes to 1 moving dots to corners
     val dotOffsetMultiplier by animateFloatAsState(
         targetValue = if (isLoading) 0f else 1f,
         animationSpec = tween(durationMillis = 600),
@@ -54,7 +54,7 @@ fun RandomizeGridItem(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        // die dots (5-pattern)
+        // die dots 5 pattern
         val dotColor = MaterialTheme.colorScheme.onSecondaryContainer
         val dotSize = 14.dp
         val padding = 24.dp

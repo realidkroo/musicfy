@@ -1,4 +1,4 @@
-// Queue.kt
+// queue kt
 // the file functioned as queue
 
 package com.example.musicfy.ui.player
@@ -226,7 +226,7 @@ fun Queue(
         }
     }
 
-    // Listen Together state (reactive)
+    // listen together state reactive
 
 
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -243,7 +243,7 @@ fun Queue(
     val selectedSongs = remember { mutableStateListOf<MediaMetadata>() }
     val selectedItems = remember { mutableStateListOf<Timeline.Window>() }
 
-    // Cast state - safely access castConnectionHandler to prevent crashes during service lifecycle changes
+    // cast state safely access castconnectionhandler to prevent crashes during service lifecycle changes
     val castHandler = remember(playerConnection) {
         try {
             playerConnection.service.castConnectionHandler
@@ -312,7 +312,7 @@ fun Queue(
         },
         collapsedContent = {
             if (!useNewPlayerDesign) {
-                // Old design
+                // old design
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
@@ -338,15 +338,15 @@ fun Queue(
                                 modifier = Modifier.size(40.dp),
                                 tint = TextBackgroundColor
                             )
-//                            Spacer(modifier = Modifier.width(6.dp))
-//                            Text(
-//                                text = stringResource(id = R.string.queue),
-//                                color = TextBackgroundColor,
-//                                maxLines = 1,
-//                                overflow = TextOverflow.Ellipsis,
-//                                textAlign = TextAlign.Center,
-//                                modifier = Modifier.basicMarquee()
-//                            )
+// spacer modifier = modifier width 6 dp
+// text
+// text = stringresource id = r string queue
+// color = textbackgroundcolor
+// maxlines = 1
+// overflow = textoverflow ellipsis
+// textalign = textalign center
+// modifier = modifier basicmarquee
+
                         }
                     }
 
@@ -439,15 +439,15 @@ fun Queue(
                                 modifier = Modifier.size(40.dp),
                                 tint = TextBackgroundColor
                             )
-//                            Spacer(modifier = Modifier.width(6.dp))
-//                            Text(
-//                                text = stringResource(R.string.lyrics),
-//                                color = TextBackgroundColor,
-//                                maxLines = 1,
-//                                overflow = TextOverflow.Ellipsis,
-//                                textAlign = TextAlign.Center,
-//                                modifier = Modifier.basicMarquee()
-//                            )
+// spacer modifier = modifier width 6 dp
+// text
+// text = stringresource r string lyrics
+// color = textbackgroundcolor
+// maxlines = 1
+// overflow = textoverflow ellipsis
+// textalign = textalign center
+// modifier = modifier basicmarquee
+
                         }
                     }
                 }
@@ -480,7 +480,7 @@ fun Queue(
                         showSleepTimerDialog = false
                     },
                     onReset = {
-                        sleepTimerValue = 30f // Default value
+                        sleepTimerValue = 30f // default value
                     },
                     content = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {

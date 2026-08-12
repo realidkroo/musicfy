@@ -1,9 +1,9 @@
 // deviceoutputsheetkt
-// "change device output" (concept screen 2): the two volumes that actually
+// change device output concept screen 2 the two volumes that actually
 // things then everything you could route playback to
 
-// - device volume  — the android stream_music level shared with the hardware
-// - music volume   — this player's own gain applied on top turning the app
+// device volume the android stream_music level shared with the hardware
+// music volume this player s own gain applied on top turning the app
 // touching what every other app on the phone plays at is the point
 
 package com.example.musicfy.ui.player.menu
@@ -68,7 +68,7 @@ fun DeviceOutputSheet(onDismiss: () -> Unit) {
     }
 
     // outputs the system will actually route to queried once when the sheet
-    // callback would be nicer but a sheet is short-lived enough that a snapshot
+    // callback would be nicer but a sheet is short lived enough that a snapshot
     val devices = remember {
         runCatching {
             audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)

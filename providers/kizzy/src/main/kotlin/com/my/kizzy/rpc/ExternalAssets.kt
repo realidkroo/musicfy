@@ -1,4 +1,4 @@
-// ExternalAssets.kt
+// externalassets kt
 // this thing is part of external assets
 
 package com.my.kizzy.rpc

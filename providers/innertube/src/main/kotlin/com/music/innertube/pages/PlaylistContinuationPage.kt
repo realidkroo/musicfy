@@ -1,4 +1,4 @@
-// PlaylistContinuationPage.kt
+// playlistcontinuationpage kt
 // this thing is part of playlist continuation page
 
 package com.music.innertube.pages

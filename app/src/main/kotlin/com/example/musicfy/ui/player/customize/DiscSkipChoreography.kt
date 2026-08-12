@@ -1,10 +1,10 @@
 // discskipchoreographykt
-// the mechanical track-change transition for the disc cover styles: lift the
+// the mechanical track change transition for the disc cover styles lift the
 // record slide the old disc out slide the new one in set the arm back down
 
 // one animatable drives all three stages everything downstream reads it
-// lambdas in the draw phase so a transition costs draw-phase invalidations
-// subtree is never recomposed mid-slide
+// lambdas in the draw phase so a transition costs draw phase invalidations
+// subtree is never recomposed mid slide
 
 package com.example.musicfy.ui.player.customize
 
@@ -30,7 +30,7 @@ private const val SwapEnd = 0.68f
 
 private val SwapEasing = CubicBezierEasing(0.5f, 0.45f, 0f, 1f)
 
-// live state of a disc swap settled state is [progress] == 1: no outgoing disc
+// live state of a disc swap settled state is progress == 1 no outgoing disc
 @Stable
 class DiscSkipState internal constructor() {
     internal val progress = Animatable(1f)
@@ -39,13 +39,13 @@ class DiscSkipState internal constructor() {
     var outgoingArtworkUrl by mutableStateOf<String?>(null)
         internal set
 
-    // +1 when moving forward in the queue (old disc exits left) -1 when moving back
+    // +1 when moving forward in the queue old disc exits left 1 when moving back
     internal var direction by mutableFloatStateOf(1f)
 
     // the artwork currently on screen so the next change knows what to slide out
     internal var settledArtworkUrl: String? = null
 
-    // true while a swap is in flight — used to suppress the platter's idle rotation
+    // true while a swap is in flight used to suppress the platter s idle rotation
     val isSwapping: Boolean get() = progress.value < 1f
 
     // 0 = cartridge resting on the record 1 = swung clear rises across the lift stage
@@ -64,10 +64,10 @@ class DiscSkipState internal constructor() {
         return SwapEasing.transform(raw)
     }
 
-    // horizontal displacement of the departing disc in pixels given the art box's width
+    // horizontal displacement of the departing disc in pixels given the art box s width
     fun outgoingOffset(width: Float): Float = -direction * width * 1.35f * swap()
 
-    // horizontal displacement of the arriving disc — starts off the opposite edge
+    // horizontal displacement of the arriving disc starts off the opposite edge
     fun incomingOffset(width: Float): Float = direction * width * 1.35f * (1f - swap())
 
     fun outgoingAlpha(): Float = (1f - swap() * 1.4f).coerceIn(0f, 1f)
@@ -78,7 +78,7 @@ class DiscSkipState internal constructor() {
     fun outgoingScale(): Float = 1f - 0.10f * swap()
 }
 
-// drives a [discskipstate] from track changes keyed on [mediaid] alone: a second
+// drives a discskipstate from track changes keyed on mediaid alone a second
 @Composable
 fun rememberDiscSkipState(
     mediaId: String,
@@ -86,7 +86,7 @@ fun rememberDiscSkipState(
     queueIndex: Int,
 ): DiscSkipState {
     val state = remember { DiscSkipState() }
-    // not a keyed remember: this has to survive the track change that triggers
+    // not a keyed remember this has to survive the track change that triggers
     val lastIndex = remember { mutableFloatStateOf(queueIndex.toFloat()) }
 
     LaunchedEffect(mediaId) {
@@ -97,7 +97,7 @@ fun rememberDiscSkipState(
         lastIndex.floatValue = queueIndex.toFloat()
 
         // nothing to slide out of the way on the very first track or when the
-        // actually change (same image different id) — animating then reads as a
+        // actually change same image different id animating then reads as a
         if (previousArtwork == null || previousArtwork == artworkUrl) {
             state.outgoingArtworkUrl = null
             state.progress.snapTo(1f)

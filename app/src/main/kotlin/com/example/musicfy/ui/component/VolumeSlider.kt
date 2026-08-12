@@ -1,7 +1,7 @@
 // volumesliderkt
 // the file functioned as volume slider
 
-// musicfy project (c) 2026 licensed under gpl-30 | see git history for
+// musicfy project c 2026 licensed under gpl 30 | see git history for
 
 package com.example.musicfy.ui.component
 
@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import com.example.musicfy.R
 
-// material 3 expressive volume slider dimensions (size m)
+// material 3 expressive volume slider dimensions size m
 private object VolumeSliderDefaults {
     val TrackHeight: Dp = 40.dp
     val HandleHeight: Dp = 52.dp

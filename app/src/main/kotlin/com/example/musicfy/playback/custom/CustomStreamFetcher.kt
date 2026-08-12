@@ -11,7 +11,7 @@ import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
 
-// resolves streams via custom apis (amazon music tidal deezer qobuz) based on
+// resolves streams via custom apis amazon music tidal deezer qobuz based on
 class CustomStreamFetcher(
     private val dataStore: androidx.datastore.core.DataStore<Preferences>,
     private val database: MusicDatabase,
@@ -22,7 +22,7 @@ class CustomStreamFetcher(
         val customApiEnabled = prefs[EnableCustomApiKey] ?: false
         
         if (!customApiEnabled) {
-            return null // fallback to innertube/youtube
+            return null // fallback to innertube youtube
         }
 
         val amazonApiUrl = prefs[AmazonMusicApiUrlKey]?.trim()?.removeSuffix("/") ?: ""

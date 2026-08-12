@@ -16,7 +16,7 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // only trigger update through musicservice if it's already running
+        // only trigger update through musicservice if it s already running
         // this prevents backgroundservicestartnotallowedexception on android 14+
         if (MusicService.isRunning) {
             val intent = Intent(context, MusicService::class.java).apply {

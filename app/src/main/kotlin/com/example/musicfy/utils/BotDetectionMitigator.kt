@@ -21,7 +21,7 @@ object BotDetectionMitigator {
     private val failureCount = AtomicInteger(0)
 
     // error reasons that indicate geographic restriction – not a bot signal
-    // important: keep these specific to avoid false positives
+    // important keep these specific to avoid false positives
     private val GEO_ERROR_SIGNATURES = listOf(
         "not available in your country",
         "not available in your region",
@@ -35,7 +35,7 @@ object BotDetectionMitigator {
         "region restriction",
     )
 
-    // error reasons that strongly suggest bot / ip flagging by youtube
+    // error reasons that strongly suggest bot ip flagging by youtube
     private val BOT_ERROR_SIGNATURES = listOf(
         "Sign in to confirm",
         "confirm you're not a bot",
@@ -69,10 +69,10 @@ object BotDetectionMitigator {
         )
         
         withContext(Dispatchers.IO) {
-            // snapshot locale so the new token is issued for the user's actual region
+            // snapshot locale so the new token is issued for the user s actual region
             val currentLocale = YouTube.locale
 
-            // clear only visitordata - minimal session change
+            // clear only visitordata minimal session change
             YouTube.visitorData = null
             
             YouTube.refreshVisitorData().onSuccess { newData ->
@@ -99,7 +99,7 @@ object BotDetectionMitigator {
         return GEO_ERROR_SIGNATURES.any { lower.contains(it.lowercase()) }
     }
 
-    // returns true if message matches known bot-detection signatures
+    // returns true if message matches known bot detection signatures
     fun isBotDetectionError(message: String?): Boolean {
         if (message == null) return false
         val lower = message.lowercase()

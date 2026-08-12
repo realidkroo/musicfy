@@ -1,4 +1,4 @@
-// Endpoint.kt
+// endpoint kt
 // the file functioned as endpoint
 
 package com.music.innertube.models

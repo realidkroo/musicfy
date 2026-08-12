@@ -97,7 +97,7 @@ fun ImportProviderStep() {
     }
 }
 
-// the hand-drawn squiggle-with-arrowhead from the concept: a flat lead-in two
+// the hand drawn squiggle with arrowhead from the concept a flat lead in two
 @Composable
 private fun WiggleArrow(
     modifier: Modifier = Modifier,
@@ -120,11 +120,11 @@ private fun WiggleArrow(
         val midY = h / 2f
         val strokeWidth = (h * 0.13f).coerceAtLeast(2f)
 
-        // wave occupies the middle stretch; the tail and the head sit on the baseline
+        // wave occupies the middle stretch the tail and the head sit on the baseline
         val waveStart = w * 0.05f
         val waveEnd = w * 0.72f
-        // a touch taller than the original static wave and the per-bump travel below
-        // higher still at each bump's own peak moment — "more wiggle" without the
+        // a touch taller than the original static wave and the per bump travel below
+        // higher still at each bump s own peak moment more wiggle without the
         // looking cramped
         val amplitude = h * 0.48f
         val waveWidth = waveEnd - waveStart
@@ -137,7 +137,7 @@ private fun WiggleArrow(
             var up = true
             repeat(4) { bumpIndex ->
                 val nextX = x + halfWave
-                // never fully flat never doubled — a smooth 055115 envelope so the ripple is
+                // never fully flat never doubled a smooth 055115 envelope so the ripple is
                 // always visibly moving without any bump vanishing to a flat line or
                 // into a spike
                 val travel = 0.55f + 0.60f * ((1f + kotlin.math.sin(twoPi * phase - bumpIndex * 0.9f)) / 2f)

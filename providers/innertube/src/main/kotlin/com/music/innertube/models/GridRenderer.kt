@@ -1,4 +1,4 @@
-// GridRenderer.kt
+// gridrenderer kt
 // this thing is part of grid renderer
 
 package com.music.innertube.models

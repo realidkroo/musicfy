@@ -203,7 +203,7 @@ fun HeroCarousel(
     val carouselHeight = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
 
     if (carouselItems.isEmpty()) {
-        // nothing to carousel means a clean setup: no last-played no history no
+        // nothing to carousel means a clean setup no last played no history no
         // onboard instead of showing an empty hole
         val (username) = rememberPreference(UsernameKey, defaultValue = "")
         OnboardingHero(

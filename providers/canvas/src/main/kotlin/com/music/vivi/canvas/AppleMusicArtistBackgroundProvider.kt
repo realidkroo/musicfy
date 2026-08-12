@@ -1,4 +1,4 @@
-// AppleMusicArtistBackgroundProvider.kt
+// applemusicartistbackgroundprovider kt
 // the file functioned as apple music artist background provider
 
 package com.example.musicfy.canvas
@@ -26,17 +26,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Fetches Apple Music artist motion artwork (HLS canvas) for the artist screen.
- *
- * 1. Searches for the artist by name.
- * 2. Fetches the artist profile with `extend=editorialVideo,editorialArtwork`.
- *
- * Results are cached for 24 hours.
- */
+// fetches apple music artist motion artwork hls canvas for the artist screen 1 searches for the artist by name 2 fetches the artist profile with extend=editorialvideo editorialartwork results are cached for 24 hours
 object AppleMusicArtistBackgroundProvider {
 
-    // Public read-only JWT used by the Apple Music web player for unauthenticated catalog reads.
+    // public read only jwt used by the apple music web player for unauthenticated catalog reads
     private const val APPLE_MUSIC_TOKEN =
         "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IldlYlBsYXlLaWQifQ" +
         ".eyJpc3MiOiJBTVBXZWJQbGF5IiwiaWF0IjoxNzc0NDU2MzgyLCJleHAiOjE3ODE3" +
@@ -159,7 +152,7 @@ object AppleMusicArtistBackgroundProvider {
             val artistObj = data.firstOrNull()?.jsonObject ?: return@runCatching null
             val attributes = artistObj["attributes"]?.jsonObject
             
-            // Look for editorialVideo first
+            // look for editorialvideo first
             val ev = attributes?.get("editorialVideo")?.jsonObject
             if (ev != null) {
                 val videoUrl = extractEditorialVideoUrl(ev)
@@ -168,7 +161,7 @@ object AppleMusicArtistBackgroundProvider {
                 }
             }
 
-            // Fallback to editorialArtwork
+            // fallback to editorialartwork
             val ea = attributes?.get("editorialArtwork")?.jsonObject
             if (ea != null) {
                 val videoUrl = extractEditorialVideoUrl(ea)

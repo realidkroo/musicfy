@@ -110,21 +110,21 @@ class HomeViewModel @Inject constructor(
     val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
     private val previousHomePage = MutableStateFlow<HomePage?>(null)
 
-    // recently played: songs/albums/playlists only (no artists) true
+    // recently played songs albums playlists only no artists true
     val recentlyPlayed = MutableStateFlow<List<LocalItem>?>(null)
 
-    // most played: songs only ranked #1-#4 by position deliberately independent
-    // quickpickskey preference (which can switch `quickpicks` to a "last listen"
-    // this section must always mean genuine most-played not whatever quick picks
+    // most played songs only ranked #1 #4 by position deliberately independent
+    // quickpickskey preference which can switch quickpicks to a last listen
+    // this section must always mean genuine most played not whatever quick picks
     val mostPlayedSongsForHome = MutableStateFlow<List<Song>?>(null)
 
-    // history: raw chronological songs duplicates allowed (unlike
+    // history raw chronological songs duplicates allowed unlike
     val recentHistorySongs = MutableStateFlow<List<Song>?>(null)
 
-    // artist list: all "similar to x artist" seeds flattened + deduped into one
+    // artist list all similar to x artist seeds flattened + deduped into one
     val artistListItems = MutableStateFlow<List<ArtistGroup>?>(null)
 
-    // all time hits - sourced from youtube's charts top section
+    // all time hits sourced from youtube s charts top section
     val allTimeHits = MutableStateFlow<List<YTItem>?>(null)
 
     val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
@@ -145,7 +145,7 @@ class HomeViewModel @Inject constructor(
             val targetSize = 27
 
             if (filled.size < targetSize) {
-                // keep listening (history/heavy rotation)
+                // keep listening history heavy rotation
                 keepListening?.let { k ->
                     val needed = targetSize - filled.size
                     val available = k.filter { item ->
@@ -185,7 +185,7 @@ class HomeViewModel @Inject constructor(
             }
 
             if (filled.size < targetSize) {
-                // quick picks (most played)
+                // quick picks most played
                 quick?.let { q ->
                     val needed = targetSize - filled.size
                     val available = q.filter { item ->
@@ -278,7 +278,7 @@ class HomeViewModel @Inject constructor(
 
             otherSources.addAll(allYtItems.value)
 
-            // probability: 80% user songs 20% other sources
+            // probability 80% user songs 20% other sources
             val item = if (userSongs.isNotEmpty() && (otherSources.isEmpty() || Random.nextFloat() < 0.8f)) {
                 userSongs.distinctBy { it.id }.shuffled().firstOrNull()
             } else {
@@ -311,7 +311,7 @@ class HomeViewModel @Inject constructor(
 
     // track last processed cookie to avoid unnecessary updates
     private var lastProcessedCookie: String? = null
-    // track if we're currently processing account data
+    // track if we re currently processing account data
     private var isProcessingAccountData = false
 
     private suspend fun getDailyDiscover() {
@@ -473,10 +473,10 @@ class HomeViewModel @Inject constructor(
         val albums = database.recentlyPlayedAlbums(limit = 6).first()
         val playlists = database.recentlyPlayedPlaylists(limit = 6).first()
 
-        // each list is already recency-sorted individually; there's no timestamp
+        // each list is already recency sorted individually there s no timestamp
         // through to this layer to do a true global sort across types so a
-        // merge (song album playlist ) approximates "most recent first" well enough
-        // for a home-row preview without adding extra query plumbing
+        // merge song album playlist approximates most recent first well enough
+        // for a home row preview without adding extra query plumbing
         val merged = mutableListOf<LocalItem>()
         val maxLen = maxOf(songs.size, albums.size, playlists.size)
         for (i in 0 until maxLen) {
@@ -485,9 +485,9 @@ class HomeViewModel @Inject constructor(
             playlists.getOrNull(i)?.let { merged.add(it) }
         }
 
-        // liked songs is a synthetic playlist (a `songliked` boolean not a real row
-        // the `playlist` table) so recentlyplayedplaylists()'s join can never
-        // same synthetic-injection approach already used for keeplistening below
+        // liked songs is a synthetic playlist a songliked boolean not a real row
+        // the playlist table so recentlyplayedplaylists s join can never
+        // same synthetic injection approach already used for keeplistening below
         val lastPlayedLikedSongs = context.dataStore.get(LastPlayedLikedSongsTimeKey, 0L)
         if (System.currentTimeMillis() - lastPlayedLikedSongs < 86400000L * 7) {
             val likedCount = database.likedSongsCount().first()
@@ -518,8 +518,8 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun loadAllTimeHits() {
-        // one retry before giving up for the session — this was a single one-shot
-        // with no fallback so any transient failure/empty response meant the section
+        // one retry before giving up for the session this was a single one shot
+        // with no fallback so any transient failure empty response meant the section
         // silently never showed up again until the next full reload
         var page = YouTube.getChartsPage().onFailure { reportException(it) }.getOrNull()
         var section = page?.sections?.firstOrNull { it.chartType == ChartsPage.ChartType.TOP }
@@ -534,7 +534,7 @@ class HomeViewModel @Inject constructor(
         allTimeHits.value?.let { homeFeedCache.saveAllTimeHits(it) }
     }
 
-    // phase 1: reads all local db data and immediately drops the loading indicator
+    // phase 1 reads all local db data and immediately drops the loading indicator
     private suspend fun loadLocalDataPhase() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
 
@@ -586,7 +586,7 @@ class HomeViewModel @Inject constructor(
             .filter { it is Song || it is Album || it is com.example.musicfy.db.entities.Playlist }
     }
 
-    // fetches all three recommendation sources (artists songs albums) concurrently
+    // fetches all three recommendation sources artists songs albums concurrently
     private suspend fun loadSimilarRecommendations() {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
@@ -669,8 +669,8 @@ class HomeViewModel @Inject constructor(
             val nonNullResults = results.filterNotNull()
             similarRecommendations.value = nonNullResults.shuffled()
 
-            // artist list: collapse every "similar to x" seed above into one card per
-            // (covers + artist avatar) instead of n separate per-seed rows
+            // artist list collapse every similar to x seed above into one card per
+            // covers + artist avatar instead of n separate per seed rows
             data class GroupAccumulator(
                 var artistId: String?,
                 var artistName: String,
@@ -720,15 +720,15 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // our own fromthecommunity section (getcommunityplaylists()) already covers
-    // content — without dropping youtube's own equivalent section here it
+    // our own fromthecommunity section getcommunityplaylists already covers
+    // content without dropping youtube s own equivalent section here it
     // a second separate row showing overlapping playlists right alongside it
     private fun isCommunityOrTrendingSection(title: String): Boolean {
         val titleLower = title.lowercase()
         return "trending" in titleLower || "community" in titleLower
     }
 
-    // phase 2: fires all network sections concurrently because isloading is already
+    // phase 2 fires all network sections concurrently because isloading is already
     private suspend fun loadNetworkDataPhase() {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
@@ -776,19 +776,19 @@ class HomeViewModel @Inject constructor(
     private suspend fun load() {
         isLoading.value = true
 
-        // loadnetworkdataphase() below unconditionally overwrites homepage with the
-        // fresh unfiltered feed — clearing the chip selection here keeps the chip
-        // in sync with what's actually on screen instead of staying visually
-        // "selected" over content that silently reverted to unfiltered
+        // loadnetworkdataphase below unconditionally overwrites homepage with the
+        // fresh unfiltered feed clearing the chip selection here keeps the chip
+        // in sync with what s actually on screen instead of staying visually
+        // selected over content that silently reverted to unfiltered
         selectedChip.value = null
         previousHomePage.value = null
 
-        // phase 1: local db only — ui renders immediately after this
+        // phase 1 local db only ui renders immediately after this
         loadLocalDataPhase()
         isLoading.value = false
 
-        // phase 2: all network sections in parallel — streams in progressively
-        // entirely in offline mode so home only ever shows what's already
+        // phase 2 all network sections in parallel streams in progressively
+        // entirely in offline mode so home only ever shows what s already
         val offlineMode = context.dataStore.get(OfflineModeKey, false)
         if (!offlineMode) {
             loadNetworkDataPhase()
@@ -878,8 +878,8 @@ class HomeViewModel @Inject constructor(
 
     init {
 
-        // show last session's cached feed instantly before the network phase (below)
-        // even starts — this is what makes the algorithmic sections feel instant on a
+        // show last session s cached feed instantly before the network phase below
+        // even starts this is what makes the algorithmic sections feel instant on a
         // cold app start instead of blank until the network responds the network
         // phase always still runs and overwrites these with fresh data once it lands
         viewModelScope.launch(Dispatchers.IO) {
@@ -914,14 +914,14 @@ class HomeViewModel @Inject constructor(
                     // avoid processing if already processing
                     if (isProcessingAccountData) return@collect
 
-                    // always process cookie changes even if same value (for logout/login
+                    // always process cookie changes even if same value for logout login
                     lastProcessedCookie = cookie
                     isProcessingAccountData = true
 
                     try {
                         if (cookie != null && cookie.isNotEmpty()) {
 
-                            // update youtubecookie manually to ensure it's set
+                            // update youtubecookie manually to ensure it s set
                             YouTube.cookie = cookie
 
                             // fetch new account data

@@ -1,8 +1,8 @@
 // songinforowkt
-// minimal title/artist + like/repeat row for the fullscreen player
-// songinfokt + actionbuttonskt (now at /old-player/) which combined this
-// lyrics-mode thumbnail toggle clipboard copy artist-tap navigation and an
-// menu — all dropped here since none of that exists in this player yet just
+// minimal title artist + like repeat row for the fullscreen player
+// songinfokt + actionbuttonskt now at old player which combined this
+// lyrics mode thumbnail toggle clipboard copy artist tap navigation and an
+// menu all dropped here since none of that exists in this player yet just
 // like repeat
 
 package com.example.musicfy.ui.player
@@ -54,12 +54,12 @@ import com.example.musicfy.extensions.toggleRepeatMode
 @Composable
 fun SongInfoRow(
     modifier: Modifier = Modifier,
-    // reports the title+artist column's position in root (screen) coordinates
+    // reports the title+artist column s position in root screen coordinates
     // laid out bottomsheetplayer holds onto the last value even after this
-    // (which happens the instant lyrics opens since playercontrols is behind a
-    // and uses it as the starting rect for morphingsonginfo's travel to the
-    // "from" side of that shared-element move captured live instead of
-    // this row's own nested offsets/paddings make that math error-prone to
+    // which happens the instant lyrics opens since playercontrols is behind a
+    // and uses it as the starting rect for morphingsonginfo s travel to the
+    // from side of that shared element move captured live instead of
+    // this row s own nested offsets paddings make that math error prone to
     onTitlePositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -76,11 +76,11 @@ fun SongInfoRow(
             modifier = Modifier
                 .weight(1f)
                 .onGloballyPositioned { onTitlePositioned(it.boundsInRoot()) }
-                // both lines share one fade boundary at the edge nearest the repeat/like
-                // buttons — a long title/artist (or one still mid-marquee-scroll) dissolves
+                // both lines share one fade boundary at the edge nearest the repeat like
+                // buttons a long title artist or one still mid marquee scroll dissolves
                 // into the icons instead of ending in a hard edge right up against them
                 // offscreen compositing is what lets the dstin mask below erase from this
-                // column's own already-drawn pixels rather than punching through to whatever
+                // column s own already drawn pixels rather than punching through to whatever
                 // is behind it
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithCache {
@@ -170,7 +170,7 @@ private fun PressScaleActionButton(
                 onClick = onClick
             )
     ) {
-        // drawing the icon twice with a tiny offset (old-player's
+        // drawing the icon twice with a tiny offset old player s
         // fakes a bolder weight without needing a separate bold icon asset
         if (boldIcon) {
             androidx.compose.foundation.Image(

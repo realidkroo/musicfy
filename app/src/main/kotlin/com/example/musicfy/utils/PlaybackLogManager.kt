@@ -38,7 +38,7 @@ object PlaybackLogManager {
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS"))
         val entry = PlaybackLogEntry(timestamp, level, message, details)
         
-        // use a list to ensure thread-safety during update
+        // use a list to ensure thread safety during update
         val currentLogs = _logs.value.toMutableList()
         currentLogs.add(entry)
         

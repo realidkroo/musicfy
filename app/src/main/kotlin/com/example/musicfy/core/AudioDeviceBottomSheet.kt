@@ -374,7 +374,7 @@ fun AudioDeviceBottomSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier)
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         activeDevice?.let { device ->
-                            // tappable device row — shows chevron hint when bluetooth is available
+                            // tappable device row shows chevron hint when bluetooth is available
                             Surface(
                                 shape = MaterialTheme.shapes.large,
                                 color = androidx.compose.ui.graphics.Color.Transparent,
@@ -434,7 +434,7 @@ fun AudioDeviceBottomSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier)
                             }
                         }
 
-                        // animated in-place device switcher panel
+                        // animated in place device switcher panel
                         androidx.compose.animation.AnimatedVisibility(
                             visible = hasBluetooth && showDevicePopup,
                             enter = androidx.compose.animation.expandVertically(
@@ -678,7 +678,7 @@ fun VolumeControlRow(
         tonalElevation = 1.dp
     ) {
         Box(contentAlignment = Alignment.CenterStart) {
-            // smoothly animate the fill width for a high-end feel
+            // smoothly animate the fill width for a high end feel
             val animatedVolumeFraction by animateFloatAsState(
                 targetValue = currentValue / maxVolume.toFloat(),
                 animationSpec = spring(
@@ -688,7 +688,7 @@ fun VolumeControlRow(
                 label = "VolumeFillAnimation"
             )
 
-            // custom pill slider for perfect 0-100% fill
+            // custom pill slider for perfect 0 100% fill
             val widthState = remember { mutableFloatStateOf(0f) }
             Box(
                 modifier = Modifier
@@ -716,7 +716,7 @@ fun VolumeControlRow(
                         }
                     }
             ) {
-                // active track (fill) - uses the animated fraction for smoothness
+                // active track fill uses the animated fraction for smoothness
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -725,7 +725,7 @@ fun VolumeControlRow(
                 )
             }
 
-            // content overlay (icon and label)
+            // content overlay icon and label
             Row(
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -750,7 +750,7 @@ fun VolumeControlRow(
                     )
                 }
                 
-                // android 15 style max indicator dot - placed at the absolute end
+                // android 15 style max indicator dot placed at the absolute end
                 Box(
                     modifier = Modifier
                         .padding(end = 16.dp)
@@ -838,7 +838,7 @@ fun AudioQualitySelector(context: Context) {
 }
 
 fun applyAudioQuality(context: Context, quality: AudioQuality) {
-    // ported from alpha - logic can be added here if needed
+    // ported from alpha logic can be added here if needed
 }
 
 private fun loadDevices(
@@ -949,7 +949,7 @@ private fun loadDevices(
                 device.copy(isActive = device.deviceId == activeDevice?.id)
             }
 
-            // maintain a stable order: phone speaker -> wired -> bluetooth -> others
+            // maintain a stable order phone speaker > wired > bluetooth > others
             val sortedDevices = updatedDevices.sortedWith(compareBy<AudioDevice> {
                 when (it.type) {
                     AudioDeviceType.PHONE_SPEAKER -> 0

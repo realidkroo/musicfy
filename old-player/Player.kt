@@ -1,4 +1,4 @@
-// Player.kt
+// player kt
 // this thing is part of player
 
 package com.example.musicfy.ui.player
@@ -456,16 +456,16 @@ fun BottomSheetPlayer(
                     )
                 }
             } catch (_: Exception) {
-                // Keep the preview in loading state instead of flashing an unavailable label.
+                // keep the preview in loading state instead of flashing an unavailable label
             }
         }
     }
     val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.DEFAULT)
     val squigglySlider by rememberPreference(SquigglySliderKey, defaultValue = false)
     
-    // Listen Together state (reactive)
+    // listen together state reactive
     
-    // Cast state - safely access castConnectionHandler to prevent crashes during service lifecycle changes
+    // cast state safely access castconnectionhandler to prevent crashes during service lifecycle changes
     val castHandler = remember(playerConnection) {
         try {
             playerConnection.service.castConnectionHandler
@@ -479,15 +479,15 @@ fun BottomSheetPlayer(
     val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
     val castVolume by castHandler?.castVolume?.collectAsState() ?: remember { mutableFloatStateOf(1f) }
     
-    // Use Cast state when casting, otherwise local player
+    // use cast state when casting otherwise local player
     val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
 
-    // Use State objects for position/duration to pass to MiniPlayer without causing recomposition
-    // These states persist across playback state changes to ensure continuous progress updates
+    // use state objects for position duration to pass to miniplayer without causing recomposition
+    // these states persist across playback state changes to ensure continuous progress updates
     val positionState = remember { mutableLongStateOf(0L) }
     val durationState = remember { mutableLongStateOf(0L) }
     
-    // Convenience accessors for local use
+    // convenience accessors for local use
     var position by positionState
     var duration by durationState
     
@@ -504,7 +504,7 @@ fun BottomSheetPlayer(
     var sliderPosition by remember {
         mutableStateOf<Long?>(null)
     }
-    // Track when we last manually set position to avoid Cast overwriting it
+    // track when we last manually set position to avoid cast overwriting it
     var lastManualSeekTime by remember { mutableLongStateOf(0L) }
     
     var gradientColors by remember {
@@ -684,7 +684,7 @@ fun BottomSheetPlayer(
         }
         val item = mediaMetadata ?: return@LaunchedEffect
         
-        // Use cached artwork if available
+        // use cached artwork if available
         CanvasArtworkPlaybackCache.get(item.id)?.let { cached ->
             canvasArtwork = cached
             return@LaunchedEffect
@@ -812,7 +812,7 @@ fun BottomSheetPlayer(
         }
     }
 
-    // Separate colors for Previous/Next buttons in PRIMARY/TERTIARY modes
+    // separate colors for previous next buttons in primary tertiary modes
     val (sideButtonContainerColor, sideButtonContentColor) = when {
         playerBackground == PlayerBackgroundStyle.BLUR || 
         playerBackground == PlayerBackgroundStyle.GRADIENT -> {
@@ -984,7 +984,7 @@ fun BottomSheetPlayer(
         derivedStateOf { state.isExpanded && state.progress > 0.995f }
     }
 
-    // Cache parsed lyrics lines — only re-parses when lyrics entity changes
+    // cache parsed lyrics lines only re parses when lyrics entity changes
     val parsedLyricsLines = remember(currentLyrics, mediaMetadata?.id) {
         val lyricsText = currentLyrics
             ?.takeIf { it.id == mediaMetadata?.id }
@@ -995,7 +995,7 @@ fun BottomSheetPlayer(
         } else emptyList()
     }
 
-    // Position/duration on-demand providers to avoid root recomposition on every position tick
+    // position duration on demand providers to avoid root recomposition on every position tick
     val positionProvider = remember(playerConnection, isCasting, castPosition) {
         {
             if (isCasting) castPosition
@@ -1021,7 +1021,7 @@ fun BottomSheetPlayer(
         }
     }
 
-    // Current lyrics line for the bottom card preview — lightweight lookup per settled position
+    // current lyrics line for the bottom card preview lightweight lookup per settled position
     val currentLyricsEntry = remember(parsedLyricsLines, bottomCardLyricsPosition) {
         if (parsedLyricsLines.isNotEmpty()) {
             val lyricsOffset = currentSong?.song?.lyricsOffset ?: 0
@@ -1031,7 +1031,7 @@ fun BottomSheetPlayer(
     }
     val currentLyricsLine = currentLyricsEntry?.text?.repairPlayerLyricsSpacing()
 
-    // Next queue item for the bottom card preview
+    // next queue item for the bottom card preview
     val nextQueueMetadata = remember(currentWindowIndex, queueWindows) {
         val nextIdx = currentWindowIndex + 1
         if (nextIdx in queueWindows.indices) {
@@ -1039,7 +1039,7 @@ fun BottomSheetPlayer(
         } else null
     }
 
-    // Only update position/duration state on explicit playback state or song changes
+    // only update position duration state on explicit playback state or song changes
     LaunchedEffect(playbackState, mediaMetadata?.id) {
         if (!isCasting) {
             position = try { playerConnection.player.currentPosition } catch (_: Exception) { 0L }
@@ -1047,13 +1047,13 @@ fun BottomSheetPlayer(
         }
     }
     
-    // When casting, use Cast position/duration directly
-    // But wait a bit after manual seeks to let Cast catch up
+    // when casting use cast position duration directly
+    // but wait a bit after manual seeks to let cast catch up
     LaunchedEffect(isCasting, castPosition, castDuration) {
         if (isCasting && sliderPosition == null) {
             val timeSinceManualSeek = System.currentTimeMillis() - lastManualSeekTime
             if (timeSinceManualSeek > 1500) {
-                // Only update from Cast if we haven't manually seeked recently
+                // only update from cast if we haven t manually seeked recently
                 position = castPosition
                 if (castDuration > 0) duration = castDuration
             }
@@ -1292,7 +1292,7 @@ fun BottomSheetPlayer(
 
         when (LocalConfiguration.current.orientation) {
             Configuration.ORIENTATION_LANDSCAPE -> {
-                // Calculate vertical padding like OuterTune
+                // calculate vertical padding like outertune
                 val density = LocalDensity.current
                 val verticalPadding = max(
                     WindowInsets.systemBars.getTop(density),
@@ -1315,7 +1315,7 @@ fun BottomSheetPlayer(
                             .weight(1f)
                             .nestedScroll(state.preUpPostDownNestedScrollConnection)
                     ) {
-                        // Remember lambdas to prevent unnecessary recomposition
+                        // remember lambdas to prevent unnecessary recomposition
                         val currentSliderPosition by rememberUpdatedState(sliderPosition)
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
@@ -1381,7 +1381,7 @@ fun BottomSheetPlayer(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.weight(1f),
                     ) {
-                        // Remember lambdas to prevent unnecessary recomposition
+                        // remember lambdas to prevent unnecessary recomposition
                         val currentSliderPosition by rememberUpdatedState(sliderPosition)
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
@@ -1453,7 +1453,7 @@ fun BottomSheetPlayer(
             if (useBlackBackground) {
                 Color.Black
             } else {
-                MaterialTheme.colorScheme.surface //fixed the issue causing the queue ui not good surfacecontainer
+                MaterialTheme.colorScheme.surface // fixed the issue causing the queue ui not good surfacecontainer
             },
             onBackgroundColor = onBackgroundColor,
             TextBackgroundColor = TextBackgroundColor,
@@ -1530,7 +1530,7 @@ fun InlineLyricsView(
                         upsert(LyricsEntity(mediaMetadata.id, fetchedLyricsWithProvider.lyrics, fetchedLyricsWithProvider.provider))
                     }
                 } catch (e: Exception) {
-                    // Handle error
+                    // handle error
                 }
             }
         }
@@ -1650,7 +1650,7 @@ fun InlineLyricsView(
                         transformOrigin = TransformOrigin(0f, 0f)
                     }
             ) {
-                // Reserve exact layout space for single Thumbnail animating from center to header
+                // reserve exact layout space for single thumbnail animating from center to header
                 Spacer(Modifier.size(artworkSize))
                 Spacer(Modifier.width(14.dp))
                 Column(
@@ -2106,7 +2106,7 @@ private fun BackgroundVideoView(
             .setTrackSelector(trackSelector)
             .setLoadControl(
                 DefaultLoadControl.Builder()
-                    .setTargetBufferBytes(20 * 1024 * 1024) // 20MB buffer for 4K
+                    .setTargetBufferBytes(20 * 1024 * 1024) // 20mb buffer for 4k
                     .build()
             )
             .build().apply {
@@ -2168,12 +2168,12 @@ private fun BackgroundVideoView(
     AndroidView(
         factory = { _ ->
             aspectRatioFrameLayout.apply {
-                // Ensure the view doesn't capture touches intended for other sections
+                // ensure the view doesn t capture touches intended for other sections
                 isEnabled = false
                 isClickable = false
                 isFocusable = false
 
-                // Ensure TextureView is added only once
+                // ensure textureview is added only once
                 if (childCount == 0) {
                     val textureView = TextureView(context).apply {
                         layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)

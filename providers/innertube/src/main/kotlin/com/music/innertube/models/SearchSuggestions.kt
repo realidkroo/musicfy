@@ -1,4 +1,4 @@
-// SearchSuggestions.kt
+// searchsuggestions kt
 // this thing is for search suggestions
 
 package com.music.innertube.models

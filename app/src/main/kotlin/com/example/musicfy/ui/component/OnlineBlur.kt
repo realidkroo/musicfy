@@ -29,10 +29,10 @@ fun OnlineBlur(
 ) {
     Box(modifier = modifier) {
         if (thumbnailUrl != null) {
-            // a 50dp modifierblur() re-blurs the full-resolution thumbnail on the gpu
+            // a 50dp modifierblur re blurs the full resolution thumbnail on the gpu
             // frame at this blur strength no source detail survives anyway so the blur is
             // instead baked once into a 48x48 downsample off the main thread and cached
-            // coil then stretched back up — same soft wash none of the per-frame cost
+            // coil then stretched back up same soft wash none of the per frame cost
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(thumbnailUrl.resize(48, 48))
@@ -47,7 +47,7 @@ fun OnlineBlur(
             )
         }
         
-        // shadow/gradient overlay for "face upward" effect to blend with background
+        // shadow gradient overlay for face upward effect to blend with background
         Box(
             modifier = Modifier
                 .fillMaxSize()

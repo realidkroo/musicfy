@@ -5,7 +5,7 @@ package com.example.musicfy.ui.utils
 
 import java.util.concurrent.atomic.AtomicLong
 
-// utility object for generating unique keys in lazycolumn/lazyrow to prevent
+// utility object for generating unique keys in lazycolumn lazyrow to prevent
 object KeyUtils {
     private val counter = AtomicLong(0)
     
@@ -29,7 +29,7 @@ object KeyUtils {
         }
     }
     
-    // generates a timestamp-based unique key for dynamic content useful for content
+    // generates a timestamp based unique key for dynamic content useful for content
     fun generateTimestampKey(baseId: String, prefix: String = ""): String {
         val timestamp = System.currentTimeMillis()
         val uniqueId = counter.incrementAndGet()

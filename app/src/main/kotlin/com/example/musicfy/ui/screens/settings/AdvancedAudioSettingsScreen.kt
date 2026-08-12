@@ -139,7 +139,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     )
                 )
 
-                // audio quality (override)
+                // audio quality override
                 Text(
                     text = "Streaming Quality",
                     style = MaterialTheme.typography.titleMedium,

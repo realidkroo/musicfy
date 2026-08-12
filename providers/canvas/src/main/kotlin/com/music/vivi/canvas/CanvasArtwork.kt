@@ -1,4 +1,4 @@
-// CanvasArtwork.kt
+// canvasartwork kt
 // this thing is part of canvas artwork
 
 package com.example.musicfy.canvas

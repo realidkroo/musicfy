@@ -15,7 +15,7 @@ object SuperProperties {
     private const val CLIENT_BUILD_NUMBER = 314013
     private const val RELEASE_CHANNEL = "googleRelease"
     
-    // lazy loaded properties to avoid re-generating uuids
+    // lazy loaded properties to avoid re generating uuids
     val superProperties: JSONObject by lazy {
         JSONObject().apply {
             put("os", "Android")

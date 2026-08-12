@@ -1,10 +1,10 @@
 // playeractionmenukt
-// the player's action sheet reached from the ⋯ button on both the player and
+// the player s action sheet reached from the ⋯ button on both the player and
 
 // presented in the same language as the beta notice and the onboarding sheet
-// top-rounded surface with a white grab bar — and it opens at roughly half
-// grab bar draggable up to full height which is why it is a self-contained
-// a modalbottomsheet (that one snaps between its own detents and brings its
+// top rounded surface with a white grab bar and it opens at roughly half
+// grab bar draggable up to full height which is why it is a self contained
+// a modalbottomsheet that one snaps between its own detents and brings its
 
 package com.example.musicfy.ui.player.menu
 
@@ -97,7 +97,7 @@ fun PlayerActionMenu(
                     .padding(horizontal = 20.dp)
                     .padding(top = 16.dp, bottom = 24.dp)
             ) {
-                // ---- track header ----
+                // track header
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
@@ -142,7 +142,7 @@ fun PlayerActionMenu(
 
                 MenuDivider()
 
-                // ---- playback group ----
+                // playback group
                 DeviceVolumeRow()
                 Spacer(modifier = Modifier.height(8.dp))
                 MenuRow(
@@ -161,7 +161,7 @@ fun PlayerActionMenu(
 
                 MenuDivider()
 
-                // ---- library group ----
+                // library group
                 MenuRow(
                     icon = R.drawable.playlist_add,
                     title = "add to playlist",
@@ -231,7 +231,7 @@ private fun MenuDivider() {
     )
 }
 
-// one tappable row [enabled] false is the "not built yet" state: the row still
+// one tappable row enabled false is the not built yet state the row still
 @Composable
 private fun MenuRow(
     icon: Int,
@@ -283,7 +283,7 @@ private fun MenuRow(
     }
 }
 
-// sleep timer row showing what's left when one is running
+// sleep timer row showing what s left when one is running
 @Composable
 private fun SleepTimerRow(onClick: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return

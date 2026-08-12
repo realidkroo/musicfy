@@ -1,4 +1,4 @@
-// CommentRenderer.kt
+// commentrenderer kt
 // this thing is part of comment renderer
 
 package com.music.innertube.models.comment

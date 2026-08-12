@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.min
 
-// a [modifier] that draws a border around elements that are recomposing the
+// a modifier that draws a border around elements that are recomposing the
 @Stable
 fun Modifier.recomposeHighlighter(): Modifier = this.then(recomposeModifier)
 
@@ -30,17 +30,17 @@ fun Modifier.recomposeHighlighter(): Modifier = this.then(recomposeModifier)
 // modifiercomposed will still remember unique data per call site
 private val recomposeModifier =
     Modifier.composed(inspectorInfo = debugInspectorInfo { name = "recomposeHighlighter" }) {
-        // the total number of compositions that have occurred we're not using a
-        // able to read/write the value without invalidating (which would cause
-        // recomposition)
+        // the total number of compositions that have occurred we re not using a
+        // able to read write the value without invalidating which would cause
+        // recomposition
         val totalCompositions = remember { arrayOf(0L) }
         totalCompositions[0]++
 
         // the value of totalcompositions at the last timeout
         val totalCompositionsAtLastTimeout = remember { mutableLongStateOf(0L) }
 
-        // start the timeout and reset everytime there's a recomposition (using
-        // as the key is really just to cause the timer to restart every composition)
+        // start the timeout and reset everytime there s a recomposition using
+        // as the key is really just to cause the timer to restart every composition
         LaunchedEffect(totalCompositions[0]) {
             delay(3000)
             totalCompositionsAtLastTimeout.longValue = totalCompositions[0]

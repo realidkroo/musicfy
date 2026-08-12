@@ -33,7 +33,7 @@ object UpdateNotificationHelper {
             nm.createNotificationChannel(channel)
         }
 
-        // direct download url format from musicfyupdater - use the full tag (vxxx or
+        // direct download url format from musicfyupdater use the full tag vxxx or
         val apkUrl = if (versionName.contains("nightly", ignoreCase = true)) {
             "https://nightly.link/musicfy-app/musicfy/workflows/nightly.yml/main/musicfy-gms-nightly.zip"
         } else {

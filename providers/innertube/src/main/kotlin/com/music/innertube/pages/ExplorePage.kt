@@ -1,4 +1,4 @@
-// ExplorePage.kt
+// explorepage kt
 // this thing is part of explore page
 
 package com.music.innertube.pages

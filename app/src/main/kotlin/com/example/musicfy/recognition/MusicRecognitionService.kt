@@ -31,8 +31,8 @@ object MusicRecognitionService {
     private const val RECORDING_SAMPLE_RATE = 44100
     private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
     private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-    // recording duration: 10 seconds for better recognition accuracy
-    // original musicrecognizer uses: 3s -> 6s -> 9s -> 10s fallback
+    // recording duration 10 seconds for better recognition accuracy
+    // original musicrecognizer uses 3s > 6s > 9s > 10s fallback
     // we use 10s directly to match the fallback duration for maximum
     private const val RECORDING_DURATION_MS = 10000L
     
@@ -56,12 +56,12 @@ object MusicRecognitionService {
         _recognitionStatus.value = RecognitionStatus.Listening
         
         try {
-            // step 1: record audio
+            // step 1 record audio
             val audioData = recordAudio()
             
             _recognitionStatus.value = RecognitionStatus.Processing
             
-            // step 2: convert to mono if needed and resample to 16khz
+            // step 2 convert to mono if needed and resample to 16khz
             val decodedAudio = DecodedAudio(
                 data = audioData,
                 channelCount = 1,
@@ -87,7 +87,7 @@ object MusicRecognitionService {
                 resampledAudio.data.size % 2 == 0
             ) { "Invalid audio format for fingerprint generation" }
             
-            // step 3: generate fingerprint using native library
+            // step 3 generate fingerprint using native library
             val signature = try {
                 VibraSignature.fromI16(resampledAudio.data)
             } catch (e: Exception) {
@@ -95,7 +95,7 @@ object MusicRecognitionService {
                 return@withContext _recognitionStatus.value
             }
             
-            // step 4: send to shazam api
+            // step 4 send to shazam api
             val sampleDurationMs = (resampledAudio.data.size / 2) * 1000L / VibraSignature.REQUIRED_SAMPLE_RATE
             
             val result = Shazam.recognize(signature, sampleDurationMs)

@@ -73,7 +73,7 @@ fun SetupWizardContainer(
         // if stacked under another modal remove padding so it peeks perfectly at
         val foregroundTopEdge = if (isStacked) 0.dp else backgroundTopEdge + 12.dp
 
-        // main app content (shrinks dynamically based on setup wizard position)
+        // main app content shrinks dynamically based on setup wizard position
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -113,8 +113,8 @@ fun SetupWizardContainer(
                     .graphicsLayer {
                         val inverseProgress = 1f - overlayProgress.value
                         // travel a bit past the full layer height so the wizard is
-                        // fully off-screen before it unmounts instead of getting cut
-                        // off mid-slide on taller screens
+                        // fully off screen before it unmounts instead of getting cut
+                        // off mid slide on taller screens
                         translationY = inverseProgress * (size.height * 1.15f) + dragOffsetY
                     }
             ) {

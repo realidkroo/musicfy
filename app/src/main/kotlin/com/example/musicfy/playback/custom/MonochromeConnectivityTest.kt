@@ -9,7 +9,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
-// outcome of a real end-to-end probe of the monochrome playback backend
+// outcome of a real end to end probe of the monochrome playback backend
 sealed interface MonochromeConnectivityResult {
     data object Success : MonochromeConnectivityResult
     data class Unreachable(val reason: String) : MonochromeConnectivityResult
@@ -54,8 +54,8 @@ suspend fun testMonochromeConnectivity(
         playbackBodyJson = playbackBody,
     )
 
-    // any real http response (even a 404 for this made-up song) proves the
-    // was solved and the exchanged session was accepted — that's what we're
+    // any real http response even a 404 for this made up song proves the
+    // was solved and the exchanged session was accepted that s what we re
     return if (result != null) {
         MonochromeConnectivityResult.Success
     } else {

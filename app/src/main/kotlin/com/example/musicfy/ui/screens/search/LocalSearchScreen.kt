@@ -108,8 +108,8 @@ fun LocalSearchScreen(
     val isLandscape = configuration.containerSize.width > configuration.containerSize.height
 
     // dedup once per result instead of once per recomposition per section the
-    // lambda re-runs on every recomposition of this screen so `itemsdistinctby {
-    // the `items = ` argument rebuilt every section's list each time
+    // lambda re runs on every recomposition of this screen so itemsdistinctby
+    // the items = argument rebuilt every section s list each time
     val distinctResultMap = remember(result) {
         result.map.mapValues { (_, sectionItems) -> sectionItems.distinctBy { it.id } }
     }

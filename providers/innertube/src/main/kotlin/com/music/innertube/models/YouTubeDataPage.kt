@@ -1,4 +1,4 @@
-// YouTubeDataPage.kt
+// youtubedatapage kt
 // the file functioned as you tube data page
 
 package com.music.innertube.models

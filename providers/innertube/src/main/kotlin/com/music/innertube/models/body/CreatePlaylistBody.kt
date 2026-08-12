@@ -1,4 +1,4 @@
-// CreatePlaylistBody.kt
+// createplaylistbody kt
 // the file functioned as create playlist body
 
 package com.music.innertube.models.body

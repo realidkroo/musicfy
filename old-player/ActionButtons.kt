@@ -1,6 +1,6 @@
-// ActionButtons.kt
-// Extracted from Player.kt's `controlsContent` closure: the repeat/like (new design)
-// or more/like (old design) action button group, plus the shared PressScaleIconButton.
+// actionbuttons kt
+// extracted from player kt s controlscontent closure the repeat like new design
+// or more like old design action button group plus the shared pressscaleiconbutton
 
 package com.example.musicfy.ui.player
 
@@ -56,10 +56,7 @@ import com.example.musicfy.ui.menu.OldPlayerMenu
 import com.example.musicfy.ui.utils.ShowMediaInfo
 import com.example.musicfy.ui.utils.ShowOffsetDialog
 
-/**
- * The repeat/like (new design) or more/like (old design) action button group — a direct
- * sibling of `SongInfo` inside `Player.kt`'s header `Row`.
- */
+// the repeat like new design or more like old design action button group a direct sibling of songinfo inside player kt s header row
 @Composable
 fun RowScope.ActionButtons(
     useNewPlayerDesign: Boolean,

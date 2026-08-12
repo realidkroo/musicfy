@@ -1,5 +1,5 @@
-// PlayerBackground.kt
-// Extracted from Player.kt's BottomSheet `background = { ... }` slot.
+// playerbackground kt
+// extracted from player kt s bottomsheet background = slot
 
 package com.example.musicfy.ui.player
 
@@ -76,11 +76,7 @@ private fun Modifier.liquidWarpEffect(time: Float): Modifier = composed {
     }
 }
 
-/**
- * Full-player background renderer for all [PlayerBackgroundStyle] variants.
- * Extracted verbatim from the old `BottomSheetPlayer`'s `background = { ... }` slot in
- * Player.kt so the ~500-line style `when` isn't inlined into the root player composable.
- */
+// full player background renderer for all playerbackgroundstyle variants extracted verbatim from the old bottomsheetplayer s background = slot in player kt so the ~500 line style when isn t inlined into the root player composable
 @Composable
 fun PlayerBackgroundRenderer(
     playerBackground: PlayerBackgroundStyle,
@@ -99,7 +95,7 @@ fun PlayerBackgroundRenderer(
             .fillMaxSize()
             .background(bottomSheetBackgroundColor)
     ) {
-        // Static gradient base (always active)
+        // static gradient base always active
         if (playerBackground != PlayerBackgroundStyle.DEFAULT) {
             val colors = gradientColors.ifEmpty {
                 listOf(
@@ -122,7 +118,7 @@ fun PlayerBackgroundRenderer(
             )
         }
 
-        // Heavy effects fade in on top
+        // heavy effects fade in on top
         if (playerBackground != PlayerBackgroundStyle.DEFAULT) {
             Box(
                 modifier = Modifier
@@ -394,11 +390,11 @@ fun PlayerBackgroundRenderer(
                                     label = "warpTime"
                                 )
 
-                                // Layer 1: Full-Screen Blurred Background
+                                // layer 1 full screen blurred background
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(currentBgState.primaryUrl)
-                                        .size(128, 128) // Downsample significantly for performance
+                                        .size(128, 128) // downsample significantly for performance
                                         .allowHardware(false)
                                         .build(),
                                     contentDescription = null,
@@ -409,13 +405,13 @@ fun PlayerBackgroundRenderer(
                                             scaleX = 1.2f
                                             scaleY = 1.2f
                                             compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                                        } // Scale up to hide warped edges
+                                        } // scale up to hide warped edges
                                         .let {
                                             if (android.os.Build.VERSION.SDK_INT >= 33) {
                                                 val isSheetTransitioning by remember(state) {
                                                     derivedStateOf { state.progress > 0.01f && state.progress < 0.99f }
                                                 }
-                                                // Freeze time animation during transition to save GPU
+                                                // freeze time animation during transition to save gpu
                                                 val transitionTime = if (isSheetTransitioning) 0f else time
                                                 it.blur(50.dp).liquidWarpEffect(transitionTime)
                                             } else {
@@ -425,7 +421,7 @@ fun PlayerBackgroundRenderer(
                                 )
                             }
 
-                            // Layer 3: Dynamic overlay for depth
+                            // layer 3 dynamic overlay for depth
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -487,23 +483,23 @@ fun PlayerBackgroundRenderer(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .graphicsLayer {
-                                    // Scale up to avoid showing edges during rotation
+                                    // scale up to avoid showing edges during rotation
                                     scaleX = 1.7f
                                     scaleY = 1.7f
                                 }
                         ) {
                             val matrix = remember {
                                 val m = ColorMatrix()
-                                m.setToSaturation(1.8f) // Reduced to avoid neon look
+                                m.setToSaturation(1.8f) // reduced to avoid neon look
                                 m
                             }
                             val colorFilter = ColorFilter.colorMatrix(matrix)
 
-                            // Layer 1: The Anchor (Full Image, Counter-Clockwise)
+                            // layer 1 the anchor full image counter clockwise
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(thumbnailUrl)
-                                    .size(128, 128) // Downsample significantly for performance
+                                    .size(128, 128) // downsample significantly for performance
                                     .allowHardware(false)
                                     .build(),
                                 contentDescription = null,
@@ -515,11 +511,11 @@ fun PlayerBackgroundRenderer(
                                     .graphicsLayer { rotationZ = anchorRotation }
                             )
 
-                            // Layer 2: Fast Rotating Crop (Top-Left)
+                            // layer 2 fast rotating crop top left
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(thumbnailUrl)
-                                    .size(128, 128) // Downsample significantly for performance
+                                    .size(128, 128) // downsample significantly for performance
                                     .allowHardware(false)
                                     .build(),
                                 contentDescription = null,
@@ -535,11 +531,11 @@ fun PlayerBackgroundRenderer(
                                     }
                             )
 
-                            // Layer 3: Slow Rotating Crop (Bottom-Right)
+                            // layer 3 slow rotating crop bottom right
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(thumbnailUrl)
-                                    .size(128, 128) // Downsample significantly for performance
+                                    .size(128, 128) // downsample significantly for performance
                                     .allowHardware(false)
                                     .build(),
                                 contentDescription = null,
@@ -555,7 +551,7 @@ fun PlayerBackgroundRenderer(
                                     }
                             )
 
-                            // Global dark tint to prevent neon look + vertical gradient for depth
+                            // global dark tint to prevent neon look + vertical gradient for depth
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -578,7 +574,7 @@ fun PlayerBackgroundRenderer(
                 }
             }
             PlayerBackgroundStyle.DEFAULT -> {
-                        // Nothing
+                        // nothing
                     }
                 }
             }

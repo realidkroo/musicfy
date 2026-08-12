@@ -1,4 +1,4 @@
-// NetworkConfig.kt
+// networkconfig kt
 // what is this for you ask its for network config ofc
 
 package com.music.innertube
@@ -14,20 +14,17 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-/**
- * Enhanced network configuration for better performance and reliability
- * Inspired by ArchiveTune optimizations
- */
+// enhanced network configuration for better performance and reliability inspired by archivetune optimizations
 object NetworkConfig {
     
-    // Timeout settings
+    // timeout settings
     private const val CONNECT_TIMEOUT_SECONDS = 30L
     private const val READ_TIMEOUT_SECONDS = 60L
     private const val WRITE_TIMEOUT_SECONDS = 60L
     private const val REQUEST_TIMEOUT_MILLIS = 60000L
     
-    // Cache settings
-    private const val CACHE_SIZE_MB = 50L * 1024L * 1024L // 50 MB
+    // cache settings
+    private const val CACHE_SIZE_MB = 50L * 1024L * 1024L // 50 mb
     
     @OptIn(ExperimentalSerializationApi::class)
     fun createOptimizedHttpClient(
@@ -58,15 +55,15 @@ object NetworkConfig {
 
         engine {
             config {
-                // Timeout configurations
+                // timeout configurations
                 connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 
-                // Retry configuration
+                // retry configuration
                 retryOnConnectionFailure(true)
                 
-                // Cache configuration
+                // cache configuration
                 if (enableCache) {
                     val cacheDirectory = cacheDir ?: File(System.getProperty("java.io.tmpdir"), "musicfy_http_cache")
                     cache(okhttp3.Cache(cacheDirectory, CACHE_SIZE_MB))
@@ -75,22 +72,18 @@ object NetworkConfig {
         }
     }
     
-    /**
-     * Create a client specifically optimized for YouTube Music API
-     */
+    // create a client specifically optimized for youtube music api
     @OptIn(ExperimentalSerializationApi::class)
     fun createYouTubeMusicClient(
         cacheDir: File? = null
     ): HttpClient {
         val baseClient = createOptimizedHttpClient(cacheDir)
         return baseClient.config {
-            // Additional configuration can be added here if needed
+            // additional configuration can be added here if needed
         }
     }
     
-    /**
-     * Network quality detection and adaptive configuration
-     */
+    // network quality detection and adaptive configuration
     fun getAdaptiveTimeouts(networkQuality: NetworkQuality): TimeoutConfig {
         return when (networkQuality) {
             NetworkQuality.EXCELLENT -> TimeoutConfig(

@@ -112,7 +112,7 @@ fun PhotoCropperContainer(
     LaunchedEffect(containerSize) {
         if (containerSize.width > 0 && cropRadius == 0f) {
             cropCenter = Offset(containerSize.width / 2f, containerSize.height / 2f)
-            // start close to the largest circle that fits so the default selection isn't
+            // start close to the largest circle that fits so the default selection isn t
             // dot in the middle of the frame
             cropRadius = (minOf(containerSize.width, containerSize.height) / 2f - insetPx)
                 .coerceAtLeast(minRadius) * 0.92f
@@ -122,7 +122,7 @@ fun PhotoCropperContainer(
     val effectiveProgress = overlayProgress.value
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        // main app content (shrinks dynamically based on cropper position)
+        // main app content shrinks dynamically based on cropper position
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -189,7 +189,7 @@ fun PhotoCropperContainer(
                         .onSizeChanged { containerSize = it }
                         .pointerInput(Unit) {
                             detectTransformGestures { _, pan, zoom, _ ->
-                                // update scale/radius based on zoom
+                                // update scale radius based on zoom
                                 val maxRadius = minOf(
                                     containerSize.width / 2f - insetPx,
                                     containerSize.height / 2f - insetPx
@@ -200,7 +200,7 @@ fun PhotoCropperContainer(
                                 val newCenter = cropCenter + pan
 
                                 // keep circle inside the inset photo area when the circle is as
-                                // wide as the area allows there's no slack left so pin to centre
+                                // wide as the area allows there s no slack left so pin to centre
                                 fun clamp(value: Float, extent: Int): Float {
                                     val lo = insetPx + newRadius
                                     val hi = extent - insetPx - newRadius
@@ -248,7 +248,7 @@ fun PhotoCropperContainer(
                             )
                         }
 
-                        // black semi-transparent overlay
+                        // black semi transparent overlay
                     drawPath(
                         path = Path().apply {
                             addRect(Rect(0f, 0f, size.width, size.height))
@@ -306,7 +306,7 @@ fun PhotoCropperContainer(
                 coroutineScope.launch(Dispatchers.IO) {
                     val origBmp = androidBitmap ?: return@launch
 
-                    // fit scale matching the canvas drawing logic (including the inset)
+                    // fit scale matching the canvas drawing logic including the inset
                     val availW = containerSize.width - insetPx * 2f
                     val availH = containerSize.height - insetPx * 2f
                     val scale = minOf(availW / origBmp.width, availH / origBmp.height)

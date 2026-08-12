@@ -1,12 +1,12 @@
 // genredescriptionskt
-// blurbs for the mood/genre pages
+// blurbs for the mood genre pages
 
-// youtube's browse response carries a title and nothing else — no summary no
-// this" — so the page had only a generated one-liner under its heading these
-// category: what the thing actually is where it came from and what it sounds
+// youtube s browse response carries a title and nothing else no summary no
+// this so the page had only a generated one liner under its heading these
+// category what the thing actually is where it came from and what it sounds
 
-// matching is on the category's own title case- and punctuation-insensitive
-// afterwards so regional variants of a heading ("hip-hop & rap" "hip hop")
+// matching is on the category s own title case and punctuation insensitive
+// afterwards so regional variants of a heading hip hop & rap hip hop
 // entry anything genuinely unknown falls back to a plain descriptive line
 
 package com.example.musicfy.ui.screens.search
@@ -124,7 +124,7 @@ fun genreDescription(title: String): String {
 
     Descriptions[key]?.let { return it }
 
-    // "hip-hop & rap" against "hip hop" "country & americana" against "country"
+    // hip hop & rap against hip hop country & americana against country
     Descriptions.entries
         .firstOrNull { (candidate, _) -> key.startsWith(candidate) || candidate.startsWith(key) }
         ?.let { return it.value }

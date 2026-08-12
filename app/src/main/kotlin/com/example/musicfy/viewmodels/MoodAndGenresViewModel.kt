@@ -1,5 +1,5 @@
 // moodandgenresviewmodelkt
-// backs the search landing page's "browse by moods" and genre grids
+// backs the search landing page s browse by moods and genre grids
 
 package com.example.musicfy.viewmodels
 
@@ -18,7 +18,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 
-// featured-playlist artwork for the mood/genre tiles cached for the whole process
+// featured playlist artwork for the mood genre tiles cached for the whole process
 private object MoodCoverCache {
     val covers = mutableStateMapOf<String, List<String>>()
     val requested = java.util.Collections.synchronizedSet(mutableSetOf<String>())
@@ -33,7 +33,7 @@ class MoodAndGenresViewModel
 constructor() : ViewModel() {
     val moodAndGenres = MutableStateFlow<List<MoodAndGenres>?>(null)
 
-    // [coverkey] -> up to two cover urls for that category's featured playlists
+    // coverkey > up to two cover urls for that category s featured playlists
     val covers = MoodCoverCache.covers
 
     // at most three category browses in flight at once the grids can bring 20+ tiles
@@ -71,7 +71,7 @@ constructor() : ViewModel() {
                         }
                     }
                     .onFailure {
-                        // allow a later retry — a tile that failed once (offline throttled) should
+                        // allow a later retry a tile that failed once offline throttled should
                         // not be stuck blank for the rest of the process
                         MoodCoverCache.requested.remove(key)
                     }

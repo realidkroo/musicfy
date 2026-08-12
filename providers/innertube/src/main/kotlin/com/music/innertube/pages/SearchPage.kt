@@ -1,4 +1,4 @@
-// SearchPage.kt
+// searchpage kt
 // this thing is for search page
 
 package com.music.innertube.pages
@@ -32,7 +32,7 @@ object SearchPage {
                 ?: return null
         return when {
             renderer.isSong -> {
-                // Extract library tokens using the new method that properly handles multiple toggle items
+                // extract library tokens using the new method that properly handles multiple toggle items
                 val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
                 SongItem(

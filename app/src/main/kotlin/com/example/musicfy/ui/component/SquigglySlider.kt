@@ -1,7 +1,7 @@
 // squigglysliderkt
 // the file functioned as squiggly slider
 
-// musicfy project (c) 2026 licensed under gpl-30 | see git history for
+// musicfy project c 2026 licensed under gpl 30 | see git history for
 
 package com.example.musicfy.ui.component
 
@@ -80,7 +80,7 @@ fun SquigglySlider(
         scope.launch {
             val shouldFlatten = !isPlaying || isDragging
             val targetHeight = if (shouldFlatten) 0f else 1f
-            val animDuration = if (shouldFlatten) 150 else 200 // faster appear/disappear
+            val animDuration = if (shouldFlatten) 150 else 200 // faster appear disappear
             val startDelay = if (shouldFlatten) 0L else 30L
 
             delay(startDelay)
@@ -264,14 +264,14 @@ fun SquigglySlider(
                 return centerY + waveValue * lineAmplitude * heightFraction * ampCoeff
             }
 
-            // draw round cap at start (synced with wave)
+            // draw round cap at start synced with wave
             drawCircle(
                 color = primaryColor,
                 radius = capRadius,
                 center = Offset(0f, getWaveY(0f)),
             )
 
-            // draw round cap at end (only right half synced with wave movement)
+            // draw round cap at end only right half synced with wave movement
             val endWaveY = getWaveY(totalWidth)
             clipRect(
                 left = totalWidth,

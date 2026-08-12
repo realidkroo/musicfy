@@ -1,6 +1,6 @@
 // experimentalsettingsscreenkt
-// music haptics + its sub-options a link to advanced audio settings beta
-// repeat initial setup — all pre-existing features just consolidated into
+// music haptics + its sub options a link to advanced audio settings beta
+// repeat initial setup all pre existing features just consolidated into
 // section instead of living inside the old flat settingsscreen
 
 package com.example.musicfy.ui.screens.settings

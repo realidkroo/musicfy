@@ -1,10 +1,10 @@
 // covergradientbackdropkt
-// the player's default backdrop — a tiny blurred copy of the artwork
-// through a liquid-warp agsl shader — extracted so the customization page
+// the player s default backdrop a tiny blurred copy of the artwork
+// through a liquid warp agsl shader extracted so the customization page
 // same thing rather than an approximation of it
 
 // it previously lived inline in morphingcover and the editor drew a
-// bitmap no warp two implementations of "the background" meant the editor's
+// bitmap no warp two implementations of the background meant the editor s
 // disagreed with the player it was previewing there is now one
 
 package com.example.musicfy.ui.player.customize
@@ -96,9 +96,9 @@ fun CoverGradientBackdrop(
                 .data(thumbnailUrl?.resize(48, 48))
                 .allowHardware(false)
                 .transformations(BackdropBlurTransformation(radiusPx = 4))
-                // decode at the source's own 48x48 not at the node's size — this node is
-                // requiredsize(width height) so coil would otherwise upscale a 48px image
-                // a full-screen software bitmap (~10mb since allowhardware is false) and then
+                // decode at the source s own 48x48 not at the node s size this node is
+                // requiredsize width height so coil would otherwise upscale a 48px image
+                // a full screen software bitmap ~10mb since allowhardware is false and then
                 // blur it at that size decoding small and letting fillbounds + the 16x layer
                 // stretch it on the gpu looks identical for ~9kb
                 .size(CoilSize(48, 48))
@@ -128,8 +128,8 @@ private fun Modifier.liquidWarpEffect(
     shader: android.graphics.RuntimeShader,
     time: () -> Float,
 ): Modifier = this.graphicsLayer {
-    // both reads happen here in the draw phase — that is what keeps the warp's
-    // per-frame updates from ever recomposing the tree above it
+    // both reads happen here in the draw phase that is what keeps the warp s
+    // per frame updates from ever recomposing the tree above it
     shader.setFloatUniform("resolution", size.width, size.height)
     shader.setFloatUniform("time", time())
     renderEffect = android.graphics.RenderEffect

@@ -1,4 +1,4 @@
-// MusicPlaylistShelfRenderer.kt
+// musicplaylistshelfrenderer kt
 // the file functioned as music playlist shelf renderer
 
 package com.music.innertube.models

@@ -66,7 +66,7 @@ fun parseIntegrityTokenData(rawIntegrityTokenData: String): Pair<String, Long> {
     return base64ToU8(integrityTokenData[0].jsonPrimitive.content) to integrityTokenData[1].jsonPrimitive.long
 }
 
-// converts a string (usually the identifier used as input to `obtainpotoken`) to
+// converts a string usually the identifier used as input to obtainpotoken to
 fun stringToU8(identifier: String): String {
     return newUint8Array(identifier.toByteArray())
 }

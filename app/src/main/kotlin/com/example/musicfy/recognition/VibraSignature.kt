@@ -3,7 +3,7 @@
 
 package com.example.musicfy.recognition
 
-// native library interface for generating shazam-compatible audio fingerprints
+// native library interface for generating shazam compatible audio fingerprints
 object VibraSignature {
 
     const val REQUIRED_SAMPLE_RATE = 16_000

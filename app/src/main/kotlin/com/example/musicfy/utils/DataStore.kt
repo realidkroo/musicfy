@@ -28,19 +28,19 @@ import kotlin.properties.ReadOnlyProperty
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-// process-wide in-memory mirror of the preferences file why this exists:
+// process wide in memory mirror of the preferences file why this exists
 object PreferencesCache {
     // snapshot state so compose can subscribe written from a background collector
     private val snapshotState = mutableStateOf(emptyPreferences())
 
-    // plain mirror for non-compose callers so they never touch the snapshot system
+    // plain mirror for non compose callers so they never touch the snapshot system
     @Volatile
     private var plain: Preferences = emptyPreferences()
 
     @Volatile
     private var warm: Boolean = false
 
-    // scope for preference writes deliberately not tied to any composition — see [set]
+    // scope for preference writes deliberately not tied to any composition see set
     private val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val snapshot: State<Preferences> get() = snapshotState
@@ -68,7 +68,7 @@ object PreferencesCache {
     }
 
     fun <T> set(store: DataStore<Preferences>, key: Preferences.Key<T>, value: T) {
-        // intentionally not remembercoroutinescope(): a toggle that dismisses its
+        // intentionally not remembercoroutinescope a toggle that dismisses its
         // would otherwise cancel its own write when the composable left composition
         writeScope.launch {
             store.edit { it[key] = value }
@@ -104,7 +104,7 @@ fun <T> rememberPreference(
 ): MutableState<T> {
     val store = LocalContext.current.applicationContext.dataStore
     // seeds the mirror before the first read so the first frame shows the stored
-    // than the default a no-op once the process is warm
+    // than the default a no op once the process is warm
     PreferencesCache.current(store)
 
     val valueState = remember(key, defaultValue) {

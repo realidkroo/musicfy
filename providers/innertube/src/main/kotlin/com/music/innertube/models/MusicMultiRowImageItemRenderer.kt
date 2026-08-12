@@ -1,4 +1,4 @@
-// MusicMultiRowImageItemRenderer.kt
+// musicmultirowimageitemrenderer kt
 // the file functioned as music multi row image item renderer
 
 package com.music.innertube.models

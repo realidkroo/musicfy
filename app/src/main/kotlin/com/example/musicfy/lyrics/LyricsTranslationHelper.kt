@@ -55,7 +55,7 @@ object LyricsTranslationHelper {
     private var translationJob: Job? = null
     private var isCompositionActive = true
 
-    // cache for translations: key = hash of (lyrics content + mode + language)
+    // cache for translations key = hash of lyrics content + mode + language
     private val translationCache = mutableMapOf<String, List<String>>()
 
     private fun getCacheKey(lyricsText: String, mode: String, language: String): String =
@@ -198,9 +198,9 @@ object LyricsTranslationHelper {
             }
         }
 
-        // also populate the cache with these translations so future re-translations
-        // don't need api calls this ensures translations persist through app restarts
-        // (loaded from db) without wasting api calls
+        // also populate the cache with these translations so future re translations
+        // don t need api calls this ensures translations persist through app restarts
+        // loaded from db without wasting api calls
         val lyricsText = lyrics.filter { it.text.isNotBlank() }.joinToString("\n") { it.text }
         val cacheKey = getCacheKey(lyricsText, mode, targetLanguage)
         translationCache[cacheKey] = translatedLines
@@ -226,7 +226,7 @@ object LyricsTranslationHelper {
         translationJob?.cancel()
         _status.value = TranslationStatus.Translating
 
-        // clear existing translations to indicate re-translation
+        // clear existing translations to indicate re translation
         lyrics.forEach { it.translatedTextFlow.value = null }
 
         translationJob = scope.launch(Dispatchers.IO) {
@@ -253,7 +253,7 @@ object LyricsTranslationHelper {
                     return@launch
                 }
 
-                // create text from non-empty lines only
+                // create text from non empty lines only
                 val fullText = nonEmptyEntries.joinToString("\n") { it.second.text }
 
                 // check cache first
@@ -269,8 +269,8 @@ object LyricsTranslationHelper {
                     _hasActiveTranslations.value = true
                     _status.value = TranslationStatus.Success
 
-                    // persist cached translations to db so loadtranslationsfromdatabase can't
-                    // overwrite them with a stale empty entity (eg after an untranslate race)
+                    // persist cached translations to db so loadtranslationsfromdatabase can t
+                    // overwrite them with a stale empty entity eg after an untranslate race
                     if (songId.isNotBlank() && database != null) {
                         try {
                             val currentLyrics = database.lyrics(songId).first()
@@ -425,7 +425,7 @@ object LyricsTranslationHelper {
                         }
                     }
 
-                    // map translations back to original non-empty entries only
+                    // map translations back to original non empty entries only
                     val expectedCount = nonEmptyEntries.size
 
                     when {
@@ -451,7 +451,7 @@ object LyricsTranslationHelper {
                         }
                     }
 
-                    // auto-hide success message after 3 seconds
+                    // auto hide success message after 3 seconds
                     delay(3000)
                     if (_status.value is TranslationStatus.Success && isCompositionActive) {
                         _status.value = TranslationStatus.Idle

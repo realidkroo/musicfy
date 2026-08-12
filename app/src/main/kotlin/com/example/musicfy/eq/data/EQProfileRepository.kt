@@ -22,7 +22,7 @@ import javax.inject.Singleton
 data class SavedEQProfile(
     val id: String,                       // unique identifier
     val name: String,                     // display name
-    val deviceModel: String,              // eg "sony wh-1000xm4"
+    val deviceModel: String,              // eg sony wh 1000xm4
     val bands: List<ParametricEQBand>,    // eq bands
     val preamp: Double = 0.0,             // preamp gain in db
     val isCustom: Boolean = false,        // whether this is a custom imported profile
@@ -118,7 +118,7 @@ class EQProfileRepository @Inject constructor(
         _profiles.value = currentProfiles
     }
 
-    // set a profile as active (only one profile can be active at a time) pass null to
+    // set a profile as active only one profile can be active at a time pass null to
     suspend fun setActiveProfile(profileId: String?) = withContext(Dispatchers.IO) {
         val currentProfiles = _profiles.value
 
@@ -158,13 +158,13 @@ class EQProfileRepository @Inject constructor(
             bands = parametricEQ.bands,  // already parametriceqband
             preamp = parametricEQ.preamp,
             isActive = false,
-            isCustom = true // ensure this flag is set!
+            isCustom = true // ensure this flag is set
         )
 
         saveProfile(customProfile)
     }
 
-    // get profiles sorted by type: autoeq first then custom profiles within each
+    // get profiles sorted by type autoeq first then custom profiles within each
     fun getSortedProfiles(): List<SavedEQProfile> {
         // only custom profiles are supported now
         return _profiles.value

@@ -1,7 +1,7 @@
 // youtubevideolookupkt
-// finds the official youtube music video (not a lyrics video / user upload)
+// finds the official youtube music video not a lyrics video user upload
 // title+artist resolves it to a playable video stream url and caches the
-// — same shape as canvasartworkutilskt's canvasartworkplaybackcache
+// same shape as canvasartworkutilskt s canvasartworkplaybackcache
 
 package com.example.musicfy.ui.player
 
@@ -10,13 +10,13 @@ import com.music.innertube.models.SongItem
 import com.music.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_OMV
 import com.example.musicfy.utils.YTPlayerUtils
 
-// resolved official-music-video result: the video's own id (needed separately to
+// resolved official music video result the video s own id needed separately to
 data class OfficialMusicVideo(
     val videoId: String,
     val streamUrl: String,
 )
 
-// caches the resolved video per track a cached `null` means "looked up no
+// caches the resolved video per track a cached null means looked up no
 object YouTubeVideoUrlCache {
     private const val maxSize = 64
     private val map = LinkedHashMap<String, OfficialMusicVideo?>(maxSize, 0.75f, true)
@@ -43,7 +43,7 @@ object YouTubeVideoUrlCache {
     }
 }
 
-// searches youtube music's "videos" tab for `title artist` picks the first
+// searches youtube music s videos tab for title artist picks the first
 suspend fun findOfficialMusicVideo(title: String, artist: String): OfficialMusicVideo? {
     if (title.isBlank() || artist.isBlank()) return null
 

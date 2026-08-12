@@ -1,4 +1,4 @@
-// ImageUploadResponse.kt
+// imageuploadresponse kt
 // the file functioned as image upload response
 
 package com.music.innertube.models.response

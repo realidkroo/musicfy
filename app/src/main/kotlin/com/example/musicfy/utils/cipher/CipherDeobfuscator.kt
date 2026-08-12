@@ -67,7 +67,7 @@ object CipherDeobfuscator {
         return finalUrl
     }
 
-    // transform the 'n' parameter in a streaming url to avoid throttling/403 uses the
+    // transform the n parameter in a streaming url to avoid throttling 403 uses the
     suspend fun transformNParamInUrl(url: String): String {
         return try {
             transformNInternal(url)
@@ -78,7 +78,7 @@ object CipherDeobfuscator {
     }
 
     private suspend fun transformNInternal(url: String): String {
-        // extract the 'n' parameter value from the url
+        // extract the n parameter value from the url
         val nMatch = Regex("[?&]n=([^&]+)").find(url)
         if (nMatch == null) {
             Timber.tag(TAG).d("No 'n' parameter found in URL, skipping transform")
@@ -130,7 +130,7 @@ object CipherDeobfuscator {
             return null
         }
 
-        // extract n-transform function info (for throttle avoidance / 403 fix)
+        // extract n transform function info for throttle avoidance 403 fix
         val nFuncInfo = FunctionNameExtractor.extractNFunctionInfo(playerJs)
         if (nFuncInfo == null) {
             Timber.tag(TAG).e("Could not extract n-function info from player JS (will try brute-force)")
@@ -138,7 +138,7 @@ object CipherDeobfuscator {
 
         Timber.tag(TAG).d("Creating CipherWebView with sig=${sigInfo.name}, constantArg=${sigInfo.constantArg}, nFunc=${nFuncInfo?.name}[${nFuncInfo?.arrayIndex}]")
 
-        // create webview — n-function is exported to window if found with
+        // create webview n function is exported to window if found with
         val webView = CipherWebView.create(
             context = appContext,
             playerJs = playerJs,

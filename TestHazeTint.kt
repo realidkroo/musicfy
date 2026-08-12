@@ -1,4 +1,4 @@
-// TestHazeTint.kt
+// testhazetint kt
 // the file functioned as test haze tint
 
 import dev.chrisbanes.haze.HazeTint

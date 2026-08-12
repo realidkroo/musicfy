@@ -1,4 +1,4 @@
-// NavigationEndpoint.kt
+// navigationendpoint kt
 // the file functioned as navigation endpoint
 
 package com.music.innertube.models

@@ -1,11 +1,11 @@
 // playerprogresssliderkt
-// minimal seek slider + position/duration time row for the fullscreen player
-// old playersliderkt (now at /old-player/) which also handled cast seeking
-// visual styles a sleep-timer badge and an audio-quality badge — all dropped
-// player has none of that yet just the "new design" pill-track slider + time
+// minimal seek slider + position duration time row for the fullscreen player
+// old playersliderkt now at old player which also handled cast seeking
+// visual styles a sleep timer badge and an audio quality badge all dropped
+// player has none of that yet just the new design pill track slider + time
 
-// scoped to its own [playerconnectionuistateprogressstate] collection (a
-// per-tick recomposition it requires stays local to this composable instead
+// scoped to its own playerconnectionuistateprogressstate collection a
+// per tick recomposition it requires stays local to this composable instead
 // whole player to recompose ~15 times a second
 
 package com.example.musicfy.ui.player
@@ -49,8 +49,8 @@ fun PlayerProgressSlider(modifier: Modifier = Modifier) {
     val progress by playerConnection.uiState.progressState.collectAsState()
 
     // while the user is actively dragging the slider follows their finger
-    // ticker; committed (via seekto) and cleared only in onvaluechangefinished
-    // never fights with progressstate's own 66ms updates
+    // ticker committed via seekto and cleared only in onvaluechangefinished
+    // never fights with progressstate s own 66ms updates
     var sliderPosition by remember { mutableStateOf<Long?>(null) }
     val displayedPosition = sliderPosition ?: progress.position
 

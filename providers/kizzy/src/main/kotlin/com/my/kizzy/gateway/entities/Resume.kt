@@ -1,4 +1,4 @@
-// Resume.kt
+// resume kt
 // this thing is for resume
 
 package com.my.kizzy.gateway.entities

@@ -100,7 +100,7 @@ fun YouTubeSongMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val librarySong by database.song(song.id).collectAsState(initial = null)
     val downloadUtil = LocalDownloadUtil.current
-    // remember(id): getdownload() returns a new flow each call so an
+    // remember id getdownload returns a new flow each call so an
     // unremembered collectasstate relaunches its coroutine every recomposition
     val download by remember(downloadUtil, song.id) {
         downloadUtil.getDownload(song.id)

@@ -1,18 +1,13 @@
-// YouTubeUrlParser.kt
+// youtubeurlparser kt
 // the file functioned as you tube url parser
 
 package com.music.innertube.utils
 
 import com.music.innertube.models.WatchEndpoint
 
-/**
- * Utility class for parsing YouTube and YouTube Music URLs.
- * Extracts video IDs, playlist IDs, and creates WatchEndpoints from URLs.
- */
+// utility class for parsing youtube and youtube music urls extracts video ids playlist ids and creates watchendpoints from urls
 object YouTubeUrlParser {
-    /**
-     * Represents the type of YouTube link parsed.
-     */
+    // represents the type of youtube link parsed
     sealed class ParsedUrl {
         abstract val id: String
 
@@ -25,9 +20,7 @@ object YouTubeUrlParser {
         ) : ParsedUrl()
     }
 
-    /**
-     * Pattern for matching YouTube video URLs.
-     */
+    // pattern for matching youtube video urls
     private val VIDEO_URL_PATTERNS =
         listOf(
             Regex("""(?:https?://)?(?:www\.)?(?:music\.)?youtube\.com/watch\?.*v=([a-zA-Z0-9_-]{11})"""),
@@ -36,31 +29,22 @@ object YouTubeUrlParser {
             Regex("""(?:https?://)?(?:www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{11})"""),
         )
 
-    /**
-     * Pattern for matching YouTube Music artist URLs.
-     */
+    // pattern for matching youtube music artist urls
     private val ARTIST_URL_PATTERNS =
         listOf(
             Regex("""(?:https?://)?(?:www\.)?music\.youtube\.com/channel/([a-zA-Z0-9_-]+)"""),
             Regex("""(?:https?://)?(?:www\.)?music\.youtube\.com/browse/(MPRE[a-zA-Z0-9_-]+)"""),
         )
 
-    /**
-     * Checks if the given text is a YouTube URL.
-     */
+    // checks if the given text is a youtube url
     fun isYouTubeUrl(text: String): Boolean = parse(text) != null
 
-    /**
-     * Parses a YouTube URL and returns the parsed result.
-     *
-     * @param url The URL to parse
-     * @return ParsedUrl if valid, null otherwise
-     */
+    // parses a youtube url and returns the parsed result
     fun parse(url: String): ParsedUrl? {
         val trimmedUrl = url.trim()
         println("[LINK_PARSE_DEBUG] Parsing URL: $trimmedUrl")
 
-        // Check for video URLs
+        // check for video urls
         for (pattern in VIDEO_URL_PATTERNS) {
             pattern.find(trimmedUrl)?.let { matchResult ->
                 matchResult.groupValues.getOrNull(1)?.let { videoId ->
@@ -70,7 +54,7 @@ object YouTubeUrlParser {
             }
         }
 
-        // Check for artist URLs
+        // check for artist urls
         if (trimmedUrl.contains("music.youtube.com")) {
             for (pattern in ARTIST_URL_PATTERNS) {
                 pattern.find(trimmedUrl)?.let { matchResult ->
@@ -86,14 +70,10 @@ object YouTubeUrlParser {
         return null
     }
 
-    /**
-     * Extracts video ID from a YouTube URL.
-     */
+    // extracts video id from a youtube url
     fun extractVideoId(url: String): String? = (parse(url) as? ParsedUrl.Video)?.id
 
-    /**
-     * Creates a WatchEndpoint from a YouTube video URL.
-     */
+    // creates a watchendpoint from a youtube video url
     fun createWatchEndpoint(url: String): WatchEndpoint? =
         extractVideoId(url)?.let { videoId ->
             WatchEndpoint(videoId = videoId)

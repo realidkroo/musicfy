@@ -1,4 +1,4 @@
-// LrcLib.kt
+// lrclib kt
 // the file functioned as lrc lib
 
 package com.music.lrclib
@@ -39,7 +39,7 @@ object LrcLib {
         }
     }
 
-    // Patterns to clean from title
+    // patterns to clean from title
     private val titleCleanupPatterns = listOf(
         Regex("""\s*\(.*?(official|video|audio|lyrics|lyric|visualizer|hd|hq|4k|remaster|remix|live|acoustic|version|edit|extended|radio|clean|explicit).*?\)""", RegexOption.IGNORE_CASE),
         Regex("""\s*\[.*?(official|video|audio|lyrics|lyric|visualizer|hd|hq|4k|remaster|remix|live|acoustic|version|edit|extended|radio|clean|explicit).*?\]""", RegexOption.IGNORE_CASE),
@@ -52,7 +52,7 @@ object LrcLib {
         Regex("""\s*ft\..*$""", RegexOption.IGNORE_CASE),
     )
 
-    // Patterns to extract primary artist
+    // patterns to extract primary artist
     private val artistSeparators = listOf(" & ", " and ", ", ", " x ", " X ", " feat. ", " feat ", " ft. ", " ft ", " featuring ", " with ")
 
     private fun cleanTitle(title: String): String {
@@ -65,7 +65,7 @@ object LrcLib {
 
     private fun cleanArtist(artist: String): String {
         var cleaned = artist.trim()
-        // Get primary artist (first one before any separator)
+        // get primary artist first one before any separator
         for (separator in artistSeparators) {
             if (cleaned.contains(separator, ignoreCase = true)) {
                 cleaned = cleaned.split(separator, ignoreCase = true, limit = 2)[0]
@@ -97,7 +97,7 @@ object LrcLib {
         val cleanedTitle = cleanTitle(title)
         val cleanedArtist = cleanArtist(artist)
         
-        // Strategy 1: Search with cleaned title and artist
+        // strategy 1 search with cleaned title and artist
         var results = queryLyricsWithParams(
             trackName = cleanedTitle,
             artistName = cleanedArtist,
@@ -106,28 +106,28 @@ object LrcLib {
         
         if (results.isNotEmpty()) return results
         
-        // Strategy 2: Search with cleaned title only (artist might be different)
+        // strategy 2 search with cleaned title only artist might be different
         results = queryLyricsWithParams(
             trackName = cleanedTitle
         ).filter { it.syncedLyrics != null || it.plainLyrics != null }
         
         if (results.isNotEmpty()) return results
         
-        // Strategy 3: Use q parameter with combined search
+        // strategy 3 use q parameter with combined search
         results = queryLyricsWithParams(
             query = "$cleanedArtist $cleanedTitle"
         ).filter { it.syncedLyrics != null || it.plainLyrics != null }
         
         if (results.isNotEmpty()) return results
         
-        // Strategy 4: Use q parameter with just title
+        // strategy 4 use q parameter with just title
         results = queryLyricsWithParams(
             query = cleanedTitle
         ).filter { it.syncedLyrics != null || it.plainLyrics != null }
         
         if (results.isNotEmpty()) return results
         
-        // Strategy 5: Try original title if different from cleaned
+        // strategy 5 try original title if different from cleaned
         if (cleanedTitle != title.trim()) {
             results = queryLyricsWithParams(
                 trackName = title.trim(),
@@ -155,7 +155,7 @@ object LrcLib {
                 }?.let(LrcLib::Lyrics)
             }
             else -> {
-                // Try with relaxed duration matching (±5 seconds instead of ±2)
+                // try with relaxed duration matching ±5 seconds instead of ±2
                 tracks.bestMatchingForRelaxed(duration)?.let { track ->
                     track.syncedLyrics ?: track.plainLyrics
                 }?.let(LrcLib::Lyrics)
@@ -208,7 +208,7 @@ object LrcLib {
                     count++
                     track.syncedLyrics.let(callback)
                 } else {
-                    // Relaxed duration matching (±5 seconds)
+                    // relaxed duration matching ±5 seconds
                     if (track.syncedLyrics != null && abs(track.duration.toInt() - duration) <= 5) {
                         count++
                         track.syncedLyrics.let(callback)

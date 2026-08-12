@@ -1,4 +1,4 @@
-// YouLyPlus.kt
+// youlyplus kt
 // this thing is for you ly plus
 
 package com.music.youlyplus
@@ -20,18 +20,10 @@ import kotlinx.coroutines.selects.select
 import kotlinx.serialization.json.Json
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * YouLyPlus / LyricsPlus KPoe API client.
- *
- * This replicates the multi-server fetch strategy from the YouLyPlus browser
- * extension (ibratabian17/YouLyPlus), querying community-hosted instances of
- * the open-source LyricsPlus backend (ibratabian17/lyricsplus).
- *
- * API endpoint: GET {server}/v2/lyrics/get?title=...&artist=...&duration=...
- */
+// youlyplus lyricsplus kpoe api client this replicates the multi server fetch strategy from the youlyplus browser extension ibratabian17 youlyplus querying community hosted instances of the open source lyricsplus backend ibratabian17 lyricsplus api endpoint get server v2 lyrics get title= &artist= &duration=
 object YouLyPlus {
 
-    /** Mirror of YouLyPlus extension's KPOE_SERVERS constant. */
+    // mirror of youlyplus extension s kpoe_servers constant
     private val BASE_SERVERS = listOf(
         "https://lyricsplus.prjktla.my.id",       // youly's server
         "https://lyricsplus.atomix.one",          // meow's mirror
@@ -41,13 +33,10 @@ object YouLyPlus {
         "https://lyrics-plus-backend.vercel.app", // ibra's vercel
     )
 
-    /**
-     * Remembers the last server that returned a valid result so it is tried
-     * first on the next call, giving a fast path on repeated fetches.
-     */
+    // remembers the last server that returned a valid result so it is tried first on the next call giving a fast path on repeated fetches
     private val lastWorkingServer = AtomicReference<String?>(null)
 
-    /** Returns the server list with the last-working server promoted to front. */
+    // returns the server list with the last working server promoted to front
     private val servers: List<String>
         get() {
             val lws = lastWorkingServer.get() ?: return BASE_SERVERS
@@ -72,11 +61,7 @@ object YouLyPlus {
         }
     }
 
-    /**
-     * Fetch lyrics by racing all servers in parallel.
-     * Returns the first non-blank result; records the winning server so future
-     * calls skip the slow ones.
-     */
+    // fetch lyrics by racing all servers in parallel returns the first non blank result records the winning server so future calls skip the slow ones
     suspend fun getLyrics(
         title: String,
         artist: String,
@@ -93,7 +78,7 @@ object YouLyPlus {
         }
 
         try {
-            // Poll until one server returns a usable result
+            // poll until one server returns a usable result
             val remaining = jobs.toMutableList()
             while (remaining.isNotEmpty()) {
                 val (winServer, winLyrics) = select {
@@ -119,11 +104,7 @@ object YouLyPlus {
         }
     }
 
-    /**
-     * Collect all lyrics options across servers; invokes [callback] for each
-     * distinct non-blank result. Each server is queried in parallel; callbacks
-     * are delivered as results arrive.
-     */
+    // collect all lyrics options across servers invokes callback for each distinct non blank result each server is queried in parallel callbacks are delivered as results arrive
     suspend fun getAllLyrics(
         title: String,
         artist: String,
@@ -160,16 +141,13 @@ object YouLyPlus {
         }
     }
 
-    /**
-     * Converts a list of LyricsItem (with millisecond 'time') to a standard 
-     * [mm:ss.xxx]LRC string. Supports word-by-word rich sync if syllables are present.
-     */
+    // converts a list of lyricsitem with millisecond time to a standard mm ss xxx lrc string supports word by word rich sync if syllables are present
     private fun List<com.music.youlyplus.models.LyricsItem>.convertToLrc(): String? {
         if (isEmpty()) return null
         return joinToString("\n") { item ->
             val lineTime = item.time ?: 0L
             
-            // Check if any syllable or the item itself is marked as background
+            // check if any syllable or the item itself is marked as background
             val isBg = item.syllabus?.any { it.isBackground == true } == true
             val lineTimestamp = formatTime(lineTime)
             val bgMarker = if (isBg) "{bg}" else ""
@@ -182,7 +160,7 @@ object YouLyPlus {
                     val sylTime = syl.time ?: 0L
                     sb.append(formatTime(sylTime, isSyllable = true))
                     sb.append(syl.text ?: "")
-                    // Add space after word if it's missing and not the last word
+                    // add space after word if it s missing and not the last word
                     if (syl.text?.endsWith(" ") == false) {
                         sb.append(" ")
                     }

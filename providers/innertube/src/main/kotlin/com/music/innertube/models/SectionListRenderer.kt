@@ -1,4 +1,4 @@
-// SectionListRenderer.kt
+// sectionlistrenderer kt
 // the file functioned as section list renderer
 
 package com.music.innertube.models
@@ -30,7 +30,7 @@ data class SectionListRenderer(
                     val isSelected: Boolean,
                     val navigationEndpoint: NavigationEndpoint,
                     val onDeselectedCommand: NavigationEndpoint? = null,
-                    // The close button doesn't have the following two fields
+                    // the close button doesn t have the following two fields
                     val text: Runs?,
                     val uniqueId: String?,
                 )

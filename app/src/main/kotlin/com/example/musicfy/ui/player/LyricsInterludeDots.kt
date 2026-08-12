@@ -1,11 +1,11 @@
 // lyricsinterludedotskt
-// the three-dot countdown shown in place of a lyric during an instrumental
-// or any long pause between sung lines dots light one after another (1 → 2 →
-// gap's duration so the wait reads as progress toward the next line rather
+// the three dot countdown shown in place of a lyric during an instrumental
+// or any long pause between sung lines dots light one after another 1 → 2 →
+// gap s duration so the wait reads as progress toward the next line rather
 // having stalled
 
-// sized and positioned to occupy a lyric line's own slot in the list so the
-// don't jump when it appears and disappears
+// sized and positioned to occupy a lyric line s own slot in the list so the
+// don t jump when it appears and disappears
 
 package com.example.musicfy.ui.player
 
@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 
 private const val DotCount = 3
 
-// below this a gap isn't worth interrupting the lyric flow for
+// below this a gap isn t worth interrupting the lyric flow for
 const val MinInterludeGapMs = 4_000L
 
 @Composable

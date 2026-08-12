@@ -34,12 +34,12 @@ object ParametricEQParser {
             if (trimmedLine.isEmpty()) continue
 
             when {
-                // parse preamp line: "preamp: -52 db"
+                // parse preamp line preamp 52 db
                 trimmedLine.startsWith("Preamp:", ignoreCase = true) -> {
                     preamp = parsePreamp(trimmedLine)
                 }
 
-                // parse filter line: "filter 1: on lsc fc 105 hz gain 88 db q 070"
+                // parse filter line filter 1 on lsc fc 105 hz gain 88 db q 070
                 trimmedLine.startsWith("Filter", ignoreCase = true) -> {
                     val band = parseFilterLine(trimmedLine)
                     if (band != null) {
@@ -64,14 +64,14 @@ object ParametricEQParser {
         )
     }
 
-    // parse the preamp line example: "preamp: -52 db"
+    // parse the preamp line example preamp 52 db
     private fun parsePreamp(line: String): Double {
         val regex = Regex("""Preamp:\s*([-+]?\d+\.?\d*)\s*dB""", RegexOption.IGNORE_CASE)
         val match = regex.find(line)
         return match?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
     }
 
-    // parse a filter line example: "filter 1: on lsc fc 105 hz gain 88 db q 070"
+    // parse a filter line example filter 1 on lsc fc 105 hz gain 88 db q 070
     private fun parseFilterLine(line: String): ParametricEQBand? {
         try {
             // check if filter is on
@@ -79,16 +79,16 @@ object ParametricEQParser {
                 return null
             }
 
-            // extract filter type (lsc hsc pk lpq hpq)
+            // extract filter type lsc hsc pk lpq hpq
             val filterType = parseFilterType(line) ?: return null
 
-            // extract frequency: "fc 105 hz"
+            // extract frequency fc 105 hz
             val frequency = parseValue(line, "Fc", "Hz") ?: return null
 
-            // extract gain: "gain 88 db"
+            // extract gain gain 88 db
             val gain = parseValue(line, "Gain", "dB") ?: return null
 
-            // extract q factor: "q 070"
+            // extract q factor q 070
             val q = parseValue(line, "Q", null) ?: return null
 
             return ParametricEQBand(
@@ -116,7 +116,7 @@ object ParametricEQParser {
         }
     }
 
-    // parse a numeric value from the line example: parsevalue(" fc 105 hz " "fc"
+    // parse a numeric value from the line example parsevalue fc 105 hz fc
     private fun parseValue(line: String, keyword: String, unit: String?): Double? {
         val unitPattern = if (unit != null) "\\s*$unit" else ""
         val regex = Regex("""$keyword\s+([-+]?\d+\.?\d*)$unitPattern""", RegexOption.IGNORE_CASE)
@@ -124,7 +124,7 @@ object ParametricEQParser {
         return match?.groupValues?.get(1)?.toDoubleOrNull()
     }
 
-    // convert parametriceq to a human-readable string
+    // convert parametriceq to a human readable string
     fun toString(eq: ParametricEQ): String {
         val sb = StringBuilder()
         sb.appendLine("Preamp: ${eq.preamp} dB")

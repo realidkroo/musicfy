@@ -255,20 +255,20 @@ fun LyricsImageCard(
                 // for the card itself we can make it slightly transparent or match the
                 // but usually the card is the background cut out
                 // here we simulate the card being transparent so the background shows through
-                // or we redraw the background inside the card if we want the "card on
+                // or we redraw the background inside the card if we want the card on
                 // based on previous code the card had its own background
-                // let's apply the same background logic to the card box
+                // let s apply the same background logic to the card box
         ) {
              when (backgroundStyle) {
                 LyricsBackgroundStyle.SOLID -> {
                     Box(modifier = Modifier.fillMaxSize().background(backgroundSolidColor))
                 }
                 LyricsBackgroundStyle.BLUR -> {
-                    // for blur we want the card to be a window to the blurred background?
-                    // or have its own blurred background?
-                    // typically "share lyrics" looks like a card on a background
+                    // for blur we want the card to be a window to the blurred background
+                    // or have its own blurred background
+                    // typically share lyrics looks like a card on a background
                     // if we want the card to be seamless with the full image background we can
-                    // but to ensure it looks like the generated image:
+                    // but to ensure it looks like the generated image
                     Image(
                         painter = painter,
                         contentDescription = null,
@@ -301,7 +301,7 @@ fun LyricsImageCard(
                     .padding(padding),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // header: cover + title/artist aligned left
+                // header cover + title artist aligned left
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -341,7 +341,7 @@ fun LyricsImageCard(
                         )
                     }
                 }
-                // lyrics text (centered)
+                // lyrics text centered
                 BoxWithConstraints(
                     modifier = Modifier
                         .weight(1f)

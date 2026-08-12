@@ -1,17 +1,17 @@
 // seamblurkt
 // blurred band bridging the cover art into the morphing backdrop below it so
-// between them reads as one soft blend instead of a hard image/background
-// sibling of morphingcover (added in bottomsheetplayerkt) not inside it
-// glassstate that morphingcover registers as a glassroot — if this were
-// morphingcover's own glassroot-wrapped subtree it would end up capturing
+// between them reads as one soft blend instead of a hard image background
+// sibling of morphingcover added in bottomsheetplayerkt not inside it
+// glassstate that morphingcover registers as a glassroot if this were
+// morphingcover s own glassroot wrapped subtree it would end up capturing
 
-// reuses glasskitkt's progressiveglassbackground — the same real
-// homescreenkt already uses for its scroll-driven top bar blur — instead of
-// hand-rolled "duplicate the cover stretch it blur it" attempt that approach
-// smeared-photo artifact (stretching a sharp recognizable photo into a band
-// blurring parts of it) and a visible hard edge (the blur wasn't actually
-// the cover's true boundary) blurring the *real* rendered content behind
-// problems entirely — there's nothing to "leak" or look wrong it just shows
+// reuses glasskitkt s progressiveglassbackground the same real
+// homescreenkt already uses for its scroll driven top bar blur instead of
+// hand rolled duplicate the cover stretch it blur it attempt that approach
+// smeared photo artifact stretching a sharp recognizable photo into a band
+// blurring parts of it and a visible hard edge the blur wasn t actually
+// the cover s true boundary blurring the real rendered content behind
+// problems entirely there s nothing to leak or look wrong it just shows
 // there blurred
 
 package com.example.musicfy.ui.player
@@ -57,27 +57,27 @@ fun SeamBlur(
     progressProvider: () -> Float,
     trackInfo: TrackInfo,
     maxHeight: Dp,
-    // extra 01 visibility factor multiplied into the band's own alpha used to take
+    // extra 01 visibility factor multiplied into the band s own alpha used to take
     fadeProvider: () -> Float = { 1f },
 ) {
     if (trackInfo.thumbnailUrl == null) return
-    // cheap bail-out only — this used to be the actual visibility gate (progress
-    // cutoff) which is exactly why the band popped in/out instantly right at
+    // cheap bail out only this used to be the actual visibility gate progress
+    // cutoff which is exactly why the band popped in out instantly right at
     // instead of fading the real fade now lives below as a continuous alpha
-    // skips composing the band at all while it's fully invisible anyway
-    // player isn't even open)
+    // skips composing the band at all while it s fully invisible anyway
+    // player isn t even open
     val shouldExist by remember { derivedStateOf { progressProvider() > 0f } }
     if (!shouldExist) return
 
     val context = LocalContext.current
-    // top pulled up further into the cover art (was 055) so the transition into
+    // top pulled up further into the cover art was 055 so the transition into
     // controls zone reads as one long soft blend instead of a short band right
-    // cover's actual bottom edge is ~063 of maxheight — see morphingcoverkt's
+    // cover s actual bottom edge is ~063 of maxheight see morphingcoverkt s
     val bandTop = maxHeight * 0.52f
     val bandBottom = maxHeight * 0.74f
 
-    // theme-colored scrim (same palette-extraction approach as albumgradientkt)
-    // title/time text stays readable even if the cover happens to be light/white
+    // theme colored scrim same palette extraction approach as albumgradientkt
+    // title time text stays readable even if the cover happens to be light white
     // tinted not strong enough to read as a deliberate color effect on its own
     var scrimColor by remember(trackInfo.mediaId) { mutableStateOf(Color.Black) }
     LaunchedEffect(trackInfo.mediaId, trackInfo.thumbnailUrl) {
@@ -114,11 +114,11 @@ fun SeamBlur(
             .height(bandBottom - bandTop)
             .offset(y = bandTop)
             .graphicsLayer {
-                // ramp widened from (085 -> 10) to (05 -> 095): progress sits at a constant
+                // ramp widened from 085 > 10 to 05 > 095 progress sits at a constant
                 // 10 for the entire time the player is just open and not being dragged so the
-                // fade only ever plays during the open/close gesture itself — a 015-wide
-                // is maybe 40-60ms of a few-hundred-ms drag imperceptible as a fade even
-                // it technically isn't a hard cutoff anymore this gives it real visible
+                // fade only ever plays during the open close gesture itself a 015 wide
+                // is maybe 40 60ms of a few hundred ms drag imperceptible as a fade even
+                // it technically isn t a hard cutoff anymore this gives it real visible
                 val p = progressProvider()
                 alpha = ((p - 0.5f) / 0.45f).coerceIn(0f, 1f) * fadeProvider().coerceIn(0f, 1f)
             }

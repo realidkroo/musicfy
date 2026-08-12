@@ -1,3 +1,3 @@
 import coil3.imageLoader
 import coil3.request.ImageRequest
-// test script to verify coil3 imageLoader function exists
+// test script to verify coil3 imageloader function exists

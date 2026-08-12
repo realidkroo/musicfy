@@ -11,7 +11,7 @@ import android.net.NetworkRequest
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 
-// simple networkconnectivityobserver based on outertune's implementation provides
+// simple networkconnectivityobserver based on outertune s implementation provides
 class NetworkConnectivityObserver(context: Context) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -38,7 +38,7 @@ class NetworkConnectivityObserver(context: Context) {
         try {
             connectivityManager.registerNetworkCallback(request, networkCallback)
         } catch (e: Exception) {
-            // fallback: assume connected if registration fails
+            // fallback assume connected if registration fails
             _networkStatus.trySend(true)
         }
         

@@ -28,7 +28,7 @@ fun Queue.toPersistQueue(
             queueType = QueueType.LIST
         )
         is YouTubeQueue -> {
-            // since endpoint is private we'll store a simplified version
+            // since endpoint is private we ll store a simplified version
             val endpoint = "youtube_queue"
             PersistQueue(
                 title = title,
@@ -40,7 +40,7 @@ fun Queue.toPersistQueue(
             )
         }
         is YouTubeAlbumRadio -> {
-            // since playlistid is private we'll store a simplified version
+            // since playlistid is private we ll store a simplified version
             PersistQueue(
                 title = title,
                 items = items,
@@ -53,7 +53,7 @@ fun Queue.toPersistQueue(
             )
         }
         is LocalAlbumRadio -> {
-            // since albumwithsongs and startindex are private we'll store a simplified
+            // since albumwithsongs and startindex are private we ll store a simplified
             PersistQueue(
                 title = title,
                 items = items,
@@ -85,7 +85,7 @@ fun PersistQueue.toQueue(): Queue {
             position = position
         )
         is QueueType.YOUTUBE -> {
-            // for now fallback to listqueue since we can't reconstruct youtubequeue
+            // for now fallback to listqueue since we can t reconstruct youtubequeue
             ListQueue(
                 title = title,
                 items = items.map { it.toMediaItem() },
@@ -94,7 +94,7 @@ fun PersistQueue.toQueue(): Queue {
             )
         }
         is QueueType.YOUTUBE_ALBUM_RADIO -> {
-            // for now fallback to listqueue since we can't reconstruct youtubealbumradio
+            // for now fallback to listqueue since we can t reconstruct youtubealbumradio
             ListQueue(
                 title = title,
                 items = items.map { it.toMediaItem() },
@@ -103,7 +103,7 @@ fun PersistQueue.toQueue(): Queue {
             )
         }
         is QueueType.LOCAL_ALBUM_RADIO -> {
-            // for now fallback to listqueue since we can't reconstruct localalbumradio
+            // for now fallback to listqueue since we can t reconstruct localalbumradio
             ListQueue(
                 title = title,
                 items = items.map { it.toMediaItem() },

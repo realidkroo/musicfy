@@ -1,4 +1,4 @@
-// CastOptionsProvider.kt
+// castoptionsprovider kt
 // the file functioned as cast options provider
 
 package com.example.musicfy.cast
@@ -12,10 +12,7 @@ import com.google.android.gms.cast.framework.media.CastMediaOptions
 import com.google.android.gms.cast.framework.media.MediaIntentReceiver
 import com.google.android.gms.cast.framework.media.NotificationOptions
 
-/**
- * CastOptionsProvider for Google Cast integration.
- * This class provides the Cast options for the app.
- */
+// castoptionsprovider for google cast integration this class provides the cast options for the app
 class CastOptionsProvider : OptionsProvider {
 
     override fun getCastOptions(context: Context): CastOptions {

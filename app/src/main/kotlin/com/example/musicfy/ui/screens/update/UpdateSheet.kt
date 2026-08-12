@@ -137,7 +137,7 @@ fun UpdateSheet(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                // the one line that changes: this is the same copy the settings row shows
+                // the one line that changes this is the same copy the settings row shows
                 text = when (state) {
                     is UpdateState.Available -> UpdateHeadline
                     UpdateState.Checking -> "Checking for updates…"
@@ -149,8 +149,8 @@ fun UpdateSheet(
                 fontWeight = FontWeight.Medium,
             )
 
-            // the update card only exists when there is one "latest version" is the whole
-            // no-update state — nothing greyed out nothing to explain
+            // the update card only exists when there is one latest version is the whole
+            // no update state nothing greyed out nothing to explain
             if (state is UpdateState.Available) {
                 Spacer(modifier = Modifier.height(18.dp))
                 Row(
@@ -223,7 +223,7 @@ fun UpdateSheet(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // ---- dev card ----
+            // dev card
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -357,7 +357,7 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val progress = remember { mutableFloatStateOf(0f) }
 
-    // same reasoning as updatepromptsheet: keep a finished download and offer a
+    // same reasoning as updatepromptsheet keep a finished download and offer a
     // the installer could not be shown instead of fetching the whole apk a
     var needsPermission by remember { mutableStateOf(false) }
     val startInstall: (java.io.File) -> Unit = { file ->
@@ -373,8 +373,8 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
         onDismiss = onDismiss,
         wrapHeight = true,
         fullDetent = 0.9f,
-        // the download writes into the cache and hands off to the installer; letting
-        // go mid-flight would strand it with no way back to the progress
+        // the download writes into the cache and hands off to the installer letting
+        // go mid flight would strand it with no way back to the progress
         dismissEnabled = !downloading,
     ) { _ ->
         Column(
@@ -420,7 +420,7 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    // verbatim release body no line cap — the sheet grows to fit it and the
+                    // verbatim release body no line cap the sheet grows to fit it and the
                     // scroll above takes over once it hits the 90% ceiling
                     text = release.body.trim().ifBlank { "No changelog for this release." },
                     color = Color(0xFF9A9A9A),
@@ -479,7 +479,7 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // install — the progress fills the button itself same as the beta notice's
+            // install the progress fills the button itself same as the beta notice s
             val animatedProgress by animateFloatAsState(
                 targetValue = progress.floatValue,
                 animationSpec = tween(durationMillis = 120),
@@ -517,7 +517,7 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
             ) {
                 Box(
                     modifier = Modifier
-                        // see updatepromptsheet: without this the fill is centred by the parent's
+                        // see updatepromptsheet without this the fill is centred by the parent s
                         // contentalignment and grows out of the middle instead of from the left
                         .align(Alignment.CenterStart)
                         .fillMaxHeight()
@@ -573,7 +573,7 @@ private fun android.content.Context.openUrl(url: String) {
 }
 
 
-// the app's own launcher icon as the system actually composites it deliberately
+// the app s own launcher icon as the system actually composites it deliberately
 @Composable
 internal fun AppIconImage(modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -590,7 +590,7 @@ internal fun AppIconImage(modifier: Modifier = Modifier) {
         Image(bitmap = icon, contentDescription = null, modifier = modifier)
     } else {
         // only reachable if the packagemanager lookup fails outright the brand mark
-        // vector so this path can never re-trigger the crash above
+        // vector so this path can never re trigger the crash above
         Box(
             contentAlignment = Alignment.Center,
             modifier = modifier.background(CardSurface),

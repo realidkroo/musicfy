@@ -1,4 +1,4 @@
-// NextResponse.kt
+// nextresponse kt
 // this thing is part of next response
 
 package com.music.innertube.models.response
