@@ -1,4 +1,4 @@
-// PlayerColorExtractor.kt
+// playercolorextractorkt
 // this thing is part of player color extractor
 
 package com.example.musicfy.ui.theme
@@ -10,43 +10,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
-/**
- * Player color extraction system for generating gradients from album artwork
- * 
- * This system analyzes album artwork and extracts vibrant, dominant colors
- * to create visually appealing gradients for the music player interface.
- */
+// player color extraction system for generating gradients from album artwork this
 object PlayerColorExtractor {
 
-    /**
-     * Extracts colors from a palette and creates a gradient
-     * 
-     * @param palette The color palette extracted from album artwork
-     * @param fallbackColor Fallback color to use if extraction fails
-     * @return List of colors for gradient (primary, darker variant, black)
-     */
+    // extracts colors from a palette and creates a gradient
     suspend fun extractGradientColors(
         palette: Palette,
         fallbackColor: Int
     ): List<Color> = withContext(Dispatchers.Default) {
 
-        // Palette's own "dominant" swatch is already defined as whichever cluster
-        // covers the most pixels — i.e. the actual majority color/vibe of the image —
+        // palette's own "dominant" swatch is already defined as whichever cluster
+        // covers the most pixels — ie the actual majority color/vibe of the image —
         // so pick that directly instead of letting a small-but-saturated swatch
-        // (logo text, a highlight, a single accent) outbid it on vibrancy. Muting/
-        // darkening for background use happens afterward in darkenIfTooLight.
+        // (logo text a highlight a single accent) outbid it on vibrancy muting/
+        // darkening for background use happens afterward in darkeniftoolight
         val primaryColor = palette.dominantSwatch?.rgb?.let { Color(it) }
             ?: Color(palette.getDominantColor(fallbackColor))
 
-        // Create sophisticated gradient with 3 color points
+        // create sophisticated gradient with 3 color points
         listOf(
-            primaryColor, // Start: primary vibrant color
+            primaryColor, // start: primary vibrant color
             primaryColor.copy(
                 red = (primaryColor.red * 0.6f).coerceAtLeast(0f),
                 green = (primaryColor.green * 0.6f).coerceAtLeast(0f),
                 blue = (primaryColor.blue * 0.6f).coerceAtLeast(0f)
-            ), // Middle: darker version of primary color
-            Color.Black // End: black
+            ), // middle: darker version of primary color
+            Color.Black // end: black
         )
     }
 
@@ -97,15 +86,7 @@ object PlayerColorExtractor {
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
-    /**
-     * Tames a raw cover-sampled color before it's used to tint a detail-screen
-     * background: album art tends to be far more saturated/bright than a backdrop
-     * should be (it washes out the white text/icons drawn on top, which assume a
-     * dark, muted backdrop), so every color gets desaturated first — not just the
-     * bright ones — and anything still bright after that gets pulled further toward
-     * black. Operates in HSV rather than a straight lerp-to-black because lerping
-     * alone barely touches perceived brightness for already-saturated colors.
-     */
+    // tames a raw cover-sampled color before it's used to tint a detail-screen
     fun darkenIfTooLight(
         color: Color,
         isDarkTheme: Boolean = true,
@@ -120,35 +101,33 @@ object PlayerColorExtractor {
             hsv,
         )
 
-        // Always desaturate a bit — keeps the background reading as a muted backdrop
-        // instead of a second copy of the vivid album art. Lighter touch in light theme
-        // so a light cover's pastel actually stays visibly light instead of graying out.
+        // always desaturate a bit — keeps the background reading as a muted backdrop
+        // instead of a second copy of the vivid album art lighter touch in light
+        // so a light cover's pastel actually stays visibly light instead of graying
         hsv[1] *= if (isDarkTheme) 0.5f else 0.7f
 
         if (isDarkTheme) {
-            // Dark theme: white text/icons sit on this background everywhere downstream,
-            // so bright covers still get forced dark for legibility.
+            // dark theme: white text/icons sit on this background everywhere downstream
+            // so bright covers still get forced dark for legibility
             if (hsv[2] > luminanceThreshold) {
                 hsv[2] = (hsv[2] * (1f - darkenAmount)).coerceAtLeast(0.12f)
             }
         } else {
-            // Light theme: let a light cover keep a light background — only guarantee a
-            // floor so a very dark cover doesn't go pitch black against light chrome.
+            // light theme: let a light cover keep a light background — only guarantee a
+            // floor so a very dark cover doesn't go pitch black against light chrome
             hsv[2] = hsv[2].coerceAtLeast(0.55f)
         }
 
         return Color(android.graphics.Color.HSVToColor(hsv))
     }
 
-    /**
-     * Configuration constants for color extraction
-     */
+    // configuration constants for color extraction
     object Config {
         const val MAX_COLOR_COUNT = 32
         const val BITMAP_AREA = 8000
         const val IMAGE_SIZE = 200
         
-        // Color enhancement factors
+        // color enhancement factors
         const val VIBRANT_SATURATION_THRESHOLD = 0.25f
         const val VIBRANT_BRIGHTNESS_MIN = 0.2f
         const val VIBRANT_BRIGHTNESS_MAX = 0.9f

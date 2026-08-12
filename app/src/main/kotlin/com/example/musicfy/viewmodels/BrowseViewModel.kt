@@ -1,4 +1,4 @@
-// BrowseViewModel.kt
+// browseviewmodelkt
 // the file functioned as browse view model
 
 package com.example.musicfy.viewmodels
@@ -27,10 +27,10 @@ class BrowseViewModel @Inject constructor(
         viewModelScope.launch {
             browseId?.let {
                 YouTube.browse(browseId, null).onSuccess { result ->
-                    // Store the title
+                    // store the title
                     title.value = result.title
  
-                    // Flatten the nested structure to get all YTItems
+                    // flatten the nested structure to get all ytitems
                     val allItems = result.items.flatMap { it.items }
                     items.value = allItems
                 }.onFailure {

@@ -1,7 +1,7 @@
-// EqualizerViewModel.kt
-// Backs the new EqualizerScreen. The DSP itself (CustomEqualizerAudioProcessor, biquad filters)
-// and its manager (EqualizerService) already existed and were already wired into MusicService's
-// ExoPlayer instances — this is just the first UI ever built for it in musicfy.
+// equalizerviewmodelkt
+// backs the new equalizerscreen the dsp itself
+// and its manager (equalizerservice) already existed and were already wired
+// exoplayer instances — this is just the first ui ever built for it in
 
 package com.example.musicfy.viewmodels
 

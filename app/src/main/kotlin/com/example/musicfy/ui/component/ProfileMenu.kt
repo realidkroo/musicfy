@@ -1,13 +1,13 @@
-// ProfileMenu.kt
-// The dropdown menu that opens from HomeScreen's top-bar profile trigger (both the plain
-// circular-avatar state and the scrolled "pill" state are the *same* composable there, so this
-// only ever needs to handle one shape). Rather than a popup that fades/scales in on top of the
-// trigger, the trigger's own on-screen bounds are morphed — via the same layout-phase
-// Constraints.fixed position/size interpolation MorphingCover.kt uses for the mini-to-full
-// player — into this card's bounds, so it visibly grows out of wherever the trigger actually was
-// (circle or pill) rather than popping up as a disconnected element. The avatar image morphs
-// along its own separate path into the header's avatar slot, so it reads as one photo travelling
-// there rather than two images cross-fading.
+// profilemenukt
+// the dropdown menu that opens from homescreen's top-bar profile trigger
+// circular-avatar state and the scrolled "pill" state are the *same*
+// only ever needs to handle one shape) rather than a popup that fades/scales
+// trigger the trigger's own on-screen bounds are morphed — via the same
+// constraintsfixed position/size interpolation morphingcoverkt uses for the
+// player — into this card's bounds so it visibly grows out of wherever the
+// (circle or pill) rather than popping up as a disconnected element the
+// along its own separate path into the header's avatar slot so it reads as
+// there rather than two images cross-fading
 package com.example.musicfy.ui.component
 
 import android.graphics.RuntimeShader
@@ -98,9 +98,9 @@ private fun lerpRect(start: PxRect, end: PxRect, t: Float) = PxRect(
 
 private fun Rect.toPxRect() = PxRect(left, top, width, height)
 
-// Genuine position/size morph (not a fake fade+scale) — same technique as MorphingCover.kt's
-// morphLayout: the child is measured at its CURRENT interpolated size every frame and placed at
-// its current interpolated position, so it visibly travels/resizes rather than cross-fading.
+// genuine position/size morph (not a fake fade+scale) — same technique as
+// morphlayout: the child is measured at its current interpolated size every
+// its current interpolated position so it visibly travels/resizes rather
 private fun Modifier.morphBounds(rectProvider: () -> PxRect): Modifier = this.layout { measurable, constraints ->
     val r = rectProvider()
     val w = r.w.toInt().coerceAtLeast(1)
@@ -143,16 +143,7 @@ private const val WarpShaderSrc = """
     }
 """
 
-/**
- * Full-screen overlay hosting the profile dropdown. [visible] is a plain composition-scope
- * boolean (mount/unmount, including the tail of the close animation); [progressProvider] is the
- * continuous 0..1 draw-phase value actually driving the morph every frame.
- *
- * [triggerBoundsProvider]/[avatarBoundsProvider] report the trigger's and avatar's CURRENT
- * on-screen bounds (root coordinates) — reading them fresh each time means this works correctly
- * for both the plain-circle and scrolled-pill trigger shapes without needing to know which one
- * is active.
- */
+// full-screen overlay hosting the profile dropdown [visible] is a plain
 @Composable
 fun ProfileMenuOverlay(
     visible: Boolean,
@@ -197,7 +188,7 @@ fun ProfileMenuOverlay(
             .fillMaxSize()
             .onGloballyPositioned { overlayRootPosition = it.positionInRoot() }
     ) {
-        // Scrim — dismiss on tap outside the card.
+        // scrim — dismiss on tap outside the card
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -266,11 +257,11 @@ fun ProfileMenuOverlay(
                 .morphBounds(currentCardRectProvider)
                 .graphicsLayer {
                     clip = true
-                    // Interpolated as two fixed endpoint radii (not re-derived from the box's
-                    // own current, already-morphing dimensions each frame) — a stadium/pill
-                    // corner at t=0 easing to a fixed 26dp card corner at t=1, matching whatever
+                    // interpolated as two fixed endpoint radii (not re-derived from the box's
+                    // own current already-morphing dimensions each frame) — a stadium/pill
+                    // corner at t=0 easing to a fixed 26dp card corner at t=1 matching whatever
                     // shape the trigger actually had (circle or pill both reduce to "half the
-                    // smaller side") without ever snapping back to a stadium shape mid-animation.
+                    // smaller side") without ever snapping back to a stadium shape mid-animation
                     val start = startRectProvider()
                     val startCornerPx = minOf(start.w, start.h) / 2f
                     val t = progressProvider().coerceIn(0f, 1f)
@@ -326,8 +317,8 @@ fun ProfileMenuOverlay(
                         .clickable { onProfileClick() }
                         .padding(horizontal = CardHorizontalPadding)
                 ) {
-                    // The real avatar floats above this slot as an independently-morphing
-                    // element (see below) — this Spacer just reserves its layout space.
+                    // the real avatar floats above this slot as an independently-morphing
+                    // element (see below) — this spacer just reserves its layout space
                     Spacer(modifier = Modifier.size(AvatarSize))
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(
@@ -385,8 +376,8 @@ fun ProfileMenuOverlay(
             }
         }
 
-        // Floating avatar — genuinely travels from the top-bar trigger's real on-screen position
-        // to its resting spot in the header, instead of two separate images cross-fading.
+        // floating avatar — genuinely travels from the top-bar trigger's real
+        // to its resting spot in the header instead of two separate images
         if (profileImageRequest != null) {
             Box(
                 modifier = Modifier

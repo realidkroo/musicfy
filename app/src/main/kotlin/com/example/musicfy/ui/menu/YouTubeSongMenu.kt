@@ -1,4 +1,4 @@
-// YouTubeSongMenu.kt
+// youtubesongmenukt
 // what is this for you ask its for you tube song menu ofc
 
 package com.example.musicfy.ui.menu
@@ -100,8 +100,8 @@ fun YouTubeSongMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val librarySong by database.song(song.id).collectAsState(initial = null)
     val downloadUtil = LocalDownloadUtil.current
-    // remember(id): getDownload() returns a new Flow each call, so an
-    // unremembered collectAsState relaunches its coroutine every recomposition.
+    // remember(id): getdownload() returns a new flow each call so an
+    // unremembered collectasstate relaunches its coroutine every recomposition
     val download by remember(downloadUtil, song.id) {
         downloadUtil.getDownload(song.id)
     }.collectAsState(initial = null)
@@ -425,7 +425,7 @@ fun YouTubeSongMenu(
                             onClick = {
                                 val isInLibrary = librarySong?.song?.inLibrary != null
 
-                                // Use the new reliable method that fetches fresh tokens
+                                // use the new reliable method that fetches fresh tokens
                                 coroutineScope.launch {
                                     YouTube.toggleSongLibrary(song.id, !isInLibrary)
                                 }

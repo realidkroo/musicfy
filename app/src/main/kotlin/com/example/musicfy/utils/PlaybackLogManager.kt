@@ -1,4 +1,4 @@
-// PlaybackLogManager.kt
+// playbacklogmanagerkt
 // this thing is for playback log manager
 
 package com.example.musicfy.utils
@@ -9,20 +9,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/**
- * Log levels for playback diagnostics
- */
+// log levels for playback diagnostics
 enum class PlaybackLogLevel {
     INFO,
     WARNING,
     ERROR,
     DEBUG,
-    BOT // Special level for highlighting bot mitigation events
+    BOT // special level for highlighting bot mitigation events
 }
 
-/**
- * Log entry for the playback diagnostics
- */
+// log entry for the playback diagnostics
 data class PlaybackLogEntry(
     val timestamp: String,
     val level: PlaybackLogLevel,
@@ -30,28 +26,23 @@ data class PlaybackLogEntry(
     val details: String? = null
 )
 
-/**
- * Singleton manager to hold the global state of playback logs.
- * This is used for real-time debugging of stream resolution and bot detection.
- */
+// singleton manager to hold the global state of playback logs this is used for
 object PlaybackLogManager {
     private const val MAX_LOG_ENTRIES = 500
     
     private val _logs = MutableStateFlow<List<PlaybackLogEntry>>(emptyList())
     val logs: StateFlow<List<PlaybackLogEntry>> = _logs.asStateFlow()
     
-    /**
-     * Add a new log entry
-     */
+    // add a new log entry
     fun log(level: PlaybackLogLevel, message: String, details: String? = null) {
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS"))
         val entry = PlaybackLogEntry(timestamp, level, message, details)
         
-        // Use a list to ensure thread-safety during update
+        // use a list to ensure thread-safety during update
         val currentLogs = _logs.value.toMutableList()
         currentLogs.add(entry)
         
-        // Take last N entries
+        // take last n entries
         _logs.value = if (currentLogs.size > MAX_LOG_ENTRIES) {
             currentLogs.takeLast(MAX_LOG_ENTRIES)
         } else {
@@ -59,9 +50,7 @@ object PlaybackLogManager {
         }
     }
     
-    /**
-     * Clear all logs
-     */
+    // clear all logs
     fun clearLogs() {
         _logs.value = emptyList()
     }

@@ -1,15 +1,15 @@
-// DiscCover.kt
-// The vinyl renderer behind the five disc cover styles.
-//
-// Cost discipline matches the rest of ui/player: the platter's groove texture and specular sheen
-// are single remembered shader brushes rather than loops of drawCircle calls, and every
-// per-frame value (rotation, tonearm lift, skip slide) arrives as a () -> Float that is read
-// inside graphicsLayer/draw blocks, never at composable scope — so a spinning disc costs one
-// draw-phase invalidation per frame and zero recompositions.
-//
-// The one detail that actually sells vinyl: the grooves rotate with the platter while the sheen
-// does not. Rotating both together reads as a spinning texture; keeping the highlight fixed in
-// screen space reads as light falling on a turning record.
+// disccoverkt
+// the vinyl renderer behind the five disc cover styles
+
+// cost discipline matches the rest of ui/player: the platter's groove
+// are single remembered shader brushes rather than loops of drawcircle calls
+// per-frame value (rotation tonearm lift skip slide) arrives as a () ->
+// inside graphicslayer/draw blocks never at composable scope — so a spinning
+// draw-phase invalidation per frame and zero recompositions
+
+// the one detail that actually sells vinyl: the grooves rotate with the
+// does not rotating both together reads as a spinning texture; keeping the
+// screen space reads as light falling on a turning record
 
 package com.example.musicfy.ui.player.customize
 
@@ -57,55 +57,38 @@ import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.ui.utils.resize
 import kotlin.math.min
 
-/**
- * Everything that distinguishes one disc style from another, expressed in fractions so the same
- * numbers work for the full-size player, the customization page's preview, and any future
- * thumbnail.
- *
- * Fractions of the *art box* (the rect MorphingCover hands this composable) unless noted.
- * A [diameter] above 1 deliberately overflows that box — the big variants are meant to bleed off
- * the edges of the screen.
- */
+// everything that distinguishes one disc style from another expressed in
 @Immutable
 data class DiscGeometry(
-    /** Platter diameter, as a fraction of the art box's smaller side. */
+    // platter diameter as a fraction of the art box's smaller side
     val diameter: Float,
-    /** Platter centre within the art box. */
+    // platter centre within the art box
     val centerX: Float,
     val centerY: Float,
-    /** Artwork circle diameter, as a fraction of the *platter* diameter. */
+    // artwork circle diameter as a fraction of the *platter* diameter
     val art: Float,
-    /** Spindle hole diameter, as a fraction of the platter diameter. */
+    // spindle hole diameter as a fraction of the platter diameter
     val spindle: Float,
-    /** Name plate centre, offset from the platter centre, in platter diameters. */
+    // name plate centre offset from the platter centre in platter diameters
     val plateOffsetX: Float,
     val plateOffsetY: Float,
-    /** Name plate size, in platter diameters. */
+    // name plate size in platter diameters
     val plateWidth: Float,
     val plateHeight: Float,
-    /** Name plate rotation relative to the platter, degrees. */
+    // name plate rotation relative to the platter degrees
     val plateRotation: Float,
-    /**
-     * Square album card for [PlayerCoverStyle.DISC_ALBUM] — centre and side, as fractions of the
-     * art box's smaller side. Null for every other style.
-     */
+    // square album card for [playercoverstyledisc_album] — centre and side as
     val albumCard: AlbumCard? = null,
 ) {
     @Immutable
     data class AlbumCard(val centerX: Float, val centerY: Float, val side: Float)
 }
 
-/**
- * Geometry per style, read off the concept screens.
- *
- * The "small" variants sit fully inside the art box; the "big" ones are oversized and anchored
- * up and to the left so the platter runs off the top and left edges. "full" fills the platter
- * with artwork; "label" keeps the platter black and puts the artwork on it as a centre label.
- */
+// geometry per style read off the concept screens the "small" variants sit fully
 fun discGeometryFor(style: PlayerCoverStyle): DiscGeometry = when (style) {
-    // Both "small" variants fill their stage box exactly and sit dead centre in it. An
-    // off-centre centreY combined with a diameter near 1 put the platter's top edge outside the
-    // box, which is what clipped a slice off the circle.
+    // both "small" variants fill their stage box exactly and sit dead centre in
+    // off-centre centrey combined with a diameter near 1 put the platter's top
+    // box which is what clipped a slice off the circle
     PlayerCoverStyle.DISC_SMALL_FULL -> DiscGeometry(
         diameter = 1f,
         centerX = 0.5f,
@@ -154,8 +137,8 @@ fun discGeometryFor(style: PlayerCoverStyle): DiscGeometry = when (style) {
         plateHeight = 0.09f,
         plateRotation = -8f,
     )
-    // Disc and card share one vertical centre line so neither runs out of the stage box; the
-    // disc is pushed left just far enough to peek out from behind the card.
+    // disc and card share one vertical centre line so neither runs out of the
+    // disc is pushed left just far enough to peek out from behind the card
     PlayerCoverStyle.DISC_ALBUM -> DiscGeometry(
         diameter = 0.86f,
         centerX = 0.40f,
@@ -169,7 +152,7 @@ fun discGeometryFor(style: PlayerCoverStyle): DiscGeometry = when (style) {
         plateRotation = -60f,
         albumCard = DiscGeometry.AlbumCard(centerX = 0.66f, centerY = 0.5f, side = 0.68f),
     )
-    // Not disc styles; callers gate on PlayerCoverStyle.isDisc, this is only a total-`when` guard.
+    // not disc styles; callers gate on playercoverstyleisdisc this is only a
     PlayerCoverStyle.EDGE_TO_EDGE, PlayerCoverStyle.SQUARED -> DiscGeometry(
         diameter = 0.86f,
         centerX = 0.5f,
@@ -187,17 +170,10 @@ fun discGeometryFor(style: PlayerCoverStyle): DiscGeometry = when (style) {
 private val PlatterBlack = Color(0xFF121114)
 private val PlatterEdge = Color(0xFF2A2830)
 
-/**
- * Concentric groove texture as ONE radial-gradient shader.
- *
- * A real record has hundreds of grooves; drawing them as hundreds of stroked circles would mean
- * hundreds of draw ops every frame on a spinning platter. Alternating near-transparent light and
- * dark stops in a single gradient produces the same banding for one shader evaluation, and the
- * whole thing rotates for free because it lives inside the platter's own graphicsLayer.
- */
+// concentric groove texture as one radial-gradient shader a real record has
 private fun grooveBrush(radius: Float): Brush {
     val stops = ArrayList<Pair<Float, Color>>(GrooveBands * 2 + 2)
-    // Grooves only exist on the playing surface — nothing between the spindle and the label.
+    // grooves only exist on the playing surface — nothing between the spindle
     stops.add(0f to Color.Transparent)
     stops.add(GrooveInner to Color.Transparent)
     for (band in 0 until GrooveBands) {
@@ -217,9 +193,7 @@ private fun grooveBrush(radius: Float): Brush {
 private const val GrooveBands = 44
 private const val GrooveInner = 0.34f
 
-/**
- * Two opposing specular lobes. Drawn *outside* the rotating layer — see the file header.
- */
+// two opposing specular lobes drawn *outside* the rotating layer — see the file
 private fun sheenBrush(radius: Float): Brush = Brush.sweepGradient(
     0.00f to Color.White.copy(alpha = 0.00f),
     0.08f to Color.White.copy(alpha = 0.13f),
@@ -231,15 +205,7 @@ private fun sheenBrush(radius: Float): Brush = Brush.sweepGradient(
     center = Offset(radius, radius),
 )
 
-/**
- * Draws the vinyl for [style].
- *
- * @param rotationProvider platter angle in degrees, read in the draw phase.
- * @param slideProvider horizontal displacement in pixels for the skip transition, plus the alpha
- *   the caller wants; see [DiscSkipChoreography].
- * @param editMode shows the name plate's outline even when [discName] is blank, so the
- *   customization page has something to point at.
- */
+// draws the vinyl for [style] the caller wants; see [discskipchoreography]
 @Composable
 fun DiscCover(
     style: PlayerCoverStyle,
@@ -260,7 +226,7 @@ fun DiscCover(
         val discSidePx = with(density) { discSide.dp.toPx() }
         val radiusPx = discSidePx / 2f
 
-        // Top-left of the platter box, so its centre lands on the geometry's centre point.
+        // top-left of the platter box so its centre lands on the geometry's centre
         val discLeft = maxWidth.value * geometry.centerX - discSide / 2f
         val discTop = maxHeight.value * geometry.centerY - discSide / 2f
         val discLeftPx = with(density) { discLeft.dp.toPx() }
@@ -269,22 +235,22 @@ fun DiscCover(
         val grooves = remember(radiusPx) { grooveBrush(radiusPx) }
         val sheen = remember(radiusPx) { sheenBrush(radiusPx) }
 
-        // requiredSize, not size: the "big" variants are deliberately wider than the art box
-        // (diameter > 1) and must hang off its edges. A plain size() would be clamped straight
-        // back down by the incoming constraints — the same trap MorphingCover documents for its
-        // fixed-size backdrop layer.
+        // requiredsize not size: the "big" variants are deliberately wider than the
+        // (diameter > 1) and must hang off its edges a plain size() would be clamped
+        // back down by the incoming constraints — the same trap morphingcover
+        // fixed-size backdrop layer
         val platterModifier = Modifier
             .requiredSize(discSide.dp)
             .offset { IntOffset(discLeftPx.toInt(), discTopPx.toInt()) }
 
-        // ---- Rotating layer: platter body, grooves, artwork, spindle, name plate ----
+        // ---- rotating layer: platter body grooves artwork spindle name plate ----
         Box(
             modifier = platterModifier
                 .graphicsLayer {
                     rotationZ = rotationProvider()
-                    // The groove gradient and the artwork's own circle edge both alpha-blend at
+                    // the groove gradient and the artwork's own circle edge both alpha-blend at
                     // the rim; compositing the platter as one offscreen layer keeps that seam
-                    // from double-darkening against whatever is behind the player.
+                    // from double-darkening against whatever is behind the player
                     compositingStrategy = CompositingStrategy.Offscreen
                 }
         ) {
@@ -304,8 +270,8 @@ fun DiscCover(
                 )
             }
 
-            // Artwork. Same URL transform and decode size as MorphingCover's own request, so the
-            // two share a memory-cache entry instead of decoding the image twice.
+            // artwork same url transform and decode size as morphingcover's own request
+            // two share a memory-cache entry instead of decoding the image twice
             if (artworkUrl != null) {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -324,8 +290,8 @@ fun DiscCover(
                 )
             }
 
-            // Spindle. Painted after the artwork so it punches through a full-bleed cover the
-            // same way it sits on a label.
+            // spindle painted after the artwork so it punches through a full-bleed cover
+            // same way it sits on a label
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val r = size.minDimension / 2f
                 val center = Offset(size.width / 2f, size.height / 2f)
@@ -347,7 +313,7 @@ fun DiscCover(
             )
         }
 
-        // ---- Fixed layer: specular sheen. Same footprint, deliberately not rotated. ----
+        // ---- fixed layer: specular sheen same footprint deliberately not rotated
         if (realistic) {
             Canvas(modifier = platterModifier) {
                 drawCircle(
@@ -358,7 +324,7 @@ fun DiscCover(
             }
         }
 
-        // ---- Square album card, for DISC_ALBUM only. Drawn last: the disc slides out behind it.
+        // ---- square album card for disc_album only drawn last: the disc slides out
         val card = geometry.albumCard
         if (card != null && artworkUrl != null) {
             val side = boxSide * card.side
@@ -386,13 +352,7 @@ fun DiscCover(
 private val SpindleFill = Color(0xFF3A383F)
 private val StrokeHairline = 1.dp
 
-/**
- * The user's custom label on the platter.
- *
- * Blank + not editing draws nothing at all — an empty outline on the real player would read as a
- * rendering bug. Blank + editing draws the outline alone, which is what the concept screens show
- * and what gives the editor a visible target.
- */
+// the user's custom label on the platter blank + not editing draws nothing at all
 @Composable
 private fun BoxScope.DiscNamePlate(
     discName: String,
@@ -437,13 +397,7 @@ private fun BoxScope.DiscNamePlate(
     }
 }
 
-/**
- * The record player's tonearm.
- *
- * Anchored to a pivot near the top-right of the art box, reaching down-left onto the platter.
- * [liftProvider] runs 0 (head resting on the record) to 1 (swung clear of it) and is read in the
- * draw phase, so the skip choreography animates this without recomposing anything.
- */
+// the record player's tonearm anchored to a pivot near the top-right of the art
 @Composable
 fun DiscTonearm(
     liftProvider: () -> Float,
@@ -452,10 +406,10 @@ fun DiscTonearm(
     Canvas(modifier = modifier) {
         val lift = liftProvider().coerceIn(0f, 1f)
 
-        // Pivot sits off the right edge of the art box; only the arm reaching in is visible.
+        // pivot sits off the right edge of the art box; only the arm reaching in is
         val pivot = Offset(size.width * 1.02f, size.height * 0.22f)
         val armLength = size.width * 0.62f
-        // Resting angle points down-left onto the platter; lifting swings it back up and out.
+        // resting angle points down-left onto the platter; lifting swings it back up
         val angle = Math.toRadians((TonearmRestDegrees + (TonearmLiftDegrees - TonearmRestDegrees) * lift).toDouble())
         val head = Offset(
             x = pivot.x + (armLength * kotlin.math.cos(angle)).toFloat(),
@@ -469,7 +423,7 @@ fun DiscTonearm(
             strokeWidth = size.width * 0.022f,
             cap = androidx.compose.ui.graphics.StrokeCap.Round,
         )
-        // Cartridge head: an ellipse, wider across the arm than along it.
+        // cartridge head: an ellipse wider across the arm than along it
         val headW = size.width * 0.20f
         val headH = size.width * 0.15f
         drawOval(

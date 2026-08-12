@@ -1,4 +1,4 @@
-// RecognitionHistory.kt
+// recognitionhistorykt
 // this thing is for recognition history
 
 package com.example.musicfy.db.entities

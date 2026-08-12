@@ -1,4 +1,4 @@
-// SilenceDetectorAudioProcessor.kt
+// silencedetectoraudioprocessorkt
 // this thing is for silence detector audio processor
 
 package com.example.musicfy.playback.audio
@@ -10,11 +10,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
 
-/**
- * Lightweight PCM pass-through processor that detects long stretches of near-silence.
- * When [instantModeEnabled] is true and a silence block longer than [minSilenceDurationUs]
- * is detected, [onLongSilence] is invoked exactly once per silent segment.
- */
+// lightweight pcm pass-through processor that detects long stretches of
 @UnstableApi
 @Suppress("DEPRECATION")
 class SilenceDetectorAudioProcessor(
@@ -61,7 +57,7 @@ class SilenceDetectorAudioProcessor(
             return
         }
 
-        // Analyze the incoming PCM for silence without mutating the buffer position.
+        // analyze the incoming pcm for silence without mutating the buffer position
         if (instantModeEnabled && sampleRate > 0 && channelCount > 0) {
             detectSilence(inputBuffer)
         } else {
@@ -74,7 +70,7 @@ class SilenceDetectorAudioProcessor(
     }
 
     private fun detectSilence(inputBuffer: ByteBuffer) {
-        // Ensure predictable endian access for getShort(index).
+        // ensure predictable endian access for getshort(index)
         inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
 
         val frameCount = inputBuffer.remaining() / 2 / channelCount

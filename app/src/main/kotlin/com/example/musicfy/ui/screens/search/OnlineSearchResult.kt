@@ -1,10 +1,10 @@
-// OnlineSearchResult.kt
-// The results page, rebuilt on the same primitives (and the same collapsing top bar) as the search
-// landing screen, so scrolling results behaves exactly like scrolling the moods grid.
-//
-// No Material 3 components: the old version was OutlinedTextField + ChipsRow + NavigationTitle +
-// YouTubeListItem + IconButton. Rows, chips, the top-result card and the overflow affordance are
-// all drawn here.
+// onlinesearchresultkt
+// the results page rebuilt on the same primitives (and the same collapsing
+// landing screen so scrolling results behaves exactly like scrolling the
+
+// no material 3 components: the old version was outlinedtextfield + chipsrow
+// youtubelistitem + iconbutton rows chips the top-result card and the
+// all drawn here
 
 package com.example.musicfy.ui.screens.search
 
@@ -103,13 +103,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
-/**
- * The category selector. "All" is the summary page; the rest map onto a YouTube search filter.
- *
- * Every filter the old screen offered is still here, featured playlists included — they were the
- * two entries most easily lost when the chip row was rebuilt, so they are listed explicitly rather
- * than derived from an enum that might not carry them.
- */
+// the category selector "all" is the summary page; the rest map onto a youtube
 private val SearchCategories = listOf(
     "All" to null,
     "Music" to FILTER_SONG,
@@ -158,12 +152,12 @@ fun OnlineSearchResult(
         SearchCategories.indexOfFirst { it.second?.value == searchFilter?.value }.coerceAtLeast(0)
     }
 
-    // The list is per-category; leaving the previous category's scroll position in place made a
-    // freshly-selected chip open somewhere in the middle of its results.
+    // the list is per-category; leaving the previous category's scroll position
+    // freshly-selected chip open somewhere in the middle of its results
     LaunchedEffect(searchFilter) { listState.scrollToItem(0) }
 
-    // Continuation paging: fires once the tail is within a few rows of the viewport rather than
-    // exactly at the end, so the next page is usually already in by the time it is needed.
+    // continuation paging: fires once the tail is within a few rows of the
+    // exactly at the end so the next page is usually already in by the time it
     LaunchedEffect(listState, itemsPage) {
         snapshotFlow {
             val info = listState.layoutInfo
@@ -229,8 +223,8 @@ fun OnlineSearchResult(
 
     val bottomInset = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
 
-    // Resolved here rather than inside the list builder: `remember` is composable-only, and the
-    // scan over every summary section should happen once per result set, not once per relayout.
+    // resolved here rather than inside the list builder: `remember` is
+    // scan over every summary section should happen once per result set not once
     val top = remember(summary, viewModel.query) {
         summary?.let { pickTopResult(it.summaries.flatMap { section -> section.items }, viewModel.query) }
     }
@@ -254,8 +248,8 @@ fun OnlineSearchResult(
                 ),
             ) {
                 if (searchFilter == null) {
-                    // "All": the summary page — a hero top result, then each of the server's own
-                    // grouped sections.
+                    // "all": the summary page — a hero top result then each of the server's own
+                    // grouped sections
                     val page = summary
                     if (page == null) {
                         item(key = "loading") {
@@ -395,22 +389,11 @@ fun OnlineSearchResult(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-// Top result
-// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
+// top result
+// ───────────────────────────────────────────────────────────────────────────
 
-/**
- * Chooses the single item to feature.
- *
- * Two rules, in order:
- *
- *  1. An artist whose name matches what was typed wins outright. Searching an artist should open on
- *     that artist, not on whichever of their tracks the server happened to rank first.
- *  2. Otherwise the highest-ranked SONG wins, and the *music* upload is preferred over the video
- *     one. YouTube frequently returns the music video ahead of the track; [SongItem.isVideoSong] is
- *     exactly that distinction (anything whose musicVideoType is not ATV), so video uploads are
- *     only featured when there is no audio version in the results at all.
- */
+// chooses the single item to feature two rules in order: 1 an artist whose name
 private fun pickTopResult(items: List<YTItem>, query: String): YTItem? {
     if (items.isEmpty()) return null
     val normalised = query.trim().lowercase()
@@ -422,11 +405,11 @@ private fun pickTopResult(items: List<YTItem>, query: String): YTItem? {
     val songs = items.filterIsInstance<SongItem>()
     songs.firstOrNull { !it.isVideoSong }?.let { return it }
 
-    // Nothing but video uploads (or no songs at all) — fall back to whatever ranked first.
+    // nothing but video uploads (or no songs at all) — fall back to whatever
     return songs.firstOrNull() ?: items.first()
 }
 
-/** The featured result: large square artwork, the item's details, and a round play affordance. */
+// the featured result: large square artwork the item's details and a round play affordance
 @Composable
 private fun TopResultCard(
     item: YTItem,
@@ -468,10 +451,10 @@ private fun TopResultCard(
             .searchCardBorder(16.dp)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
-        // The card takes its colour from the record itself: the same artwork, blown up and
-        // blurred hard behind the content, then dimmed. It costs no extra network work (the
-        // thumbnail is already in Coil's cache for the foreground copy) and no palette pass —
-        // the blur IS the theme colour, and it tracks whatever is featured.
+        // the card takes its colour from the record itself: the same artwork blown
+        // blurred hard behind the content then dimmed it costs no extra network work
+        // thumbnail is already in coil's cache for the foreground copy) and no
+        // the blur is the theme colour and it tracks whatever is featured
         if (item.thumbnail != null) {
             AsyncImage(
                 model = item.thumbnail?.resize(256, 256),
@@ -530,8 +513,8 @@ private fun TopResultCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // No play affordance on an artist: tapping one opens their page, so a play button
-            // would promise something the card does not do.
+            // no play affordance on an artist: tapping one opens their page so a play
+            // would promise something the card does not do
             if (item !is ArtistItem) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Box(
@@ -557,11 +540,11 @@ private fun TopResultCard(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-// Result rows
-// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
+// result rows
+// ───────────────────────────────────────────────────────────────────────────
 
-/** One result: artwork, title, subtitle, and the horizontal overflow dots. */
+// one result: artwork title subtitle and the horizontal overflow dots
 @Composable
 private fun ResultRow(
     item: YTItem,
@@ -607,8 +590,8 @@ private fun ResultRow(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                     ),
-                    // The row currently playing is the one thing that gets a colour of its own —
-                    // it replaces the old list item's animated playing-bars indicator.
+                    // the row currently playing is the one thing that gets a colour of its own —
+                    // it replaces the old list item's animated playing-bars indicator
                     color = if (isActive) Color(0xFF7FD1FF) else SearchColors.Primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -628,7 +611,7 @@ private fun ResultRow(
     }
 }
 
-/** m:ss for a duration in seconds. */
+// m:ss for a duration in seconds
 private fun formatDuration(seconds: Int): String {
     val minutes = seconds / 60
     val remainder = seconds % 60

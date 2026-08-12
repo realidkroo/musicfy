@@ -1,4 +1,4 @@
-// ThumbnailCornerRadiusSelector.kt
+// thumbnailcornerradiusselectorkt
 // the file functioned as thumbnail corner radius selector
 
 package com.example.musicfy.ui.component
@@ -82,13 +82,13 @@ fun ThumbnailCornerRadiusModal(
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // ── Image (left) + Chips (right) ──────────────────────────
+                    // ── image (left) + chips (right) ──────────────────────────
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Left: thumbnail preview
+                        // left: thumbnail preview
                         Box(
                             modifier = Modifier
                                 .size(160.dp)
@@ -129,7 +129,7 @@ fun ThumbnailCornerRadiusModal(
                             }
                         }
 
-                        // Right: preset chips
+                        // right: preset chips
                         ChipsGrid(
                             modifier = Modifier.weight(1f),
                             values = presetValues,
@@ -313,12 +313,12 @@ fun ThumbnailCornerRadiusModal(
                             )
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-//                                Icon(
-//                                    painter = painterResource(R.drawable.check),
-//                                    contentDescription = null,
-//                                    modifier = Modifier.size(18.dp)
-//                                )
-//                                Spacer(modifier = Modifier.width(8.dp))
+// icon(
+// painter = painterresource(rdrawablecheck)
+// contentdescription = null
+// modifier = modifiersize(18dp)
+// )
+// spacer(modifier = modifierwidth(8dp))
                                 Text(
                                     text = stringResource(id = android.R.string.ok),
                                     style = MaterialTheme.typography.labelLarge

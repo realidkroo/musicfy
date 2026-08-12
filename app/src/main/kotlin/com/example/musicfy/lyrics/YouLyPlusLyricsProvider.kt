@@ -1,4 +1,4 @@
-// YouLyPlusLyricsProvider.kt
+// youlypluslyricsproviderkt
 // what is this for you ask its for you ly plus lyrics provider ofc
 
 package com.example.musicfy.lyrics

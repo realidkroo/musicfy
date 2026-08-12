@@ -1,4 +1,4 @@
-// YouTubeAlbumMenu.kt
+// youtubealbummenukt
 // this thing is part of you tube album menu
 
 package com.example.musicfy.ui.menu

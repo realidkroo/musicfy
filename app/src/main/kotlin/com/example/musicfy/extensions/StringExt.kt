@@ -1,4 +1,4 @@
-// StringExt.kt
+// stringextkt
 // the file functioned as string ext
 
 package com.example.musicfy.extensions

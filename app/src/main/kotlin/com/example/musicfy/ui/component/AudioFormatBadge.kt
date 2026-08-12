@@ -1,4 +1,4 @@
-// AudioFormatBadge.kt
+// audioformatbadgekt
 // this thing is for audio format badge
 
 package com.example.musicfy.ui.component

@@ -1,4 +1,4 @@
-// ExploreViewModel.kt
+// exploreviewmodelkt
 // the file functioned as explore view model
 
 package com.example.musicfy.viewmodels

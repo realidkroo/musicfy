@@ -1,4 +1,4 @@
-// AccountViewModel.kt
+// accountviewmodelkt
 // the file functioned as account view model
 
 package com.example.musicfy.viewmodels
@@ -38,7 +38,7 @@ class AccountViewModel @Inject constructor(
     val albums = MutableStateFlow<List<AlbumItem>?>(null)
     val artists = MutableStateFlow<List<ArtistItem>?>(null)
 
-    // Selected content type for chips
+    // selected content type for chips
     val selectedContentType = MutableStateFlow(AccountContentType.PLAYLISTS)
 
     private suspend fun loadPlaylists() {
@@ -71,7 +71,7 @@ class AccountViewModel @Inject constructor(
             }
         }
 
-        // Listen for HideYoutubeShorts preference changes and reload playlists instantly
+        // listen for hideyoutubeshorts preference changes and reload playlists
         viewModelScope.launch(Dispatchers.IO) {
             context.dataStore.data
                 .map { it[HideYoutubeShortsKey] ?: false }

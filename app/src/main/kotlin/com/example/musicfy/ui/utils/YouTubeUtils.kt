@@ -1,4 +1,4 @@
-// YouTubeUtils.kt
+// youtubeutilskt
 // the file functioned as you tube utils
 
 package com.example.musicfy.ui.utils
@@ -9,10 +9,10 @@ fun String.resize(
 ): String {
     if (width == null && height == null) return this
 
-    // i.ytimg.com handling (YouTube video thumbnails)
-    // These URLs use a filename-based quality system:
-    // We use maxresdefault (1280x720) for the large player thumbnail (width >= 1200) for the best quality,
-    // and hqdefault (480x360) for lists and grids to ensure extremely fast loading and absolute reliability.
+    // iytimgcom handling (youtube video thumbnails)
+    // these urls use a filename-based quality system:
+    // we use maxresdefault (1280x720) for the large player thumbnail (width >=
+    // and hqdefault (480x360) for lists and grids to ensure extremely fast
     if (this.contains("i.ytimg.com")) {
         val targetQuality = if (width != null && width >= 1200) "maxresdefault.jpg" else "hqdefault.jpg"
         return this.replace(
@@ -21,23 +21,23 @@ fun String.resize(
         )
     }
 
-    // googleusercontent.com handling (includes lh3-lh6, yt3, etc.)
+    // googleusercontentcom handling (includes lh3-lh6 yt3 etc)
     if (this.contains("googleusercontent.com") && this.contains("=w")) {
         val baseUrl = this.split("=w")[0]
         val w = width ?: 0
         val h = height ?: width ?: 0
-        // Reverting to l90-rj (JPEG) for better compatibility while keeping high resolution
+        // reverting to l90-rj (jpeg) for better compatibility while keeping high
         return "$baseUrl=w$w-h$h-p-l90-rj"
     }
 
-    // yt3.ggpht.com handling (avatars)
+    // yt3ggphtcom handling (avatars)
     if (this.contains("yt3.ggpht.com")) {
-        // Correctly strip any existing size parameter (=s... or -s...) before appending the new one
+        // correctly strip any existing size parameter (=s or -s) before appending
         val baseUrl = this.split("=")[0].split("-s")[0]
         return "$baseUrl=s${width ?: height}"
     }
 
-    // Fallback for other lh3-style URLs that might not have =w yet
+    // fallback for other lh3-style urls that might not have =w yet
     "https://lh\\d\\.googleusercontent\\.com/.*".toRegex().matchEntire(this)?.let {
         val w = width ?: 0
         val h = height ?: width ?: 0

@@ -1,8 +1,8 @@
-// LyricsScreenViewModel.kt
-// Fetch-and-cache glue for the full lyrics page: reads playerConnection.currentLyrics (DB-backed)
-// first, and only reaches for the network via LyricsHelper if nothing's cached yet for this
-// song — same fetch+upsert shape as LyricsMenuViewModel.refetchLyrics / MusicService's own
-// auto-fetch, so results land in the same table either path writes.
+// lyricsscreenviewmodelkt
+// fetch-and-cache glue for the full lyrics page: reads
+// first and only reaches for the network via lyricshelper if nothing's
+// song — same fetch+upsert shape as lyricsmenuviewmodelrefetchlyrics /
+// auto-fetch so results land in the same table either path writes
 
 package com.example.musicfy.viewmodels
 

@@ -1,7 +1,7 @@
-// MorphingCover.kt
-// v0 minimal replacement for MorphingPlayer.kt: cover art + play/skip-next morph only.
-// No title/artist text, no tiered low-res/high-res/canvas-artwork loading, no background-style
-// branching. Old file kept for reference at /old-player/MorphingPlayer.kt.
+// morphingcoverkt
+// v0 minimal replacement for morphingplayerkt: cover art + play/skip-next
+// no title/artist text no tiered low-res/high-res/canvas-artwork loading no
+// branching old file kept for reference at /old-player/morphingplayerkt
 
 package com.example.musicfy.ui.player
 
@@ -109,10 +109,7 @@ import com.example.musicfy.ui.component.press3D
 import com.example.musicfy.utils.rememberPreference
 import androidx.core.content.getSystemService
 
-/**
- * Pre-computed static endpoints for the morphing animation. Calculated once, no allocations
- * per frame — same technique proven in the old MorphingPlayer.kt.
- */
+// pre-computed static endpoints for the morphing animation calculated once no
 @Stable
 private class MorphEndpoints(
     val miniArtSize: Dp,
@@ -131,11 +128,7 @@ private class MorphEndpoints(
     val fullTextY: Dp,
     val fullTextWidth: Dp,
     val fullWidth: Dp,
-    /**
-     * Width of the artwork box in the expanded player. Separate from [fullWidth] (which the
-     * backdrop still uses) purely so a cover style can inset the artwork without also shrinking
-     * the background behind it — [fullWidth] for every style except SQUARED.
-     */
+    // width of the artwork box in the expanded player separate from [fullwidth]
     val fullArtWidth: Dp,
     val fullArtHeight: Dp,
     val fullArtX: Dp,
@@ -176,16 +169,16 @@ private class MorphEndpointsPx(
 
 private enum class MorphElement { ART, PLAY, SKIP, TEXT, BACKDROP }
 
-// The progress value at which the full-player backdrop reaches full opacity and the pill's own
-// blurred background reaches zero. Both the backdrop's and the pill's alpha are computed as
-// exact complements of this same constant (see MorphingCover below), so at every progress value
-// their combined coverage is ~1 — no gap, regardless of drag speed/direction.
+// the progress value at which the full-player backdrop reaches full opacity
+// blurred background reaches zero both the backdrop's and the pill's alpha
+// exact complements of this same constant (see morphingcover below) so at
+// their combined coverage is ~1 — no gap regardless of drag speed/direction
 private const val PILL_FADE_END = 0.15f
 
-/** Corner radius of the shrunken cover once it's landed in the lyrics page's header. */
+// corner radius of the shrunken cover once it's landed in the lyrics page's header
 private val LyricsHeaderCornerRadius = 12.dp
 
-/** Corner radius the SQUARED style keeps once fully expanded (concept screen 83). */
+// corner radius the squared style keeps once fully expanded (concept screen 83)
 private val SquaredCoverCornerRadius = 22.dp
 
 
@@ -193,13 +186,7 @@ private val SquaredCoverCornerRadius = 22.dp
 private fun lerpF(start: Float, stop: Float, fraction: Float): Float =
     start + (stop - start) * fraction
 
-/**
- * How present the vinyl is, 0..1 — a draw-phase read, never a state subscription.
- *
- * 1 only in the fully open player. It dissolves out over the last third of the collapse (well
- * before the artwork reaches pill size, so you never see a shrunken platter) and again as the
- * lyrics page takes over, revealing the plain square artwork underneath in both directions.
- */
+// how present the vinyl is 01 — a draw-phase read never a state subscription 1
 private fun discWeight(
     progressProvider: () -> Float,
     lyricsProgressProvider: () -> Float,
@@ -209,11 +196,7 @@ private fun discWeight(
     return expanded * (1f - lyrics)
 }
 
-/**
- * Positions a morphing element by reading progressProvider()/horizontalOffsetProvider() in the
- * layout phase (not composition) — this is what prevents recomposition of the whole morph tree
- * on every drag frame. Verified this behavior in the old MorphingPlayer.kt before reusing it.
- */
+// positions a morphing element by reading
 private fun Modifier.morphLayout(
     progressProvider: () -> Float,
     horizontalOffsetProvider: () -> Float,
@@ -231,29 +214,29 @@ private fun Modifier.morphLayout(
             val artX = lerpF(endpointsPx.miniArtXPx, endpointsPx.fullArtXPx, p) + hOffset
             val artY = lerpF(endpointsPx.miniArtYPx, endpointsPx.fullArtYPx, p)
 
-            // Second stage, layered on top of the pill->fullscreen morph: as the lyrics page
-            // opens, that same rect continues shrinking into the header slot at the top-left.
+            // second stage layered on top of the pill->fullscreen morph: as the lyrics
+            // opens that same rect continues shrinking into the header slot at the
             val lp = lyricsProgressProvider()
             if (lp <= 0f) {
                 floatArrayOf(artX, artY, artW, artH)
             } else {
-                // The header slot is the lyrics endpoint only for as long as the sheet is
-                // actually expanded; `p` walks that endpoint back onto the mini-pill slot as the
-                // sheet collapses. At p = 0 BOTH sides of the outer lerp are the pill, so the
-                // cover has exactly ONE destination no matter what lp is doing.
-                //
-                // Without this, lp stays 1 for the whole of a swipe-down from the lyrics page
-                // (nothing tells lyricsProgress the sheet is collapsing — see BottomSheet's
-                // collapseSoft, which is the only thing that gesture calls), and at lp = 1 the
+                // the header slot is the lyrics endpoint only for as long as the sheet is
+                // actually expanded; `p` walks that endpoint back onto the mini-pill slot as
+                // sheet collapses at p = 0 both sides of the outer lerp are the pill so the
+                // cover has exactly one destination no matter what lp is doing
+
+                // without this lp stays 1 for the whole of a swipe-down from the lyrics page
+                // (nothing tells lyricsprogress the sheet is collapsing — see bottomsheet's
+                // collapsesoft which is the only thing that gesture calls) and at lp = 1 the
                 // lerps below ignore `p` entirely: the cover stayed pinned at
-                // statusBarTop + 28dp in the container's local space and simply rode the
-                // container's translationY down, landing ~44dp below the pill's own artwork slot
-                // and still 60dp wide instead of 48dp. That is the "ends up too low / doesn't
-                // land on the mini pill".
-                //
-                // hOffset applies to both terms so the cover still tracks a horizontal
-                // song-change swipe at p = 0 (state.horizontalOffset only ever moves while
-                // collapsed, so this is a no-op on the lyrics page itself).
+                // statusbartop + 28dp in the container's local space and simply rode the
+                // container's translationy down landing ~44dp below the pill's own artwork
+                // and still 60dp wide instead of 48dp that is the "ends up too low / doesn't
+                // land on the mini pill"
+
+                // hoffset applies to both terms so the cover still tracks a horizontal
+                // song-change swipe at p = 0 (statehorizontaloffset only ever moves while
+                // collapsed so this is a no-op on the lyrics page itself)
                 val lyricsX = lerpF(endpointsPx.miniArtXPx, endpointsPx.lyricsArtXPx, p) + hOffset
                 val lyricsY = lerpF(endpointsPx.miniArtYPx, endpointsPx.lyricsArtYPx, p)
                 val lyricsSize = lerpF(endpointsPx.miniArtSizePx, endpointsPx.lyricsArtSizePx, p)
@@ -276,24 +259,24 @@ private fun Modifier.morphLayout(
             floatArrayOf(skipX, skipY, -1f, -1f)
         }
         MorphElement.TEXT -> {
-            // Interpolates position *and* width, the same way ART does, so the label tracks the
-            // cover's expansion rather than just fading in place. Height stays at the pill's own
-            // height throughout — the text column centres itself inside that box, and the block
-            // has faded out well before the full-player endpoint matters (SongInfoRow owns the
-            // title once expanded, so these two must never be legible at the same time).
+            // interpolates position *and* width the same way art does so the label
+            // cover's expansion rather than just fading in place height stays at the
+            // height throughout — the text column centres itself inside that box and the
+            // has faded out well before the full-player endpoint matters (songinforow
+            // title once expanded so these two must never be legible at the same time)
             val textX = lerpF(endpointsPx.miniTextXPx, endpointsPx.fullTextXPx, p) + hOffset
             val textY = lerpF(0f, endpointsPx.fullTextYPx, p)
             val textW = lerpF(endpointsPx.miniTextWidthPx, endpointsPx.fullTextWidthPx, p)
             floatArrayOf(textX, textY, textW, endpointsPx.miniHeightPx)
         }
         MorphElement.BACKDROP -> {
-            // Actually grows from the pill bar's own bounds up to fullscreen — a real
-            // layout-phase morph (position/size interpolation), not just a fade+scale of an
-            // already-fullsize rectangle. Uses the explicit fullHeightPx endpoint (same
-            // source as ART's own full-size target) rather than the incoming `constraints`,
-            // since those aren't guaranteed to reflect the actual player height depending on
-            // how bounds propagate through the modifier chain — this is why it wasn't visibly
-            // growing before.
+            // actually grows from the pill bar's own bounds up to fullscreen — a real
+            // layout-phase morph (position/size interpolation) not just a fade+scale of
+            // already-fullsize rectangle uses the explicit fullheightpx endpoint (same
+            // source as art's own full-size target) rather than the incoming
+            // since those aren't guaranteed to reflect the actual player height
+            // how bounds propagate through the modifier chain — this is why it wasn't
+            // growing before
             val backdropH = lerpF(endpointsPx.miniHeightPx, endpointsPx.fullHeightPx, p)
             floatArrayOf(0f, 0f, endpointsPx.fullWidthPx, backdropH)
         }
@@ -311,10 +294,7 @@ private fun Modifier.morphLayout(
     }
 }
 
-/**
- * Cover art + play/skip-next, morphing from the mini-player pill to fullscreen.
- * v0: no title/artist morph, single-resolution image load, no background-style branching.
- */
+// cover art + play/skip-next morphing from the mini-player pill to fullscreen v0:
 @Composable
 fun MorphingCover(
     progressProvider: () -> Float,
@@ -328,33 +308,17 @@ fun MorphingCover(
     pureBlack: Boolean,
     glassState: GlassState,
     modifier: Modifier = Modifier,
-    /**
-     * 0 = normal player, 1 = lyrics page. Drives the cover shrinking to the small top-left slot
-     * on the lyrics screen. This exists so there is exactly ONE cover image in the app: the
-     * lyrics page used to draw its own 48dp thumbnail while this full-size one stayed mounted
-     * behind it, which is why two covers were visible.
-     */
+    // 0 = normal player 1 = lyrics page drives the cover shrinking to the small
     lyricsProgressProvider: () -> Float = { 0f },
-    /**
-     * How the artwork is presented. EDGE_TO_EDGE — the default — is the treatment this file has
-     * always drawn, and takes exactly the same code path it always did; every other style is an
-     * additional branch alongside it.
-     */
+    // how the artwork is presented edge_to_edge — the default — is the treatment this
     coverStyle: PlayerCoverStyle = PlayerCoverStyle.EDGE_TO_EDGE,
-    /**
-     * Which backdrop to draw. COVER_GRADIENT — the default — is the blurred-artwork + warp
-     * shader block below, left where it was; the other three come from PlayerBackgroundStyles.kt.
-     */
+    // which backdrop to draw cover_gradient — the default — is the blurred-artwork +
     backgroundStyle: PlayerBackgroundStyle = PlayerBackgroundStyle.COVER_GRADIENT,
-    /** Shows the disc's name plate outline even when the user hasn't set a name yet. */
+    // shows the disc's name plate outline even when the user hasn't set a name yet
     editMode: Boolean = false,
-    /** Long press on the artwork while fully expanded — opens the edit overlay. */
+    // long press on the artwork while fully expanded — opens the edit overlay
     onLongPressCover: (() -> Unit)? = null,
-    /**
-     * Reports the artwork box's live rect in root coordinates, so the edit overlay can outline
-     * wherever the cover actually is for the current style instead of re-deriving the endpoint
-     * arithmetic above.
-     */
+    // reports the artwork box's live rect in root coordinates so the edit overlay can
     onArtBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -362,12 +326,12 @@ fun MorphingCover(
     val density = LocalDensity.current
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    // Prefetch the next queue item's artwork as soon as the current track is known, so by the
-    // time the song actually ends — or the user taps skip — the image is already in Coil's
-    // cache and the crossfade above is effectively instant instead of loading over the network
-    // while the old cover is held on screen.
-    // Hoisted out of the prefetch block below so the disc styles' skip choreography can also read
-    // currentIndex (it needs the direction of the move to know which way to slide the discs).
+    // prefetch the next queue item's artwork as soon as the current track is
+    // time the song actually ends — or the user taps skip — the image is already
+    // cache and the crossfade above is effectively instant instead of loading
+    // while the old cover is held on screen
+    // hoisted out of the prefetch block below so the disc styles' skip
+    // currentindex (it needs the direction of the move to know which way to
     val emptyQueue = remember { kotlinx.coroutines.flow.MutableStateFlow(com.example.musicfy.ui.player.models.QueueState()) }
     val queueState by (playerConnection?.uiState?.queueState ?: emptyQueue).collectAsState()
 
@@ -376,8 +340,8 @@ fun MorphingCover(
             val nextUrl = queueState.items.getOrNull(queueState.currentIndex + 1)
                 ?.artworkUri?.toString()?.resize(1200, 1200)
                 ?: return@LaunchedEffect
-            // Size/precision must match the display request below, or the prefetch lands under a
-            // different memory-cache key and the cover still decodes from disk on skip.
+            // size/precision must match the display request below or the prefetch lands
+            // different memory-cache key and the cover still decodes from disk on skip
             val request = ImageRequest.Builder(context)
                 .data(nextUrl)
                 .size(CoilSize(1200, 1200))
@@ -400,14 +364,14 @@ fun MorphingCover(
         val miniPlayX = miniSkipX - 8.dp - miniPlaySize
         val miniPlayY = (miniHeight - miniPlaySize) / 2
 
-        // Text occupies the gap between the artwork and the play button. Width is derived from
-        // those two rather than hardcoded, so it can never run underneath the controls; the
-        // right-edge fade below then softens wherever a long title actually reaches.
+        // text occupies the gap between the artwork and the play button width is
+        // those two rather than hardcoded so it can never run underneath the
+        // right-edge fade below then softens wherever a long title actually reaches
         val miniTextX = miniArtX + miniArtSize + 12.dp
         val miniTextWidth = (miniPlayX - 10.dp - miniTextX).coerceAtLeast(0.dp)
 
-        // Expanded-player artwork rect, per style — shared with the customization page's preview
-        // so the two can't disagree. See PlayerCoverLayout.kt.
+        // expanded-player artwork rect per style — shared with the customization
+        // so the two can't disagree see playercoverlayoutkt
         val artBox = coverArtBox(coverStyle, maxWidth, maxHeight, statusBarTop)
 
         MorphEndpoints(
@@ -420,10 +384,10 @@ fun MorphingCover(
             miniSkipY = miniSkipY,
             miniTextX = miniTextX,
             miniTextWidth = miniTextWidth,
-            // Must match LyricsScreen's own header box exactly (36dp horizontal inset —
-            // matching the 36dp the lyrics list/timestamp use, statusBarsPadding +
-            // 28dp top, 60dp square) — that page no longer draws a thumbnail of its own, this
-            // cover lands in the hole where it used to be.
+            // must match lyricsscreen's own header box exactly (36dp horizontal inset —
+            // matching the 36dp the lyrics list/timestamp use statusbarspadding +
+            // 28dp top 60dp square) — that page no longer draws a thumbnail of its own
+            // cover lands in the hole where it used to be
             lyricsArtSize = 60.dp,
             lyricsArtX = 36.dp,
             lyricsArtY = statusBarTop + 28.dp,
@@ -477,42 +441,42 @@ fun MorphingCover(
 
     val isDiscStyle = coverStyle.isDisc
 
-    // Both of these are derivedStateOf over a draw-phase progress value on purpose: they only
-    // invalidate when the threshold is actually crossed, never once per drag frame. Same shape
-    // as isPillMounted / showBackdrop / warpClockActive elsewhere in this file.
+    // both of these are derivedstateof over a draw-phase progress value on
+    // invalidate when the threshold is actually crossed never once per drag
+    // as ispillmounted / showbackdrop / warpclockactive elsewhere in this file
     val longPressEnabled by remember {
         derivedStateOf { progressProvider() > 0.9f && lyricsProgressProvider() < 0.1f }
     }
-    // `!editMode` on both this and the warp clock below: while the editor is up the whole player
-    // is sitting under a full-screen Gaussian blur, and every one of these animations invalidates
-    // that blurred layer on every frame — which is exactly what stops HWUI caching it and why
-    // entering edit mode measured 62% of frames slow on draw-command issue. Nothing animating
-    // under a blur that heavy is legible, so freezing them costs nothing visually.
-    //
-    // Keyed on editMode: an unkeyed remember would capture the flag's first value and never see
-    // it change.
+    // `!editmode` on both this and the warp clock below: while the editor is up
+    // is sitting under a full-screen gaussian blur and every one of these
+    // that blurred layer on every frame — which is exactly what stops hwui
+    // entering edit mode measured 62% of frames slow on draw-command issue
+    // under a blur that heavy is legible so freezing them costs nothing visually
+
+    // keyed on editmode: an unkeyed remember would capture the flag's first
+    // it change
     val discSpinActive by remember(editMode) {
         derivedStateOf { !editMode && progressProvider() > 0.9f && lyricsProgressProvider() < 0.6f }
     }
 
-    // Real collapsed-pill height, in px, as reported by BottomSheetState — used below to
-    // counteract the sweep the outer BottomSheet container applies to this whole composable as
-    // it drags between pill and fullscreen (see the comment on the pill background below).
+    // real collapsed-pill height in px as reported by bottomsheetstate — used
+    // counteract the sweep the outer bottomsheet container applies to this whole
+    // it drags between pill and fullscreen (see the comment on the pill
     val collapsedBoundPx = with(density) { collapsedBound.toPx() }
 
-    // Warp shader + its driving clock are created ONCE here, unconditionally, instead of inside
-    // the conditionally-mounted backdrop block below. Recreating a RuntimeShader every time the
-    // backdrop mounts means recompiling the AGSL program on the GPU right at the moment the user
-    // starts swiping up — that compile hitch is what caused the swipe-up-only lag (swiping down
-    // never showed it because the backdrop unmounts, not mounts, at the end of that gesture, and
-    // teardown is cheap). Keeping the shader instance and clock alive permanently costs nothing
-    // while the backdrop isn't drawn (nothing reads them), and "freezes" it in the sense that it
-    // never needs to be torn down and rebuilt again.
-    //
-    // warpTimeState is read via `.value` only inside a graphicsLayer draw block below (draw
-    // phase), never destructured with `by` at composable scope — that `by` pattern is what
-    // silently forced a full recomposition of the entire backdrop subtree every single frame
-    // while it was mounted, which was the other major contributor to the swipe lag.
+    // warp shader + its driving clock are created once here unconditionally
+    // the conditionally-mounted backdrop block below recreating a runtimeshader
+    // backdrop mounts means recompiling the agsl program on the gpu right at the
+    // starts swiping up — that compile hitch is what caused the swipe-up-only
+    // never showed it because the backdrop unmounts not mounts at the end of
+    // teardown is cheap) keeping the shader instance and clock alive permanently
+    // while the backdrop isn't drawn (nothing reads them) and "freezes" it in
+    // never needs to be torn down and rebuilt again
+
+    // warptimestate is read via `value` only inside a graphicslayer draw block
+    // phase) never destructured with `by` at composable scope — that `by`
+    // silently forced a full recomposition of the entire backdrop subtree every
+    // while it was mounted which was the other major contributor to the swipe lag
     val warpShader = remember {
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             android.graphics.RuntimeShader(
@@ -539,19 +503,19 @@ fun MorphingCover(
             null
         }
     }
-    // The clock driving the shader's `time` uniform is NOT kept unconditionally alive like the
-    // shader object above — a rememberInfiniteTransition/animateFloat here does no GPU work, just
-    // a coroutine that calls withInfiniteAnimationFrameNanos every vsync to update a float, so
-    // Choreographer would otherwise keep getting woken up 60x/second for the entire lifetime of
-    // this always-mounted composable, even while the player sits collapsed as a mini pill (the
-    // overwhelming majority of real usage). Gating just the clock — never the RuntimeShader
-    // object itself — on the same threshold that already gates the backdrop's composition below
-    // stops that sustained wakeup cost while idle, without touching the AGSL recompile-avoidance
-    // this comment block is about.
-    // Also off once the lyrics page has taken over. The warp is a full-screen RuntimeShader
-    // re-evaluated on an infinite frame clock; on the lyrics page it is almost entirely hidden
-    // behind the text and its fades, so it was burning a shader pass every frame for nothing —
-    // exactly the budget the karaoke sweep needs to hold 120Hz.
+    // the clock driving the shader's `time` uniform is not kept unconditionally
+    // shader object above — a rememberinfinitetransition/animatefloat here does
+    // a coroutine that calls withinfiniteanimationframenanos every vsync to
+    // choreographer would otherwise keep getting woken up 60x/second for the
+    // this always-mounted composable even while the player sits collapsed as a
+    // overwhelming majority of real usage) gating just the clock — never the
+    // object itself — on the same threshold that already gates the backdrop's
+    // stops that sustained wakeup cost while idle without touching the agsl
+    // this comment block is about
+    // also off once the lyrics page has taken over the warp is a full-screen
+    // re-evaluated on an infinite frame clock; on the lyrics page it is almost
+    // behind the text and its fades so it was burning a shader pass every frame
+    // exactly the budget the karaoke sweep needs to hold 120hz
     val warpClockActive by remember(editMode) {
         derivedStateOf { !editMode && progressProvider() > 0.02f && lyricsProgressProvider() < 0.6f }
     }
@@ -560,17 +524,17 @@ fun MorphingCover(
         if (!warpClockActive) return@LaunchedEffect
         while (isActive) {
             androidx.compose.animation.core.withInfiniteAnimationFrameNanos { frameTimeNanos ->
-                // Absolute frame time mod 100 (matching the original 100-unit / 100s cycle)
-                // instead of delta-accumulation, so restarting this loop never drifts.
+                // absolute frame time mod 100 (matching the original 100-unit / 100s cycle)
+                // instead of delta-accumulation so restarting this loop never drifts
                 warpTimeState.floatValue = ((frameTimeNanos / 1_000_000f) * (100f / 100_000f)).mod(100f)
             }
         }
     }
 
-    // YouTube official-music-video background: resolved once here (rather than down in the
-    // cover-art block) so both the fullscreen ambient backdrop further below AND the cover card
-    // can share the same resolved video, lyrics-sync anchors, and captured live frames instead
-    // of duplicating the search/resolve/decode work.
+    // youtube official-music-video background: resolved once here (rather than
+    // cover-art block) so both the fullscreen ambient backdrop further below and
+    // can share the same resolved video lyrics-sync anchors and captured live
+    // of duplicating the search/resolve/decode work
     val playVideoBackground by rememberPreference(PlayVideoBackgroundKey, defaultValue = false)
     var videoInfo by remember(trackInfo.mediaId) { mutableStateOf<OfficialMusicVideo?>(null) }
     LaunchedEffect(trackInfo.mediaId, trackInfo.title, trackInfo.artist, playVideoBackground) {
@@ -590,10 +554,10 @@ fun MorphingCover(
         videoInfo = resolved
     }
 
-    // "Sync with lyrics" sub-option: pairs the song's own timed lyrics against the video's
-    // YouTube transcript by line text, so the video seeks to wherever it's actually singing the
-    // current line instead of just the same fraction of the way through. Falls back to plain
-    // proportional sync (a null anchor list) whenever lyrics are missing or nothing matched.
+    // "sync with lyrics" sub-option: pairs the song's own timed lyrics against
+    // youtube transcript by line text so the video seeks to wherever it's
+    // current line instead of just the same fraction of the way through falls
+    // proportional sync (a null anchor list) whenever lyrics are missing or
     val lyricsSyncEnabled by rememberPreference(YtVideoBackgroundLyricsSyncKey, defaultValue = false)
     val currentLyrics by playerConnection?.currentLyrics?.collectAsState(initial = null)
         ?: androidx.compose.runtime.mutableStateOf(null)
@@ -618,46 +582,46 @@ fun MorphingCover(
         lyricVideoAnchors = anchors
     }
 
-    // Captures the cover card's live video frames (see YouTubeVideoBackground's glassRoot wrap
-    // below) so the fullscreen backdrop can redraw a blurred, mirrored copy of the SAME decoded
-    // frames instead of decoding the video a second time.
+    // captures the cover card's live video frames (see youtubevideobackground's
+    // below) so the fullscreen backdrop can redraw a blurred mirrored copy of
+    // frames instead of decoding the video a second time
     val videoGlassState = remember(trackInfo.mediaId) { GlassState() }
 
-    // glassRoot captures this whole subtree's actual rendered content into a RenderNode, so
-    // anything elsewhere reading the same GlassState (the seam blur, added in
-    // BottomSheetPlayer.kt as a sibling outside this composable so there's no risk of it
-    // capturing itself) can redraw a genuinely blurred version of whatever's really here — the
-    // same mechanism HomeScreen.kt already uses for its scroll-driven top bar blur, reused here
-    // instead of the earlier hand-rolled "duplicate + stretch + blur a copy of the cover" attempt
-    // that kept showing smeared-photo artifacts and a visible hard edge.
-    // Always record, never gate on a progress threshold — same fix applied earlier this session
-    // to SubSettingsScaffold's glassRoot for the identical symptom ("blur sometimes just doesn't
-    // appear"). Gating at > 0.80f left almost no margin before consumers like SeamBlur (fading in
-    // from 0.85) or PlayerBottomCardStack actually need a valid display list; if recording hadn't
-    // caught up yet on a given frame, they read a stale/empty node and rendered nothing. This
-    // subtree is cheap enough to double-draw continuously — reliability wins over the saved cost.
-    // ...with one exception: edit mode. The capture is a second full-screen draw of this whole
-    // subtree every frame, and while the editor is up nothing can read anything useful from it —
-    // in ENTERING the player is behind a full-screen blur, and in CUSTOMIZING the stage covers it
-    // outright, with the card deck (the other consumer) already composed out. Measured entering
-    // edit mode at 11.8ms of GPU per frame against an 8.3ms budget at 120Hz, with the render
-    // thread stalled in swapBuffers; this is one of the passes making that up.
-    // Only while the pill is what the user is actually looking at. Hysteresis-free on purpose:
-    // this is a composition-time boolean that flips once per open/close, and press3D is inert
-    // when false, so there is nothing to be gained from a dead band here.
+    // glassroot captures this whole subtree's actual rendered content into a
+    // anything elsewhere reading the same glassstate (the seam blur added in
+    // bottomsheetplayerkt as a sibling outside this composable so there's no
+    // capturing itself) can redraw a genuinely blurred version of whatever's
+    // same mechanism homescreenkt already uses for its scroll-driven top bar
+    // instead of the earlier hand-rolled "duplicate + stretch + blur a copy of
+    // that kept showing smeared-photo artifacts and a visible hard edge
+    // always record never gate on a progress threshold — same fix applied
+    // to subsettingsscaffold's glassroot for the identical symptom ("blur
+    // appear") gating at > 080f left almost no margin before consumers like
+    // from 085) or playerbottomcardstack actually need a valid display list; if
+    // caught up yet on a given frame they read a stale/empty node and rendered
+    // subtree is cheap enough to double-draw continuously — reliability wins
+    // with one exception: edit mode the capture is a second full-screen draw of
+    // subtree every frame and while the editor is up nothing can read anything
+    // in entering the player is behind a full-screen blur and in customizing the
+    // outright with the card deck (the other consumer) already composed out
+    // edit mode at 118ms of gpu per frame against an 83ms budget at 120hz with
+    // thread stalled in swapbuffers; this is one of the passes making that up
+    // only while the pill is what the user is actually looking at
+    // this is a composition-time boolean that flips once per open/close and
+    // when false so there is nothing to be gained from a dead band here
     val isPillPressable by remember {
         derivedStateOf { progressProvider() < 0.02f && !editMode }
     }
 
-    // Pill press feedback. Applied to the whole morph root rather than to the pill's background
-    // Box, because the pill's artwork, label and transport buttons are SIBLINGS of that background
-    // (each absolutely positioned by morphLayout) — tilting the background alone would slide the
-    // glass out from under its own contents.
-    //
-    // The pivot is the pill's own centre, not this node's: the node is the full-screen morph
-    // container, and a centred pivot would rotate the pill about a point most of a screen below
-    // it. Only enabled while the pill is actually the thing on screen, so pressing anything in the
-    // expanded player never tilts the player.
+    // pill press feedback applied to the whole morph root rather than to the
+    // box because the pill's artwork label and transport buttons are siblings of
+    // (each absolutely positioned by morphlayout) — tilting the background alone
+    // glass out from under its own contents
+
+    // the pivot is the pill's own centre not this node's: the node is the
+    // container and a centred pivot would rotate the pill about a point most of
+    // it only enabled while the pill is actually the thing on screen so pressing
+    // expanded player never tilts the player
     val pillPressOrigin = remember(endpointsPx.fullHeightPx) {
         val h = endpointsPx.fullHeightPx
         TransformOrigin(0.5f, if (h > 0f) (endpointsPx.miniHeightPx / 2f) / h else 0f)
@@ -673,32 +637,32 @@ fun MorphingCover(
                 origin = pillPressOrigin,
             )
     ) {
-        // Backdrop blur for the pill — blurs whatever's actually behind the mini player (the
-        // real Haze "source" registered in MainActivity), not a copy of the cover art. Its own
-        // alpha is the exact complement of the full backdrop's alpha below (both ramp across the
-        // same PILL_FADE_END window, driven directly by progress every frame, not by a
-        // fixed-duration AnimatedVisibility fade) — so at any instant, in either drag direction,
-        // pillAlpha + backdropAlpha == 1. A fixed-duration fade can only approximate that if the
-        // gesture happens to move at the speed the animation was tuned for; at any other speed it
-        // desyncs from progress and leaves a gap where neither layer is opaque — which is exactly
-        // what showed up as "a transparent thing" on swipe-down.
-        //
-        // Mount/unmount still uses hysteresis (enter below 0.16, exit above 0.20), but purely as
-        // a cost optimization (stop paying for Haze's capture+blur once fully expanded) — by then
-        // alpha has already reached exactly 0 at progress 0.15, so the mount boundary can never
-        // itself cause a visible seam the way the old fixed-duration fade could.
-        //
-        // translationY counter-sweep: this whole composable lives inside BottomSheet's single
-        // "expanding clipping container", which is a FIXED (expandedBound-tall) box that
-        // BottomSheet itself slides via `translationY = expandedBound - state.value` as you drag
-        // — that's what makes the cover art and buttons convincingly grow from the pill up into
-        // fullscreen. But it means anything anchored at this box's local top (which is where the
-        // pill sits, at progress 0) rides that same slide the instant progress > 0, even before
-        // it's grown into anything — a small, non-growing rectangle just sliding up the screen,
-        // which read as "it just goes up instead of stay and fade" with a visible trailing edge
-        // ("ugly outline"). Applying the exact inverse of BottomSheet's own sweep here cancels it
-        // out, so this box stays pinned to the real on-screen collapsed-pill position the whole
-        // time it's visible, and alpha is the only thing that changes.
+        // backdrop blur for the pill — blurs whatever's actually behind the mini
+        // real haze "source" registered in mainactivity) not a copy of the cover art
+        // alpha is the exact complement of the full backdrop's alpha below (both
+        // same pill_fade_end window driven directly by progress every frame not by a
+        // fixed-duration animatedvisibility fade) — so at any instant in either drag
+        // pillalpha + backdropalpha == 1 a fixed-duration fade can only approximate
+        // gesture happens to move at the speed the animation was tuned for; at any
+        // desyncs from progress and leaves a gap where neither layer is opaque —
+        // what showed up as "a transparent thing" on swipe-down
+
+        // mount/unmount still uses hysteresis (enter below 016 exit above 020) but
+        // a cost optimization (stop paying for haze's capture+blur once fully
+        // alpha has already reached exactly 0 at progress 015 so the mount boundary
+        // itself cause a visible seam the way the old fixed-duration fade could
+
+        // translationy counter-sweep: this whole composable lives inside
+        // "expanding clipping container" which is a fixed (expandedbound-tall) box
+        // bottomsheet itself slides via `translationy = expandedbound - statevalue`
+        // — that's what makes the cover art and buttons convincingly grow from the
+        // fullscreen but it means anything anchored at this box's local top (which
+        // pill sits at progress 0) rides that same slide the instant progress > 0
+        // it's grown into anything — a small non-growing rectangle just sliding up
+        // which read as "it just goes up instead of stay and fade" with a visible
+        // ("ugly outline") applying the exact inverse of bottomsheet's own sweep
+        // out so this box stays pinned to the real on-screen collapsed-pill position
+        // time it's visible and alpha is the only thing that changes
         val navBackdropGlassState = LocalGlassState.current ?: remember { GlassState() }
         val pillMountedHolder = remember { booleanArrayOf(true) }
         val isPillMounted by remember {
@@ -721,22 +685,22 @@ fun MorphingCover(
                     .height(64.dp)
                     .padding(horizontal = 24.dp)
                     .graphicsLayer {
-                        // Deliberately NOT faded against the backdrop's own ramp.
-                        //
-                        // The two alphas were exact complements, on the theory that they would
-                        // sum to full coverage at every progress. Alpha compositing does not work
-                        // that way: a 0.5 layer over a 0.5 layer resolves to 0.75, not 1, so for
+                        // deliberately not faded against the backdrop's own ramp
+
+                        // the two alphas were exact complements on the theory that they would
+                        // sum to full coverage at every progress alpha compositing does not work
+                        // that way: a 05 layer over a 05 layer resolves to 075 not 1 so for
                         // the whole length of that crossfade the pair was ~25% transparent at its
-                        // worst and the home screen showed straight through the mini player. That
-                        // is the "transparent thing" on open and close.
-                        //
-                        // The pill instead stays fully opaque for as long as it is mounted and the
-                        // backdrop fades in ON TOP of it, so total coverage is 1 at every instant
-                        // and in both directions. The backdrop reaches full opacity at
-                        // PILL_FADE_END and this unmounts at 0.20, so the handover has margin
-                        // rather than a seam. Shape is not a concern either: BottomSheet's own
+                        // worst and the home screen showed straight through the mini player that
+                        // is the "transparent thing" on open and close
+
+                        // the pill instead stays fully opaque for as long as it is mounted and the
+                        // backdrop fades in on top of it so total coverage is 1 at every instant
+                        // and in both directions the backdrop reaches full opacity at
+                        // pill_fade_end and this unmounts at 020 so the handover has margin
+                        // rather than a seam shape is not a concern either: bottomsheet's own
                         // clip is still at the pill's inset and corner radius this early in the
-                        // drag, so the wider backdrop is clipped to the pill's silhouette.
+                        // drag so the wider backdrop is clipped to the pill's silhouette
                         translationY = progressProvider().coerceIn(0f, 1f) * (endpointsPx.fullHeightPx - collapsedBoundPx)
                     }
             ) {
@@ -745,32 +709,32 @@ fun MorphingCover(
                     blurRadius = { 24f },
                     tint = containerColor.copy(alpha = 0.65f),
                     foundationColor = containerColor,
-                    // CLAMP, not the default DECAL — this pill's own bounds ARE the intended
-                    // blur extent (no fade-out), so edges need to read as fully blurred right up
-                    // to the border instead of washing to transparent near it.
+                    // clamp not the default decal — this pill's own bounds are the intended
+                    // blur extent (no fade-out) so edges need to read as fully blurred right up
+                    // to the border instead of washing to transparent near it
                     tileMode = android.graphics.Shader.TileMode.CLAMP,
                     modifier = Modifier.fillMaxSize()
                 )
             }
         }
 
-        // Full-player background behind the cover card and every other element — the source
-        // image is blurred ONCE at a fixed size (48x48, scaled up), then that already-blurred
-        // result is just alpha-faded in place. The *layer itself* morphs: it grows from the pill
-        // bar's own bounds up to fullscreen using the same layout-phase morphLayout technique as
-        // the cover art below, so it's a real position/size interpolation (a morph), not a fixed
-        // full-size rectangle that just fades/scales from its own center. Only composed past the
-        // very start of the drag (progress > 0.02) — nothing while collapsed in the pill.
-        //
-        // The blur is baked into the 48x48 source bitmap itself via BackdropBlurTransformation
-        // (a Coil Transformation, computed once per track off the main thread on a tiny bitmap),
-        // NOT a live Modifier.blur() RenderEffect. The warp shader below keeps the background
-        // visibly moving/warping every frame — that part is intentionally kept — but since it no
-        // longer has a live Gaussian blur chained beneath it, the only per-frame GPU cost left is
-        // the shader's own cheap coordinate distortion, not a full blur re-evaluation on top of it.
-        // The artwork gate stays exactly as it was for the default backdrop; the two artwork-free
-        // styles (flat fill, static gradient) additionally have nothing to wait for, so they draw
-        // even on a track with no thumbnail.
+        // full-player background behind the cover card and every other element — the
+        // image is blurred once at a fixed size (48x48 scaled up) then that
+        // result is just alpha-faded in place the *layer itself* morphs: it grows
+        // bar's own bounds up to fullscreen using the same layout-phase morphlayout
+        // the cover art below so it's a real position/size interpolation (a morph)
+        // full-size rectangle that just fades/scales from its own center only
+        // very start of the drag (progress > 002) — nothing while collapsed in the
+
+        // the blur is baked into the 48x48 source bitmap itself via
+        // (a coil transformation computed once per track off the main thread on a
+        // not a live modifierblur() rendereffect the warp shader below keeps the
+        // visibly moving/warping every frame — that part is intentionally kept — but
+        // longer has a live gaussian blur chained beneath it the only per-frame gpu
+        // the shader's own cheap coordinate distortion not a full blur re-evaluation
+        // the artwork gate stays exactly as it was for the default backdrop; the two
+        // styles (flat fill static gradient) additionally have nothing to wait for
+        // even on a track with no thumbnail
         if (trackInfo.thumbnailUrl != null || backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
             val showBackdrop by remember { derivedStateOf { progressProvider() > 0.02f } }
             if (showBackdrop) {
@@ -784,42 +748,42 @@ fun MorphingCover(
                             element = MorphElement.BACKDROP,
                         )
                         .graphicsLayer {
-                            // Exact complement of the pill's own alpha above — see the comment
+                            // exact complement of the pill's own alpha above — see the comment
                             // there for why this is a direct function of progress rather than a
-                            // fixed-duration animation.
+                            // fixed-duration animation
                             alpha = (progressProvider() / PILL_FADE_END).coerceIn(0f, 1f)
-                            // Clip to this box's own (morphing) bounds — the child below is a
-                            // FIXED full-player size and gets cropped down to whatever window
-                            // is currently revealed, rather than being re-measured/re-blurred
-                            // as that window grows.
+                            // clip to this box's own (morphing) bounds — the child below is a
+                            // fixed full-player size and gets cropped down to whatever window
+                            // is currently revealed rather than being re-measured/re-blurred
+                            // as that window grows
                             clip = true
                         }
-                        // Solid backing color painted first — if the blurred image's edges
+                        // solid backing color painted first — if the blurred image's edges
                         // ever sample past their own bounds (blur naturally fades toward
-                        // transparent right at the source edge), this is what shows through
-                        // instead of whatever's actually behind the player.
+                        // transparent right at the source edge) this is what shows through
+                        // instead of whatever's actually behind the player
                         .background(containerColor)
                 ) {
-                    // Fixed absolute size (always the full player's own maxWidth/maxHeight, never
-                    // the parent's currently-morphing size) — requiredSize is what actually makes
-                    // this stick: the parent Box above measures this content with
-                    // Constraints.fixed(w, h) via morphLayout (that's the growing morph itself,
-                    // and stays untouched), and a plain .size()/.fillMaxSize() would just get
-                    // clamped back down to those incoming constraints. requiredSize explicitly
-                    // overrides them, so this offscreen/shader layer is allocated once at a
+                    // fixed absolute size (always the full player's own maxwidth/maxheight never
+                    // the parent's currently-morphing size) — requiredsize is what actually makes
+                    // this stick: the parent box above measures this content with
+                    // constraintsfixed(w h) via morphlayout (that's the growing morph itself
+                    // and stays untouched) and a plain size()/fillmaxsize() would just get
+                    // clamped back down to those incoming constraints requiredsize explicitly
+                    // overrides them so this offscreen/shader layer is allocated once at a
                     // constant size and only its *contents* get redrawn every frame (cheap) —
                     // the parent's own clip = true is what reveals more or less of it as the drag
-                    // progresses, not a resize of this content. Before this, the whole
-                    // scale+RuntimeShader Offscreen layer was being resized (and its GPU backing
-                    // buffer reallocated) on every single frame of the drag, in both directions —
-                    // that was the remaining swipe-up/swipe-down lag.
-                    // When the YouTube video background is on and resolved, the ambient backdrop
-                    // becomes a blurred, mirrored copy of the video's own live frames instead of
-                    // the usual blurred-cover-art + warp shader — see VideoBackdropBlur below.
+                    // progresses not a resize of this content before this the whole
+                    // scale+runtimeshader offscreen layer was being resized (and its gpu backing
+                    // buffer reallocated) on every single frame of the drag in both directions —
+                    // that was the remaining swipe-up/swipe-down lag
+                    // when the youtube video background is on and resolved the ambient backdrop
+                    // becomes a blurred mirrored copy of the video's own live frames instead of
+                    // the usual blurred-cover-art + warp shader — see videobackdropblur below
                     if (backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
-                        // The three added backdrops. Deliberately a sibling branch rather than a
-                        // rewrite of the block below: COVER_GRADIENT is the default and still
-                        // runs through the original code, untouched.
+                        // the three added backdrops deliberately a sibling branch rather than a
+                        // rewrite of the block below: cover_gradient is the default and still
+                        // runs through the original code untouched
                         PlayerBackgroundContent(
                             style = backgroundStyle,
                             thumbnailUrl = trackInfo.thumbnailUrl,
@@ -832,10 +796,10 @@ fun MorphingCover(
                             modifier = Modifier.requiredSize(maxWidth, maxHeight)
                         )
                     } else {
-                        // Shared with the customization page's preview so the two can never
-                        // disagree — see CoverGradientBackdrop.kt. The shader instance and the
-                        // clock stay hoisted here, for the AGSL-compile and idle-wakeup reasons
-                        // documented above.
+                        // shared with the customization page's preview so the two can never
+                        // disagree — see covergradientbackdropkt the shader instance and the
+                        // clock stay hoisted here for the agsl-compile and idle-wakeup reasons
+                        // documented above
                         CoverGradientBackdrop(
                             thumbnailUrl = trackInfo.thumbnailUrl,
                             width = maxWidth,
@@ -849,9 +813,9 @@ fun MorphingCover(
             }
         }
 
-        // Cover art
-        // A disc still renders (black platter, empty label) with no artwork, so it isn't gated
-        // on the thumbnail the way the plain image styles have to be.
+        // cover art
+        // a disc still renders (black platter empty label) with no artwork so it
+        // on the thumbnail the way the plain image styles have to be
         if (trackInfo.thumbnailUrl != null || isDiscStyle) {
             Box(
                 modifier = Modifier
@@ -864,18 +828,18 @@ fun MorphingCover(
                     )
                     .graphicsLayer {
                         val p = progressProvider()
-                        // A disc style's platter is deliberately larger than this box and hangs
-                        // off its edges (concept screens 84/87), so clipping is the one thing
-                        // that must not happen while the platter is what's on screen. Once it has
-                        // dissolved into the square — collapsing to the pill, or opening the
+                        // a disc style's platter is deliberately larger than this box and hangs
+                        // off its edges (concept screens 84/87) so clipping is the one thing
+                        // that must not happen while the platter is what's on screen once it has
+                        // dissolved into the square — collapsing to the pill or opening the
                         // lyrics page — clipping has to come back or the square's rounded corners
-                        // stop being rounded. Every non-disc style clips exactly as before.
+                        // stop being rounded every non-disc style clips exactly as before
                         clip = !isDiscStyle ||
                             discWeight(progressProvider, lyricsProgressProvider) < 0.5f
-                        // Radius only ever accounted for the pill<->fullscreen stage (ending at a
-                        // flat 0.dp once fully expanded), with no second stage for the lyrics
-                        // shrink — so the small header cover was rendering perfectly square.
-                        // lyricsProgress interpolates it back up to LyricsHeaderCornerRadius.
+                        // radius only ever accounted for the pill<->fullscreen stage (ending at a
+                        // flat 0dp once fully expanded) with no second stage for the lyrics
+                        // shrink — so the small header cover was rendering perfectly square
+                        // lyricsprogress interpolates it back up to lyricsheadercornerradius
                         val expandedRadius = if (coverStyle == PlayerCoverStyle.SQUARED) {
                             SquaredCoverCornerRadius
                         } else {
@@ -885,10 +849,10 @@ fun MorphingCover(
                         shape = RoundedCornerShape(lerp(base, LyricsHeaderCornerRadius, lyricsProgressProvider()))
                     }
                     .then(
-                        // Only mounted once the player is genuinely open. Left permanently
-                        // installed, this detector would consume the pointer-down on the mini
-                        // pill's 48dp thumbnail, and the pill's own tap-to-expand — which uses
-                        // the default requireUnconsumed = true — would stop firing there.
+                        // only mounted once the player is genuinely open left permanently
+                        // installed this detector would consume the pointer-down on the mini
+                        // pill's 48dp thumbnail and the pill's own tap-to-expand — which uses
+                        // the default requireunconsumed = true — would stop firing there
                         if (longPressEnabled && onLongPressCover != null) {
                             Modifier.pointerInput(onLongPressCover) {
                                 detectTapGestures(onLongPress = { onLongPressCover() })
@@ -901,18 +865,18 @@ fun MorphingCover(
                         } else Modifier
                     )
             ) {
-                // The plain square artwork is the base layer for EVERY style, disc ones
-                // included. A disc has no sensible 48dp form and none at all in the lyrics
-                // header, so rather than shrinking a platter into the pill the disc dissolves
-                // and reveals this square underneath — the pill and the lyrics header keep the
-                // artwork they have always shown, and the transition is a morph rather than a
-                // swap because both layers occupy the identical, already-morphing box.
-                //
-                // The two are an exact crossfade: a platter is a circle inside a square box, so
+                // the plain square artwork is the base layer for every style disc ones
+                // included a disc has no sensible 48dp form and none at all in the lyrics
+                // header so rather than shrinking a platter into the pill the disc dissolves
+                // and reveals this square underneath — the pill and the lyrics header keep
+                // artwork they have always shown and the transition is a morph rather than a
+                // swap because both layers occupy the identical already-morphing box
+
+                // the two are an exact crossfade: a platter is a circle inside a square box
                 // leaving this layer at full strength underneath one left the square artwork
-                // showing in the corners around the disc — the same image visible twice at once.
-                // The layer is only attached for disc styles, so every other style reaches this
-                // artwork through precisely the modifier chain it always did.
+                // showing in the corners around the disc — the same image visible twice at
+                // the layer is only attached for disc styles so every other style reaches
+                // artwork through precisely the modifier chain it always did
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -924,25 +888,25 @@ fun MorphingCover(
                             } else Modifier
                         )
                 ) {
-                // crossfade: when trackInfo.thumbnailUrl changes (track change / manual skip),
-                // Coil keeps showing the previous image and fades to the new one once it's
-                // decoded, instead of clearing to blank while the new image loads. Combined
-                // with the queue-ahead prefetch below, the next track's image is usually
-                // already cached by the time this swaps, so the fade is effectively instant;
-                // when it isn't cached (e.g. a manual skip before prefetch finished), this is
-                // what keeps the old cover "held" until the new one is ready.
+                // crossfade: when trackinfothumbnailurl changes (track change / manual skip)
+                // coil keeps showing the previous image and fades to the new one once it's
+                // decoded instead of clearing to blank while the new image loads combined
+                // with the queue-ahead prefetch below the next track's image is usually
+                // already cached by the time this swaps so the fade is effectively instant;
+                // when it isn't cached (eg a manual skip before prefetch finished) this is
+                // what keeps the old cover "held" until the new one is ready
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(trackInfo.thumbnailUrl?.resize(1200, 1200))
                         .allowHardware(true)
                         .crossfade(300)
-                        // Pin the decode size instead of letting Coil infer it from the layout
-                        // node. This composable lives inside morphLayout(MorphElement.ART),
-                        // which measures it with Constraints.fixed(miniArtSizePx) while the
-                        // player is collapsed in the pill. Coil resolves its size once, so it
+                        // pin the decode size instead of letting coil infer it from the layout
+                        // node this composable lives inside morphlayout(morphelementart)
+                        // which measures it with constraintsfixed(miniartsizepx) while the
+                        // player is collapsed in the pill coil resolves its size once so it
                         // was decoding a ~150px bitmap and then keeping it as the sheet grew —
-                        // the full-screen cover was a mini-pill thumbnail scaled up ~7x.
-                        // The URL already asks the CDN for 1200px; this makes the decode match.
+                        // the full-screen cover was a mini-pill thumbnail scaled up ~7x
+                        // the url already asks the cdn for 1200px; this makes the decode match
                         .size(CoilSize(1200, 1200))
                         .precision(Precision.INEXACT)
                         .build(),
@@ -951,10 +915,10 @@ fun MorphingCover(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Keyed by mediaId so switching tracks resets this to null immediately (same
-                // recomposition as the track change, before the LaunchedEffect below even
+                // keyed by mediaid so switching tracks resets this to null immediately (same
+                // recomposition as the track change before the launchedeffect below even
                 // runs) instead of holding onto the previous track's animated cover/state
-                // while the new one is still being looked up.
+                // while the new one is still being looked up
                 var canvasArtwork by remember(trackInfo.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
                 val canvasEnabled by rememberPreference(CanvasThumbnailAnimationKey, defaultValue = true)
                 val canvasWifiOnly by rememberPreference(CanvasWifiOnlyKey, defaultValue = true)
@@ -989,12 +953,12 @@ fun MorphingCover(
                     }
                 }
 
-                // Static cover shows for the whole drag; only once nearly fully expanded does
-                // it crossfade to the animated canvas cover, and it fades back to static as
-                // soon as collapsing starts — a fixed-duration crossfade, not tied directly to
-                // drag progress, same reasoning as the pill blur above. Also gated live on
-                // canvasEnabled so flipping the setting off hides an already-fetched clip
-                // immediately instead of waiting for the next track change.
+                // static cover shows for the whole drag; only once nearly fully expanded does
+                // it crossfade to the animated canvas cover and it fades back to static as
+                // soon as collapsing starts — a fixed-duration crossfade not tied directly to
+                // drag progress same reasoning as the pill blur above also gated live on
+                // canvasenabled so flipping the setting off hides an already-fetched clip
+                // immediately instead of waiting for the next track change
                 val nearFullyExpanded by remember(canvasArtwork, canvasEnabled) {
                     derivedStateOf { canvasEnabled && canvasArtwork?.preferredAnimationUrl != null && progressProvider() > 0.92f }
                 }
@@ -1007,24 +971,24 @@ fun MorphingCover(
                     CanvasArtworkPlayer(
                         primaryUrl = canvasArtwork?.preferredAnimationUrl,
                         fallbackUrl = null,
-                        // Loops even while the music is paused (unlike the YouTube video
-                        // background below, which pauses with playback) — but not while the editor
-                        // is up, where it would just be decoding video frames to feed a
-                        // full-screen blur. Paused rather than unmounted, so returning from the
-                        // editor does not re-create the player and re-buffer the clip.
+                        // loops even while the music is paused (unlike the youtube video
+                        // background below which pauses with playback) — but not while the editor
+                        // is up where it would just be decoding video frames to feed a
+                        // full-screen blur paused rather than unmounted so returning from the
+                        // editor does not re-create the player and re-buffer the clip
                         isPlaying = !editMode,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
 
-                // Optional YouTube official-music-video background (real ExoPlayer video, not a
-                // lyrics video / user upload — see YouTubeVideoLookup.kt's Videos-tab search +
-                // MUSIC_VIDEO_TYPE_OMV filter). Resolution + lyrics-sync anchors are computed once,
-                // hoisted above (shared with the fullscreen backdrop's blurred/mirrored copy).
-                // Shown here sharp and uncropped-ugly-free via the same crop-to-fill as the static
-                // cover; YouTubeVideoBackground itself only fades in once ExoPlayer actually
-                // renders a first frame, so there's no blank gap — it just looks like the static
-                // cover until the video is ready.
+                // optional youtube official-music-video background (real exoplayer video not
+                // lyrics video / user upload — see youtubevideolookupkt's videos-tab search +
+                // music_video_type_omv filter) resolution + lyrics-sync anchors are computed
+                // hoisted above (shared with the fullscreen backdrop's blurred/mirrored copy)
+                // shown here sharp and uncropped-ugly-free via the same crop-to-fill as the
+                // cover; youtubevideobackground itself only fades in once exoplayer actually
+                // renders a first frame so there's no blank gap — it just looks like the
+                // cover until the video is ready
                 if (!isDiscStyle && playVideoBackground && videoInfo != null) {
                     YouTubeVideoBackground(
                         streamUrl = videoInfo?.streamUrl,
@@ -1054,8 +1018,8 @@ fun MorphingCover(
             }
         }
 
-        // Title + artist/album — visible in the pill, morphing and fading on the same curve as
-        // the controls below so it never overlaps SongInfoRow's copy in the expanded player.
+        // title + artist/album — visible in the pill morphing and fading on the same
+        // the controls below so it never overlaps songinforow's copy in the expanded
         Box(
             modifier = Modifier
                 .morphLayout(
@@ -1066,13 +1030,13 @@ fun MorphingCover(
                 )
                 .graphicsLayer {
                     alpha = (1f - (progressProvider() / 0.5f)).coerceIn(0f, 1f)
-                    // Offscreen so the DstIn fade below composites against this layer's own
-                    // pixels rather than punching a hole through the pill behind it.
+                    // offscreen so the dstin fade below composites against this layer's own
+                    // pixels rather than punching a hole through the pill behind it
                     compositingStrategy = CompositingStrategy.Offscreen
                 }
                 .drawWithCache {
-                    // Right edge ramps to zero opacity, so an over-long title dissolves instead
-                    // of hard-clipping or showing an ellipsis.
+                    // right edge ramps to zero opacity so an over-long title dissolves instead
+                    // of hard-clipping or showing an ellipsis
                     val fade = Brush.horizontalGradient(
                         0f to Color.Black,
                         0.82f to Color.Black,
@@ -1094,8 +1058,8 @@ fun MorphingCover(
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    // No ellipsis and no wrapping: the gradient above is what terminates the
-                    // line, so the glyphs must be allowed to run to the edge and be faded.
+                    // no ellipsis and no wrapping: the gradient above is what terminates the
+                    // line so the glyphs must be allowed to run to the edge and be faded
                     softWrap = false,
                 )
                 val subtitle = listOf(trackInfo.artist, trackInfo.album)
@@ -1113,7 +1077,7 @@ fun MorphingCover(
             }
         }
 
-        // Play/Pause — visible in the pill, fades out as the fullscreen controls fade in
+        // play/pause — visible in the pill fades out as the fullscreen controls fade
         Box(
             modifier = Modifier
                 .morphLayout(
@@ -1145,7 +1109,7 @@ fun MorphingCover(
             )
         }
 
-        // Skip next — same fade behavior as Play
+        // skip next — same fade behavior as play
         Box(
             modifier = Modifier
                 .morphLayout(
@@ -1175,16 +1139,7 @@ fun MorphingCover(
     }
 }
 
-/**
- * The fullscreen ambient backdrop's video-based alternative to the usual cover-based
- * BackdropBlurTransformation + warp shader: a heavily blurred copy of the cover card's own live
- * video frames (captured via [glassState] — the same GlassKit RenderNode mechanism used
- * everywhere else in this app, reading whatever YouTubeVideoBackground's glassRoot wrap actually
- * rendered, not a second decode), plus a second vertically-mirrored copy so an aspect-mismatched
- * video reads as one continuous backdrop instead of a hard crop edge. Draws nothing (letting the
- * dark backdrop base behind it show through) whenever there's no captured frame yet, or Disable
- * Blur is on — that's the "precaution and transition" fallback.
- */
+// the fullscreen ambient backdrop's video-based alternative to the usual
 @Composable
 private fun VideoBackdropBlur(
     glassState: GlassState,
@@ -1194,10 +1149,10 @@ private fun VideoBackdropBlur(
     if (disableBlur) return
 
     Box(modifier = modifier) {
-        // Normal copy, scaled to fully cover this box (crop, not letterbox) — drawRenderNode
-        // paints at the node's own native captured size with no auto-scaling, so without this
-        // the captured (cover-card-sized) content would sit as a small, misplaced blob inside
-        // the much larger fullscreen box instead of filling it.
+        // normal copy scaled to fully cover this box (crop not letterbox) —
+        // paints at the node's own native captured size with no auto-scaling so
+        // the captured (cover-card-sized) content would sit as a small misplaced
+        // the much larger fullscreen box instead of filling it
         androidx.compose.foundation.Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -1210,9 +1165,9 @@ private fun VideoBackdropBlur(
             drawFillScaledVideoNode(glassState, flip = false)
         }
 
-        // "Flip it down" — the same content, vertically mirrored but scaled/positioned to cover
-        // this exact same box (not the whole node re-anchored by an unrelated center pivot),
-        // so the two copies land in register instead of drifting apart.
+        // "flip it down" — the same content vertically mirrored but
+        // this exact same box (not the whole node re-anchored by an unrelated center
+        // so the two copies land in register instead of drifting apart
         androidx.compose.foundation.Canvas(
             modifier = Modifier
                 .fillMaxSize()
@@ -1228,12 +1183,7 @@ private fun VideoBackdropBlur(
     }
 }
 
-/**
- * Draws the captured video RenderNode scaled (crop-to-fill, like ContentScale.Crop) and
- * centered to exactly cover this draw scope's own size. [flip] mirrors it vertically in place —
- * same footprint as the unflipped copy, not offset by an unrelated center pivot — so both copies
- * land in register with each other instead of drifting apart.
- */
+// draws the captured video rendernode scaled (crop-to-fill like contentscalecrop)
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFillScaledVideoNode(
     glassState: GlassState,
     flip: Boolean,
@@ -1263,8 +1213,8 @@ private fun Modifier.liquidWarpEffect(
     shader: android.graphics.RuntimeShader,
     time: () -> Float,
 ): Modifier = this.graphicsLayer {
-    // Both reads happen here, in the draw phase — this is what keeps the warp's continuous
-    // per-frame updates from ever recomposing the composable tree above it.
+    // both reads happen here in the draw phase — this is what keeps the warp's
+    // per-frame updates from ever recomposing the composable tree above it
     shader.setFloatUniform("resolution", size.width, size.height)
     shader.setFloatUniform("time", time())
     renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "image").asComposeRenderEffect()

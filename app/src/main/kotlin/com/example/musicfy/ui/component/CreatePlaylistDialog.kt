@@ -1,4 +1,4 @@
-// CreatePlaylistDialog.kt
+// createplaylistdialogkt
 // this thing is for create playlist dialog
 
 package com.example.musicfy.ui.component
@@ -77,7 +77,7 @@ fun CreatePlaylistDialog(
                     insert(playlistEntity)
                 }
 
-//                onPlaylistCreated?.invoke(playlistEntity.id)
+// onplaylistcreated?invoke(playlistentityid)
                 withContext(Dispatchers.Main) {
                     onPlaylistCreated?.invoke(playlistEntity.id)
                 }

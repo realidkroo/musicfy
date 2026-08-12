@@ -1,4 +1,4 @@
-// PlayerJsFetcher.kt
+// playerjsfetcherkt
 // this thing is part of player js fetcher
 
 package com.example.musicfy.utils.cipher
@@ -21,7 +21,7 @@ object PlayerJsFetcher {
         .proxy(YouTube.proxy)
         .build()
 
-    // Regex to extract player hash from iframe_api response
+    // regex to extract player hash from iframe_api response
     private val PLAYER_HASH_REGEX = Regex("""\\?/s\\?/player\\?/([a-zA-Z0-9_-]+)\\?/""")
 
     private fun getCacheDir(): File = File(CipherDeobfuscator.appContext.filesDir, "cipher_cache")
@@ -35,7 +35,7 @@ object PlayerJsFetcher {
             val cacheDir = getCacheDir()
             if (!cacheDir.exists()) cacheDir.mkdirs()
 
-            // Check cache first (unless forced refresh)
+            // check cache first (unless forced refresh)
             if (!forceRefresh) {
                 val cached = readFromCache()
                 if (cached != null) {
@@ -44,7 +44,7 @@ object PlayerJsFetcher {
                 }
             }
 
-            // Fetch player hash from iframe_api
+            // fetch player hash from iframe_api
             val hash = fetchPlayerHash()
             if (hash == null) {
                 Timber.tag(TAG).e("Failed to extract player hash from iframe_api")
@@ -52,7 +52,7 @@ object PlayerJsFetcher {
             }
             Timber.tag(TAG).d("Extracted player hash: $hash")
 
-            // Download player JS
+            // download player js
             val playerJs = downloadPlayerJs(hash)
             if (playerJs == null) {
                 Timber.tag(TAG).e("Failed to download player JS for hash=$hash")
@@ -60,7 +60,7 @@ object PlayerJsFetcher {
             }
             Timber.tag(TAG).d("Downloaded player JS: ${playerJs.length} chars")
 
-            // Cache the result
+            // cache the result
             writeToCache(hash, playerJs)
 
             Pair(playerJs, hash)
@@ -93,7 +93,7 @@ object PlayerJsFetcher {
             val hash = hashData[0]
             val timestamp = hashData[1].toLongOrNull() ?: return null
 
-            // Check TTL
+            // check ttl
             if (System.currentTimeMillis() - timestamp > CACHE_TTL_MS) {
                 Timber.tag(TAG).d("Cache expired (hash=$hash)")
                 return null
@@ -115,7 +115,7 @@ object PlayerJsFetcher {
     private fun writeToCache(hash: String, playerJs: String) {
         try {
             val cacheDir = getCacheDir()
-            // Clean old cache files
+            // clean old cache files
             cacheDir.listFiles()?.filter { it.name.startsWith("player_") }?.forEach { it.delete() }
 
             getCacheFile(hash).writeText(playerJs)

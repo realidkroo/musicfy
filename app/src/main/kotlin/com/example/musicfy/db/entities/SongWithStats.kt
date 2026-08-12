@@ -1,4 +1,4 @@
-// SongWithStats.kt
+// songwithstatskt
 // the file functioned as song with stats
 
 package com.example.musicfy.db.entities

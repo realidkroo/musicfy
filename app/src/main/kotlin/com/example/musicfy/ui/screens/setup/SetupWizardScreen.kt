@@ -74,8 +74,8 @@ fun SetupWizardScreen(
     var username by remember { mutableStateOf("") }
     var profilePicUri by remember { mutableStateOf<Uri?>(null) }
     var selectedUncroppedUri by remember { mutableStateOf<Uri?>(null) }
-    // Kept so tapping the avatar again reopens the cropper on the original photo instead of
-    // forcing a re-pick.
+    // kept so tapping the avatar again reopens the cropper on the original photo
+    // forcing a re-pick
     var lastPickedUri by remember { mutableStateOf<Uri?>(null) }
     var isLeavingWelcome by remember { mutableStateOf(false) }
 
@@ -183,15 +183,15 @@ fun SetupWizardScreen(
                     )
                 }
                 .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(Color(0xFF121212)) // Dark gray/black surface
+                .background(Color(0xFF121212)) // dark gray/black surface
         ) {
-            // Pager Content (fill screen first, drawing behind overlays)
+            // pager content (fill screen first drawing behind overlays)
             HorizontalPager(
                 state = pagerState,
-                userScrollEnabled = false, // Must use buttons to navigate
+                userScrollEnabled = false, // must use buttons to navigate
                 modifier = Modifier.fillMaxSize()
             ) { page ->
-                // Pass content padding to non-welcome pages so they don't overlap with the top drag handle
+                // pass content padding to non-welcome pages so they don't overlap with the
                 val pageModifier = Modifier.fillMaxSize().padding(top = 56.dp)
                 when (page) {
                     PAGE_WELCOME -> WelcomeStep(isHiding = isLeavingWelcome)
@@ -201,8 +201,8 @@ fun SetupWizardScreen(
                             onUsernameChange = { username = it },
                             profilePicUri = profilePicUri,
                             onProfileTap = {
-                                // Already have a photo? Go straight back to the adjust frame; the
-                                // cropper itself offers "Select new image".
+                                // already have a photo? go straight back to the adjust frame; the
+                                // cropper itself offers "select new image"
                                 val existing = lastPickedUri
                                 if (existing != null) selectedUncroppedUri = existing else openPhotoPicker()
                             }
@@ -246,20 +246,20 @@ fun SetupWizardScreen(
                 }
             }
 
-            // Morphing Profile Picture Overlay
+            // morphing profile picture overlay
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val screenHeight = maxHeight
                 val screenWidth = maxWidth
 
-                // Calculate the exact floating scroll position
+                // calculate the exact floating scroll position
                 val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
 
-                // Show overlay between page 0 (transitioning out) and page 3 (transitioning in)
+                // show overlay between page 0 (transitioning out) and page 3 (transitioning
                 if (pageOffset > 0f && pageOffset < 3f) {
                     val progress = (pageOffset - 1f).coerceIn(0f, 1f)
 
                     val page1Y = 242.dp
-                    val page1X = 32.dp // Fixed: left aligned to match hitbox
+                    val page1X = 32.dp // fixed: left aligned to match hitbox
                     val page1Size = 140.dp
 
                     val page2Y = screenHeight - 333.dp
@@ -271,11 +271,11 @@ fun SetupWizardScreen(
 
                     var currentX = androidx.compose.ui.unit.lerp(page1X, page2X, progress)
 
-                    // Make it slide in with Page 1 when coming from Welcome screen
+                    // make it slide in with page 1 when coming from welcome screen
                     if (pageOffset < 1f) {
                         currentX += (screenWidth * (1f - pageOffset))
                     }
-                    // Make it slide out with Page 2 when going to Setup Further screen
+                    // make it slide out with page 2 when going to setup further screen
                     else if (pageOffset > 2f) {
                         currentX -= (screenWidth * (pageOffset - 2f))
                     }
@@ -307,7 +307,7 @@ fun SetupWizardScreen(
                 }
             }
 
-            // Drag Handle overlaid on top
+            // drag handle overlaid on top
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -323,7 +323,7 @@ fun SetupWizardScreen(
                 )
             }
 
-        // Bottom Action Bar overlaid on top
+        // bottom action bar overlaid on top
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -336,7 +336,7 @@ fun SetupWizardScreen(
                 PAGE_THANK_YOU -> WizardButton(text = "Done", onClick = { onComplete(username, profilePicUri) })
 
                 PAGE_GREETING -> {
-                    // Auto-advances via the LaunchedEffect above — no button needed.
+                    // auto-advances via the launchedeffect above — no button needed
                 }
 
                 PAGE_PROFILE -> WizardButton(
@@ -385,12 +385,12 @@ fun SetupWizardScreen(
                 PAGE_TOGGLES -> WizardButton(text = "Continue", onClick = { goTo(PAGE_MONOCHROME_CHOICE) })
 
                 PAGE_MONOCHROME_CHOICE -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    WizardButton(text = "this thing does not work rn go tap the no button", secondary = true, onClick = { goTo(PAGE_MONOCHROME_INFO) })//work- yes button
+                    WizardButton(text = "this thing does not work rn go tap the no button", secondary = true, onClick = { goTo(PAGE_MONOCHROME_INFO) })// work- yes button
                     WizardButton(text = "No (recommended)", highlighted = true, onClick = { goTo(PAGE_THANK_YOU) })
                 }
 
                 PAGE_MONOCHROME_INFO -> {
-                    // The Monochrome page carries its own Continue button (it runs the probe).
+                    // the monochrome page carries its own continue button (it runs the probe)
                 }
             }
         }

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Default values
+# default values
 BUILD_ATTEMPT_FILE=".build_number"
 if [ ! -f "$BUILD_ATTEMPT_FILE" ]; then
     echo "841" > "$BUILD_ATTEMPT_FILE"
@@ -32,7 +32,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Parse arguments
+# parse args
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         -h|--help)
@@ -101,7 +101,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 if [ "$SKIP_BUILD" = false ]; then
-    # Handle custom build scope (-g)
+    # custom build scope
     if [ -n "$CUSTOM_BUILD_INFO" ]; then
         IS_CUSTOM_BUILD=true
         CUSTOM_DATE=$(echo "$CUSTOM_BUILD_INFO" | cut -d',' -f1)
@@ -114,7 +114,7 @@ if [ "$SKIP_BUILD" = false ]; then
         cp "$BUILD_ATTEMPT_FILE" "$BUILD_ATTEMPT_FILE.bak"
     fi
 
-    # Increment build attempt or use custom attempt
+    # build attempt count
     if [ -n "$CUSTOM_ATTEMPT" ]; then
         BUILD_ATTEMPT="$CUSTOM_ATTEMPT"
     else
@@ -125,7 +125,7 @@ if [ "$SKIP_BUILD" = false ]; then
 
     echo "Starting build #$BUILD_ATTEMPT for flavor: $FLAVOR ($VARIANT)..."
 
-    # If -c or custom version is passed, update the base version in build.gradle.kts first
+    # version override
     if [ -n "$CUSTOM_VER" ]; then
         CHANGE_VERSION="$CUSTOM_VER"
     fi
@@ -135,13 +135,13 @@ if [ "$SKIP_BUILD" = false ]; then
         sed -i '' "s/versionName = \".*\"/versionName = \"$CHANGE_VERSION\"/g" app/build.gradle.kts
     fi
 
-    # Extract current base version from build.gradle.kts
+    # base version
     BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*//')
 
-    # Update build.gradle.kts versionName to include the new build number for the settings page
+    # version name update
     sed -i '' "s/versionName = \".*\"/versionName = \"$BASE_VERSION build#$BUILD_ATTEMPT\"/g" app/build.gradle.kts
 
-    # Update BetaNoticeScreen.kt with the new version formats
+    # beta notice text update
     if [ -f "$BETA_NOTICE_FILE" ]; then
         NOTICE_TITLE="musicfy build #$BUILD_ATTEMPT $VARIANT"
         if [ -n "$CUSTOM_DATE" ]; then
@@ -153,7 +153,7 @@ if [ "$SKIP_BUILD" = false ]; then
         sed -i '' -e "s/text = \"[0-9]*\.[0-9]*\.[0-9]* build#[0-9]*\"/text = \"$BASE_VERSION build#$BUILD_ATTEMPT\"/g" "$BETA_NOTICE_FILE"
     fi
 
-    # Determine Gradle Task
+    # gradle task
     CAP_FLAVOR="$(tr '[:lower:]' '[:upper:]' <<< ${FLAVOR:0:1})${FLAVOR:1}"
     CAP_VARIANT="$(tr '[:lower:]' '[:upper:]' <<< ${VARIANT:0:1})${VARIANT:1}"
 
@@ -165,10 +165,10 @@ if [ "$SKIP_BUILD" = false ]; then
         TASK="assembleUniversal${CAP_FLAVOR}${CAP_VARIANT}"
     fi
 
-    # Run Gradle Build
+    # build task run
     ./gradlew $TASK
 
-    # Clean output directory of old APKs before storing newly generated ones
+    # clean old apks
     OUTPUT_DIR="apk-generated"
     mkdir -p "$OUTPUT_DIR"
     rm -f "$OUTPUT_DIR"/*-${VARIANT}.apk 2>/dev/null || true
@@ -180,13 +180,13 @@ else
     BASE_VERSION=$(grep 'versionName =' app/build.gradle.kts | head -n 1 | sed 's/.*versionName = "\(.*\)".*/\1/' | sed 's/ build#.*//')
 fi
 
-# Publish to GitHub Release if -commit was passed
+# github release publish
 if [ "$PUBLISH_RELEASE" = true ]; then
     echo "Preparing GitHub release on 'dev' tag..."
     OUTPUT_DIR="apk-generated"
     mkdir -p "$OUTPUT_DIR"
 
-    # Format APK asset names according to GithubUpdates.kt
+    # format apk asset names
     format_apk() {
         local src_pattern="$1"
         local dest_name="$2"
@@ -207,7 +207,7 @@ if [ "$PUBLISH_RELEASE" = true ]; then
         CHANGELOG_TEXT="musicfy $BASE_VERSION ($BUILD_ATTEMPT)"
     fi
 
-    # Update git tag 'dev' to point to current HEAD on main
+    # dev tag update
     echo "Updating git tag 'dev' on main..."
     git tag -f dev main 2>/dev/null || true
     git push -f origin dev 2>/dev/null || true
@@ -225,9 +225,9 @@ if [ "$PUBLISH_RELEASE" = true ]; then
     echo "Release successfully published to https://github.com/realidkroo/musicfy/releases/tag/dev"
 fi
 
-# Install and Auto-open if -i was passed
+# adb install and launch
 if [ "$INSTALL_ON_DEVICES" = true ]; then
-    # Look FIRST in Gradle's build outputs for the freshly compiled variant APK
+    # search output apks
     APK_PATH=$(find app/build/outputs/apk -name "*${PACKAGE_STYLE}*${FLAVOR}*${VARIANT}.apk" 2>/dev/null | head -n 1)
     
     if [ -z "$APK_PATH" ]; then

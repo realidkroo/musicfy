@@ -1,4 +1,4 @@
-// TopPlaylistScreen.kt
+// topplaylistscreenkt
 // what is this for you ask its for top playlist screen ofc
 
 package com.example.musicfy.ui.screens.playlist
@@ -333,7 +333,7 @@ fun TopPlaylistScreen(
 
                         SongListItem(
                             song = song,
-//                            albumIndex = index + 1,
+// albumindex = index + 1
                             isActive = song.song.id == mediaMetadata?.id,
                             isPlaying = isPlaying,
                             showInLibraryIcon = true,

@@ -1,4 +1,4 @@
-// NewReleaseViewModel.kt
+// newreleaseviewmodelkt
 // the file functioned as new release view model
 
 package com.example.musicfy.viewmodels

@@ -1,15 +1,11 @@
-// LyricsProviderRegistry.kt
+// lyricsproviderregistrykt
 // this thing is part of lyrics provider registry
 
 package com.example.musicfy.lyrics
 
 import com.example.musicfy.constants.PreferredLyricsProvider
 
-/**
- * Central registry for all lyrics providers.
- * Maps provider names (used for persistence) to provider objects,
- * and handles serialization/deserialization of the custom priority order.
- */
+// central registry for all lyrics providers maps provider names (used for
 object LyricsProviderRegistry {
     private val providerMap = mapOf(
         "YouLyPlus"       to YouLyPlusLyricsProvider,
@@ -48,7 +44,7 @@ object LyricsProviderRegistry {
     fun getOrderedProviders(orderString: String): List<LyricsProvider> =
         deserializeProviderOrder(orderString).mapNotNull { getProviderByName(it) }
 
-    /** Maps a [PreferredLyricsProvider] enum value to its registry name, used for migration. */
+    // maps a [preferredlyricsprovider] enum value to its registry name used for migration
     fun getProviderNameForEnum(enum: PreferredLyricsProvider): String = when (enum) {
         PreferredLyricsProvider.LRCLIB        -> "LrcLib"
         PreferredLyricsProvider.KUGOU         -> "Kugou"
@@ -58,7 +54,7 @@ object LyricsProviderRegistry {
         PreferredLyricsProvider.PAXSENIX      -> "Paxsenix"
     }
 
-    /** Returns the human-readable display name for a registry provider key. */
+    // returns the human-readable display name for a registry provider key
     fun getDisplayName(name: String): String = when (name) {
         "YouLyPlus"       -> "YouLyPlus"
         "Paxsenix"        -> "PaxSenix"

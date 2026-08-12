@@ -1,4 +1,4 @@
-// Playlist.kt
+// playlistkt
 // the file functioned as playlist
 
 package com.example.musicfy.db.entities

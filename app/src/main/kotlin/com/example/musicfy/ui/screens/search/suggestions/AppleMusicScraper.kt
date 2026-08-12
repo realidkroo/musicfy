@@ -1,4 +1,4 @@
-// AppleMusicScraper.kt
+// applemusicscraperkt
 // this thing is part of apple music scraper
 
 package com.example.musicfy.ui.screens.search.suggestions
@@ -115,7 +115,7 @@ object AppleMusicScraper {
                 videoMap[id] = SuggestionTrack(rank, title, artist, artwork, appleUrl)
             }
 
-            // Batch lookup for preview URLs removed
+            // batch lookup for preview urls removed
 
             videos.addAll(videoMap.values.sortedBy { it.rank })
         } catch (e: Exception) {
@@ -125,16 +125,16 @@ object AppleMusicScraper {
     }
 
     fun getTrendingArtists(tracks: List<SuggestionTrack>): List<SuggestionArtist> {
-        // Extract top unique artists from the tracks list
+        // extract top unique artists from the tracks list
         val artistCounts = mutableMapOf<String, Int>()
         val artistImages = mutableMapOf<String, String?>()
         
         tracks.forEach { track ->
-            // Handle multiple artists in string
+            // handle multiple artists in string
             val mainArtist = track.artist.split(",", "&", "feat.", "ft.").first().trim()
             artistCounts[mainArtist] = (artistCounts[mainArtist] ?: 0) + 1
             if (artistImages[mainArtist] == null) {
-                // Use a smaller but still high quality version for artist circles
+                // use a smaller but still high quality version for artist circles
                 artistImages[mainArtist] = track.thumbnailUrl?.replace("1920x1080", "500x500")
             }
         }

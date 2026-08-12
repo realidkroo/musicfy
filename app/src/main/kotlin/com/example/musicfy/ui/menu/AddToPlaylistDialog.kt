@@ -1,4 +1,4 @@
-// AddToPlaylistDialog.kt
+// addtoplaylistdialogkt
 // what is this for you ask its for add to playlist dialog ofc
 
 package com.example.musicfy.ui.menu
@@ -64,7 +64,7 @@ fun AddToPlaylistDialog(
     isVisible: Boolean,
     allowSyncing: Boolean = true,
     initialTextFieldValue: String? = null,
-    onGetSong: suspend (Playlist) -> List<String>, // list of song ids. Songs should be inserted to database in this function.
+    onGetSong: suspend (Playlist) -> List<String>, // list of song ids songs should be inserted to database in this function
     onDismiss: () -> Unit,
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {

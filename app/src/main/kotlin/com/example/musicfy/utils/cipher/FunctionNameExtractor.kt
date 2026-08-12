@@ -1,4 +1,4 @@
-// FunctionNameExtractor.kt
+// functionnameextractorkt
 // what is this for you ask its for function name extractor ofc
 
 package com.example.musicfy.utils.cipher
@@ -8,13 +8,13 @@ import timber.log.Timber
 object FunctionNameExtractor {
     private const val TAG = "musicfy_CipherFnExtract"
 
-    // Modern 2025+ signature deobfuscation function patterns
-    // The sig function is called as: FUNC(NUMBER, decodeURIComponent(encryptedSig))
-    // within a logical expression: VAR && (VAR = FUNC(NUM, decodeURIComponent(VAR)), ...)
+    // modern 2025+ signature deobfuscation function patterns
+    // the sig function is called as: func(number
+    // within a logical expression: var && (var = func(num
     private val SIG_FUNCTION_PATTERNS = listOf(
-        // Pattern 1 (2025+): &&(VAR=FUNC(NUM,decodeURIComponent(VAR))
+        // pattern 1 (2025+): &&(var=func(numdecodeuricomponent(var))
         Regex("""&&\s*\(\s*[a-zA-Z0-9$]+\s*=\s*([a-zA-Z0-9$]+)\s*\(\s*(\d+)\s*,\s*decodeURIComponent\s*\(\s*[a-zA-Z0-9$]+\s*\)"""),
-        // Classic patterns (pre-2025, kept as fallback)
+        // classic patterns (pre-2025 kept as fallback)
         Regex("""\b[cs]\s*&&\s*[adf]\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9$]+)\("""),
         Regex("""\b[a-zA-Z0-9]+\s*&&\s*[a-zA-Z0-9]+\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9$]+)\("""),
         Regex("""\bm=([a-zA-Z0-9${'$'}]{2,})\(decodeURIComponent\(h\.s\)\)"""),
@@ -22,28 +22,28 @@ object FunctionNameExtractor {
         Regex("""\bc\s*&&\s*[a-z]\.set\([^,]+\s*,\s*encodeURIComponent\(([a-zA-Z0-9$]+)\("""),
     )
 
-    // N-parameter (throttle) transform function patterns
-    // The n-function transforms the 'n' parameter in streaming URLs to avoid throttling/403
-    // Pattern: .get("n"))&&(b=FUNC[INDEX](a[0]))  or  .get("n"))&&(b=FUNC(a[0]))
+    // n-parameter (throttle) transform function patterns
+    // the n-function transforms the 'n' parameter in streaming urls to avoid
+    // pattern: get("n"))&&(b=func[index](a[0]))  or  get("n"))&&(b=func(a[0]))
     private val N_FUNCTION_PATTERNS = listOf(
-        // Pattern 1: .get("n"))&&(b=FUNC[IDX](VAR)
+        // pattern 1: get("n"))&&(b=func[idx](var)
         Regex("""\.get\("n"\)\)&&\(b=([a-zA-Z0-9$]+)(?:\[(\d+)\])?\(([a-zA-Z0-9])\)"""),
-        // Pattern 2: .get("n"))&&(FUNC=VAR[IDX](FUNC)  (2025+ variant)
+        // pattern 2: get("n"))&&(func=var[idx](func)  (2025+ variant)
         Regex("""\.get\("n"\)\)\s*&&\s*\(([a-zA-Z0-9$]+)\s*=\s*([a-zA-Z0-9$]+)(?:\[(\d+)\])?\(\1\)"""),
-        // Pattern 3: String.fromCharCode(110) variant (110 = 'n')
+        // pattern 3: stringfromcharcode(110) variant (110 = 'n')
         Regex("""\(\s*([a-zA-Z0-9$]+)\s*=\s*String\.fromCharCode\(110\)"""),
-        // Pattern 4: enhanced_except_ function pattern
+        // pattern 4: enhanced_except_ function pattern
         Regex("""([a-zA-Z0-9$]+)\s*=\s*function\([a-zA-Z0-9]\)\s*\{[^}]*?enhanced_except_"""),
     )
 
     data class SigFunctionInfo(
         val name: String,
-        val constantArg: Int? // The first numeric argument (e.g., 8 in DE(8, sig))
+        val constantArg: Int? // the first numeric argument (eg 8 in de(8 sig))
     )
 
     data class NFunctionInfo(
         val name: String,
-        val arrayIndex: Int? // e.g. FUNC[0] -> index=0
+        val arrayIndex: Int? // eg func[0] -> index=0
     )
 
     fun extractSigFunctionInfo(playerJs: String): SigFunctionInfo? {
@@ -66,14 +66,14 @@ object FunctionNameExtractor {
             if (match != null) {
                 when (index) {
                     0 -> {
-                        // Pattern 1: group1=funcName, group2=arrayIndex (optional)
+                        // pattern 1: group1=funcname group2=arrayindex (optional)
                         val name = match.groupValues[1]
                         val arrayIdx = match.groupValues[2].toIntOrNull()
                         Timber.tag(TAG).d("N-function found with pattern $index: $name (arrayIndex=$arrayIdx)")
                         return NFunctionInfo(name, arrayIdx)
                     }
                     1 -> {
-                        // Pattern 2: group2=funcName, group3=arrayIndex (optional)
+                        // pattern 2: group2=funcname group3=arrayindex (optional)
                         val name = match.groupValues[2]
                         val arrayIdx = match.groupValues[3].toIntOrNull()
                         Timber.tag(TAG).d("N-function found with pattern $index: $name (arrayIndex=$arrayIdx)")

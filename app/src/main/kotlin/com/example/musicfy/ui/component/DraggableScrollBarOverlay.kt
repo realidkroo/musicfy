@@ -1,4 +1,4 @@
-// DraggableScrollBarOverlay.kt
+// draggablescrollbaroverlaykt
 // what is this for you ask its for draggable scroll bar overlay ofc
 
 package com.example.musicfy.ui.component

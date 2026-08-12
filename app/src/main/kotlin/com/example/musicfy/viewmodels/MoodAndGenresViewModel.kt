@@ -1,5 +1,5 @@
-// MoodAndGenresViewModel.kt
-// Backs the search landing page's "browse by moods" and genre grids.
+// moodandgenresviewmodelkt
+// backs the search landing page's "browse by moods" and genre grids
 
 package com.example.musicfy.viewmodels
 
@@ -18,27 +18,13 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 
-/**
- * Featured-playlist artwork for the mood/genre tiles, cached for the whole process rather than per
- * ViewModel.
- *
- * Each entry costs one `browse` round trip, and there are ~40 tiles across the two grids. Scoping
- * the cache to the ViewModel meant every visit to the search tab refetched everything the user
- * scrolled past last time; an object outlives navigation, so a tile is fetched at most once per
- * app run.
- */
+// featured-playlist artwork for the mood/genre tiles cached for the whole process
 private object MoodCoverCache {
     val covers = mutableStateMapOf<String, List<String>>()
     val requested = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 }
 
-/**
- * Cache key for one tile.
- *
- * Every mood shares a single browseId and is distinguished only by its `params` — keying on the
- * browseId alone collapsed the whole grid onto one entry, so every mood tile drew the artwork of
- * whichever category happened to resolve first.
- */
+// cache key for one tile every mood shares a single browseid and is distinguished
 fun coverKey(browseId: String, params: String?): String = "$browseId|${params.orEmpty()}"
 
 @HiltViewModel
@@ -47,17 +33,10 @@ class MoodAndGenresViewModel
 constructor() : ViewModel() {
     val moodAndGenres = MutableStateFlow<List<MoodAndGenres>?>(null)
 
-    /** [coverKey] -> up to two cover URLs for that category's featured playlists. */
+    // [coverkey] -> up to two cover urls for that category's featured playlists
     val covers = MoodCoverCache.covers
 
-    /**
-     * At most three category browses in flight at once.
-     *
-     * The grids can bring 20+ tiles on screen in one fling, and firing a browse per tile saturated
-     * the connection pool — the visible tiles' own artwork (and anything the player was streaming)
-     * queued behind a burst of requests for tiles that had already scrolled away. Three keeps the
-     * covers filling in visibly while leaving headroom.
-     */
+    // at most three category browses in flight at once the grids can bring 20+ tiles
     private val gate = Semaphore(3)
 
     init {
@@ -72,11 +51,7 @@ constructor() : ViewModel() {
         }
     }
 
-    /**
-     * Fetch the artwork for one tile, once. Safe to call from composition on every recomposition of
-     * a visible tile — the [MoodCoverCache.requested] guard makes every call after the first a
-     * set lookup.
-     */
+    // fetch the artwork for one tile once safe to call from composition on every
     fun requestCovers(browseId: String, params: String?) {
         val key = coverKey(browseId, params)
         if (!MoodCoverCache.requested.add(key)) return
@@ -96,8 +71,8 @@ constructor() : ViewModel() {
                         }
                     }
                     .onFailure {
-                        // Allow a later retry — a tile that failed once (offline, throttled) should
-                        // not be stuck blank for the rest of the process.
+                        // allow a later retry — a tile that failed once (offline throttled) should
+                        // not be stuck blank for the rest of the process
                         MoodCoverCache.requested.remove(key)
                     }
             }

@@ -1,10 +1,10 @@
-// DetailCoverBackground.kt
-// Shared background for the rebuilt Album/Playlist/Liked-Songs detail screens: a
-// vertical gradient tinted with the color sampled from the cover art, fading down
-// into the app's normal background color. Same Coil-bitmap -> Palette ->
-// PlayerColorExtractor pipeline AlbumGradient.kt already uses (see that file and
-// ui/theme/PlayerColorExtractor.kt) — reused directly rather than re-implemented,
-// just applied full-bleed behind a whole screen instead of one small grid thumbnail.
+// detailcoverbackgroundkt
+// shared background for the rebuilt album/playlist/liked-songs detail
+// vertical gradient tinted with the color sampled from the cover art fading
+// into the app's normal background color same coil-bitmap -> palette ->
+// playercolorextractor pipeline albumgradientkt already uses (see that file
+// ui/theme/playercolorextractorkt) — reused directly rather than
+// just applied full-bleed behind a whole screen instead of one small grid
 
 package com.example.musicfy.ui.component.detail
 

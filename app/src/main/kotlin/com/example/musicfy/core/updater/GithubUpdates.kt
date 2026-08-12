@@ -1,5 +1,4 @@
-// GithubUpdates.kt
-// Update client for github.com/realidkroo/musicfy.
+// github updates fetcher
 
 package com.example.musicfy.core.updater
 
@@ -26,12 +25,9 @@ private const val ReleasesApi =
     "https://api.github.com/repos/$GithubOwner/$GithubRepo/releases?per_page=20"
 
 data class GithubRelease(
-    /** Release title, e.g. "musicfy 1.4.0 (881)". */
     val title: String,
     val tag: String,
-    /** Version parsed out of the title/tag, compared against BuildConfig.VERSION_NAME. */
     val version: String,
-    /** Markdown body — the changelog. */
     val body: String,
     val htmlUrl: String,
     val apkUrl: String?,
@@ -47,9 +43,7 @@ sealed interface UpdateState {
     data class Failed(val message: String) : UpdateState
 }
 
-/**
- * Structured version representation for comparing SemVer + Build numbers.
- */
+// version struct for semver and build attempt comparison
 data class FullVersion(
     val major: Int = 0,
     val minor: Int = 0,
@@ -64,9 +58,7 @@ data class FullVersion(
     }
 }
 
-/**
- * Parses full SemVer + build attempt out of text e.g. "musicfy 6.0.8 (944)" or "6.0.8 build#944".
- */
+// parse semver and build number from release title or tag
 fun parseFullVersion(text: String): FullVersion {
     val semverRegex = Regex("""(\d+)\.(\d+)(?:\.(\d+))?""")
     val buildNumRegex = Regex("""(?:build#|\(#|#|\()(\d+)\)?""", RegexOption.IGNORE_CASE)
@@ -82,7 +74,8 @@ fun parseFullVersion(text: String): FullVersion {
     return FullVersion(major, minor, patch, buildNumber)
 }
 
-private const val CacheTtlMillis = 15L * 60L * 1000L // 15-minute TTL cache
+// 15m update cache ttl
+private const val CacheTtlMillis = 15L * 60L * 1000L
 
 private val cacheLock = Any()
 private var cachedAt = 0L
@@ -93,11 +86,7 @@ private val updateScope = kotlinx.coroutines.CoroutineScope(
     kotlinx.coroutines.SupervisorJob() + Dispatchers.IO
 )
 
-/**
- * Cached wrapper around [fetchLatestRelease].
- *
- * @param force skips the cache for explicit user check requests.
- */
+// cached release check
 suspend fun getLatestRelease(force: Boolean = false): Result<GithubRelease?> {
     val deferred = synchronized(cacheLock) {
         if (!force) {
@@ -120,9 +109,7 @@ suspend fun getLatestRelease(force: Boolean = false): Result<GithubRelease?> {
     return result
 }
 
-/**
- * Fetches all non-draft releases from GitHub and finds the release with the HIGHEST version.
- */
+// scan github releases and grab highest version
 suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatchers.IO) {
     runCatching {
         val connection = (URL(ReleasesApi).openConnection() as HttpURLConnection).apply {
@@ -212,7 +199,7 @@ suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatche
                 publishedAt = release.optString("published_at").orEmpty(),
             )
 
-            // Select the release with the HIGHEST version across all GitHub releases
+            // pick highest version across releases
             if (bestFullVersion == null || fullVer > bestFullVersion) {
                 bestFullVersion = fullVer
                 bestRelease = currentRelease
@@ -223,16 +210,14 @@ suspend fun fetchLatestRelease(): Result<GithubRelease?> = withContext(Dispatche
     }
 }
 
-/** True when candidate version is strictly higher than currently installed version. */
+// check if version string is newer than local build
 fun isNewerThanInstalled(candidateVersionText: String): Boolean {
     val candidate = parseFullVersion(candidateVersionText)
     val installed = parseFullVersion(BuildConfig.VERSION_NAME)
     return candidate > installed
 }
 
-/**
- * Downloads the release APK into the cache, reporting progress 0..1.
- */
+// download update apk
 suspend fun downloadApk(
     context: Context,
     release: GithubRelease,
@@ -276,19 +261,23 @@ suspend fun downloadApk(
     }
 }
 
+// target apk path in cache
 fun apkFileFor(context: Context, release: GithubRelease): File =
     File(context.cacheDir, release.apkName ?: "musicfy-update.apk")
 
+// check if fully downloaded
 fun isDownloaded(context: Context, release: GithubRelease): Boolean {
     val f = apkFileFor(context, release)
     if (!f.exists() || f.length() <= 0L) return false
     return release.apkSizeBytes <= 0L || f.length() == release.apkSizeBytes
 }
 
+// check install unknown apps permission
 fun canInstallPackages(context: Context): Boolean =
     android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O ||
         context.packageManager.canRequestPackageInstalls()
 
+// open system unknown apps settings
 fun requestInstallPermission(context: Context) {
     runCatching {
         context.startActivity(
@@ -300,6 +289,7 @@ fun requestInstallPermission(context: Context) {
     }
 }
 
+// hand apk to system installer
 fun installApk(context: Context, apk: File): Boolean {
     if (!canInstallPackages(context)) {
         requestInstallPermission(context)
@@ -314,6 +304,7 @@ fun installApk(context: Context, apk: File): Boolean {
     return runCatching { context.startActivity(intent); true }.getOrDefault(false)
 }
 
+// format size string
 fun formatBytes(bytes: Long): String = when {
     bytes <= 0 -> "unknown size"
     bytes >= 1_000_000 -> String.format("%.1f MB", bytes / 1_000_000f)

@@ -1,4 +1,4 @@
-// IconButton.kt
+// iconbuttonkt
 // the file functioned as icon button
 
 package com.example.musicfy.ui.component

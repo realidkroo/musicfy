@@ -1,4 +1,4 @@
-// ChipsRow.kt
+// chipsrowkt
 // this thing is for chips row
 
 package com.example.musicfy.ui.component
@@ -78,7 +78,7 @@ fun <E> ChipsRow(
         chips.forEach { (value, label) ->
             val isSelected = currentValue == value
 
-            // Animate the corner radius based on selection
+            // animate the corner radius based on selection
             val cornerRadius by animateDpAsState(
                 targetValue = if (isSelected) 20.dp else 8.dp,
                 animationSpec = spring(

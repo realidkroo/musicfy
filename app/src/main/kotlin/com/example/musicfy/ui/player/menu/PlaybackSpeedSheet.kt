@@ -1,9 +1,9 @@
-// PlaybackSpeedSheet.kt
-// Speed and pitch, driven straight into ExoPlayer's PlaybackParameters.
-//
-// Speed and pitch are separate axes on purpose: moving speed alone is the "tempo" case (a track
-// plays faster without the chipmunk effect, because Media3 time-stretches), and pitch is left for
-// when you actually want that shift.
+// playbackspeedsheetkt
+// speed and pitch driven straight into exoplayer's playbackparameters
+
+// speed and pitch are separate axes on purpose: moving speed alone is the
+// plays faster without the chipmunk effect because media3 time-stretches)
+// when you actually want that shift
 
 package com.example.musicfy.ui.player.menu
 
@@ -53,8 +53,8 @@ fun PlaybackSpeedSheet(onDismiss: () -> Unit) {
     val speed = remember { mutableFloatStateOf(player.playbackParameters.speed) }
     val pitch = remember { mutableFloatStateOf(player.playbackParameters.pitch) }
 
-    // Both axes go in together — PlaybackParameters is a single value, so setting one from a
-    // stale copy of the other would quietly reset it.
+    // both axes go in together — playbackparameters is a single value so setting
+    // stale copy of the other would quietly reset it
     fun apply() {
         player.playbackParameters = PlaybackParameters(
             speed.floatValue.coerceIn(0.25f, 3f),
@@ -146,8 +146,8 @@ private fun ValueSlider(label: String, value: Float, onValueChange: (Float) -> U
         }
         Spacer(modifier = Modifier.height(6.dp))
         LineSlider(
-            // The slider works in 0..1; the 0.25×-2× range is mapped in and out here, snapped to
-            // 0.05 so the number under your finger is one you'd actually choose.
+            // the slider works in 01; the 025×-2× range is mapped in and out here
+            // 005 so the number under your finger is one you'd actually choose
             value = ((value - SpeedMin) / (SpeedMax - SpeedMin)).coerceIn(0f, 1f),
             onValueChange = { fraction ->
                 val raw = SpeedMin + fraction * (SpeedMax - SpeedMin)

@@ -1,5 +1,5 @@
-// GenreViewModel.kt
-// Backs the genre / mood page opened from the search landing grids.
+// genreviewmodelkt
+// backs the genre / mood page opened from the search landing grids
 
 package com.example.musicfy.viewmodels
 
@@ -28,13 +28,7 @@ constructor(
 
     val result = MutableStateFlow<BrowseResult?>(null)
 
-    /**
-     * The "From the community" row: the genre's own playlists, each resolved to its first handful
-     * of songs so the card can fan their covers out the way the home feed's does.
-     *
-     * Kept separate from [result] and filled in afterwards — it needs one extra round trip per
-     * playlist, and the rest of the page must not wait behind them.
-     */
+    // the "from the community" row: the genre's own playlists each resolved to its
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
 
     init {
@@ -51,11 +45,7 @@ constructor(
         }
     }
 
-    /**
-     * Only three playlists are expanded, and they are fetched in parallel: this row is one screen
-     * of horizontally-scrolling cards, so resolving every playlist the genre returned would be a
-     * dozen requests for content the user will most likely never scroll to.
-     */
+    // only three playlists are expanded and they are fetched in parallel: this row is
     private suspend fun loadCommunity(page: BrowseResult) {
         val candidates = page.items
             .asSequence()

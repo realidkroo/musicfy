@@ -1,13 +1,13 @@
-// DetailTrackRow.kt
-// Track row for the rebuilt Album/Playlist/Liked-Songs/History detail screens: flat
-// (transparent) background with a thin divider between rows, instead of the
-// surfaceContainer card-block + rounded-corner-per-position (listItemShape) style
-// SongListItem/YouTubeListItem use everywhere else in the app. Deliberately a
-// separate composable rather than a restyle of those two — they're used all over
-// Home/Library/Search/Queue and must keep their current look.
-//
-// Takes plain display values (not a Song/SongItem/EventWithSong model) so the same
-// row works across all the different list-item types these 5 screens deal with.
+// detailtrackrowkt
+// track row for the rebuilt album/playlist/liked-songs/history detail
+// (transparent) background with a thin divider between rows instead of the
+// surfacecontainer card-block + rounded-corner-per-position (listitemshape)
+// songlistitem/youtubelistitem use everywhere else in the app deliberately a
+// separate composable rather than a restyle of those two — they're used all
+// home/library/search/queue and must keep their current look
+
+// takes plain display values (not a song/songitem/eventwithsong model) so
+// row works across all the different list-item types these 5 screens deal
 
 package com.example.musicfy.ui.component.detail
 
@@ -47,8 +47,8 @@ fun DetailTrackRow(
     onMenuClick: () -> Unit,
     modifier: Modifier = Modifier,
     showDivider: Boolean = true,
-    // Overrides the default "..." menu button — callers in multi-select mode pass
-    // a Checkbox here instead (onMenuClick is simply unused in that case).
+    // overrides the default "" menu button — callers in multi-select mode pass
+    // a checkbox here instead (onmenuclick is simply unused in that case)
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -100,10 +100,10 @@ fun DetailTrackRow(
             }
         }
         if (showDivider) {
-            // Symmetric inset matching the row's own horizontal padding, rather than
+            // symmetric inset matching the row's own horizontal padding rather than
             // insetting only from the left edge of the thumbnail — a one-sided inset
             // reads as the divider being shoved off toward the right instead of
-            // centered under the row.
+            // centered under the row
             HorizontalDivider(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                 modifier = Modifier.padding(horizontal = 24.dp),

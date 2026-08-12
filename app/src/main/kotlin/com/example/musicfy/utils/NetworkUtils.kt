@@ -1,4 +1,4 @@
-// NetworkUtils.kt
+// networkutilskt
 // this thing is part of network utils
 
 package com.example.musicfy.utils

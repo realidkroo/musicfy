@@ -1,4 +1,4 @@
-// ItemsPage.kt
+// itemspagekt
 // this thing is part of items page
 
 package com.example.musicfy.models

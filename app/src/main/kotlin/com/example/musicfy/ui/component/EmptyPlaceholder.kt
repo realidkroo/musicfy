@@ -1,4 +1,4 @@
-// EmptyPlaceholder.kt
+// emptyplaceholderkt
 // what is this for you ask its for empty placeholder ofc
 
 package com.example.musicfy.ui.component

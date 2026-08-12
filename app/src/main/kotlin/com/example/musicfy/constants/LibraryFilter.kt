@@ -1,4 +1,4 @@
-// LibraryFilter.kt
+// libraryfilterkt
 // what is this for you ask its for library filter ofc
 
 package com.example.musicfy.constants

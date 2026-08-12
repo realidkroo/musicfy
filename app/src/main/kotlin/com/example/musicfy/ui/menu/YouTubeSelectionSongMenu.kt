@@ -1,4 +1,4 @@
-// YouTubeSelectionSongMenu.kt
+// youtubeselectionsongmenukt
 // this thing is for you tube selection song menu
 
 package com.example.musicfy.ui.menu
@@ -76,18 +76,18 @@ fun YouTubeSelectionSongMenu(
         mutableStateOf(false)
     }
 
-    // Check if all songs are liked
+    // check if all songs are liked
     val allLiked by remember(songSelection) {
         mutableStateOf(
             songSelection.isNotEmpty() && songSelection.all { song ->
-                // Convert to MediaMetadata to check liked status
+                // convert to mediametadata to check liked status
                 val metadata = song.toMediaMetadata()
                 metadata.liked
             }
         )
     }
 
-    // Check if all songs are in library
+    // check if all songs are in library
     val allInLibrary by remember(songSelection) {
         mutableStateOf(
             songSelection.all { song ->
@@ -120,7 +120,7 @@ fun YouTubeSelectionSongMenu(
         isVisible = showChoosePlaylistDialog,
         songs = remember { 
             songSelection.map { song ->
-                // Convert SongItem to Song entity
+                // convert songitem to song entity
                 val metadata = song.toMediaMetadata()
                 com.example.musicfy.db.entities.Song(
                     song = com.example.musicfy.db.entities.SongEntity(
@@ -147,7 +147,7 @@ fun YouTubeSelectionSongMenu(
                         com.example.musicfy.db.entities.AlbumEntity(
                             id = album.id,
                             title = album.title,
-                            thumbnailUrl = metadata.thumbnailUrl, // Use song's thumbnail as album thumbnail
+                            thumbnailUrl = metadata.thumbnailUrl, // use song's thumbnail as album thumbnail
                             songCount = 0,
                             duration = 0
                         )
@@ -279,7 +279,7 @@ fun YouTubeSelectionSongMenu(
                                     }
                                 }
                                 coroutineScope.launch {
-                                    // Use the new reliable method that fetches fresh tokens
+                                    // use the new reliable method that fetches fresh tokens
                                     songSelection.forEach { song ->
                                         YouTube.toggleSongLibrary(song.id, false)
                                     }
@@ -292,7 +292,7 @@ fun YouTubeSelectionSongMenu(
                                     }
                                 }
                                 coroutineScope.launch {
-                                    // Use the new reliable method that fetches fresh tokens
+                                    // use the new reliable method that fetches fresh tokens
                                     songSelection.filter { song ->
                                         song.toMediaMetadata().inLibrary == null
                                     }.forEach { song ->
@@ -388,9 +388,9 @@ fun YouTubeSelectionSongMenu(
                                 songSelection.forEach { song ->
                                     val metadata = song.toMediaMetadata()
                                     if ((!allLiked && !metadata.liked) || allLiked) {
-                                        // Insert the song first if it doesn't exist
+                                        // insert the song first if it doesn't exist
                                         insert(metadata)
-                                        // Create SongEntity with toggled like status
+                                        // create songentity with toggled like status
                                         val songEntity = com.example.musicfy.db.entities.SongEntity(
                                             id = metadata.id,
                                             title = metadata.title,

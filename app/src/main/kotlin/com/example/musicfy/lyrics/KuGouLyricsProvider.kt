@@ -1,4 +1,4 @@
-// KuGouLyricsProvider.kt
+// kugoulyricsproviderkt
 // this thing is part of ku gou lyrics provider
 
 package com.example.musicfy.lyrics

@@ -1,4 +1,4 @@
-// LocalSearchViewModel.kt
+// localsearchviewmodelkt
 // the file functioned as local search view model
 
 package com.example.musicfy.viewmodels

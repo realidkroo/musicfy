@@ -1,4 +1,4 @@
-// YouTubeAlbumRadio.kt
+// youtubealbumradiokt
 // the file functioned as you tube album radio
 
 package com.example.musicfy.playback.queues

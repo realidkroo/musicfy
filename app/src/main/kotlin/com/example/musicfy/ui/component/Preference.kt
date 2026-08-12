@@ -1,4 +1,4 @@
-// Preference.kt
+// preferencekt
 // the file functioned as preference
 
 package com.example.musicfy.ui.component
@@ -295,7 +295,7 @@ fun SliderPreference(
                 showDialog = false
             },
             onReset = {
-                sliderValue = 30f // Default value or any reset value you prefer
+                sliderValue = 30f // default value or any reset value you prefer
             },
             content = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

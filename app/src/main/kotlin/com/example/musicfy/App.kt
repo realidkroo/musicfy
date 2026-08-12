@@ -1,4 +1,4 @@
-// App.kt
+// appkt
 // this thing is part of app
 
 package com.example.musicfy
@@ -64,28 +64,28 @@ class App : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
 
-        // Install crash handler first
+        // install crash handler first
         CrashHandler.install(this)
 
-        // Initialize cipher deobfuscator for WEB_REMIX streaming
+        // initialize cipher deobfuscator for web_remix streaming
         CipherDeobfuscator.initialize(this)
 
-        // Only in debug: a planted tree makes every Timber call site actually format its
-        // message (string interpolation, stack-trace tag lookup) in release builds too.
+        // only in debug: a planted tree makes every timber call site actually format
+        // message (string interpolation stack-trace tag lookup) in release builds too
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
 
-        // Start the process-wide preference mirror as early as possible. This both warms the
-        // DataStore file off the main thread and installs the single collector that backs every
-        // subsequent `dataStore[key]` read and every `rememberPreference` observer, so none of
-        // them ever block on IO again. See PreferencesCache.
+        // start the process-wide preference mirror as early as possible this both
+        // datastore file off the main thread and installs the single collector that
+        // subsequent `datastore[key]` read and every `rememberpreference` observer
+        // them ever block on io again see preferencescache
         PreferencesCache.start(this, applicationScope)
 
-        // One-off repair: strip artist rows that are really track durations ("5:06"), left
-        // behind by subtitle parsers that mis-segmented "Song • Artist • 5:06". The guard in
-        // DatabaseDao.insert stops new ones being written, but rows already in the library would
-        // otherwise keep rendering as "5:06 • 5:06" forever. Cheap no-op once the table is clean.
+        // one-off repair: strip artist rows that are really track durations ("5:06")
+        // behind by subtitle parsers that mis-segmented "song • artist • 5:06" the
+        // databasedaoinsert stops new ones being written but rows already in the
+        // otherwise keep rendering as "5:06 • 5:06" forever cheap no-op once the
         applicationScope.launch(Dispatchers.IO) {
             try {
                 musicDatabase.query { purgeTimestampArtists() }
@@ -120,7 +120,7 @@ class App : Application(), SingletonImageLoader.Factory {
             KuGou.useTraditionalChinese = true
         }
 
-        // Initialize LastFM with API keys from BuildConfig (GitHub Secrets)
+        // initialize lastfm with api keys from buildconfig (github secrets)
         LastFM.initialize(
             apiKey = BuildConfig.LASTFM_API_KEY.takeIf { it.isNotEmpty() } ?: "",
             secret = BuildConfig.LASTFM_SECRET.takeIf { it.isNotEmpty() } ?: ""
@@ -266,7 +266,7 @@ class App : Application(), SingletonImageLoader.Factory {
             }
             crossfade(200)
             allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-            // Memory cache for fast image loading (prevents network requests on recomposition)
+            // memory cache for fast image loading (prevents network requests on
             memoryCache {
                 MemoryCache.Builder()
                     .maxSizePercent(context, 0.30)
@@ -289,7 +289,7 @@ class App : Application(), SingletonImageLoader.Factory {
         suspend fun forgetAccount(context: Context) {
             Timber.d("forgetAccount: Starting logout process")
 
-            // Clear DataStore preferences
+            // clear datastore preferences
             Timber.d("forgetAccount: Clearing DataStore preferences")
             context.dataStore.edit { settings ->
                 settings.remove(InnerTubeCookieKey)
@@ -301,7 +301,7 @@ class App : Application(), SingletonImageLoader.Factory {
             }
             Timber.d("forgetAccount: DataStore preferences cleared")
 
-            // Immediately clear YouTube object's auth state
+            // immediately clear youtube object's auth state
             Timber.d("forgetAccount: Clearing YouTube object auth state")
             Timber.d("forgetAccount: Before - cookie=${YouTube.cookie?.take(50)}, visitorData=${YouTube.visitorData?.take(20)}, dataSyncId=${YouTube.dataSyncId?.take(20)}")
             YouTube.cookie = null
@@ -309,7 +309,7 @@ class App : Application(), SingletonImageLoader.Factory {
             YouTube.dataSyncId = null
             Timber.d("forgetAccount: After - cookie=${YouTube.cookie}, visitorData=${YouTube.visitorData}, dataSyncId=${YouTube.dataSyncId}")
 
-            // Clear WebView cookies to prevent auto-relogin
+            // clear webview cookies to prevent auto-relogin
             Timber.d("forgetAccount: Clearing WebView CookieManager")
             withContext(Dispatchers.Main) {
                 android.webkit.CookieManager.getInstance().apply {

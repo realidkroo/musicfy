@@ -1,4 +1,4 @@
-// UtilExt.kt
+// utilextkt
 // this thing is part of util ext
 
 package com.example.musicfy.extensions

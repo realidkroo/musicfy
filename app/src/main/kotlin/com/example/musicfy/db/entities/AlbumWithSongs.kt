@@ -1,4 +1,4 @@
-// AlbumWithSongs.kt
+// albumwithsongskt
 // this thing is for album with songs
 
 package com.example.musicfy.db.entities

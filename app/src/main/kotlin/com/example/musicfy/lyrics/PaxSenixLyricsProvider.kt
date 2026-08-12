@@ -1,4 +1,4 @@
-// PaxSenixLyricsProvider.kt
+// paxsenixlyricsproviderkt
 // this thing is for pax senix lyrics provider
 
 package com.example.musicfy.lyrics
@@ -16,7 +16,7 @@ object PaxSenixLyricsProvider : LyricsProvider {
     override val name = "Paxsenix"
 
     override fun isEnabled(context: Context): Boolean {
-        // Also initializes the client lazily on first enable check
+        // also initializes the client lazily on first enable check
         val enabled = context.dataStore[EnablePaxsenixKey] ?: true
         if (enabled) {
             Paxsenix.init(context)

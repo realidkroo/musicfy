@@ -1,4 +1,4 @@
-// LocalPlaylistScreen.kt
+// localplaylistscreenkt
 // this thing is for local playlist screen
 
 package com.example.musicfy.ui.screens.playlist
@@ -474,7 +474,7 @@ fun LocalPlaylistScreen(
                     move(viewModel.playlistId, from, to)
                 }
 
-                // Sync order with YT Music
+                // sync order with yt music
                 if (viewModel.playlist.value?.playlist?.browseId != null) {
                     viewModel.viewModelScope.launch(Dispatchers.IO) {
                         val playlistSongMap = database.playlistSongMaps(viewModel.playlistId, 0)
@@ -1054,9 +1054,9 @@ fun LocalPlaylistScreen(
                 }
             )
         } else {
-            // Collapsing top bar: plain back button while the hero cover is visible,
-            // morphing into a compact bar (mini cover + title, blurred backdrop) as
-            // the user scrolls past it.
+            // collapsing top bar: plain back button while the hero cover is visible
+            // morphing into a compact bar (mini cover + title blurred backdrop) as
+            // the user scrolls past it
             DetailCollapsingTopBar(
                 progress = collapseState.morphProgress,
                 glassState = glassState,
@@ -1239,7 +1239,7 @@ fun LocalPlaylistHeader(
                     overrideThumbnail.value = uri.toString()
                     isCustomThumbnail = true
 
-                    // Update the database with the new thumbnail
+                    // update the database with the new thumbnail
                     database.query {
                         update(playlist.playlist.copy(thumbnailUrl = uri.toString()))
                     }
@@ -1254,7 +1254,7 @@ fun LocalPlaylistHeader(
                         overrideThumbnail.value = newThumbnailUrl
                         isCustomThumbnail = true
 
-                        // Update the database with the new thumbnail URL
+                        // update the database with the new thumbnail url
                         database.query {
                             update(playlist.playlist.copy(thumbnailUrl = newThumbnailUrl))
                         }
@@ -1437,9 +1437,9 @@ fun uriToByteArray(context: Context, uri: Uri): ByteArray? {
     }
 }
 
-// Minimal local-library song picker for the new "Add Music" row — no equivalent
-// entry point existed before (the only prior flow was the reverse: a song's own
-// "Add to playlist" menu action). Local library only, not a full YT search/import.
+// minimal local-library song picker for the new "add music" row — no
+// entry point existed before (the only prior flow was the reverse: a song's
+// "add to playlist" menu action) local library only not a full yt
 @Composable
 private fun AddSongsToPlaylistDialog(
     playlistId: String,

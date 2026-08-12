@@ -1,17 +1,17 @@
-// SearchScreen.kt
-// The search tab's landing page, rebuilt from scratch on the primitives in SearchDesign.kt.
-//
-// Three states live on this one screen, and the search field never moves between them — it is
-// declared once, in the shared top bar, so tapping it does not hand over to a second field the way
-// the old M3 `SearchBar` did (that component swapped its inline bar for a full-screen container,
+// searchscreenkt
+// the search tab's landing page rebuilt from scratch on the primitives in
+
+// three states live on this one screen and the search field never moves
+// declared once in the shared top bar so tapping it does not hand over to a
+// the old m3 `searchbar` did (that component swapped its inline bar for a
 // which is what made the caret jump and the keyboard flicker on open):
-//
-//   browse   — moods and genres grids; scrolling collapses the "Search" title into the bar
-//   history  — field focused, nothing typed
-//   suggest  — field focused with a query: suggestions plus top results
-//
-// Nothing here uses Material 3 components. The old version was built on Scaffold + SearchBar +
-// SecondaryTabRow + Tab + CircularWavyProgressIndicator; all of it is gone.
+
+// browse   — moods and genres grids; scrolling collapses the "search" title
+// history  — field focused nothing typed
+// suggest  — field focused with a query: suggestions plus top results
+
+// nothing here uses material 3 components the old version was built on
+// secondarytabrow + tab + circularwavyprogressindicator; all of it is gone
 
 package com.example.musicfy.ui.screens.search
 
@@ -122,8 +122,8 @@ fun SearchScreen(
     val suggestionViewModel: OnlineSearchSuggestionViewModel = hiltViewModel()
     val suggestionState by suggestionViewModel.viewState.collectAsState()
 
-    // Only pushed while the field is open. Keeping it fed while browsing would run a suggestions
-    // request (and a history query) for text the user cannot even see.
+    // only pushed while the field is open keeping it fed while browsing would
+    // request (and a history query) for text the user cannot even see
     LaunchedEffect(active, query.text) {
         if (active) suggestionViewModel.query.value = query.text
     }
@@ -133,9 +133,9 @@ fun SearchScreen(
     val glassState = remember { GlassState() }
 
     val collapse = rememberCollapseProgress(browseListState)
-    // Same curve and duration as the scroll collapse, so opening the field and scrolling the page
-    // move the bar identically — a shorter, different easing here made the two read as two
-    // unrelated animations depending on how the bar happened to get to the top.
+    // same curve and duration as the scroll collapse so opening the field and
+    // move the bar identically — a shorter different easing here made the two
+    // unrelated animations depending on how the bar happened to get to the top
     val activeProgress = animateFloatAsState(
         targetValue = if (active) 1f else 0f,
         animationSpec = tween(
@@ -144,13 +144,13 @@ fun SearchScreen(
         ),
         label = "searchActive",
     )
-    // One value drives the whole bar: scrolled-away OR opened-for-input both put the field at the
-    // top. Read through a lambda so every consumer resolves it in the draw/layout phase.
+    // one value drives the whole bar: scrolled-away or opened-for-input both put
+    // top read through a lambda so every consumer resolves it in the draw/layout
     val progressProvider = remember(collapse, activeProgress) {
         { maxOf(collapse.value, activeProgress.value) }
     }
 
-    // Boolean, so it costs two recompositions per gesture rather than one per frame.
+    // boolean so it costs two recompositions per gesture rather than one per
     val blurActive by remember(browseListState, activeListState) {
         derivedStateOf {
             !browseListState.isScrollInProgress && !activeListState.isScrollInProgress
@@ -188,8 +188,8 @@ fun SearchScreen(
         keyboardController?.hide()
     }
 
-    // Focus follows the state rather than the state following focus, so programmatic opens (tapping
-    // the field, back-navigating into an open field) all take the same path.
+    // focus follows the state rather than the state following focus so
+    // the field back-navigating into an open field) all take the same path
     LaunchedEffect(active) {
         if (active) {
             runCatching { focusRequester.requestFocus() }
@@ -198,7 +198,7 @@ fun SearchScreen(
         }
     }
 
-    // Leaving the tab must not strand a keyboard over the next screen.
+    // leaving the tab must not strand a keyboard over the next screen
     DisposableEffect(Unit) {
         onDispose { focusManager.clearFocus() }
     }
@@ -211,11 +211,11 @@ fun SearchScreen(
             .fillMaxSize()
             .background(SearchColors.page(pureBlack))
     ) {
-        // Everything the top bar blurs has to be captured here, and the bar itself must sit
-        // outside this subtree or it would blur its own output.
-        // The capture only has a consumer once the bar has something to blur. Unconditional, it
-        // records the entire scrolling list into a RenderNode on every frame of every scroll for
-        // nothing.
+        // everything the top bar blurs has to be captured here and the bar itself
+        // outside this subtree or it would blur its own output
+        // the capture only has a consumer once the bar has something to blur
+        // records the entire scrolling list into a rendernode on every frame of
+        // nothing
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -323,17 +323,11 @@ fun SearchScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-// Browse state
-// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
+// browse state
+// ───────────────────────────────────────────────────────────────────────────
 
-/**
- * Moods and genres, two tiles to a row.
- *
- * Rows are pre-chunked into list items rather than handed to a `LazyVerticalGrid`: the grid cannot
- * be nested in this scrolling column without a fixed height, and a chunked row of two fixed-height
- * tiles measures in one pass with no intrinsics.
- */
+// moods and genres two tiles to a row rows are pre-chunked into list items rather
 @Composable
 private fun SearchBrowseContent(
     listState: LazyListState,
@@ -385,8 +379,8 @@ private fun SearchBrowseContent(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         row.forEach { item ->
-                            // Requested from composition, so only tiles the user actually brings on
-                            // screen ever cost a network round trip. The ViewModel dedupes.
+                            // requested from composition so only tiles the user actually brings on
+                            // screen ever cost a network round trip the viewmodel dedupes
                             LaunchedEffect(item.endpoint.browseId, item.endpoint.params) {
                                 viewModel.requestCovers(item.endpoint.browseId, item.endpoint.params)
                             }
@@ -413,9 +407,9 @@ private fun SearchBrowseContent(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────────────────────
-// Active state: history, or suggestions + top results
-// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
+// active state: history or suggestions + top results
+// ───────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SearchActiveContent(
@@ -524,7 +518,7 @@ private fun SearchActiveContent(
     }
 }
 
-/** Small tappable glyph used at the end of a suggestion/history row. */
+// small tappable glyph used at the end of a suggestion/history row
 @Composable
 private fun RowGlyph(icon: Int, onClick: () -> Unit) {
     Box(
@@ -543,7 +537,7 @@ private fun RowGlyph(icon: Int, onClick: () -> Unit) {
     }
 }
 
-/** A recommended item under "Top Result" while typing: artwork, title, and what kind of thing it is. */
+// a recommended item under "top result" while typing: artwork title and what kind of thing it is
 @Composable
 private fun SuggestionResultRow(
     item: YTItem,

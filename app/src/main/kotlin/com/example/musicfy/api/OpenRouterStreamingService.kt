@@ -1,4 +1,4 @@
-// OpenRouterStreamingService.kt
+// openrouterstreamingservicekt
 // this thing is for open router streaming service
 
 package com.example.musicfy.api
@@ -28,9 +28,7 @@ object OpenRouterStreamingService {
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private val json = Json { ignoreUnknownKeys = true }
 
-    /**
-     * Stream translation from OpenRouter with real-time updates
-     */
+    // stream translation from openrouter with real-time updates
     fun streamTranslation(
         text: String,
         targetLanguage: String,
@@ -149,7 +147,7 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                             val data = currentLine.substring(6)
                             if (data == "[DONE]") {
                                 Timber.d("Streaming complete, received $chunkCount chunks")
-                                // Processing complete, parse the full content
+                                // processing complete parse the full content
                                 val fullContent = contentBuilder.toString()
                                 Timber.d("Full content length: ${fullContent.length}")
                                 val result = parseTranslationContent(fullContent, lineCount)
@@ -175,14 +173,14 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                                     emit(StreamChunk.Content(chunk))
                                 }
                             } catch (e: Exception) {
-                                // Ignore malformed JSON chunks
+                                // ignore malformed json chunks
                                 Timber.v("Ignored malformed chunk: ${e.message}")
                             }
                         }
                     }
                 }
                 
-                // If we got here without seeing [DONE], try to parse what we have
+                // if we got here without seeing [done] try to parse what we have
                 if (contentBuilder.isNotEmpty()) {
                     Timber.w("Stream ended without [DONE] marker, attempting to parse content")
                     val fullContent = contentBuilder.toString()
@@ -203,19 +201,19 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
     private fun parseTranslationContent(content: String, expectedLineCount: Int): Result<List<String>> {
         var translatedLines: List<String>? = null
 
-        // Strategy 1: Try direct JSON parsing
+        // strategy 1: try direct json parsing
         try {
             val jsonArray = JSONArray(content.trim())
             translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
         } catch (e: Exception) {
-            // Strategy 2: Extract JSON from markdown code blocks
+            // strategy 2: extract json from markdown code blocks
             var cleanedContent = content.replace("```json", "").replace("```", "").trim()
 
             try {
                 val jsonArray = JSONArray(cleanedContent)
                 translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
             } catch (e2: Exception) {
-                // Strategy 3: Find first [ and last ]
+                // strategy 3: find first [ and last ]
                 val startIdx = cleanedContent.indexOf('[')
                 val endIdx = cleanedContent.lastIndexOf(']')
 
@@ -225,7 +223,7 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
                         val jsonArray = JSONArray(jsonString)
                         translatedLines = (0 until jsonArray.length()).map { jsonArray.optString(it) }
                     } catch (e3: Exception) {
-                        // Strategy 4: Manual line-by-line parsing as last resort
+                        // strategy 4: manual line-by-line parsing as last resort
                         translatedLines = cleanedContent.lines()
                             .filter { it.trim().isNotEmpty() }
                             .map { it.trim().removeSurrounding("\"").removeSurrounding("'") }
@@ -238,7 +236,7 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
             return Result.failure(Exception("Failed to parse translation"))
         }
 
-        // Adjust line count
+        // adjust line count
         return when {
             translatedLines.size == expectedLineCount -> Result.success(translatedLines)
             translatedLines.size > expectedLineCount -> Result.success(translatedLines.take(expectedLineCount))

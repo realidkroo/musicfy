@@ -1,4 +1,4 @@
-// PlaybackLogsDialog.kt
+// playbacklogsdialogkt
 // this thing is for playback logs dialog
 
 package com.example.musicfy.ui.component

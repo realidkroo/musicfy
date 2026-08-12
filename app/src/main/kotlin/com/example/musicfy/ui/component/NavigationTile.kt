@@ -1,4 +1,4 @@
-// NavigationTile.kt
+// navigationtilekt
 // what is this for you ask its for navigation tile ofc
 
 package com.example.musicfy.ui.component

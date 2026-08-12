@@ -1,4 +1,4 @@
-// Screens.kt
+// screenskt
 // what is this for you ask its for screens ofc
 
 package com.example.musicfy.ui.screens

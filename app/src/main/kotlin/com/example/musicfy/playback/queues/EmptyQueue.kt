@@ -1,4 +1,4 @@
-// EmptyQueue.kt
+// emptyqueuekt
 // this thing is for empty queue
 
 package com.example.musicfy.playback.queues

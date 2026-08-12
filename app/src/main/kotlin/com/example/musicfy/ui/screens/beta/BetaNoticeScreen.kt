@@ -50,9 +50,9 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-            .background(Color(0xFF161616)) // Dark gray/black surface
+            .background(Color(0xFF161616)) // dark gray/black surface
     ) {
-        // Drag Handle
+        // drag handle
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -86,7 +86,7 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Version Box
+            // version box
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -121,8 +121,8 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
                 fontWeight = FontWeight.Medium
             )
 
-            // Musicfy targets Android 12 (API 31) and up — below that, be upfront that bugs
-            // are expected and likely won't get a real look, rather than silently misbehaving.
+            // musicfy targets android 12 (api 31) and up — below that be upfront that
+            // are expected and likely won't get a real look rather than silently
             if (Build.VERSION.SDK_INT < 31) {
                 Spacer(modifier = Modifier.height(16.dp))
                 val androidVersionName = androidVersionNameFor(Build.VERSION.SDK_INT)
@@ -138,7 +138,7 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Checkbox area
+            // checkbox area
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -146,7 +146,7 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
                     .padding(vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Circular Checkbox
+                // circular checkbox
                 Box(
                     modifier = Modifier
                         .size(24.dp)
@@ -179,20 +179,20 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Cooldown / OK Button
+            // cooldown / ok button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF333333)) // Base background
+                    .background(Color(0xFF333333)) // base background
                     .clickable(enabled = isCooldownFinished) {
                         if (isCooldownFinished) {
                             onDismiss(doNotShowAgain)
                         }
                     }
             ) {
-                // Progress Bar Background
+                // progress bar background
                 val animatedProgress by animateFloatAsState(
                     targetValue = cooldownProgress,
                     animationSpec = tween(durationMillis = 16)
@@ -202,10 +202,10 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
                     modifier = Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(fraction = animatedProgress)
-                        .background(Color(0xFF444444)) // Slightly lighter indicating progress
+                        .background(Color(0xFF444444)) // slightly lighter indicating progress
                 )
 
-                // Text
+                // text
                 Text(
                     text = "OK",
                     color = if (isCooldownFinished) Color.White else Color.White.copy(alpha = 0.5f),
@@ -219,9 +219,9 @@ fun BetaNoticeScreen(onDismiss: (Boolean) -> Unit) {
     }
 }
 
-// Android version name + the calendar year each one shipped, for the "you're on an old
-// version" notice above. Only covers minSdk (26) through the app's target floor (31) — this
-// notice never renders above that, so nothing newer needs an entry.
+// android version name + the calendar year each one shipped for the "you're
+// version" notice above only covers minsdk (26) through the app's target
+// notice never renders above that so nothing newer needs an entry
 private fun androidVersionNameFor(sdkInt: Int): String = when (sdkInt) {
     26 -> "8.0 (Oreo)"
     27 -> "8.1 (Oreo)"

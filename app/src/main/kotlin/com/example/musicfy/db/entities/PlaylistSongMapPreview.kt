@@ -1,4 +1,4 @@
-// PlaylistSongMapPreview.kt
+// playlistsongmappreviewkt
 // this thing is part of playlist song map preview
 
 package com.example.musicfy.db.entities

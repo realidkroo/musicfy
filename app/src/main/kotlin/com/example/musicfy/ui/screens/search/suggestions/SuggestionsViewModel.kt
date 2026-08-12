@@ -1,4 +1,4 @@
-// SuggestionsViewModel.kt
+// suggestionsviewmodelkt
 // the file functioned as suggestions view model
 
 package com.example.musicfy.ui.screens.search.suggestions
@@ -53,14 +53,14 @@ class SuggestionsViewModel @Inject constructor() : ViewModel() {
             countryCode.lowercase()
         }
 
-        // Allow refresh if force is true OR if we are switching regions
+        // allow refresh if force is true or if we are switching regions
         if (_isLoading.value && !force && currentLoadedRegion == resolvedCode) return
         
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             if (force) _isManualLoading.value = true
             
-            // Clear current data if we are switching regions or forcing a fresh load
+            // clear current data if we are switching regions or forcing a fresh load
             if (currentLoadedRegion != resolvedCode || force) {
                 _suggestionTracks.value = null
                 _suggestionArtists.value = null
@@ -70,7 +70,7 @@ class SuggestionsViewModel @Inject constructor() : ViewModel() {
 
             try {
                 coroutineScope {
-                    // Launch each fetch in its own job so they update the UI independently
+                    // launch each fetch in its own job so they update the ui independently
                     launch {
                         try {
                             val tracks = AppleMusicScraper.fetchTopSongs(resolvedCode)
@@ -122,21 +122,21 @@ class SuggestionsViewModel @Inject constructor() : ViewModel() {
             YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).onSuccess { searchResult ->
                 val songs = searchResult.items.filterIsInstance<SongItem>()
                 
-                // 1. Try to find an exact title match with at least one matching artist
+                // 1 try to find an exact title match with at least one matching artist
                 val bestMatch = songs.firstOrNull { s ->
                     s.title.equals(track.title, ignoreCase = true) &&
                     s.artists.any { a -> track.artist.contains(a.name, ignoreCase = true) }
                 } ?: 
-                // 2. Try to find a title that contains our target title and matches artist
+                // 2 try to find a title that contains our target title and matches artist
                 songs.firstOrNull { s ->
                     s.title.contains(track.title, ignoreCase = true) &&
                     s.artists.any { a -> track.artist.contains(a.name, ignoreCase = true) }
                 } ?:
-                // 3. Just find the first one that matches the artist
+                // 3 just find the first one that matches the artist
                 songs.firstOrNull { s ->
                     s.artists.any { a -> track.artist.contains(a.name, ignoreCase = true) }
                 } ?:
-                // 4. Fallback to first song result
+                // 4 fallback to first song result
                 songs.firstOrNull()
 
                 if (bestMatch != null) {
@@ -185,7 +185,7 @@ class SuggestionsViewModel @Inject constructor() : ViewModel() {
                 .onSuccess { searchResult ->
                     val songs = searchResult.items.filterIsInstance<SongItem>()
 
-                    // Use the same multi-step matching as playTrack for reliability
+                    // use the same multi-step matching as playtrack for reliability
                     val bestMatch = songs.firstOrNull { s ->
                         s.title.equals(video.title, ignoreCase = true) &&
                         s.artists.any { a -> video.artist.contains(a.name, ignoreCase = true) }

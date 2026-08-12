@@ -1,9 +1,9 @@
-// PlaybackSettingsScreen.kt
-// Surfaces playback/audio features whose actual engines already exist and work in
-// MusicService.kt (crossfade's dual-player swap, the custom biquad equalizer, skip-silence's
-// two mechanisms, LoudnessEnhancer-based normalization) but had no Settings UI at all —
-// crossfade and skip-silence/normalization were only ever set from their DataStore defaults,
-// and the equalizer was only reachable from the player's 3-dot menu.
+// playbacksettingsscreenkt
+// surfaces playback/audio features whose actual engines already exist and
+// musicservicekt (crossfade's dual-player swap the custom biquad equalizer
+// two mechanisms loudnessenhancer-based normalization) but had no settings
+// crossfade and skip-silence/normalization were only ever set from their
+// and the equalizer was only reachable from the player's 3-dot menu
 
 package com.example.musicfy.ui.screens.settings
 

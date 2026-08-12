@@ -1,4 +1,4 @@
-// Wikipedia.kt
+// wikipediakt
 // this thing is part of wikipedia
 
 package com.example.musicfy.utils
@@ -17,10 +17,7 @@ import timber.log.Timber
 import io.ktor.client.plugins.ResponseException
 
 
-/**
- * Utility for fetching summaries from Wikipedia via the REST API.
- * Defines a custom Ktor client with a specific User-Agent/Content-Negotiation configuration.
- */
+// utility for fetching summaries from wikipedia via the rest api defines a custom
 object Wikipedia {
     private val client by lazy {
         HttpClient(OkHttp) {
@@ -52,22 +49,9 @@ object Wikipedia {
         }
     }.getOrNull()
 
-    /**
-     * Attempts to find the Wikipedia summary for a specific album.
-     *
-     * It uses a heuristic approach to find the correct page:
-     * 1.  **Precise Query**: Tries "Album (Artist album)" or "Album (Artist)".
-     * 2.  **Generic Query**: Tries "Album (album)" or just "Album".
-     *
-     * To avoid incorrect matches (e.g., getting a "Greatest Hits" page for a different artist),
-     * generic results are validated to ensure they mention the artist's name.
-     *
-     * @param albumTitle The title of the album.
-     * @param artistName The name of the artist (optional but recommended for accuracy).
-     * @return The extract/summary text if found, or null.
-     */
+    // attempts to find the wikipedia summary for a specific album it uses a heuristic
     suspend fun fetchAlbumInfo(albumTitle: String, artistName: String?): String? {
-        // Precise queries: explicitly include artist name in the search term
+        // precise queries: explicitly include artist name in the search term
         if (artistName != null) {
             val preciseQueries = listOf(
                 "$albumTitle ($artistName album)",
@@ -81,7 +65,7 @@ object Wikipedia {
             }
         }
 
-        // Generic queries: rely on validation of the returned content
+        // generic queries: rely on validation of the returned content
         val genericQueries = listOf(
             "$albumTitle (album)",
             albumTitle
@@ -90,8 +74,8 @@ object Wikipedia {
         for (query in genericQueries) {
             val summary = fetchPageSummary(query)
             if (summary != null && !summary.contains("may refer to", ignoreCase = true)) {
-                // If we know the artist, ensure the summary actually mentions them.
-                // This prevents "Greatest Hits" returning the wrong album.
+                // if we know the artist ensure the summary actually mentions them
+                // this prevents "greatest hits" returning the wrong album
                 if (artistName != null) {
                     if (summary.contains(artistName, ignoreCase = true)) {
                         return summary

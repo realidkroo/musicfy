@@ -1,4 +1,4 @@
-// YouTubeQueue.kt
+// youtubequeuekt
 // this thing is for you tube queue
 
 package com.example.musicfy.playback.queues
@@ -23,7 +23,7 @@ class YouTubeQueue(
         return withContext(IO) {
             var lastException: Throwable? = null
             
-            // Try with original endpoint first (allows YouTube to personalize recommendations)
+            // try with original endpoint first (allows youtube to personalize
             for (attempt in 0..maxRetries) {
                 try {
                     val nextResult = YouTube.next(endpoint, continuation).getOrThrow()
@@ -37,7 +37,7 @@ class YouTubeQueue(
                     )
                 } catch (e: Exception) {
                     lastException = e
-                    // If first attempt fails and we have a videoId, try with fallback radio params
+                    // if first attempt fails and we have a videoid try with fallback radio params
                     if (attempt == 0 && endpoint.videoId != null && endpoint.playlistId == null) {
                         endpoint = WatchEndpoint(
                             videoId = endpoint.videoId,
@@ -67,7 +67,7 @@ class YouTubeQueue(
                     lastException = e
                     retryCount++
                     if (retryCount >= maxRetries) {
-                        continuation = null // Stop trying to load more
+                        continuation = null // stop trying to load more
                     }
                 }
             }
@@ -76,10 +76,7 @@ class YouTubeQueue(
     }
 
     companion object {
-        /**
-         * Creates a radio queue based on a song.
-         * Uses only videoId to let YouTube personalize recommendations based on user's listening history.
-         */
+        // creates a radio queue based on a song uses only videoid to let youtube
         fun radio(song: MediaMetadata): YouTubeQueue {
             return YouTubeQueue(
                 WatchEndpoint(videoId = song.id),

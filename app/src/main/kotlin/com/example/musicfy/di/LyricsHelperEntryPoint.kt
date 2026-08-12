@@ -1,4 +1,4 @@
-// LyricsHelperEntryPoint.kt
+// lyricshelperentrypointkt
 // this thing is part of lyrics helper entry point
 
 package com.example.musicfy.di

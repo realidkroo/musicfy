@@ -1,5 +1,4 @@
-// RestrictionPopup.kt
-// Reusable modern dark restriction / WIP popup component
+// restriction popup dialog
 
 package com.example.musicfy.ui.component
 
@@ -31,10 +30,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.musicfy.R
 
-/**
- * Modern dark restriction / feature notice popup.
- * Replaces old plain white popups with a dark 28.dp surface and a 40% enlarged circular icon badge (68.dp).
- */
+// dark dialog for locked or wip settings
 @Composable
 fun RestrictionPopup(
     featureName: String,
@@ -50,7 +46,7 @@ fun RestrictionPopup(
                 .fillMaxWidth(0.88f)
                 .padding(16.dp),
             shape = RoundedCornerShape(28.dp),
-            color = Color(0xFF1C1C1E), // Dark sleek surface
+            color = Color(0xFF1C1C1E),
             contentColor = Color.White,
             tonalElevation = 8.dp,
         ) {
@@ -60,7 +56,7 @@ fun RestrictionPopup(
                     .fillMaxWidth()
                     .padding(28.dp)
             ) {
-                // Circular icon container — 40% bigger (68.dp instead of 48.dp)
+                // lock icon container
                 Box(
                     modifier = Modifier
                         .size(68.dp)
@@ -71,7 +67,7 @@ fun RestrictionPopup(
                     Icon(
                         painter = painterResource(R.drawable.lock),
                         contentDescription = null,
-                        tint = Color(0xFFFF9F0A), // Warm accent tint
+                        tint = Color(0xFFFF9F0A),
                         modifier = Modifier.size(32.dp)
                     )
                 }

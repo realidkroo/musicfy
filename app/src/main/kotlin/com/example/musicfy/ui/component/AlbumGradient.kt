@@ -1,4 +1,4 @@
-// AlbumGradient.kt
+// albumgradientkt
 // what is this for you ask its for album gradient ofc
 
 package com.example.musicfy.ui.component

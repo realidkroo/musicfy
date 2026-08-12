@@ -1,4 +1,4 @@
-// AlbumScreen.kt
+// albumscreenkt
 // this thing is for album screen
 
 package com.example.musicfy.ui.screens
@@ -268,12 +268,12 @@ fun AlbumScreen(
                 val format by (representativeSongId?.let { database.format(it) } ?: kotlinx.coroutines.flow.flowOf(null))
                     .collectAsState(initial = null)
 
-                // Two sequential phases sharing one timeline (see DetailCollapsingTopBar):
-                // phase A fades this header's own gradient+text away while the cover PHOTO
+                // two sequential phases sharing one timeline (see detailcollapsingtopbar):
+                // phase a fades this header's own gradient+text away while the cover photo
                 // stays fully visible and unmoved; only once that finishes does
-                // DetailCollapsingTopBar's morph overlay take over — at exactly that instant
-                // this cover hard-cuts to invisible, a clean handoff with no window where
-                // both the real cover and the morphing copy are on screen together.
+                // detailcollapsingtopbar's morph overlay take over — at exactly that instant
+                // this cover hard-cuts to invisible a clean handoff with no window where
+                // both the real cover and the morphing copy are on screen together
                 val headerContentAlpha = collapseState.headerContentAlpha
                 val coverHandedOff = collapseState.morphProgress > 0.001f
 
@@ -282,10 +282,10 @@ fun AlbumScreen(
                         .fillMaxWidth()
                         .onGloballyPositioned { headerHeightPx = it.size.height.toFloat() }
                 ) {
-                    // Background gradient tinted from the cover's own color, sized to
-                    // match this whole header (matchParentSize measures after the cover
-                    // + content column below establish the Box's real height). Fades with
-                    // the header content (phase A), not the cover photo.
+                    // background gradient tinted from the cover's own color sized to
+                    // match this whole header (matchparentsize measures after the cover
+                    // + content column below establish the box's real height) fades with
+                    // the header content (phase a) not the cover photo
                     com.example.musicfy.ui.component.detail.DetailCoverBackground(
                         thumbnailUrl = albumWithSongs.album.thumbnailUrl,
                         modifier = Modifier
@@ -294,9 +294,9 @@ fun AlbumScreen(
                         onColorExtracted = { screenBackgroundColor = it },
                     )
 
-                    // Album Image with offset (like ArtistScreen) — same shared-element
-                    // key as before, unchanged, so the cover-expand open transition
-                    // still works.
+                    // album image with offset (like artistscreen) — same shared-element
+                    // key as before unchanged so the cover-expand open transition
+                    // still works
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -321,7 +321,7 @@ fun AlbumScreen(
                         )
                     }
 
-                    // Content column positioned at bottom part of the image
+                    // content column positioned at bottom part of the image
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -681,9 +681,9 @@ fun AlbumScreen(
             colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
         )
     } else {
-        // Collapsing top bar: plain back button while the hero cover is visible,
-        // morphing into a compact bar (mini cover + title, blurred backdrop) as the
-        // user scrolls past it — same behavior as the other rebuilt detail screens.
+        // collapsing top bar: plain back button while the hero cover is visible
+        // morphing into a compact bar (mini cover + title blurred backdrop) as the
+        // user scrolls past it — same behavior as the other rebuilt detail screens
         com.example.musicfy.ui.component.detail.DetailCollapsingTopBar(
             progress = collapseState.morphProgress,
             glassState = glassState,

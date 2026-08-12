@@ -1,4 +1,4 @@
-// LocalSearchScreen.kt
+// localsearchscreenkt
 // what is this for you ask its for local search screen ofc
 
 package com.example.musicfy.ui.screens.search
@@ -107,9 +107,9 @@ fun LocalSearchScreen(
     val configuration = LocalWindowInfo.current
     val isLandscape = configuration.containerSize.width > configuration.containerSize.height
 
-    // Dedup once per result instead of once per recomposition per section. The lazy content
-    // lambda re-runs on every recomposition of this screen, so `items.distinctBy { }` inline in
-    // the `items = ...` argument rebuilt every section's list each time.
+    // dedup once per result instead of once per recomposition per section the
+    // lambda re-runs on every recomposition of this screen so `itemsdistinctby {
+    // the `items = ` argument rebuilt every section's list each time
     val distinctResultMap = remember(result) {
         result.map.mapValues { (_, sectionItems) -> sectionItems.distinctBy { it.id } }
     }

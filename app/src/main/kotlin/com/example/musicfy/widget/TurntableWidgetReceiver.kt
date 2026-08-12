@@ -1,4 +1,4 @@
-// TurntableWidgetReceiver.kt
+// turntablewidgetreceiverkt
 // the file functioned as turntable widget receiver
 
 package com.example.musicfy.widget
@@ -16,8 +16,8 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // Only trigger update through MusicService if it's already running
-        // This prevents BackgroundServiceStartNotAllowedException on Android 14+
+        // only trigger update through musicservice if it's already running
+        // this prevents backgroundservicestartnotallowedexception on android 14+
         if (MusicService.isRunning) {
             val intent = Intent(context, MusicService::class.java).apply {
                 action = ACTION_UPDATE_TURNTABLE_WIDGET
@@ -25,10 +25,10 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
             try {
                 context.startService(intent)
             } catch (e: Exception) {
-                // Service might be restricted in background
+                // service might be restricted in background
             }
         }
-        // If service is not running, widget shows default layout until user opens app
+        // if service is not running widget shows default layout until user opens app
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -36,8 +36,8 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
 
         when (intent.action) {
             ACTION_TURNTABLE_PLAY_PAUSE, ACTION_TURNTABLE_NEXT, ACTION_TURNTABLE_PREVIOUS -> {
-                // User interactions from widget buttons can start the service
-                // Android allows starting FGS from widget PendingIntent clicks
+                // user interactions from widget buttons can start the service
+                // android allows starting fgs from widget pendingintent clicks
                 val serviceIntent = Intent(context, MusicService::class.java).apply {
                     action = when (intent.action) {
                         ACTION_TURNTABLE_PLAY_PAUSE -> MusicWidgetReceiver.ACTION_PLAY_PAUSE
@@ -50,7 +50,7 @@ class TurntableWidgetReceiver : AppWidgetProvider() {
                 try {
                     androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
                 } catch (e: Exception) {
-                    // Service might be restricted in background
+                    // service might be restricted in background
                 }
             }
         }

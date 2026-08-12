@@ -1,9 +1,9 @@
-// DetailActionRow.kt
-// Shared Play-pill + 2-circle action row for the rebuilt Album/Playlist/Liked-Songs
-// detail screens, replacing what used to be 3 different bespoke row designs
-// (Album's favorite/play/shuffle circle-trio, LocalPlaylist's play/shuffle
-// TextButton pair, OnlinePlaylist's button-pair + a separate connected-toggle
-// row). The second circle's meaning is state-dependent — see DetailSecondaryAction.
+// detailactionrowkt
+// shared play-pill + 2-circle action row for the rebuilt
+// detail screens replacing what used to be 3 different bespoke row designs
+// (album's favorite/play/shuffle circle-trio localplaylist's play/shuffle
+// textbutton pair onlineplaylist's button-pair + a separate connected-toggle
+// row) the second circle's meaning is state-dependent — see
 
 package com.example.musicfy.ui.component.detail
 
@@ -31,11 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.exoplayer.offline.Download
 import com.example.musicfy.R
 
-/** What the row's second (state-dependent) circular button means right now. */
+// what the row's second (state-dependent) circular button means right now
 sealed class DetailSecondaryAction {
-    /** Not yet in the user's library — tap to save/add it. */
+    // not yet in the user's library — tap to save/add it
     data class AddToLibrary(val onClick: () -> Unit) : DetailSecondaryAction()
-    /** Already in the library — tap to download for offline playback. */
+    // already in the library — tap to download for offline playback
     data class DownloadAction(val state: Int?, val onClick: () -> Unit) : DetailSecondaryAction()
 }
 
@@ -46,9 +46,9 @@ fun DetailActionRow(
     onShuffleClick: () -> Unit,
     secondaryAction: DetailSecondaryAction,
     modifier: Modifier = Modifier,
-    // A 4th circle for whatever an individual screen still needs beyond the fixed
-    // Play/Shuffle/Library-or-Download trio — e.g. LocalPlaylistScreen's overflow
-    // menu (edit/sync/delete/queue), which doesn't fit this row's fixed meanings.
+    // a 4th circle for whatever an individual screen still needs beyond the fixed
+    // play/shuffle/library-or-download trio — eg localplaylistscreen's overflow
+    // menu (edit/sync/delete/queue) which doesn't fit this row's fixed meanings
     extraAction: (@Composable () -> Unit)? = null,
 ) {
     Row(
@@ -118,8 +118,8 @@ fun DetailActionRow(
     }
 }
 
-// Public so screens with a 4th action beyond this row's fixed 3 (e.g.
-// LocalPlaylistScreen's overflow menu) can build one that matches.
+// public so screens with a 4th action beyond this row's fixed 3 (eg
+// localplaylistscreen's overflow menu) can build one that matches
 @Composable
 fun DetailCircleButton(
     icon: Int,

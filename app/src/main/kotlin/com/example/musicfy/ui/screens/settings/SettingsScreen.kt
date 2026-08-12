@@ -1,8 +1,8 @@
-// SettingsScreen.kt
-// Rebuilt as a hub: profile greeting header, a few "coming later" Musicfy-it cards, a version
-// row, then navigation rows into the now-split Appearance/Playback/Experimental screens.
-// "General" was dropped per explicit request (not used for now); "Other settings" is now a
-// single destructive "Reset app data" action instead of a section.
+// settingsscreenkt
+// rebuilt as a hub: profile greeting header a few "coming later" musicfy-it
+// row then navigation rows into the now-split
+// "general" was dropped per explicit request (not used for now); "other
+// single destructive "reset app data" action instead of a section
 
 package com.example.musicfy.ui.screens.settings
 
@@ -75,11 +75,7 @@ import com.example.musicfy.utils.rememberPreference
 import kotlinx.coroutines.launch
 import java.time.LocalTime
 
-/**
- * Rotates between a time-of-day greeting and a handful of casual/multilingual ones so the
- * header doesn't say the exact same thing every time you open Settings. Re-rolled once per
- * visit (remembered for the composition, not on every recomposition).
- */
+// rotates between a time-of-day greeting and a handful of casual/multilingual
 private fun randomGreetingWord(): String {
     val hour = LocalTime.now().hour
     val timeBased = when (hour) {
@@ -108,18 +104,18 @@ private fun randomGreetingWord(): String {
 fun SettingsScreen(
     navController: NavController
 ) {
-    // "Hey {name}" means the name set during onboarding (UsernameKey — what ProfileSetupStep
-    // actually collects), not the YouTube account name — most users never sign into a YouTube
-    // account at all here. A live-fetched signed-in account name is only used as a fallback if
-    // no local name was ever set (e.g. setup was skipped somehow).
-    // Checked once when Settings opens; the row's subtitle and the sheet read the same value.
+    // "hey {name}" means the name set during onboarding (usernamekey — what
+    // actually collects) not the youtube account name — most users never sign
+    // account at all here a live-fetched signed-in account name is only used as
+    // no local name was ever set (eg setup was skipped somehow)
+    // checked once when settings opens; the row's subtitle and the sheet read
     val updateState by com.example.musicfy.ui.screens.update.rememberUpdateState()
     var showUpdateSheet by remember { mutableStateOf(false) }
-    // 0..1 of the sheet's open animation, read in the draw phase so the page scales away behind
-    // it without the whole screen recomposing per frame.
+    // 01 of the sheet's open animation read in the draw phase so the page scales
+    // it without the whole screen recomposing per frame
     val updateReveal = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
-    // The sheet owns the whole window while it is up, so the nav bar and mini player step aside.
+    // the sheet owns the whole window while it is up so the nav bar and mini
     val hideAppChrome = com.example.musicfy.LocalHideAppChrome.current
     androidx.compose.runtime.DisposableEffect(showUpdateSheet) {
         hideAppChrome.value = showUpdateSheet
@@ -180,13 +176,13 @@ fun SettingsScreen(
 
     val scrollState = rememberScrollState()
     val glassState = remember { GlassState() }
-    // Scroll fades this in over the first ~120dp, same feel as Home's hero-scroll-driven top bar.
+    // scroll fades this in over the first ~120dp same feel as home's
     val scrollProgressProvider = { (scrollState.value / 120f).coerceIn(0f, 1f) }
     val backgroundColor = if (isSystemInDarkTheme()) Color.Black else MaterialTheme.colorScheme.surface
 
     Scaffold(
         modifier = Modifier.graphicsLayer {
-            // Zoom-out behind the update sheet. Draw-phase read, identity while it's closed.
+            // zoom-out behind the update sheet draw-phase read identity while it's closed
             val r = updateReveal.floatValue
             if (r > 0.001f) {
                 val scale = 1f - 0.08f * r
@@ -206,7 +202,7 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .glassRoot(glassState, isActive = { scrollProgressProvider() > 0f })
                     .verticalScroll(scrollState)
-                    // We manually add the status bar padding so the content doesn't get cut off at the very top
+                    // we manually add the status bar padding so the content doesn't get cut off
                     .padding(
                         top = androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
                         start = 24.dp,
@@ -215,7 +211,7 @@ fun SettingsScreen(
                     )
             ) {
             Spacer(modifier = Modifier.height(32.dp)) // 30% more top padding
-            // Profile header (fades out to become the sticky top bar)
+            // profile header (fades out to become the sticky top bar)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -313,7 +309,7 @@ fun SettingsScreen(
                 items = listOf(
                     SettingsItem(
                         title = { Text("${BuildConfig.VERSION_NAME}") },
-                        // The one line that changes when a release is waiting.
+                        // the one line that changes when a release is waiting
                         description = {
                             Text(
                                 if (updateState is com.example.musicfy.core.updater.UpdateState.Available) {
@@ -323,10 +319,10 @@ fun SettingsScreen(
                                 }
                             )
                         },
-                        // Was frame_51_3 (roo's own photo) — a tinted Icon() paints solid colour
-                        // wherever the source has any alpha, so a fully-opaque photo just rendered
-                        // as a plain dark square. The brand mark is a proper stroke glyph, so it
-                        // tints correctly like every other row's icon.
+                        // was frame_51_3 (roo's own photo) — a tinted icon() paints solid colour
+                        // wherever the source has any alpha so a fully-opaque photo just rendered
+                        // as a plain dark square the brand mark is a proper stroke glyph so it
+                        // tints correctly like every other row's icon
                         icon = painterResource(R.drawable.ic_musicfy_mark),
                         iconShape = androidx.compose.foundation.shape.CircleShape,
                         onClick = { showUpdateSheet = true }
@@ -366,10 +362,10 @@ fun SettingsScreen(
                 )
             )
             
-            Spacer(modifier = Modifier.height(180.dp)) // Ensures last item is not covered by mini player
+            Spacer(modifier = Modifier.height(180.dp)) // ensures last item is not covered by mini player
             }
 
-            // Sticky Morphing Top Bar
+            // sticky morphing top bar
             val showTopBlur by remember { derivedStateOf { scrollProgressProvider() > 0.01f } }
             if (showTopBlur) {
                 Box(
@@ -388,7 +384,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                     
-                    // Custom clean gradient overlay
+                    // custom clean gradient overlay
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -402,7 +398,7 @@ fun SettingsScreen(
                             )
                     )
                     
-                    // Morphed sticky header content
+                    // morphed sticky header content
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -438,8 +434,8 @@ fun SettingsScreen(
         }
     }
 
-    // Declared outside the scaffold so it covers the whole screen. The zoom-out it drives is
-    // applied to the content above via updateReveal.
+    // declared outside the scaffold so it covers the whole screen the zoom-out
+    // applied to the content above via updatereveal
     if (showUpdateSheet) {
         com.example.musicfy.ui.screens.update.UpdateSheet(
             state = updateState,

@@ -1,4 +1,4 @@
-// PlayCountEntity.kt
+// playcountentitykt
 // what is this for you ask its for play count entity ofc
 
 package com.example.musicfy.db.entities

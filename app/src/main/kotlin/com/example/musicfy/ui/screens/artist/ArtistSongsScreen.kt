@@ -1,4 +1,4 @@
-// ArtistSongsScreen.kt
+// artistsongsscreenkt
 // what is this for you ask its for artist songs screen ofc
 
 package com.example.musicfy.ui.screens.artist

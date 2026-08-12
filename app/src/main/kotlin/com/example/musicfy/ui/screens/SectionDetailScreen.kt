@@ -159,7 +159,7 @@ fun SectionDetailScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Top Bar
+        // top bar
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -208,7 +208,7 @@ fun SectionDetailScreen(
             }
         }
 
-        // List
+        // list
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(bottom = 120.dp)
@@ -385,8 +385,8 @@ fun SectionDetailScreen(
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.align(Alignment.Center).size(32.dp)
                                     )
-                                    // Here we might need a way to get the artist thumbnail, but typically YouTube API only gives artist thumbnail when calling artist endpoint.
-                                    // We'll leave it as a placeholder circle, as the database or Innertube may not have the thumbnail immediately available without an extra request.
+                                    // here we might need a way to get the artist thumbnail but typically youtube
+                                    // we'll leave it as a placeholder circle as the database or innertube may
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(

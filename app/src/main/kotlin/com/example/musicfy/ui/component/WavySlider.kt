@@ -1,4 +1,4 @@
-// WavySlider.kt
+// wavysliderkt
 // what is this for you ask its for wavy slider ofc
 
 package com.example.musicfy.ui.component
@@ -74,7 +74,7 @@ fun WavySlider(
     val inactiveColor = colors.inactiveTrackColor
     val thumbColor = colors.thumbColor
     
-    // Calculate container height to accommodate thumb
+    // calculate container height to accommodate thumb
     val containerHeight = maxOf(WavyProgressIndicatorDefaults.LinearContainerHeight, thumbRadius * 2)
     
     val baseModifier = modifier
@@ -135,7 +135,7 @@ fun WavySlider(
             waveSpeed = waveSpeed
         )
         
-        // Draw circular thumb - synced with progress indicator position
+        // draw circular thumb - synced with progress indicator position
         Canvas(modifier = Modifier.fillMaxSize()) {
             val thumbX = size.width * displayValue
             val thumbY = size.height / 2

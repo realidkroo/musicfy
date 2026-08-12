@@ -1,19 +1,19 @@
-// PlayerCustomizeScreen.kt
-// The "Currently editing" page (concept screens 82–92).
-//
-// This page is OPAQUE and self-contained. An earlier version was a translucent sheet laid over
-// the live player, using a punched hole to reveal the real backdrop shrinking into the "Bg Style"
-// slot — that leaked the whole app through the page, and at mid-morph you saw both the shrinking
-// backdrop and a ghost of the un-shrunk one, which read as a duplicate. Everything here is now
-// drawn by this file over a solid surface, and there is exactly one preview element: a single
-// stage that morphs between "fills the player's artwork region" and "the small rounded box".
-//
-// Two axes of movement, both on the same curve:
-//  - vertical: a section value in 0..1, cover section → background section. Not a scroll. It is
-//    a drag that always settles on 0 or 1, which is what makes it impossible to overscroll and
-//    what gives the automatic glide once you push past the options.
-//  - horizontal: one drag surface for the whole page, dispatching to whichever section's
-//    carousel is active, whose offset the stage's contents travel with.
+// playercustomizescreenkt
+// the "currently editing" page (concept screens 82–92)
+
+// this page is opaque and self-contained an earlier version was a
+// the live player using a punched hole to reveal the real backdrop shrinking
+// slot — that leaked the whole app through the page and at mid-morph you saw
+// backdrop and a ghost of the un-shrunk one which read as a duplicate
+// drawn by this file over a solid surface and there is exactly one preview
+// stage that morphs between "fills the player's artwork region" and "the
+
+// two axes of movement both on the same curve:
+// - vertical: a section value in 01 cover section → background section not a
+// a drag that always settles on 0 or 1 which is what makes it impossible to
+// what gives the automatic glide once you push past the options
+// - horizontal: one drag surface for the whole page dispatching to whichever
+// carousel is active whose offset the stage's contents travel with
 
 package com.example.musicfy.ui.player.customize
 
@@ -104,40 +104,29 @@ import com.example.musicfy.utils.rememberPreference
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** The page's motion curve, and the duration everything settles over. */
+// the page's motion curve and the duration everything settles over
 internal val SwipeEasing = CubicBezierEasing(0.5f, 0.45f, 0f, 1f)
 internal const val SwipeDurationMillis = 900
 
-/** Fraction of a page a horizontal drag must cover to commit rather than spring back. */
+// fraction of a page a horizontal drag must cover to commit rather than spring back
 private const val SnapCommitThreshold = 0.18f
 
-/** Fling speed (px/s) past which a horizontal drag commits regardless of how far it travelled. */
+// fling speed (px/s) past which a horizontal drag commits regardless of how far it travelled
 private const val CarouselFlingVelocity = 400f
 
-/**
- * A one-axis carousel, replacing the two HorizontalPagers this page used to stack on top of each
- * other as invisible gesture surfaces.
- *
- * Stacking them was the bug behind "they're on the same hitbox": both were full-screen siblings,
- * so the topmost one was hit-tested first and swallowed drags meant for the other, whether or not
- * its own scrolling was disabled. There is now exactly one drag surface for the whole page, and
- * it dispatches to whichever carousel the current section owns.
- *
- * [position] is continuous, in page units. Everything else is derived from it, so the visual
- * offset and the committed page can never disagree.
- */
+// a one-axis carousel replacing the two horizontalpagers this page used to stack
 @Stable
 private class CarouselState(val count: Int, initial: Int) {
     val position = mutableFloatStateOf(initial.toFloat())
 
-    /** The settled page. derivedStateOf, so readers wake on a page change, not every frame. */
+    // the settled page derivedstateof so readers wake on a page change not every frame
     val page by derivedStateOf { position.floatValue.roundToInt().coerceIn(0, count - 1) }
 
-    /** Distance from the settled page, in -0.5..0.5 — the pager's currentPageOffsetFraction. */
+    // distance from the settled page in -0505 — the pager's currentpageoffsetfraction
     fun offset(): Float = position.floatValue - position.floatValue.roundToInt()
 
     fun drag(deltaPages: Float, fromPage: Int) {
-        // One page per gesture, so a fast swipe can't skate across several styles at once.
+        // one page per gesture so a fast swipe can't skate across several styles at
         position.floatValue = (position.floatValue + deltaPages)
             .coerceIn(
                 (fromPage - 1).coerceAtLeast(0).toFloat(),
@@ -157,25 +146,17 @@ private class CarouselState(val count: Int, initial: Int) {
     }
 }
 
-/** Fling speed (px/s) past which a vertical drag commits regardless of how far it travelled. */
+// fling speed (px/s) past which a vertical drag commits regardless of how far it travelled
 private const val SectionFlingVelocity = 700f
 
-/**
- * The page's own surface — a solid dark grey.
- *
- * Not transparent. Letting the live player show through is what put the room behind "Bg Style":
- * on the background section the stage has shrunk to a small box, so everything around it is this
- * surface, and if it isn't painted you are looking straight at the player's own full-bleed cover.
- * The stage covers the whole screen at section 0, so this is only ever visible once the page has
- * genuinely moved on from the cover — see the file header.
- */
+// the page's own surface — a solid dark grey not transparent letting the live
 private val PageSurface = Color(0xFF121214)
 private val StageCorner = 30.dp
 
-/** Height of the blurred band behind the header, below the status bar inset. */
+// height of the blurred band behind the header below the status bar inset
 private val HeaderBlurHeight = 92.dp
 
-/** Caption under each background page, matching the concept screens. */
+// caption under each background page matching the concept screens
 private val PlayerBackgroundStyle.displayName: String
     get() = when (this) {
         PlayerBackgroundStyle.COVER_GRADIENT -> "simple gradient based on cover"
@@ -184,13 +165,7 @@ private val PlayerBackgroundStyle.displayName: String
         PlayerBackgroundStyle.APPLE_MUSIC -> "Apple music style cover morph"
     }
 
-/**
- * Travel and fade for content riding a pager's drag.
- *
- * Reaching zero alpha at exactly half a page is what hides the content swap: the pager flips
- * `currentPage` at that same instant, so the outgoing style has already faded out and the
- * incoming one fades back in from the opposite side.
- */
+// travel and fade for content riding a pager's drag reaching zero alpha at
 internal fun GraphicsLayerScope.applySwipe(offset: Float, distance: Float) {
     translationX = -offset * distance
     alpha *= (1f - (abs(offset) * 2f)).coerceIn(0f, 1f)
@@ -198,13 +173,10 @@ internal fun GraphicsLayerScope.applySwipe(offset: Float, distance: Float) {
 
 @Composable
 fun PlayerCustomizeScreen(
-    /** Steps back one level — to the part-selection layer, or out of the settings route. */
+    // steps back one level — to the part-selection layer or out of the settings route
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    /**
-     * Shown when this page was opened from the player menu rather than by long-pressing the
-     * artwork — the gesture is the faster route and there is nothing on screen that hints at it.
-     */
+    // shown when this page was opened from the player menu rather than by
     showLongPressHint: Boolean = false,
 ) {
     BackHandler(onBack = onBack)
@@ -221,9 +193,9 @@ fun PlayerCustomizeScreen(
         PlayerBackgroundStyle.COVER_GRADIENT,
     )
 
-    // The oversized disc variants are gated behind an Experimental switch. Filtered rather than
-    // removed, and the currently-selected style is always kept in the list — hiding the style
-    // someone is already using would strand the carousel on a page that doesn't exist.
+    // the oversized disc variants are gated behind an experimental switch
+    // removed and the currently-selected style is always kept in the list —
+    // someone is already using would strand the carousel on a page that doesn't
     val (showBigDiscStyles) = rememberPreference(ShowBigDiscStylesKey, defaultValue = false)
     val coverStyles = remember(showBigDiscStyles, coverStyle) {
         PlayerCoverStyle.entries.filter { style ->
@@ -232,8 +204,8 @@ fun PlayerCustomizeScreen(
     }
     val backgroundStyles = remember { PlayerBackgroundStyle.entries.toList() }
 
-    // Keyed on the list itself: flipping the Experimental switch changes how many styles exist,
-    // and a carousel holding a stale count would let you drag past the end.
+    // keyed on the list itself: flipping the experimental switch changes how
+    // and a carousel holding a stale count would let you drag past the end
     val coverCarousel = remember(coverStyles.size) {
         CarouselState(coverStyles.size, coverStyles.indexOf(coverStyle).coerceAtLeast(0))
     }
@@ -241,12 +213,12 @@ fun PlayerCustomizeScreen(
         CarouselState(backgroundStyles.size, backgroundStyles.indexOf(backgroundStyle).coerceAtLeast(0))
     }
 
-    // What the stage draws, taken straight from the carousel rather than from the preference.
-    //
-    // Reading it back out of DataStore put an async round-trip in the middle of the swap: the
-    // page flipped, the cover faded to nothing, and the new style only arrived a frame or three
-    // later once the write had landed and the snapshot updated — which is the flicker. The
-    // preference is still written, just no longer on the visual path.
+    // what the stage draws taken straight from the carousel rather than from the
+
+    // reading it back out of datastore put an async round-trip in the middle of
+    // page flipped the cover faded to nothing and the new style only arrived a
+    // later once the write had landed and the snapshot updated — which is the
+    // preference is still written just no longer on the visual path
     val shownCoverStyle = coverStyles.getOrNull(coverCarousel.page) ?: coverStyle
     val shownBackgroundStyle = backgroundStyles.getOrNull(backgroundCarousel.page) ?: backgroundStyle
 
@@ -257,34 +229,34 @@ fun PlayerCustomizeScreen(
         if (backgroundStyle != shownBackgroundStyle) backgroundStyle = shownBackgroundStyle
     }
 
-    // 0 = cover section, 1 = background section. A plain float rather than a ScrollState: it can
-    // only ever hold a value in 0..1, so there is nothing to overscroll, and releasing always
-    // animates to one end on the page's own curve instead of coasting to a stop wherever the
-    // finger left off.
-    //
-    // Written directly from the drag callback — no coroutine per delta. An Animatable would have
-    // meant `scope.launch { snapTo(...) }` on every single frame of the gesture, which is a
-    // dispatch hop between the finger moving and the frame that shows it; that lag is what a
-    // drag reads as when it feels heavy. The settle below is the only animated part.
-    // Reveal, not a cut. PlayerEditOverlay dissolves its outlines away before handing over, and
-    // this fades and settles up into place over the same beat, so the two read as one move.
+    // 0 = cover section 1 = background section a plain float rather than a
+    // only ever hold a value in 01 so there is nothing to overscroll and
+    // animates to one end on the page's own curve instead of coasting to a stop
+    // finger left off
+
+    // written directly from the drag callback — no coroutine per delta an
+    // meant `scopelaunch { snapto() }` on every single frame of the gesture
+    // dispatch hop between the finger moving and the frame that shows it; that
+    // drag reads as when it feels heavy the settle below is the only animated
+    // reveal not a cut playereditoverlay dissolves its outlines away before
+    // this fades and settles up into place over the same beat so the two read as
     val reveal = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         reveal.animateTo(1f, tween(SwipeDurationMillis / 2, easing = SwipeEasing))
     }
 
     val stageGlass = remember { GlassState() }
-    // True from the moment a drag starts until its settle animation has finished.
-    //
-    // The stage is GPU-bound, not CPU-bound: measured mid-swipe at 16ms of GPU work per frame
-    // with the render thread parked 12ms in swapBuffers, while measure/layout sat at 0.03ms. The
-    // three things making that up — the warp shader's per-frame uniform, the glassRoot capture's
-    // duplicate draw of the whole stage, and SeamBlur's 130px blur over it — are all effects
-    // nobody can resolve while the artwork is flying sideways under their thumb, so none of them
-    // run during the gesture. They come back the instant it settles.
-    //
-    // A plain Boolean: it flips twice per gesture, so the recomposition cost is nil, and the
-    // continuous values it gates stay draw-phase reads exactly as before.
+    // true from the moment a drag starts until its settle animation has finished
+
+    // the stage is gpu-bound not cpu-bound: measured mid-swipe at 16ms of gpu
+    // with the render thread parked 12ms in swapbuffers while measure/layout sat
+    // three things making that up — the warp shader's per-frame uniform the
+    // duplicate draw of the whole stage and seamblur's 130px blur over it — are
+    // nobody can resolve while the artwork is flying sideways under their thumb
+    // run during the gesture they come back the instant it settles
+
+    // a plain boolean: it flips twice per gesture so the recomposition cost is
+    // continuous values it gates stay draw-phase reads exactly as before
     var interacting by remember { mutableStateOf(false) }
     val sectionValue = remember { mutableFloatStateOf(0f) }
     val sectionProvider = remember { { sectionValue.floatValue } }
@@ -296,11 +268,11 @@ fun PlayerCustomizeScreen(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            // Opaque, and declared BEFORE the reveal layer on purpose. With it inside, the
-            // entrance faded the surface itself along with everything on it, so for the length of
-            // that animation the page was translucent and you could see straight through to
-            // whatever was behind the player. The surface is now always solid; only its contents
-            // fade in.
+            // opaque and declared before the reveal layer on purpose with it inside the
+            // entrance faded the surface itself along with everything on it so for the
+            // that animation the page was translucent and you could see straight through
+            // whatever was behind the player the surface is now always solid; only its
+            // fade in
             .background(PageSurface)
             .graphicsLayer {
                 val r = reveal.value
@@ -320,8 +292,8 @@ fun PlayerCustomizeScreen(
                 (sectionValue.floatValue - delta / sectionTravelPx).coerceIn(0f, 1f)
         }
 
-        // How far a finger travels for one style. A third of the screen, with an 18% commit
-        // threshold, puts a switch inside roughly a 25dp flick.
+        // how far a finger travels for one style a third of the screen with an 18%
+        // threshold puts a switch inside roughly a 25dp flick
         val pageWidthPx = with(density) { (screenWidth * 0.33f).toPx() }
         var dragFromPage by remember { mutableIntStateOf(0) }
         val activeCarousel = if (onBackgroundSection) backgroundCarousel else coverCarousel
@@ -332,9 +304,9 @@ fun PlayerCustomizeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // ONE horizontal surface for the whole page, on the same node as the vertical
-                // one. draggable is orientation-locked, so a horizontal gesture goes here and a
-                // vertical one goes below, with no sibling hit-testing to get in the way.
+                // one horizontal surface for the whole page on the same node as the vertical
+                // one draggable is orientation-locked so a horizontal gesture goes here and a
+                // vertical one goes below with no sibling hit-testing to get in the way
                 .draggable(
                     state = carouselDragState,
                     orientation = Orientation.Horizontal,
@@ -363,8 +335,8 @@ fun PlayerCustomizeScreen(
                             sectionValue.floatValue > 0.5f -> 1f
                             else -> 0f
                         }
-                        // Runs on the frame clock, so it lands a new value every vsync — 120 of
-                        // them a second on a 120Hz panel — rather than stepping.
+                        // runs on the frame clock so it lands a new value every vsync — 120 of
+                        // them a second on a 120hz panel — rather than stepping
                         animate(
                             initialValue = sectionValue.floatValue,
                             targetValue = target,
@@ -374,18 +346,18 @@ fun PlayerCustomizeScreen(
                     },
                 )
         ) {
-            // glassRoot goes on this fixed full-screen wrapper, NOT on the stage inside it. The
-            // stage is re-measured every frame of the section drag, and a capture whose
-            // RenderNode is torn down and re-created at a new size on every one of those frames
-            // is what was flickering. This wrapper never changes size, so the node is allocated
-            // once and only its contents are re-recorded.
+            // glassroot goes on this fixed full-screen wrapper not on the stage inside
+            // stage is re-measured every frame of the section drag and a capture whose
+            // rendernode is torn down and re-created at a new size on every one of those
+            // is what was flickering this wrapper never changes size so the node is
+            // once and only its contents are re-recorded
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // isActive gates the capture's duplicate draw pass. Only the seam band
-                    // and the header blur read it, and both have faded out by 0.5, so past
-                    // there the recording is pure waste. Threshold sits well clear of that so a
-                    // consumer never reads an empty node.
+                    // isactive gates the capture's duplicate draw pass only the seam band
+                    // and the header blur read it and both have faded out by 05 so past
+                    // there the recording is pure waste threshold sits well clear of that so a
+                    // consumer never reads an empty node
                     .glassRoot(stageGlass, isActive = { !interacting && sectionProvider() < 0.55f })
             ) {
                 PreviewStage(
@@ -407,24 +379,24 @@ fun PlayerCustomizeScreen(
                 )
             }
 
-            // The soft band bridging the artwork's bottom edge into everything below it — the
-            // same SeamBlur the player draws, reading a capture of the stage instead of a capture
-            // of MorphingCover. Declared as a SIBLING of the stage, never inside it: it blurs
-            // whatever the glassRoot recorded, so nesting it would have it capture itself.
+            // the soft band bridging the artwork's bottom edge into everything below it
+            // same seamblur the player draws reading a capture of the stage instead of a
+            // of morphingcover declared as a sibling of the stage never inside it: it
+            // whatever the glassroot recorded so nesting it would have it capture itself
             SeamBlur(
                 glassState = stageGlass,
                 progressProvider = { 1f },
                 trackInfo = trackInfo,
                 maxHeight = screenHeight,
-                // There is no seam to soften once the stage has shrunk into the background slot.
+                // there is no seam to soften once the stage has shrunk into the background
                 fadeProvider = {
                     if (interacting) 0f else (1f - sectionProvider() * 2f).coerceIn(0f, 1f)
                 },
             )
 
-            // Legibility wash over the artwork, so the captions and the option card stay
-            // readable against a bright cover — the same treatment the page had before. Gone by
-            // the time the background section arrives, which is dark enough on its own.
+            // legibility wash over the artwork so the captions and the option card stay
+            // readable against a bright cover — the same treatment the page had before
+            // the time the background section arrives which is dark enough on its own
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -432,12 +404,12 @@ fun PlayerCustomizeScreen(
                     .background(Color.Black.copy(alpha = 0.32f))
             )
 
-            // The gesture surface for the horizontal carousel. Deliberately the FULL screen and
-            // not the stage's own bounds: on the background section the stage is a small inset
-            // box, and confining the swipe to it left almost nothing to grab. Transparent — the
-            // stage below is what you actually see. Only one is mounted at a time so their hit
-            // regions can never overlap.
-            // ---- Cover section content ----
+            // the gesture surface for the horizontal carousel deliberately the full
+            // not the stage's own bounds: on the background section the stage is a small
+            // box and confining the swipe to it left almost nothing to grab transparent
+            // stage below is what you actually see only one is mounted at a time so
+            // regions can never overlap
+            // ---- cover section content ----
             SectionContent(
                 topOffset = screenHeight * CoverRegionFraction + 14.dp,
                 enterFromBelow = false,
@@ -463,7 +435,7 @@ fun PlayerCustomizeScreen(
                 )
             }
 
-            // ---- Background section content ----
+            // ---- background section content ----
             SectionContent(
                 topOffset = screenHeight *
                     (BackgroundStageTopFraction + BackgroundStageHeightFraction) + 26.dp,
@@ -481,11 +453,11 @@ fun PlayerCustomizeScreen(
             }
         }
 
-        // ---- Header chrome, above everything ----
-        //
-        // No blur or scrim behind the header: over a bright cover the band read as a dark
-        // slab across the top, and it was a second consumer of the stage capture, so dropping it
-        // removes a full-screen blur pass per frame as well.
+        // ---- header chrome above everything ----
+
+        // no blur or scrim behind the header: over a bright cover the band read as a
+        // slab across the top and it was a second consumer of the stage capture so
+        // removes a full-screen blur pass per frame as well
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -499,8 +471,8 @@ fun PlayerCustomizeScreen(
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                // Tightened so the subtitle sits right under the title rather than floating
-                // a default line-height away from it.
+                // tightened so the subtitle sits right under the title rather than floating
+                // a default line-height away from it
                 lineHeight = 18.sp,
             )
             Text(
@@ -525,8 +497,8 @@ fun PlayerCustomizeScreen(
         }
     }
 
-    // Keeps the carousels honest if a preference is changed from somewhere else while this
-    // page is open.
+    // keeps the carousels honest if a preference is changed from somewhere else
+    // page is open
     LaunchedEffect(coverStyle) {
         val index = coverStyles.indexOf(coverStyle)
         if (index >= 0 && index != coverCarousel.page) {
@@ -541,44 +513,33 @@ fun PlayerCustomizeScreen(
     }
 }
 
-// Resting geometry of the background section's stage, as fractions of the screen — read off
-// concept screen 89.
+// resting geometry of the background section's stage as fractions of the
+// concept screen 89
 private const val BackgroundStageTopFraction = 0.13f
 private const val BackgroundStageHeightFraction = 0.63f
 private const val BackgroundStageWidthFraction = 0.78f
 
-/** Gap between one background page's box and the next. */
+// gap between one background page's box and the next
 private val StagePageGap = 18.dp
 
-/**
- * Lays a node out as the morphing stage: the player's whole artwork region at section 0, the
- * inset rounded box at section 1.
- *
- * A real re-measure rather than a scale, so the contents re-flow into the smaller box instead of
- * being squashed — the two rects have quite different aspect ratios. [sectionProvider] is read in
- * the layout phase, so dragging costs relayouts of this one node, not recompositions.
- */
+// lays a node out as the morphing stage: the player's whole artwork region at
 private fun Modifier.stageLayout(
     sectionProvider: () -> Float,
     screenWidth: Dp,
     screenHeight: Dp,
     density: androidx.compose.ui.unit.Density,
-    /**
-     * This box's position in the background carousel, in pages, relative to the settled one.
-     * Scaled by the section value so it has no effect at all on the cover section, where the
-     * stage is the full screen and there is no carousel to be part of.
-     */
+    // this box's position in the background carousel in pages relative to the settled
     pageOffsetProvider: () -> Float = { 0f },
 ): Modifier = this.layout { measurable, constraints ->
     val s = sectionProvider()
     val fullW = with(density) { screenWidth.toPx() }
     val fullH = with(density) { screenHeight.toPx() }
 
-    // Starts as the WHOLE screen, not just the artwork region: at section 0 the stage has to be
-    // indistinguishable from the player's own full-bleed backdrop, which is what keeps the cover
-    // section looking exactly as it did. It is also why there is no duplicate — the page's grey
-    // is a flat surface *underneath*, revealed only as this shrinks, never a second copy of the
-    // artwork alongside it.
+    // starts as the whole screen not just the artwork region: at section 0 the
+    // indistinguishable from the player's own full-bleed backdrop which is what
+    // section looking exactly as it did it is also why there is no duplicate —
+    // is a flat surface *underneath* revealed only as this shrinks never a
+    // artwork alongside it
     val startW = fullW
     val startH = fullH
     val endW = fullW * BackgroundStageWidthFraction
@@ -598,12 +559,7 @@ private fun Modifier.stageLayout(
     }
 }
 
-/**
- * The one and only preview: background plus artwork, morphing as a single element.
- *
- * The artwork is placed by the same [coverArtBox] the real player uses, converted to fractions of
- * the artwork region so it lands correctly at any stage size.
- */
+// the one and only preview: background plus artwork morphing as a single element
 @Composable
 private fun PreviewStage(
     sectionProvider: () -> Float,
@@ -614,7 +570,7 @@ private fun PreviewStage(
     backgroundStyles: List<PlayerBackgroundStyle>,
     backgroundPage: Int,
     showNeighbours: Boolean,
-    /** False while a gesture is in flight — see `interacting` in PlayerCustomizeScreen. */
+    // false while a gesture is in flight — see `interacting` in playercustomizescreen
     animateBackdrop: Boolean,
     trackInfo: TrackInfo,
     isPlaying: Boolean,
@@ -627,18 +583,18 @@ private fun PreviewStage(
     val artBox = remember(coverStyle, screenWidth, screenHeight, statusBarTop) {
         coverArtBox(coverStyle, screenWidth, screenHeight, statusBarTop)
     }
-    // Fractions of the WHOLE player, matching the stage's own start rect — so at section 0 the
-    // artwork lands in precisely the place MorphingCover would have put it.
+    // fractions of the whole player matching the stage's own start rect — so at
+    // artwork lands in precisely the place morphingcover would have put it
     val fx = artBox.x / screenWidth
     val fy = artBox.y / screenHeight
     val fw = artBox.width / screenWidth
     val fh = artBox.height / screenHeight
 
-    // Neighbouring background pages, parked one stage-width to either side. Mounted only once the
-    // background section is in play, and their alpha still ramps from zero at the halfway point,
-    // so they arrive with the section rather than popping in.
+    // neighbouring background pages parked one stage-width to either side
+    // background section is in play and their alpha still ramps from zero at the
+    // so they arrive with the section rather than popping in
     if (showNeighbours) {
-        // Two extra backdrops; only the immediate neighbours, never the whole list.
+        // two extra backdrops; only the immediate neighbours never the whole list
         listOf(-1, 1).forEach { delta ->
             val neighbour = backgroundStyles.getOrNull(backgroundPage + delta) ?: return@forEach
             Box(
@@ -662,8 +618,8 @@ private fun PreviewStage(
                     thumbnailUrl = trackInfo.thumbnailUrl,
                     width = screenWidth,
                     height = screenHeight,
-                    // Peeking previews: no warp clock, and no shader at all. Each instance was
-                    // otherwise compiling its own AGSL program for a box you can barely see.
+                    // peeking previews: no warp clock and no shader at all each instance was
+                    // otherwise compiling its own agsl program for a box you can barely see
                     animate = false,
                     warp = false,
                     modifier = Modifier.fillMaxSize(),
@@ -679,8 +635,8 @@ private fun PreviewStage(
                 screenWidth = screenWidth,
                 screenHeight = screenHeight,
                 density = density,
-                // The stage itself is the carousel's current page, so it travels with the drag
-                // instead of the background inside it sliding within a stationary box.
+                // the stage itself is the carousel's current page so it travels with the drag
+                // instead of the background inside it sliding within a stationary box
                 pageOffsetProvider = { -backgroundSwipeProvider() },
             )
             .graphicsLayer {
@@ -691,9 +647,9 @@ private fun PreviewStage(
         PlayerBackgroundPreview(
             style = backgroundStyle,
             thumbnailUrl = trackInfo.thumbnailUrl,
-            // Allocated at full-screen size, never at the stage's current (animating) size — the
-            // layer is fixed by design and the stage's own clip is what reveals more or less of
-            // it. Re-measuring it every frame would reallocate its GPU buffer every frame.
+            // allocated at full-screen size never at the stage's current (animating)
+            // layer is fixed by design and the stage's own clip is what reveals more or
+            // it re-measuring it every frame would reallocate its gpu buffer every frame
             width = screenWidth,
             height = screenHeight,
             animate = animateBackdrop,
@@ -714,9 +670,9 @@ private fun PreviewStage(
                     }
                 }
                 .graphicsLayer {
-                    // Holds full strength through the first half of the morph and only then
-                    // dissolves, so the artwork travels *with* the shrinking stage instead of
-                    // vanishing the moment the drag starts.
+                    // holds full strength through the first half of the morph and only then
+                    // dissolves so the artwork travels *with* the shrinking stage instead of
+                    // vanishing the moment the drag starts
                     alpha = (1f - ((sectionProvider() - 0.5f) / 0.5f)).coerceIn(0f, 1f)
                     applySwipe(coverSwipeProvider(), size.width * 1.15f)
                 }
@@ -769,10 +725,7 @@ private fun CoverPreviewContent(
     )
 }
 
-/**
- * A section's text block, parked at [topOffset] and travelling out of the way as the other
- * section takes over.
- */
+// a section's text block parked at [topoffset] and travelling out of the way as
 @Composable
 private fun SectionContent(
     topOffset: Dp,
@@ -799,10 +752,7 @@ private fun SectionContent(
     )
 }
 
-/**
- * [centered] follows the concept screens: the cover section's "Style" is left-aligned against its
- * option card (82–88), the background section's "Bg Style" is centred under its box (89–92).
- */
+// [centered] follows the concept screens: the cover section's "style" is
 @Composable
 private fun SectionCaption(title: String, subtitle: String, centered: Boolean = false) {
     Column(
@@ -851,13 +801,7 @@ private fun PageDots(count: Int, selected: Int) {
     }
 }
 
-/**
- * The option rows for the selected style.
- *
- * The card does not slide between styles — it re-shapes. animateContentSize on the page's own
- * curve grows or shrinks the card as the row count changes, so going from four options to two
- * reads as the card closing up rather than one card leaving and another arriving.
- */
+// the option rows for the selected style the card does not slide between styles —
 @Composable
 private fun OptionCard(options: List<CoverOption>, swipeProvider: () -> Float) {
     Column(
@@ -869,7 +813,7 @@ private fun OptionCard(options: List<CoverOption>, swipeProvider: () -> Float) {
             .animateContentSize(
                 animationSpec = tween(durationMillis = SwipeDurationMillis, easing = SwipeEasing)
             )
-            // Only the rows' opacity tracks the drag; the card's own body stays put and morphs.
+            // only the rows' opacity tracks the drag; the card's own body stays put and
             .padding(vertical = 6.dp)
     ) {
         Box(modifier = Modifier.graphicsLayer { alpha = swipeFade(swipeProvider()) }) {
@@ -890,8 +834,8 @@ private fun swipeFade(offset: Float): Float = (1f - (abs(offset) * 2f)).coerceIn
 @Composable
 private fun SwitchOptionRow(option: CoverOption.Switch) {
     val parent = option.parent
-    // A sub-option is only meaningful while its parent is on — mirrors how the same pair is
-    // presented in Settings → Appearance.
+    // a sub-option is only meaningful while its parent is on — mirrors how the
+    // presented in settings → appearance
     val parentEnabled = if (parent == null) {
         true
     } else {
@@ -930,7 +874,7 @@ private fun TextOptionRow(option: CoverOption.Text) {
                 selection = androidx.compose.ui.text.TextRange(stored.length),
             ),
             placeholder = { Text(option.placeholder) },
-            // Clearing the field is a legitimate action here: an empty disc name hides the plate.
+            // clearing the field is a legitimate action here: an empty disc name hides
             isInputValid = { true },
             onDone = { stored = it },
             onDismiss = { showDialog = false },
@@ -1000,10 +944,7 @@ private fun OptionRowShell(
     }
 }
 
-/**
- * One-off toast-style note that the artwork can be held to get here directly. Fades itself out
- * after a few seconds rather than needing to be dismissed.
- */
+// one-off toast-style note that the artwork can be held to get here directly
 @Composable
 private fun LongPressHint(modifier: Modifier = Modifier) {
     var visible by remember { mutableStateOf(true) }

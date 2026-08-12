@@ -1,4 +1,4 @@
-// AutoPlaylistViewModel.kt
+// autoplaylistviewmodelkt
 // the file functioned as auto playlist view model
 
 package com.example.musicfy.viewmodels

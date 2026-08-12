@@ -1,4 +1,4 @@
-// YouTubeLyricsProvider.kt
+// youtubelyricsproviderkt
 // this thing is for you tube lyrics provider
 
 package com.example.musicfy.lyrics

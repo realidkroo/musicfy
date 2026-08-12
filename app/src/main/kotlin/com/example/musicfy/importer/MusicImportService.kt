@@ -1,9 +1,9 @@
-// MusicImportService.kt
-// Runs the actual CSV -> library import in the background: searches YouTube Music for each
-// parsed track, picks the best match by title/artist similarity, and writes liked songs +
-// playlists into the local database. A Hilt singleton with its own CoroutineScope (same shape
-// as SyncUtils) so the import keeps running even after the setup wizard that started it is
-// dismissed — thousands of songs at one search each is not something the wizard should block on.
+// musicimportservicekt
+// runs the actual csv -> library import in the background: searches youtube
+// parsed track picks the best match by title/artist similarity and writes
+// playlists into the local database a hilt singleton with its own
+// as syncutils) so the import keeps running even after the setup wizard that
+// dismissed — thousands of songs at one search each is not something the
 
 package com.example.musicfy.importer
 

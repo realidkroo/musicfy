@@ -1,4 +1,4 @@
-// ExpandableText.kt
+// expandabletextkt
 // this thing is part of expandable text
 
 package com.example.musicfy.ui.component

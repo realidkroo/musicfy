@@ -1,4 +1,4 @@
-// CustomThumbnailMenu.kt
+// customthumbnailmenukt
 // what is this for you ask its for custom thumbnail menu ofc
 
 package com.example.musicfy.ui.menu

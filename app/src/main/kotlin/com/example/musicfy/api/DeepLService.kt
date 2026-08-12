@@ -1,4 +1,4 @@
-// DeepLService.kt
+// deeplservicekt
 // this thing is for deep lservice
 
 package com.example.musicfy.api
@@ -30,7 +30,7 @@ object DeepLService {
     ): Result<List<String>> = withContext(Dispatchers.IO) {
         var currentAttempt = 0
         
-        // Validate input
+        // validate input
         if (text.isBlank()) {
             return@withContext Result.failure(Exception("Input text is empty"))
         }
@@ -38,7 +38,7 @@ object DeepLService {
         val lines = text.lines()
         val lineCount = lines.size
         
-        // DeepL language codes (uppercase)
+        // deepl language codes (uppercase)
         val deeplLangCode = when (targetLanguage.lowercase()) {
             "zh", "zh-cn", "zh-hans" -> "ZH"
             "zh-tw", "zh-hant" -> "ZH"
@@ -49,7 +49,7 @@ object DeepLService {
             else -> targetLanguage.uppercase().take(2)
         }
         
-        // Determine if using free or pro API
+        // determine if using free or pro api
         val baseUrl = if (apiKey.endsWith(":fx")) {
             "https://api-free.deepl.com/v2/translate"
         } else {
@@ -80,7 +80,7 @@ object DeepLService {
                 val responseBody = response.body?.string()
 
                 if (!response.isSuccessful) {
-                    // Retry on server errors (5xx)
+                    // retry on server errors (5xx)
                     if (response.code >= 500) {
                         currentAttempt++
                         kotlinx.coroutines.delay(1000L * currentAttempt)

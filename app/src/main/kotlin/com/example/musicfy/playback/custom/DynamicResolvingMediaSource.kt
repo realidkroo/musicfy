@@ -53,8 +53,8 @@ class DynamicResolvingMediaSource(
             val result = try {
                 fetcherAction(mediaId)
             } catch (e: androidx.media3.common.PlaybackException) {
-                // If a forced backend throws PlaybackException, propagate it so ExoPlayer fails
-                // instead of silently falling back to YouTube music.
+                // if a forced backend throws playbackexception propagate it so exoplayer
+                // instead of silently falling back to youtube music
                 fetchError = java.io.IOException(e)
                 null
             } catch (e: Exception) {
@@ -67,17 +67,17 @@ class DynamicResolvingMediaSource(
 
             if (result == null) {
                 if (fetchError == null) {
-                    // fetcherAction declined to handle this item without erroring (e.g. custom
-                    // backends disabled) — fall back to playing the original item (YouTube)
-                    // normally instead of leaving the source unprepared forever.
+                    // fetcheraction declined to handle this item without erroring (eg custom
+                    // backends disabled) — fall back to playing the original item (youtube)
+                    // normally instead of leaving the source unprepared forever
                     withContext(Dispatchers.Main) {
                         val source = mediaSourceFactoryProvider(null).createMediaSource(originalMediaItem)
                         innerMediaSource = source
                         prepareChildSource(null, source)
                     }
                 }
-                // If fetchError is set, don't prepare — ExoPlayer will poll
-                // maybeThrowSourceInfoRefreshError() and correctly propagate the error.
+                // if fetcherror is set don't prepare — exoplayer will poll
+                // maybethrowsourceinforefresherror() and correctly propagate the error
                 return@launch
             }
 
@@ -88,7 +88,7 @@ class DynamicResolvingMediaSource(
             }
 
             if (!result.decryptionKey.isNullOrBlank()) {
-                // Setup ClearKey DRM
+                // setup clearkey drm
                 val drmCallback = object : MediaDrmCallback {
                     override fun executeProvisionRequest(uuid: UUID, request: ExoMediaDrm.ProvisionRequest): ByteArray {
                         return ByteArray(0)

@@ -1,18 +1,18 @@
-// SeamBlur.kt
-// Blurred band bridging the cover art into the morphing backdrop below it, so the boundary
-// between them reads as one soft blend instead of a hard image/background seam. Lives as a
-// sibling of MorphingCover (added in BottomSheetPlayer.kt), not inside it, because it reads a
-// GlassState that MorphingCover registers as a glassRoot — if this were nested inside
-// MorphingCover's own glassRoot-wrapped subtree it would end up capturing (and blurring) itself.
-//
-// Reuses GlassKit.kt's ProgressiveGlassBackground — the same real backdrop-blur system
-// HomeScreen.kt already uses for its scroll-driven top bar blur — instead of an earlier
-// hand-rolled "duplicate the cover, stretch it, blur it" attempt. That approach kept showing a
-// smeared-photo artifact (stretching a sharp, recognizable photo into a band and only lightly
-// blurring parts of it) and a visible hard edge (the blur wasn't actually strong enough right at
-// the cover's true boundary). Blurring the *real* rendered content behind this band avoids both
-// problems entirely — there's nothing to "leak" or look wrong, it just shows what's actually
-// there, blurred.
+// seamblurkt
+// blurred band bridging the cover art into the morphing backdrop below it so
+// between them reads as one soft blend instead of a hard image/background
+// sibling of morphingcover (added in bottomsheetplayerkt) not inside it
+// glassstate that morphingcover registers as a glassroot — if this were
+// morphingcover's own glassroot-wrapped subtree it would end up capturing
+
+// reuses glasskitkt's progressiveglassbackground — the same real
+// homescreenkt already uses for its scroll-driven top bar blur — instead of
+// hand-rolled "duplicate the cover stretch it blur it" attempt that approach
+// smeared-photo artifact (stretching a sharp recognizable photo into a band
+// blurring parts of it) and a visible hard edge (the blur wasn't actually
+// the cover's true boundary) blurring the *real* rendered content behind
+// problems entirely — there's nothing to "leak" or look wrong it just shows
+// there blurred
 
 package com.example.musicfy.ui.player
 
@@ -57,33 +57,28 @@ fun SeamBlur(
     progressProvider: () -> Float,
     trackInfo: TrackInfo,
     maxHeight: Dp,
-    /**
-     * Extra 0..1 visibility factor, multiplied into the band's own alpha. Used to take the band
-     * away on the lyrics page: it exists to soften the seam under the cover art, and once the
-     * cover has shrunk into the header there is no seam left — only a dark bar sitting behind the
-     * timestamp row. Read in the draw phase, so changing it repaints without recomposing.
-     */
+    // extra 01 visibility factor multiplied into the band's own alpha used to take
     fadeProvider: () -> Float = { 1f },
 ) {
     if (trackInfo.thumbnailUrl == null) return
-    // Cheap bail-out only — this used to be the actual visibility gate (progress > 0.85f, a hard
-    // cutoff), which is exactly why the band popped in/out instantly right at that threshold
-    // instead of fading. The real fade now lives below as a continuous alpha ramp; this just
-    // skips composing the band at all while it's fully invisible anyway (progress == 0, i.e. the
-    // player isn't even open).
+    // cheap bail-out only — this used to be the actual visibility gate (progress
+    // cutoff) which is exactly why the band popped in/out instantly right at
+    // instead of fading the real fade now lives below as a continuous alpha
+    // skips composing the band at all while it's fully invisible anyway
+    // player isn't even open)
     val shouldExist by remember { derivedStateOf { progressProvider() > 0f } }
     if (!shouldExist) return
 
     val context = LocalContext.current
-    // Top pulled up further into the cover art (was 0.55) so the transition into the title/
-    // controls zone reads as one long soft blend instead of a short band right at the seam.
-    // Cover's actual bottom edge is ~0.63 of maxHeight — see MorphingCover.kt's fullArtHeight.
+    // top pulled up further into the cover art (was 055) so the transition into
+    // controls zone reads as one long soft blend instead of a short band right
+    // cover's actual bottom edge is ~063 of maxheight — see morphingcoverkt's
     val bandTop = maxHeight * 0.52f
     val bandBottom = maxHeight * 0.74f
 
-    // Theme-colored scrim (same Palette-extraction approach as AlbumGradient.kt) so the white
-    // title/time text stays readable even if the cover happens to be light/white — "slightly"
-    // tinted, not strong enough to read as a deliberate color effect on its own.
+    // theme-colored scrim (same palette-extraction approach as albumgradientkt)
+    // title/time text stays readable even if the cover happens to be light/white
+    // tinted not strong enough to read as a deliberate color effect on its own
     var scrimColor by remember(trackInfo.mediaId) { mutableStateOf(Color.Black) }
     LaunchedEffect(trackInfo.mediaId, trackInfo.thumbnailUrl) {
         val url = trackInfo.thumbnailUrl ?: return@LaunchedEffect
@@ -119,11 +114,11 @@ fun SeamBlur(
             .height(bandBottom - bandTop)
             .offset(y = bandTop)
             .graphicsLayer {
-                // Ramp widened from (0.85 -> 1.0) to (0.5 -> 0.95): progress sits at a constant
-                // 1.0 for the entire time the player is just open and not being dragged, so the
-                // fade ONLY ever plays during the open/close gesture itself — a 0.15-wide window
-                // is maybe 40-60ms of a few-hundred-ms drag, imperceptible as a fade even though
-                // it technically isn't a hard cutoff anymore. This gives it real, visible length.
+                // ramp widened from (085 -> 10) to (05 -> 095): progress sits at a constant
+                // 10 for the entire time the player is just open and not being dragged so the
+                // fade only ever plays during the open/close gesture itself — a 015-wide
+                // is maybe 40-60ms of a few-hundred-ms drag imperceptible as a fade even
+                // it technically isn't a hard cutoff anymore this gives it real visible
                 val p = progressProvider()
                 alpha = ((p - 0.5f) / 0.45f).coerceIn(0f, 1f) * fadeProvider().coerceIn(0f, 1f)
             }

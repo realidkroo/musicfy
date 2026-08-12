@@ -1,14 +1,7 @@
-// MusicRecognitionService.kt
+// musicrecognitionservicekt
 // this thing is part of music recognition service
 
-/**
- * Music Recognition Feature
- * 
- * This feature is based on the original MusicRecognizer project by Aleksey Saenko.
- * Original project: https://github.com/aleksey-saenko/MusicRecognizer
- * 
- * Special thanks to Aleksey Saenko for the music recognition implementation.
- */
+// music recognition feature this feature is based on the original musicrecognizer
 
 package com.example.musicfy.recognition
 
@@ -31,20 +24,16 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.nio.ByteOrder
 
-/**
- * Service for recognizing music using audio fingerprinting.
- * Records audio from the microphone, generates a Shazam-compatible fingerprint,
- * and sends it to the Shazam API for recognition.
- */
+// service for recognizing music using audio fingerprinting records audio from the
 object MusicRecognitionService {
     
-    // Recording parameters
+    // recording parameters
     private const val RECORDING_SAMPLE_RATE = 44100
     private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
     private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-    // Recording duration: 10 seconds for better recognition accuracy
-    // Original MusicRecognizer uses: 3s -> 6s -> 9s -> 10s fallback
-    // We use 10s directly to match the fallback duration for maximum compatibility
+    // recording duration: 10 seconds for better recognition accuracy
+    // original musicrecognizer uses: 3s -> 6s -> 9s -> 10s fallback
+    // we use 10s directly to match the fallback duration for maximum
     private const val RECORDING_DURATION_MS = 10000L
     
     private val _recognitionStatus = MutableStateFlow<RecognitionStatus>(RecognitionStatus.Ready)
@@ -57,10 +46,7 @@ object MusicRecognitionService {
         ) == PackageManager.PERMISSION_GRANTED
     }
     
-    /**
-     * Start the music recognition process.
-     * Records audio, generates fingerprint, and queries Shazam API.
-     */
+    // start the music recognition process records audio generates fingerprint and
     @SuppressLint("MissingPermission")
     suspend fun recognize(context: Context): RecognitionStatus = withContext(Dispatchers.IO) {
         if (!hasRecordPermission(context)) {
@@ -70,12 +56,12 @@ object MusicRecognitionService {
         _recognitionStatus.value = RecognitionStatus.Listening
         
         try {
-            // Step 1: Record audio
+            // step 1: record audio
             val audioData = recordAudio()
             
             _recognitionStatus.value = RecognitionStatus.Processing
             
-            // Step 2: Convert to mono if needed and resample to 16kHz
+            // step 2: convert to mono if needed and resample to 16khz
             val decodedAudio = DecodedAudio(
                 data = audioData,
                 channelCount = 1,
@@ -91,7 +77,7 @@ object MusicRecognitionService {
                 return@withContext _recognitionStatus.value
             }
             
-            // Verify format
+            // verify format
             require(
                 resampledAudio.channelCount == 1 &&
                 resampledAudio.sampleRate == VibraSignature.REQUIRED_SAMPLE_RATE &&
@@ -101,7 +87,7 @@ object MusicRecognitionService {
                 resampledAudio.data.size % 2 == 0
             ) { "Invalid audio format for fingerprint generation" }
             
-            // Step 3: Generate fingerprint using native library
+            // step 3: generate fingerprint using native library
             val signature = try {
                 VibraSignature.fromI16(resampledAudio.data)
             } catch (e: Exception) {
@@ -109,7 +95,7 @@ object MusicRecognitionService {
                 return@withContext _recognitionStatus.value
             }
             
-            // Step 4: Send to Shazam API
+            // step 4: send to shazam api
             val sampleDurationMs = (resampledAudio.data.size / 2) * 1000L / VibraSignature.REQUIRED_SAMPLE_RATE
             
             val result = Shazam.recognize(signature, sampleDurationMs)

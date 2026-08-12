@@ -1,4 +1,4 @@
-// PlayerSliderColors.kt
+// playerslidercolorskt
 // what is this for you ask its for player slider colors ofc
 
 package com.example.musicfy.ui.theme
@@ -10,22 +10,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.example.musicfy.constants.PlayerBackgroundStyle
 
-/**
- * Player slider color configuration for consistent styling across all slider types
- * 
- * This object provides standardized color schemes for Default, Squiggly, and Slim sliders
- * used in the music player interface, ensuring visual consistency and proper contrast.
- */
+// player slider color configuration for consistent styling across all slider
 object PlayerSliderColors {
 
-    /**
-     * Standard slider colors for all slider types
-     * 
-     * @param activeColor Color for active track, ticks, and thumb
-     * @param playerBackground The player background style
-     * @param useDarkTheme Whether dark theme is being used
-     * @return SliderColors configuration
-     */
+    // standard slider colors for all slider types
     @Composable
     fun getSliderColors(
         activeColor: Color,
@@ -33,9 +21,9 @@ object PlayerSliderColors {
         useDarkTheme: Boolean
     ): SliderColors {
         val inactiveTrackColor = when (playerBackground) {
-            // The flat fill is the only backdrop that follows the app theme rather than always
-            // being a dark, image-derived surface, so it's the only one that needs the light
-            // theme's darker track.
+            // the flat fill is the only backdrop that follows the app theme rather than
+            // being a dark image-derived surface so it's the only one that needs the
+            // theme's darker track
             PlayerBackgroundStyle.SOLID -> {
                 if (useDarkTheme) {
                     MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)

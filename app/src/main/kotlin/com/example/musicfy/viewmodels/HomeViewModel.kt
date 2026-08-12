@@ -1,4 +1,4 @@
-// HomeViewModel.kt
+// homeviewmodelkt
 // the file functioned as home view model
 
 package com.example.musicfy.viewmodels
@@ -110,21 +110,21 @@ class HomeViewModel @Inject constructor(
     val selectedChip = MutableStateFlow<HomePage.Chip?>(null)
     private val previousHomePage = MutableStateFlow<HomePage?>(null)
 
-    // Recently Played: songs/albums/playlists only (no artists), true chronological recency.
+    // recently played: songs/albums/playlists only (no artists) true
     val recentlyPlayed = MutableStateFlow<List<LocalItem>?>(null)
 
-    // Most Played: songs only, ranked #1-#4 by position. Deliberately independent of the
-    // QuickPicksKey preference (which can switch `quickPicks` to a "last listen" mode) since
-    // this section must always mean genuine most-played, not whatever Quick Picks currently is.
+    // most played: songs only ranked #1-#4 by position deliberately independent
+    // quickpickskey preference (which can switch `quickpicks` to a "last listen"
+    // this section must always mean genuine most-played not whatever quick picks
     val mostPlayedSongsForHome = MutableStateFlow<List<Song>?>(null)
 
-    // History: raw chronological songs, duplicates allowed (unlike HistoryScreen's day-grouped dedup).
+    // history: raw chronological songs duplicates allowed (unlike
     val recentHistorySongs = MutableStateFlow<List<Song>?>(null)
 
-    // Artist List: all "similar to X artist" seeds flattened + deduped into one row.
+    // artist list: all "similar to x artist" seeds flattened + deduped into one
     val artistListItems = MutableStateFlow<List<ArtistGroup>?>(null)
 
-    // All Time Hits - sourced from YouTube's charts TOP section.
+    // all time hits - sourced from youtube's charts top section
     val allTimeHits = MutableStateFlow<List<YTItem>?>(null)
 
     val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
@@ -145,7 +145,7 @@ class HomeViewModel @Inject constructor(
             val targetSize = 27
 
             if (filled.size < targetSize) {
-                // Keep Listening (History/Heavy Rotation)
+                // keep listening (history/heavy rotation)
                 keepListening?.let { k ->
                     val needed = targetSize - filled.size
                     val available = k.filter { item ->
@@ -185,7 +185,7 @@ class HomeViewModel @Inject constructor(
             }
 
             if (filled.size < targetSize) {
-                // Quick Picks (Most Played)
+                // quick picks (most played)
                 quick?.let { q ->
                     val needed = targetSize - filled.size
                     val available = q.filter { item ->
@@ -222,7 +222,7 @@ class HomeViewModel @Inject constructor(
     suspend fun getRandomItem(): YTItem? {
         try {
             isRandomizing.value = true
-            // Visual feedback for the animation
+            // visual feedback for the animation
             kotlinx.coroutines.delay(1000)
 
             val userSongs = mutableListOf<YTItem>()
@@ -278,7 +278,7 @@ class HomeViewModel @Inject constructor(
 
             otherSources.addAll(allYtItems.value)
 
-            // Probability: 80% User Songs, 20% Other Sources
+            // probability: 80% user songs 20% other sources
             val item = if (userSongs.isNotEmpty() && (otherSources.isEmpty() || Random.nextFloat() < 0.8f)) {
                 userSongs.distinctBy { it.id }.shuffled().firstOrNull()
             } else {
@@ -309,15 +309,15 @@ class HomeViewModel @Inject constructor(
     }
 
 
-    // Track last processed cookie to avoid unnecessary updates
+    // track last processed cookie to avoid unnecessary updates
     private var lastProcessedCookie: String? = null
-    // Track if we're currently processing account data
+    // track if we're currently processing account data
     private var isProcessingAccountData = false
 
     private suspend fun getDailyDiscover() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         
-        // Require at least 10 listens before showing Daily Discover
+        // require at least 10 listens before showing daily discover
         val playEvents = database.events().first()
         if (playEvents.size < 10) return
 
@@ -331,7 +331,7 @@ class HomeViewModel @Inject constructor(
 
         val seeds = eligibleSeeds.shuffled().take(5)
 
-        // Use a synchronized list to collect results safely from concurrent coroutines
+        // use a synchronized list to collect results safely from concurrent
         val items = java.util.Collections.synchronizedList(mutableListOf<DailyDiscoverItem>())
 
         kotlinx.coroutines.coroutineScope {
@@ -348,7 +348,7 @@ class HomeViewModel @Inject constructor(
                                 }
                                 .shuffled()
 
-                            // Simple check to avoid immediate duplicate of seed
+                            // simple check to avoid immediate duplicate of seed
                             val recommendation = recommendations.firstOrNull { rec ->
                                 rec.id != seed.id
                             }
@@ -368,7 +368,7 @@ class HomeViewModel @Inject constructor(
             }.forEach { it.join() }
         }
 
-        // Final deduplication just in case multiple seeds recommended the same song
+        // final deduplication just in case multiple seeds recommended the same song
         dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
     }
 
@@ -454,7 +454,7 @@ class HomeViewModel @Inject constructor(
                     YouTube.playlist(playlist.id).onSuccess { page ->
                         val songs = page.songs.take(10)
                         if (songs.isNotEmpty()) {
-                            // Use song count from the playlist page if available, otherwise use original
+                            // use song count from the playlist page if available otherwise use original
                             val songCountText = page.playlist.songCountText ?: playlist.songCountText
                             val updatedPlaylist = playlist.copy(songCountText = songCountText)
                             playlists.add(CommunityPlaylistItem(updatedPlaylist, songs))
@@ -473,10 +473,10 @@ class HomeViewModel @Inject constructor(
         val albums = database.recentlyPlayedAlbums(limit = 6).first()
         val playlists = database.recentlyPlayedPlaylists(limit = 6).first()
 
-        // Each list is already recency-sorted individually; there's no timestamp carried
-        // through to this layer to do a true global sort across types, so a round-robin
-        // merge (song, album, playlist, ...) approximates "most recent first" well enough
-        // for a home-row preview without adding extra query plumbing.
+        // each list is already recency-sorted individually; there's no timestamp
+        // through to this layer to do a true global sort across types so a
+        // merge (song album playlist ) approximates "most recent first" well enough
+        // for a home-row preview without adding extra query plumbing
         val merged = mutableListOf<LocalItem>()
         val maxLen = maxOf(songs.size, albums.size, playlists.size)
         for (i in 0 until maxLen) {
@@ -485,9 +485,9 @@ class HomeViewModel @Inject constructor(
             playlists.getOrNull(i)?.let { merged.add(it) }
         }
 
-        // Liked Songs is a synthetic playlist (a `song.liked` boolean, not a real row in
-        // the `playlist` table) so recentlyPlayedPlaylists()'s join can never surface it —
-        // same synthetic-injection approach already used for keepListening below.
+        // liked songs is a synthetic playlist (a `songliked` boolean not a real row
+        // the `playlist` table) so recentlyplayedplaylists()'s join can never
+        // same synthetic-injection approach already used for keeplistening below
         val lastPlayedLikedSongs = context.dataStore.get(LastPlayedLikedSongsTimeKey, 0L)
         if (System.currentTimeMillis() - lastPlayedLikedSongs < 86400000L * 7) {
             val likedCount = database.likedSongsCount().first()
@@ -518,9 +518,9 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun loadAllTimeHits() {
-        // One retry before giving up for the session — this was a single one-shot call
-        // with no fallback, so any transient failure/empty response meant the section
-        // silently never showed up again until the next full reload.
+        // one retry before giving up for the session — this was a single one-shot
+        // with no fallback so any transient failure/empty response meant the section
+        // silently never showed up again until the next full reload
         var page = YouTube.getChartsPage().onFailure { reportException(it) }.getOrNull()
         var section = page?.sections?.firstOrNull { it.chartType == ChartsPage.ChartType.TOP }
             ?: page?.sections?.firstOrNull { it.items.isNotEmpty() }
@@ -534,10 +534,7 @@ class HomeViewModel @Inject constructor(
         allTimeHits.value?.let { homeFeedCache.saveAllTimeHits(it) }
     }
 
-    /**
-     * Phase 1: Reads all local DB data and immediately drops the loading indicator.
-     * Guarantees the UI shows real content before any network call is made.
-     */
+    // phase 1: reads all local db data and immediately drops the loading indicator
     private suspend fun loadLocalDataPhase() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
 
@@ -557,7 +554,7 @@ class HomeViewModel @Inject constructor(
         val keepListeningArtists = database.mostPlayedArtists(fromTimeStamp).first()
             .filter { it.artist.isYouTubeArtist && it.artist.thumbnailUrl != null }.shuffled().take(5)
         
-        // Find playlists that contain the most played songs using a single batch query
+        // find playlists that contain the most played songs using a single batch
         val mostPlayedSongsIds = keepListeningSongs.map { it.id }
         val playlists = database.playlistsByUpdatedDateAsc().first()
         val matchingPlaylistIds = if (mostPlayedSongsIds.isNotEmpty()) {
@@ -589,10 +586,7 @@ class HomeViewModel @Inject constructor(
             .filter { it is Song || it is Album || it is com.example.musicfy.db.entities.Playlist }
     }
 
-    /**
-     * Fetches all three recommendation sources (artists, songs, albums) concurrently
-     * using async/awaitAll, replacing the previous sequential mapNotNull chains.
-     */
+    // fetches all three recommendation sources (artists songs albums) concurrently
     private suspend fun loadSimilarRecommendations() {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
@@ -675,8 +669,8 @@ class HomeViewModel @Inject constructor(
             val nonNullResults = results.filterNotNull()
             similarRecommendations.value = nonNullResults.shuffled()
 
-            // Artist List: collapse every "similar to X" seed above into one card per artist
-            // (covers + artist avatar) instead of N separate per-seed rows.
+            // artist list: collapse every "similar to x" seed above into one card per
+            // (covers + artist avatar) instead of n separate per-seed rows
             data class GroupAccumulator(
                 var artistId: String?,
                 var artistName: String,
@@ -726,19 +720,15 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    // Our own FromTheCommunity section (getCommunityPlaylists()) already covers this
-    // content — without dropping YouTube's own equivalent section here, it renders as
-    // a second, separate row showing overlapping playlists right alongside it.
+    // our own fromthecommunity section (getcommunityplaylists()) already covers
+    // content — without dropping youtube's own equivalent section here it
+    // a second separate row showing overlapping playlists right alongside it
     private fun isCommunityOrTrendingSection(title: String): Boolean {
         val titleLower = title.lowercase()
         return "trending" in titleLower || "community" in titleLower
     }
 
-    /**
-     * Phase 2: Fires all network sections concurrently.
-     * Because isLoading is already false, each section streams into the UI
-     * as its data arrives — no spinner blocking the user.
-     */
+    // phase 2: fires all network sections concurrently because isloading is already
     private suspend fun loadNetworkDataPhase() {
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
@@ -778,7 +768,7 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Update combined YT items once all network data has settled
+        // update combined yt items once all network data has settled
         allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
                 homePage.value?.sections?.flatMap { it.items }.orEmpty()
     }
@@ -786,19 +776,19 @@ class HomeViewModel @Inject constructor(
     private suspend fun load() {
         isLoading.value = true
 
-        // loadNetworkDataPhase() below unconditionally overwrites homePage with the
-        // fresh unfiltered feed — clearing the chip selection here keeps the chip pill
+        // loadnetworkdataphase() below unconditionally overwrites homepage with the
+        // fresh unfiltered feed — clearing the chip selection here keeps the chip
         // in sync with what's actually on screen instead of staying visually
-        // "selected" over content that silently reverted to unfiltered.
+        // "selected" over content that silently reverted to unfiltered
         selectedChip.value = null
         previousHomePage.value = null
 
-        // Phase 1: Local DB only — UI renders immediately after this
+        // phase 1: local db only — ui renders immediately after this
         loadLocalDataPhase()
         isLoading.value = false
 
-        // Phase 2: All network sections in parallel — streams in progressively. Skipped
-        // entirely in Offline mode, so Home only ever shows what's already local/downloaded.
+        // phase 2: all network sections in parallel — streams in progressively
+        // entirely in offline mode so home only ever shows what's already
         val offlineMode = context.dataStore.get(OfflineModeKey, false)
         if (!offlineMode) {
             loadNetworkDataPhase()
@@ -880,7 +870,7 @@ class HomeViewModel @Inject constructor(
                 isRefreshing.value = false
             }
         }
-        // Run sync when user manually refreshes
+        // run sync when user manually refreshes
         viewModelScope.launch(Dispatchers.IO) {
             syncUtils.tryAutoSync()
         }
@@ -888,10 +878,10 @@ class HomeViewModel @Inject constructor(
 
     init {
 
-        // Show last session's cached feed instantly, before the network phase (below)
+        // show last session's cached feed instantly before the network phase (below)
         // even starts — this is what makes the algorithmic sections feel instant on a
-        // cold app start instead of blank until the network responds. The network
-        // phase always still runs and overwrites these with fresh data once it lands.
+        // cold app start instead of blank until the network responds the network
+        // phase always still runs and overwrites these with fresh data once it lands
         viewModelScope.launch(Dispatchers.IO) {
             homeFeedCache.loadHomePage()?.let { homePage.value = it }
             homeFeedCache.loadCommunityPlaylists()?.let { communityPlaylists.value = it }
@@ -899,7 +889,7 @@ class HomeViewModel @Inject constructor(
             homeFeedCache.loadExplorePage()?.let { explorePage.value = it }
         }
 
-        // Load home data
+        // load home data
         viewModelScope.launch(Dispatchers.IO) {
             context.dataStore.data
                 .map { it[InnerTubeCookieKey] }
@@ -909,32 +899,32 @@ class HomeViewModel @Inject constructor(
             load()
         }
 
-        // Run sync in separate coroutine with cooldown to avoid blocking UI
+        // run sync in separate coroutine with cooldown to avoid blocking ui
         viewModelScope.launch(Dispatchers.IO) {
             syncUtils.tryAutoSync()
         }
 
 
 
-        // Listen for cookie changes and reload account data
+        // listen for cookie changes and reload account data
         viewModelScope.launch(Dispatchers.IO) {
             context.dataStore.data
                 .map { it[InnerTubeCookieKey] }
                 .collect { cookie ->
-                    // Avoid processing if already processing
+                    // avoid processing if already processing
                     if (isProcessingAccountData) return@collect
 
-                    // Always process cookie changes, even if same value (for logout/login scenarios)
+                    // always process cookie changes even if same value (for logout/login
                     lastProcessedCookie = cookie
                     isProcessingAccountData = true
 
                     try {
                         if (cookie != null && cookie.isNotEmpty()) {
 
-                            // Update YouTube.cookie manually to ensure it's set
+                            // update youtubecookie manually to ensure it's set
                             YouTube.cookie = cookie
 
-                            // Fetch new account data
+                            // fetch new account data
                             YouTube.accountInfo().onSuccess { info ->
                                 accountName.value = info.name
                                 accountImageUrl.value = info.thumbnailUrl
@@ -952,7 +942,7 @@ class HomeViewModel @Inject constructor(
                 }
         }
 
-        // Listen for HideYoutubeShorts preference changes and reload account playlists instantly
+        // listen for hideyoutubeshorts preference changes and reload account
         viewModelScope.launch(Dispatchers.IO) {
             context.dataStore.data
                 .map { it[HideYoutubeShortsKey] ?: false }

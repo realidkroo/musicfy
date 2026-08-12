@@ -1,4 +1,4 @@
-// CanvasArtworkPlayer.kt
+// canvasartworkplayerkt
 // this thing is for canvas artwork player
 
 package com.example.musicfy.ui.player
@@ -40,14 +40,7 @@ import android.view.ViewGroup
 import android.view.TextureView
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 
-/**
- * Disk cache for canvas video bytes, separate from the main song player cache. Without this,
- * every canvas clip was re-fetched from the network from scratch each time this composable
- * mounted (e.g. every time the full player was dragged open past 92% and back down) — the
- * single biggest source of unexpected mobile data usage in the app. Lives under cacheDir (not
- * filesDir) since this content is disposable and safely re-fetchable, so the OS is free to
- * reclaim it under storage pressure.
- */
+// disk cache for canvas video bytes separate from the main song player cache
 private object CanvasVideoCache {
     @Volatile private var cache: SimpleCache? = null
 
@@ -212,8 +205,8 @@ fun CanvasArtworkPlayer(
                 normalized.lowercase(Locale.ROOT).split('?').first().endsWith(".m3u8") -> MimeTypes.APPLICATION_M3U8
                 normalized.lowercase(Locale.ROOT).contains(".mp4") -> MimeTypes.VIDEO_MP4
                 primary != null && currentUrl == primary -> {
-                    // Fallback: if it's the primary URL and we can't tell from extension,
-                    // check if its a known HLS provider or default to HLS for Apple Music compatibility
+                    // fallback: if it's the primary url and we can't tell from extension
+                    // check if its a known hls provider or default to hls for apple music
                     if (normalized.contains("apple.com") || normalized.contains("music.apple") || !normalized.contains(".mp4")) {
                         MimeTypes.APPLICATION_M3U8
                     } else {
@@ -262,7 +255,7 @@ fun CanvasArtworkPlayer(
             }
         },
         update = { view ->
-            // Apply native RenderEffect for hardware-accelerated blur on Android 12+ only when changed
+            // apply native rendereffect for hardware-accelerated blur on android 12+
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 val clampedBlur = if (blurRadiusPx > 0f) blurRadiusPx.coerceAtMost(96f) else 0f
                 if (blurRadiusPx > 0f) {

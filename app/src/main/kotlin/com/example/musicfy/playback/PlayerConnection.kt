@@ -1,4 +1,4 @@
-// PlayerConnection.kt
+// playerconnectionkt
 // this thing is part of player connection
 
 package com.example.musicfy.playback
@@ -38,13 +38,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 
-// @Stable: PlayerConnection is passed as a parameter into nearly every player composable
-// (SongInfo, ActionButtons, PlayerSlider, PlayerControls, ...). Without this, Compose can't
-// infer stability across its Context/CoroutineScope/ExoPlayer-typed properties, so every one
-// of those composables is forced to fully recompose whenever the root player composable
-// recomposes for any reason — even when nothing they actually read changed. All meaningfully
-// observed state lives on the exposed StateFlow properties, which are already read through
-// collectAsState() everywhere, so this annotation doesn't change what gets observed.
+// @stable: playerconnection is passed as a parameter into nearly every
+// (songinfo actionbuttons playerslider playercontrols ) without this compose
+// infer stability across its context/coroutinescope/exoplayer-typed
+// of those composables is forced to fully recompose whenever the root player
+// recomposes for any reason — even when nothing they actually read changed
+// observed state lives on the exposed stateflow properties which are already
+// collectasstate() everywhere so this annotation doesn't change what gets
 @Stable
 @OptIn(ExperimentalCoroutinesApi::class)
 class PlayerConnection(
@@ -61,10 +61,7 @@ class PlayerConnection(
     val service = binder.service
     private val playerReadinessFlow = service.isPlayerReady
     
-    /**
-     * Safe player accessor checks readiness & handles errors.
-     * Should be used by all player access within this class.
-     */
+    // safe player accessor checks readiness & handles errors should be used by all
     private fun getPlayerSafe(): ExoPlayer {
         return try {
             if (!playerReadinessFlow.value) {
@@ -77,14 +74,11 @@ class PlayerConnection(
         }
     }
 
-    /**
-     * Public accessor for player. Throws if player not ready.
-     * Callers should check [isPlayerInitialized] before calling, or handle exceptions.
-     */
+    // public accessor for player throws if player not ready callers should check
     val player: ExoPlayer
         get() = getPlayerSafe()
 
-    /** Tracks whether player initialization completed successfully */
+    // tracks whether player initialization completed successfully
     private val isPlayerInitialized = MutableStateFlow(service.isPlayerReady.value)
 
     val playbackState: MutableStateFlow<Int>
@@ -94,7 +88,7 @@ class PlayerConnection(
     init {
         Timber.tag(TAG).d("PlayerConnection init: playerReady=${playerReadinessFlow.value}")
         
-        // Initialize with player state or safe defaults if player not ready
+        // initialize with player state or safe defaults if player not ready
         val initialState = try {
             val initialPlayer = getPlayerSafe()
             Triple(initialPlayer.playbackState, initialPlayer.playWhenReady, 
@@ -114,7 +108,7 @@ class PlayerConnection(
             initialState.third
         )
         
-        // Track service readiness changes in background.
+        // track service readiness changes in background
         scope.launch {
             playerReadinessFlow.collect { ready ->
                 isPlayerInitialized.value = ready
@@ -127,7 +121,7 @@ class PlayerConnection(
         Timber.tag(TAG).d("PlayerConnection state flows initialized successfully")
     }
     
-    // Effective playing state, considers Cast when active
+    // effective playing state considers cast when active
     val isEffectivelyPlaying = combine(
         isPlaying,
         service.castConnectionHandler?.isCasting ?: MutableStateFlow(false),
@@ -172,11 +166,7 @@ class PlayerConnection(
         }
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, emptyList())
 
-    /**
-     * Single 15Hz ticker for position/duration, replacing the per-screen polling loops
-     * that used to live in Player.kt and Lyrics.kt separately. Polls unconditionally
-     * (not gated on isPlaying) so a seek while paused is reflected immediately.
-     */
+    // single 15hz ticker for position/duration replacing the per-screen polling loops
     val progressState: kotlinx.coroutines.flow.StateFlow<com.example.musicfy.ui.player.models.ProgressState> =
         kotlinx.coroutines.flow.callbackFlow {
             while (true) {
@@ -222,7 +212,7 @@ class PlayerConnection(
 
     init {
         try {
-            // Observe player changes (e.g. crossfade swap)
+            // observe player changes (eg crossfade swap)
             scope.launch {
                 service.playerFlow.collect { newPlayer ->
                     if (newPlayer != null && newPlayer != attachedPlayer) {
@@ -231,7 +221,7 @@ class PlayerConnection(
                 }
             }
             
-            // Initial setup if flow hasn't emitted yet but service is ready
+            // initial setup if flow hasn't emitted yet but service is ready
             if (attachedPlayer == null && service.isPlayerReady.value) {
                  updateAttachedPlayer(player)
             }
@@ -239,7 +229,7 @@ class PlayerConnection(
             Timber.tag(TAG).d("PlayerConnection flow observer registered")
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Failed to initialize PlayerConnection listener or state")
-            // Propagate the error so MainActivity can retry
+            // propagate the error so mainactivity can retry
             throw e
         }
     }
@@ -249,7 +239,7 @@ class PlayerConnection(
         attachedPlayer = newPlayer
         newPlayer.addListener(this)
         
-        // Refresh all state from new player
+        // refresh all state from new player
         playbackState.value = newPlayer.playbackState
         playWhenReady.value = newPlayer.playWhenReady
         mediaMetadata.value = newPlayer.currentMetadata
@@ -336,9 +326,7 @@ class PlayerConnection(
         }
     }
 
-    /**
-     * Toggle play/pause - handles Cast when active
-     */
+    // toggle play/pause - handles cast when active
     fun togglePlayPause() {
         try {
             val castHandler = service.castConnectionHandler
@@ -356,9 +344,7 @@ class PlayerConnection(
         }
     }
     
-    /**
-     * Start playback - handles Cast when active
-     */
+    // start playback - handles cast when active
     fun play() {
         try {
             val castHandler = service.castConnectionHandler
@@ -375,9 +361,7 @@ class PlayerConnection(
         }
     }
     
-    /**
-     * Pause playback - handles Cast when active
-     */
+    // pause playback - handles cast when active
     fun pause() {
         try {
             val castHandler = service.castConnectionHandler
@@ -391,9 +375,7 @@ class PlayerConnection(
         }
     }
 
-    /**
-     * Seek to position - handles Cast when active
-     */
+    // seek to position - handles cast when active
     fun seekTo(position: Long) {
         try {
             val castHandler = service.castConnectionHandler
@@ -409,7 +391,7 @@ class PlayerConnection(
 
     fun seekToNext() {
         try {
-            // When casting, use Cast skip instead of local player
+            // when casting use cast skip instead of local player
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
                 castHandler.skipToNext()
@@ -430,15 +412,15 @@ class PlayerConnection(
 
     fun seekToPrevious() {
         try {
-            // When casting, use Cast skip instead of local player
+            // when casting use cast skip instead of local player
             val castHandler = service.castConnectionHandler
             if (castHandler?.isCasting?.value == true) {
                 castHandler.skipToPrevious()
                 return
             }
 
-            // Logic to mimic standard seekToPrevious behavior but with explicit callbacks
-            // If we are more than 3 seconds in, just restart the song
+            // logic to mimic standard seektoprevious behavior but with explicit callbacks
+            // if we are more than 3 seconds in just restart the song
             if (player.currentPosition > 3000 || !player.hasPreviousMediaItem()) {
                 player.seekTo(0)
                 if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
@@ -447,7 +429,7 @@ class PlayerConnection(
                 player.playWhenReady = true
                 onRestartSong?.invoke()
             } else {
-                // Otherwise go to previous media item
+                // otherwise go to previous media item
                 player.seekToPreviousMediaItem()
                 if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
                     player.prepare()
@@ -532,7 +514,7 @@ class PlayerConnection(
                     }
                     Timber.tag(TAG).d("Extracted local artwork to $newThumbnailUrl")
                     
-                    // Update current mediaMetadata if it matches
+                    // update current mediametadata if it matches
                     val currentMetadata = this@PlayerConnection.mediaMetadata.value
                     if (currentMetadata?.id == mediaItem.mediaId) {
                         this@PlayerConnection.mediaMetadata.value = currentMetadata.copy(thumbnailUrl = newThumbnailUrl)

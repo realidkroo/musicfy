@@ -1,4 +1,4 @@
-// OnlineSearchSuggestionViewModel.kt
+// onlinesearchsuggestionviewmodelkt
 // this thing is for online search suggestion view model
 
 package com.example.musicfy.viewmodels

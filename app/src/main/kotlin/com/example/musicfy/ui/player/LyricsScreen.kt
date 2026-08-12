@@ -1,10 +1,10 @@
-// LyricsScreen.kt
-// Full lyrics page for the expanded player, styled after Monochrome's fullscreen lyrics pane:
-// small cover top-left (tap to close back to the normal player view) instead of the usual big
-// centered artwork, a progressively-highlighted/blurred synced lyrics column, and the same
-// progress slider + transport row as the normal player underneath. Romanization is computed
-// locally (deterministic script transliteration already in LyricsUtils, no network/API-key
-// step) and shown as a smaller sub-line under each lyric line.
+// lyricsscreenkt
+// full lyrics page for the expanded player styled after monochrome's
+// small cover top-left (tap to close back to the normal player view) instead
+// centered artwork a progressively-highlighted/blurred synced lyrics column
+// progress slider + transport row as the normal player underneath
+// locally (deterministic script transliteration already in lyricsutils no
+// step) and shown as a smaller sub-line under each lyric line
 
 package com.example.musicfy.ui.player
 
@@ -96,65 +96,46 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Where the active line sits, measured from the top of the viewport as a fraction of screen
- * height. The old layout used a fixed -232dp scroll offset, which put the highlighted line down
- * near the transport row; a fraction keeps it in the upper third on any screen size.
- */
+// where the active line sits measured from the top of the viewport as a fraction
 private const val ActiveLineViewportFraction = 0.2f
 
-/** Idle time on the highlighted line before the page goes immersive. */
+// idle time on the highlighted line before the page goes immersive
 private const val ImmersiveDelayMs = 3_500L
 
-/** How long the list takes to glide the newly-active line into position. */
+// how long the list takes to glide the newly-active line into position
 private const val RecenterDurationMs = 950
 
-/**
- * Scroll movement, in px between two snapshots, needed to count as a deliberate direction rather
- * than fling settle or a fingertip wobble. Low enough to feel immediate, high enough that resting
- * a finger on the list doesn't toggle the mode.
- */
+// scroll movement in px between two snapshots needed to count as a deliberate
 private const val ScrollDirectionThresholdPx = 6L
 
-/** How long after the user stops scrolling before the list recenters on the active line. */
+// how long after the user stops scrolling before the list recenters on the active line
 private const val IdleRecenterDelayMs = 3_500L
 
-/** Where the top fade finishes and the bottom fade begins, as fractions of the list's height. */
+// where the top fade finishes and the bottom fade begins as fractions of the list's height
 private const val TopFadeFraction = 0.10f
 private const val BottomFadeStart = 0.62f
 
-/**
- * How far the list is allowed to reach back down into the controls block before fading out.
- * The timestamp labels sit a little below the block's top edge, so ending the list exactly at
- * that edge left a visible band of dead space above the numbers.
- */
+// how far the list is allowed to reach back down into the controls block before
 private val HeaderOverlapAllowance = 28.dp
 
 @Composable
 fun LyricsScreen(
     onClose: () -> Unit,
-    // Same value BottomSheetPlayer passes to PlayerControls — needed here for the identical
-    // screenHeight * 0.19f - 37.dp bottom-anchor formula PlayerControls uses. Without it, this
-    // page's transport row just sat at the natural bottom of a Column (~16dp of padding),
-    // landing ~119dp lower on screen than the main player's — confirmed by measuring both
-    // screens' actual rendered bounds via uiautomator, not eyeballed.
+    // same value bottomsheetplayer passes to playercontrols — needed here for
+    // screenheight * 019f - 37dp bottom-anchor formula playercontrols uses
+    // page's transport row just sat at the natural bottom of a column (~16dp of
+    // landing ~119dp lower on screen than the main player's — confirmed by
+    // screens' actual rendered bounds via uiautomator not eyeballed
     screenHeight: androidx.compose.ui.unit.Dp,
-    /** Height occupied by the shared slider + transport block, measured from the sheet's bottom. */
+    // height occupied by the shared slider + transport block measured from the sheet's bottom
     contentBottomInset: androidx.compose.ui.unit.Dp,
-    /** Reports the immersive state so the shared transport block can fade with it. */
+    // reports the immersive state so the shared transport block can fade with it
     onImmersiveChange: (Boolean) -> Unit = {},
-    /** True when the bottom sheet is being dragged, used to suppress heavy visual effects. */
+    // true when the bottom sheet is being dragged used to suppress heavy visual effects
     isSheetDragging: Boolean = false,
-    /**
-     * True while this page is itself opening or closing.
-     *
-     * During that morph the whole page is being scaled, faded and translated — which already forces
-     * a full-screen offscreen composite every frame — and the sheet is fully expanded, so neither
-     * [isSheetDragging] nor `userScrolling` was true and every per-line blur and wave shader kept
-     * running straight through it. Measured at 29ms median frame time (a 120Hz frame is 8.3ms).
-     */
+    // true while this page is itself opening or closing during that morph the whole
     isMorphing: Boolean = false,
-    /** Opens the shared player action sheet. */
+    // opens the shared player action sheet
     onOpenMenu: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -167,11 +148,11 @@ fun LyricsScreen(
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val progress by playerConnection.progressState.collectAsState()
 
-    // Non-snapshot read of the same ticker, for anything that wants the live position without
-    // subscribing to it. StateFlow.value is not snapshot state, so calling this does not register
-    // a recomposition dependency — the active lyric line drives its own repaint off frame
-    // callbacks instead, which is what keeps the other visible lines from recomposing 15x a
-    // second just to be handed a timestamp they never use.
+    // non-snapshot read of the same ticker for anything that wants the live
+    // subscribing to it stateflowvalue is not snapshot state so calling this
+    // a recomposition dependency — the active lyric line drives its own repaint
+    // callbacks instead which is what keeps the other visible lines from
+    // second just to be handed a timestamp they never use
     val positionProvider = remember(playerConnection) {
         { playerConnection.progressState.value.position }
     }
@@ -180,9 +161,9 @@ fun LyricsScreen(
         mediaMetadata?.let(viewModel::ensureLyricsLoaded)
     }
 
-    // Reuses the same extractor as the detail screens' backgrounds — muted/desaturated
-    // majority color, not the raw vivid cover color — so the karaoke highlight and glow
-    // match the app's established accent-color language instead of introducing a new one.
+    // reuses the same extractor as the detail screens' backgrounds —
+    // majority color not the raw vivid cover color — so the karaoke highlight
+    // match the app's established accent-color language instead of introducing a
     val context = LocalContext.current
     val fallbackColorInt = MaterialTheme.colorScheme.primary.toArgb()
     var accentColor by remember { mutableStateOf<Color?>(null) }
@@ -243,25 +224,25 @@ fun LyricsScreen(
         }
     }
 
-    // Keyed on `lines` — without the key, remember caches a derivedStateOf whose lambda captured
-    // the FIRST value of `lines`, which is the empty list from before the lyrics finished
-    // loading. currentIndex then stayed -1 forever, so no line ever became ACTIVE and the
-    // word-by-word karaoke path never ran at all.
+    // keyed on `lines` — without the key remember caches a derivedstateof whose
+    // the first value of `lines` which is the empty list from before the lyrics
+    // loading currentindex then stayed -1 forever so no line ever became active
+    // word-by-word karaoke path never ran at all
     val currentIndex by remember(lines) {
         derivedStateOf { LyricsUtils.findCurrentLineIndex(lines, progress.position) }
     }
 
-    // The TOPMOST line that is still being sung.
-    //
-    // Lines overlap: a phrase often has not finished when the next one's timestamp arrives, and
-    // treating exactly one line as active meant the unfinished one went dim and blurred mid-word
-    // while the list scrolled off it. Everything from here down to [currentIndex] is active at
-    // once — each unblurs, scales up and runs its own sweep — and the page only moves on once the
-    // upper one has actually finished.
-    //
-    // Walking backwards stops at the first line that has genuinely ended, so this is normally
-    // currentIndex itself and only ever a line or two above it. A line without word timings has no
-    // knowable end, so it ends where the next one starts and never overlaps.
+    // the topmost line that is still being sung
+
+    // lines overlap: a phrase often has not finished when the next one's
+    // treating exactly one line as active meant the unfinished one went dim and
+    // while the list scrolled off it everything from here down to [currentindex]
+    // once — each unblurs scales up and runs its own sweep — and the page only
+    // upper one has actually finished
+
+    // walking backwards stops at the first line that has genuinely ended so this
+    // currentindex itself and only ever a line or two above it a line without
+    // knowable end so it ends where the next one starts and never overlaps
     val anchorIndex by remember(lines) {
         derivedStateOf {
             var i = LyricsUtils.findCurrentLineIndex(lines, progress.position)
@@ -281,14 +262,14 @@ fun LyricsScreen(
 
     val listState = rememberLazyListState()
     var followPlayback by remember { mutableStateOf(true) }
-    // LazyListState has no built-in way to tell "user dragged" apart from "we scrolled it
-    // programmatically" — isAutoScrolling is set around our own animateScrollToItem call so
-    // the isScrollInProgress flip it causes isn't mistaken for the user grabbing the list.
+    // lazyliststate has no built-in way to tell "user dragged" apart from "we
+    // programmatically" — isautoscrolling is set around our own
+    // the isscrollinprogress flip it causes isn't mistaken for the user grabbing
     var isAutoScrolling by remember { mutableStateOf(false) }
 
-    // True while the user is actually dragging. Drives two things: blur is switched off entirely
-    // (both because it reads better while scanning lyrics, and because per-line RenderEffects are
-    // the single most expensive thing on this screen), and the idle timer below.
+    // true while the user is actually dragging drives two things: blur is
+    // (both because it reads better while scanning lyrics and because per-line
+    // the single most expensive thing on this screen) and the idle timer below
     val userScrolling by remember {
         derivedStateOf { listState.isScrollInProgress && !isAutoScrolling }
     }
@@ -299,9 +280,9 @@ fun LyricsScreen(
         if (userScrolling) followPlayback = false
     }
 
-    // Idle auto-recenter: once the user stops scrolling and leaves it alone for a few seconds,
-    // snap back to following playback rather than stranding them wherever they let go. Replaces
-    // the old manual "jump to current line" arrow button.
+    // idle auto-recenter: once the user stops scrolling and leaves it alone for
+    // snap back to following playback rather than stranding them wherever they
+    // the old manual "jump to current line" arrow button
     LaunchedEffect(userScrolling, followPlayback) {
         if (!followPlayback && !userScrolling) {
             delay(IdleRecenterDelayMs)
@@ -309,15 +290,15 @@ fun LyricsScreen(
         }
     }
 
-    // Immersive mode: settle on the highlighted line for a few seconds and the transport block and
-    // the bottom fade retreat, handing the whole page to the lyrics. Any scroll brings them back,
-    // as does tapping the cover. Re-entered automatically once things go quiet again.
+    // immersive mode: settle on the highlighted line for a few seconds and the
+    // the bottom fade retreat handing the whole page to the lyrics any scroll
+    // as does tapping the cover re-entered automatically once things go quiet
     var immersive by remember { mutableStateOf(false) }
 
-    // Keyed on `immersive` as well as `userScrolling`. Without that, the effect only re-ran when a
-    // scroll started or stopped, so any other way out of immersive mode — tapping the cover, or
-    // scrolling up, below — left the timer un-armed and the page never went immersive again until
-    // the next scroll. That is the "sometimes not triggered".
+    // keyed on `immersive` as well as `userscrolling` without that the effect
+    // scroll started or stopped so any other way out of immersive mode — tapping
+    // scrolling up below — left the timer un-armed and the page never went
+    // the next scroll that is the "sometimes not triggered"
     LaunchedEffect(userScrolling, immersive) {
         if (!userScrolling && !immersive) {
             delay(ImmersiveDelayMs)
@@ -325,10 +306,10 @@ fun LyricsScreen(
         }
     }
 
-    // Direction-driven: scrolling down (further into the song) hands the page over to the lyrics
-    // immediately, scrolling back up brings the chrome back. Auto-scroll is excluded — the
-    // recenter animation is a downward scroll too, and letting it toggle anything meant the mode
-    // flipped on its own every time playback advanced a line.
+    // direction-driven: scrolling down (further into the song) hands the page
+    // immediately scrolling back up brings the chrome back auto-scroll is
+    // recenter animation is a downward scroll too and letting it toggle anything
+    // flipped on its own every time playback advanced a line
     LaunchedEffect(listState) {
         var previous = -1L
         snapshotFlow {
@@ -343,62 +324,62 @@ fun LyricsScreen(
             else if (delta < -ScrollDirectionThresholdPx) immersive = false
         }
     }
-    // Reset on close so reopening the player always starts with the controls visible.
+    // reset on close so reopening the player always starts with the controls
     DisposableEffect(Unit) { onDispose { onImmersiveChange(false) } }
     LaunchedEffect(immersive) { onImmersiveChange(immersive) }
 
-    // Animated rather than switched: the list's bottom inset and its fade both interpolate, so the
-    // lyrics grow into the vacated space instead of jumping when the controls leave.
+    // animated rather than switched: the list's bottom inset and its fade both
+    // lyrics grow into the vacated space instead of jumping when the controls
     val immersion by animateFloatAsState(
         targetValue = if (immersive) 1f else 0f,
         animationSpec = tween(durationMillis = 420, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)),
         label = "lyricsImmersion",
     )
 
-    // Places the active line at ActiveLineViewportFraction down the list's viewport.
-    //
-    // animateScrollToItem's offset is where the item's top edge ends up relative to the viewport's
-    // top edge, so a negative value pushes it down. The fraction is taken from the list's ACTUAL
-    // measured viewport (layoutInfo.viewportSize), not from screenHeight — the list is shorter
-    // than the screen (header above, controls below), so a screen-derived offset overshot and
-    // left the highlighted line sitting far too low.
-    // Follows the ANCHOR, not the last active line. While two lines overlap, the page stays put on
-    // the upper one — the one still being sung — and only travels once it has finished and the
-    // anchor moves down to catch up. Scrolling on `currentIndex` would leave the still-singing
-    // line stranded above the viewport.
+    // places the active line at activelineviewportfraction down the list's
+
+    // animatescrolltoitem's offset is where the item's top edge ends up relative
+    // top edge so a negative value pushes it down the fraction is taken from the
+    // measured viewport (layoutinfoviewportsize) not from screenheight — the
+    // than the screen (header above controls below) so a screen-derived offset
+    // left the highlighted line sitting far too low
+    // follows the anchor not the last active line while two lines overlap the
+    // the upper one — the one still being sung — and only travels once it has
+    // anchor moves down to catch up scrolling on `currentindex` would leave the
+    // line stranded above the viewport
     LaunchedEffect(anchorIndex, followPlayback, lines) {
         val target = anchorIndex
         if (!followPlayback || target !in lines.indices) return@LaunchedEffect
-        // On the very first frame the viewport isn't measured yet; wait for it rather than
-        // scrolling by a bogus zero-derived offset.
+        // on the very first frame the viewport isn't measured yet; wait for it
+        // scrolling by a bogus zero-derived offset
         val viewportHeight = snapshotFlow { listState.layoutInfo.viewportSize.height }
             .first { it > 0 }
-        // Where the active line's top edge should sit, in px from the viewport's top edge. It is
-        // exactly the list's own top contentPadding — that padding exists so the FIRST line can
-        // reach this position without the list being able to scroll above it.
+        // where the active line's top edge should sit in px from the viewport's top
+        // exactly the list's own top contentpadding — that padding exists so the
+        // reach this position without the list being able to scroll above it
         val restingOffset = (viewportHeight * ActiveLineViewportFraction).roundToInt()
-        // try/finally, because this effect is cancelled every time currentIndex changes — which is
-        // once per lyric line, routinely mid-animation. Clearing the flag on the normal path only
-        // meant one cancelled recenter left it stuck true FOREVER, and from then on `userScrolling`
-        // (which is `isScrollInProgress && !isAutoScrolling`) could never become true again. That
-        // one latched boolean is why immersive mode stopped responding to scrolling and why the
-        // blur-while-scrolling suppression stopped firing.
+        // try/finally because this effect is cancelled every time currentindex
+        // once per lyric line routinely mid-animation clearing the flag on the
+        // meant one cancelled recenter left it stuck true forever and from then on
+        // (which is `isscrollinprogress && !isautoscrolling`) could never become
+        // one latched boolean is why immersive mode stopped responding to scrolling
+        // blur-while-scrolling suppression stopped firing
         try {
         isAutoScrolling = true
-        // animateScrollToItem takes no animationSpec — it always runs its own fixed spring, which
-        // is what made the recenter snap. Where the target line is already on screen its exact
-        // pixel delta is known, so the move can be an ordinary animateScrollBy on a chosen curve.
+        // animatescrolltoitem takes no animationspec — it always runs its own fixed
+        // is what made the recenter snap where the target line is already on screen
+        // pixel delta is known so the move can be an ordinary animatescrollby on a
         val visible = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
         if (visible != null) {
-            // LazyListItemInfo.offset is NOT measured from the visible top edge — it is measured
-            // from the start of the content area, i.e. from *after* the top contentPadding.
-            // layoutInfo.viewportStartOffset is that padding, negated. So the item's real distance
-            // below the visible edge is (offset - viewportStartOffset), and the delta to scroll is
-            // that minus where it should end up.
-            //
-            // Subtracting restingOffset from the raw offset instead, as this did, left the padding
-            // in the sum a second time and parked the line at twice the intended depth — which is
-            // why it kept landing mid-screen no matter what the fraction was lowered to.
+            // lazylistiteminfooffset is not measured from the visible top edge — it is
+            // from the start of the content area ie from *after* the top contentpadding
+            // layoutinfoviewportstartoffset is that padding negated so the item's real
+            // below the visible edge is (offset - viewportstartoffset) and the delta to
+            // that minus where it should end up
+
+            // subtracting restingoffset from the raw offset instead as this did left the
+            // in the sum a second time and parked the line at twice the intended depth —
+            // why it kept landing mid-screen no matter what the fraction was lowered to
             val current = visible.offset - listState.layoutInfo.viewportStartOffset
             listState.animateScrollBy(
                 (current - restingOffset).toFloat(),
@@ -408,13 +389,13 @@ fun LyricsScreen(
                 ),
             )
         } else {
-            // Off screen — the distance isn't measurable, so fall back to the built-in scroll.
-            //
-            // scrollOffset is deliberately 0, NOT -restingOffset. animateScrollToItem measures
-            // from the start of the content area, which is already past contentPadding.top — and
-            // that padding IS restingOffset. Passing the offset as well applied it twice and left
-            // the active line sitting at roughly double the intended depth, which is why it kept
-            // reading as too low no matter what the fraction was set to.
+            // off screen — the distance isn't measurable so fall back to the built-in
+
+            // scrolloffset is deliberately 0 not -restingoffset animatescrolltoitem
+            // from the start of the content area which is already past contentpaddingtop
+            // that padding is restingoffset passing the offset as well applied it twice
+            // the active line sitting at roughly double the intended depth which is why
+            // reading as too low no matter what the fraction was set to
             listState.animateScrollToItem(target, 0)
         }
         } finally {
@@ -422,19 +403,19 @@ fun LyricsScreen(
         }
     }
 
-    // Whether playback is sitting in an instrumental gap right now. Hoisted out of the item loop
-    // because the line ABOVE the gap needs it too — it has to give up the highlight while the dots
-    // hold it — and a per-item value can't be read by a different item.
-    //
-    // The position read stays inside derivedStateOf deliberately. Read directly it would subscribe
-    // the whole page to the 15Hz progress ticker; here only this boolean flipping invalidates.
+    // whether playback is sitting in an instrumental gap right now hoisted out
+    // because the line above the gap needs it too — it has to give up the
+    // hold it — and a per-item value can't be read by a different item
+
+    // the position read stays inside derivedstateof deliberately read directly
+    // the whole page to the 15hz progress ticker; here only this boolean
     val interludeActive by remember(currentIndex, lines) {
         derivedStateOf {
             val next = currentIndex + 1
             if (next !in lines.indices) return@derivedStateOf false
-            // A line's real end is its last word's endTime. Without word timings there is no way
-            // to know when singing stopped, so no gap is claimed rather than guessing — the intro
-            // (nothing before it) is the one case that needs no previous line.
+            // a line's real end is its last word's endtime without word timings there is
+            // to know when singing stopped so no gap is claimed rather than guessing —
+            // (nothing before it) is the one case that needs no previous line
             val gapStart = if (currentIndex < 0) {
                 0L
             } else {
@@ -449,16 +430,16 @@ fun LyricsScreen(
         }
     }
 
-    // Style one vs style two: same page, same sweep, per-letter warp on or off.
+    // style one vs style two: same page same sweep per-letter warp on or off
     val (lyricsWaveAnimation) = rememberPreference(LyricsWaveAnimationKey, defaultValue = true)
     val (lyricsHighBloom) = rememberPreference(LyricsHighBloomKey, defaultValue = true)
 
     val accent = accentColor ?: MaterialTheme.colorScheme.primary
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Top bar: small cover (tap to close) + title/subtitle + menu. Matches the 36dp the
-        // lyrics list/timestamp use. Matches MorphingCover's lyricsArtX/Y/Size, which have
-        // to stay in lockstep with regardless.
+        // top bar: small cover (tap to close) + title/subtitle + menu matches the
+        // lyrics list/timestamp use matches morphingcover's lyricsartx/y/size which
+        // to stay in lockstep with regardless
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -467,30 +448,30 @@ fun LyricsScreen(
                 .padding(horizontal = 36.dp)
                 .padding(top = 28.dp, bottom = 16.dp)
         ) {
-            // Intentionally empty: the artwork that lands here is MorphingCover's single shared
-            // cover, animating down from the full-size player position (see lyricsProgress in
-            // BottomSheetPlayer). Drawing a second AsyncImage here is what put two covers on
-            // screen at once. This box only reserves the same 50dp footprint so the title column
-            // beside it doesn't shift, and keeps the tap-to-close target over the artwork.
+            // intentionally empty: the artwork that lands here is morphingcover's single
+            // cover animating down from the full-size player position (see
+            // bottomsheetplayer) drawing a second asyncimage here is what put two covers
+            // screen at once this box only reserves the same 50dp footprint so the title
+            // beside it doesn't shift and keeps the tap-to-close target over the artwork
             Box(
                 modifier = Modifier
                     .size(60.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    // In immersive mode the cover is the way back to the controls; it only
-                    // closes the page once they are already showing.
+                    // in immersive mode the cover is the way back to the controls; it only
+                    // closes the page once they are already showing
                     .clickable { if (immersive) immersive = false else onClose() }
             )
 
             Spacer(modifier = Modifier.width(18.dp))
 
-            // Also intentionally empty, same reasoning: MorphingSongInfo (in BottomSheetPlayer's
-            // sharedContent) is the ONE title+artist block, travelling in from the main player
-            // instead of this page drawing its own second copy. weight(1f) alone reserves the
-            // menu icon's space on the right.
+            // also intentionally empty same reasoning: morphingsonginfo (in
+            // sharedcontent) is the one title+artist block travelling in from the main
+            // instead of this page drawing its own second copy weight(1f) alone reserves
+            // menu icon's space on the right
             Spacer(modifier = Modifier.weight(1f))
 
-            // Same slot and size as before, restyled to match the like/repeat buttons on the
-            // player: a filled circle with the dots turned horizontal.
+            // same slot and size as before restyled to match the like/repeat buttons on
+            // player: a filled circle with the dots turned horizontal
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -514,10 +495,10 @@ fun LyricsScreen(
             }
         }
 
-        // The list stops at the top of the timestamp row rather than running to the bottom of the
-        // sheet. Previously it filled the whole remaining height and the fade was expressed as a
-        // fraction of *that*, which put the fade behind the transport controls — so lyrics stayed
-        // fully opaque straight through the timestamp and only dimmed near the very bottom edge.
+        // the list stops at the top of the timestamp row rather than running to the
+        // sheet previously it filled the whole remaining height and the fade was
+        // fraction of *that* which put the fade behind the transport controls — so
+        // fully opaque straight through the timestamp and only dimmed near the very
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
@@ -529,10 +510,10 @@ fun LyricsScreen(
             val listHeight = maxHeight
             if (lines.isEmpty()) {
                 if (lyricsEntity == null) {
-                    // Three pulsing dots in the corner rather than "Loading lyrics…" across the
-                    // middle of the page. Loading is a transient state and a sentence in the
+                    // three pulsing dots in the corner rather than "loading lyrics…" across the
+                    // middle of the page loading is a transient state and a sentence in the
                     // centre reads as content — the dots stay out of the way and vacate cleanly
-                    // the moment real lines arrive.
+                    // the moment real lines arrive
                     LyricsLoadingDots(modifier = Modifier.align(Alignment.Center))
                 } else {
                     Text(
@@ -545,9 +526,9 @@ fun LyricsScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    // Fractions of the LIST's own height, not the screen's. Using screen height
+                    // fractions of the list's own height not the screen's using screen height
                     // here is what produced the huge dead gap above the first line: the top pad
-                    // was 28% of the full screen inside a viewport much shorter than that.
+                    // was 28% of the full screen inside a viewport much shorter than that
                     contentPadding = PaddingValues(
                         top = listHeight * ActiveLineViewportFraction,
                         bottom = listHeight * 0.55f,
@@ -555,13 +536,13 @@ fun LyricsScreen(
                     userScrollEnabled = true,
                     modifier = Modifier
                         .fillMaxSize()
-                        // Dissolves the list at both edges: under the header at the top, and right
-                        // at the timestamp at the bottom. DstIn against a vertical alpha ramp,
-                        // which needs its own offscreen layer to composite against.
+                        // dissolves the list at both edges: under the header at the top and right
+                        // at the timestamp at the bottom dstin against a vertical alpha ramp
+                        // which needs its own offscreen layer to composite against
                         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        // drawWithCache, not drawWithContent: the gradient depends only on the
-                        // list's size, so it is built once per resize instead of allocating a new
-                        // Brush (and its colour/stop arrays) on every frame of every scroll.
+                        // drawwithcache not drawwithcontent: the gradient depends only on the
+                        // list's size so it is built once per resize instead of allocating a new
+                        // brush (and its colour/stop arrays) on every frame of every scroll
                         .drawWithCache {
                             @Suppress("UNUSED_EXPRESSION") immersion
                             val fade = Brush.verticalGradient(
@@ -581,9 +562,9 @@ fun LyricsScreen(
                         key = { index, _ -> index },
                         contentType = { _, _ -> "lyric" },
                     ) { index, entry ->
-                        // Distance to the nearest ACTIVE line, not to a single index — with an
-                        // overlap in play there can be more than one, and blur has to fall away
-                        // from the whole active block rather than from its last line.
+                        // distance to the nearest active line not to a single index — with an
+                        // overlap in play there can be more than one and blur has to fall away
+                        // from the whole active block rather than from its last line
                         val distance = when {
                             currentIndex < 0 -> index - currentIndex
                             index < anchorIndex -> index - anchorIndex
@@ -591,18 +572,18 @@ fun LyricsScreen(
                             else -> 0
                         }
                         val state = when {
-                            // During an instrumental gap the dots ARE the highlight, so the line
+                            // during an instrumental gap the dots are the highlight so the line
                             // that finished singing hands the highlight over to them instead of
-                            // both being lit at once.
+                            // both being lit at once
                             currentIndex >= 0 && index in anchorIndex..currentIndex ->
                                 if (interludeActive) LyricsLineState.PAST else LyricsLineState.ACTIVE
                             index == currentIndex + 1 -> LyricsLineState.UPCOMING
                             index < currentIndex -> LyricsLineState.PAST
                             else -> LyricsLineState.DEFAULT
                         }
-                        // Blur deepens with distance from the active line — stage 0 sharp,
-                        // stage 1 one line away, stage 2 for everything beyond. Suppressed
-                        // entirely while the user is scrolling.
+                        // blur deepens with distance from the active line — stage 0 sharp
+                        // stage 1 one line away stage 2 for everything beyond suppressed
+                        // entirely while the user is scrolling
                         val blurStage = when {
                             suppressEffects -> 0
                             distance == 0 -> 0
@@ -610,17 +591,17 @@ fun LyricsScreen(
                             else -> 2
                         }
 
-                        // The dots belong to the gap immediately ahead of the current line, so they
-                        // render above the line that is about to be sung, and only while that gap
-                        // is the highlighted position. `interludeActive` (hoisted above) already
+                        // the dots belong to the gap immediately ahead of the current line so they
+                        // render above the line that is about to be sung and only while that gap
+                        // is the highlighted position `interludeactive` (hoisted above) already
                         // carries the timing test; the index check is what stops a seek satisfying
                         // it for some unrelated line further down the list and dropping a stray
-                        // set of dots at the top of the page.
+                        // set of dots at the top of the page
                         if (interludeActive && index == currentIndex + 1) {
-                            // currentIndex is -1 before the first line is due, which makes this
-                            // branch true for index 0 — the song's intro. There is no previous
-                            // line to take an end time from, and indexing one is what crashed;
-                            // the intro's gap simply runs from the start of the track.
+                            // currentindex is -1 before the first line is due which makes this
+                            // branch true for index 0 — the song's intro there is no previous
+                            // line to take an end time from and indexing one is what crashed;
+                            // the intro's gap simply runs from the start of the track
                             val gapStart = if (currentIndex < 0) {
                                 0L
                             } else {
@@ -657,16 +638,16 @@ fun LyricsScreen(
                 }
             }
 
-            // The "jump back to current line" arrow used to sit here. Removed — the idle timer
-            // above now recenters on its own a few seconds after you stop scrolling, so a manual
-            // button is redundant.
+            // the "jump back to current line" arrow used to sit here removed — the idle
+            // above now recenters on its own a few seconds after you stop scrolling so a
+            // button is redundant
 
-            // Sits alongside the active lyric line rather than at the big player's own heart
-            // position, which left it stranded in the middle of the page.
-            //
-            // Retreats with the rest of the chrome in immersive mode. Composed out entirely at the
-            // end of the fade rather than left at alpha 0: a faded-out Box still hit-tests, and
-            // this one sits over the lyrics list.
+            // sits alongside the active lyric line rather than at the big player's own
+            // position which left it stranded in the middle of the page
+
+            // retreats with the rest of the chrome in immersive mode composed out
+            // end of the fade rather than left at alpha 0: a faded-out box still
+            // this one sits over the lyrics list
             if (immersion < 0.99f) {
                 Box(
                     modifier = Modifier
@@ -675,8 +656,8 @@ fun LyricsScreen(
                         .size(36.dp)
                         .graphicsLayer {
                             alpha = 1f - immersion
-                            // Drifts out to the right as it goes, matching the transport block
-                            // sliding down rather than dissolving on the spot.
+                            // drifts out to the right as it goes matching the transport block
+                            // sliding down rather than dissolving on the spot
                             translationX = immersion * size.width * 1.2f
                         }
                         .clip(CircleShape)
@@ -696,23 +677,17 @@ fun LyricsScreen(
             }
         }
 
-        // The progress slider and transport row deliberately do NOT live here any more. They are
-        // a single shared instance in BottomSheetPlayer, declared outside the showLyrics branch,
-        // so they stay mounted and motionless while this page opens and closes. This page used to
-        // build its own copy inside a slideInVertically AnimatedVisibility, which is what made the
-        // controls and timestamp bar slide up and briefly double on every open.
-        //
-        // The list above reserves room for them via its own bottom contentPadding.
+        // the progress slider and transport row deliberately do not live here any
+        // a single shared instance in bottomsheetplayer declared outside the
+        // so they stay mounted and motionless while this page opens and closes this
+        // build its own copy inside a slideinvertically animatedvisibility which is
+        // controls and timestamp bar slide up and briefly double on every open
+
+        // the list above reserves room for them via its own bottom contentpadding
     }
 }
 
-/**
- * Three dots that breathe while lyrics are being fetched.
- *
- * Deliberately not a spinner and not a sentence: it sits in the corner of the lyrics area, says
- * "something is coming" without claiming any of the space the lines are about to occupy, and needs
- * no layout change when they arrive.
- */
+// three dots that breathe while lyrics are being fetched deliberately not a
 @Composable
 private fun LyricsLoadingDots(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "lyricsLoading")
@@ -722,8 +697,8 @@ private fun LyricsLoadingDots(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         repeat(3) { index ->
-            // Staggered by a third of the cycle each, so the three read as a travelling pulse
-            // rather than as one flashing group.
+            // staggered by a third of the cycle each so the three read as a travelling
+            // rather than as one flashing group
             val phase by transition.animateFloat(
                 initialValue = 0f,
                 targetValue = 1f,

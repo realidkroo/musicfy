@@ -25,11 +25,11 @@ fun GreetingStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 32.dp, end = 32.dp, bottom = 120.dp), // Adjust bottom padding for the next button
+            .padding(start = 32.dp, end = 32.dp, bottom = 120.dp), // adjust bottom padding for the next button
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Bottom
     ) {
-        // Profile Picture Placeholder (visuals drawn by SetupWizardScreen overlay for smooth morphing)
+        // profile picture placeholder (visuals drawn by setupwizardscreen overlay
         Spacer(
             modifier = Modifier.size(110.dp)
         )

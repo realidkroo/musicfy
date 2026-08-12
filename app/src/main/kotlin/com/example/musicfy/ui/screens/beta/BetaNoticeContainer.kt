@@ -62,9 +62,9 @@ fun BetaNoticeContainer(
     val effectiveProgress = overlayProgress.value
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        // Main App Content (shrinks dynamically based on Beta Notice position)
+        // main app content (shrinks dynamically based on beta notice position)
         val screenHeight = maxHeight
-        // The background card's top edge will be exactly at topInset + 8.dp
+        // the background card's top edge will be exactly at topinset + 8dp
         val backgroundTopEdge = topInset + 8.dp
         val foregroundTopEdge = backgroundTopEdge + 12.dp
 
@@ -76,8 +76,8 @@ fun BetaNoticeContainer(
                     scaleX = scale
                     scaleY = scale
 
-                    // Scaling the height by 0.92f natively pushes the top edge down by size.height * 0.04f.
-                    // To place the top edge exactly at backgroundTopEdge, we subtract that scale offset.
+                    // scaling the height by 092f natively pushes the top edge down by sizeheight
+                    // to place the top edge exactly at backgroundtopedge we subtract that scale
                     val targetTranslationY = topInset.toPx() + 8.dp.toPx() - (size.height * 0.04f)
                     translationY = targetTranslationY * effectiveProgress
 
@@ -89,7 +89,7 @@ fun BetaNoticeContainer(
             content()
         }
 
-        // Beta Notice Overlay
+        // beta notice overlay
         if (effectiveProgress > 0f) {
             Box(
                 modifier = Modifier
@@ -105,7 +105,7 @@ fun BetaNoticeContainer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // Animate the padding in along with the alpha/translation
+                    // animate the padding in along with the alpha/translation
                     .padding(top = foregroundTopEdge * effectiveProgress)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
@@ -134,7 +134,7 @@ fun BetaNoticeContainer(
                         ) { change, dragAmount ->
                             change.consume()
                             coroutineScope.launch {
-                                // Add heavy resistance to the drag (rubber-banding)
+                                // add heavy resistance to the drag (rubber-banding)
                                 val resistance = if (dragOffset.value > 0) 0.3f else 0.1f 
                                 val newOffset = dragOffset.value + dragAmount * resistance
                                 dragOffset.snapTo(newOffset.coerceAtLeast(-30f))
