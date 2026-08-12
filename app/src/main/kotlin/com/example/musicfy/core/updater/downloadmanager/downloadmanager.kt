@@ -1,5 +1,4 @@
-// downloadmanagerkt
-// what is this for you ask its for downloadmanager ofc
+// downloadmanager.kt
 
 package com.example.musicfy.core.updater.downloadmanager
 
@@ -45,7 +44,6 @@ class CustomDownloadManager {
                 val fileLength = connection.contentLength
                 val inputStream = connection.inputStream
 
-                // create download directory
                 val downloadDir = File(
                     context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
                     "musicfy_updates"
@@ -106,5 +104,3 @@ class CustomDownloadManager {
         downloadJob = null
     }
 }
-
-// new download manager removed old download manager

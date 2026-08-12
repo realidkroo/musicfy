@@ -1,5 +1,4 @@
-// crashhandlerkt
-// this thing is part of crash handler
+// CrashHandler.kt
 
 package com.example.musicfy.utils
 
@@ -23,13 +22,11 @@ class CrashHandler private constructor(
         try {
             val crashLog = buildCrashLog(throwable)
             Timber.e(throwable, "App crashed")
-            
-            
-            // kill the current process
+
             android.os.Process.killProcess(android.os.Process.myPid())
             exitProcess(1)
         } catch (e: Exception) {
-            // if we fail to handle the crash fall back to default handler
+
             Timber.e(e, "Error handling crash")
             defaultHandler?.uncaughtException(thread, throwable)
         }

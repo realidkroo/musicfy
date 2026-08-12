@@ -1,5 +1,4 @@
-// shapescurvekt
-// this thing is for shapes curve
+// ShapesCurve.kt
 
 package com.example.musicfy.utils
 

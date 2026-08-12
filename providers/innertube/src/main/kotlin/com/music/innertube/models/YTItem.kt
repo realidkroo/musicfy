@@ -1,5 +1,4 @@
-// ytitem kt
-// this thing is part of ytitem
+// YTItem.kt
 
 package com.music.innertube.models
 

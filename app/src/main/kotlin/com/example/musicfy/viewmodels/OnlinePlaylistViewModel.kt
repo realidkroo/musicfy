@@ -1,5 +1,4 @@
-// onlineplaylistviewmodelkt
-// the file functioned as online playlist view model
+// OnlinePlaylistViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -67,7 +66,7 @@ class OnlinePlaylistViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             continuation = null
-            proactiveLoadJob?.cancel() // cancel any ongoing proactive load
+            proactiveLoadJob?.cancel()
 
             YouTube.playlist(playlistId)
                 .onSuccess { playlistPage ->
@@ -88,15 +87,14 @@ class OnlinePlaylistViewModel @Inject constructor(
     }
 
     private fun startProactiveBackgroundLoading() {
-        proactiveLoadJob?.cancel() // cancel previous job if any
+        proactiveLoadJob?.cancel()
         proactiveLoadJob = viewModelScope.launch(Dispatchers.IO) {
             var currentProactiveToken = continuation
             while (currentProactiveToken != null && isActive) {
-                // if a manual loadmore is happening pause proactive loading
+
                 if (_isLoadingMore.value) {
-                    // wait until manual load is finished then re evaluate
-                    // this simple break and restart strategy from loadmoresongs is preferred
-                    break 
+
+                    break
                 }
 
                 YouTube.playlistContinuation(currentProactiveToken)
@@ -105,23 +103,23 @@ class OnlinePlaylistViewModel @Inject constructor(
                         currentSongs.addAll(playlistContinuationPage.songs)
                         playlistSongs.value = applySongFilters(currentSongs)
                         currentProactiveToken = playlistContinuationPage.continuation
-                        // update the class level continuation for manual loadmore if needed
-                        this@OnlinePlaylistViewModel.continuation = currentProactiveToken 
+
+                        this@OnlinePlaylistViewModel.continuation = currentProactiveToken
                     }.onFailure { throwable ->
                         reportException(throwable)
-                        currentProactiveToken = null // stop proactive loading on error
+                        currentProactiveToken = null
                     }
             }
-            // if loop finishes because currentproactivetoken is null all songs are
+
         }
     }
 
     fun loadMoreSongs() {
-        if (_isLoadingMore.value) return // already loading more manually
-        
-        val tokenForManualLoad = continuation ?: return // no more songs to load
+        if (_isLoadingMore.value) return
 
-        proactiveLoadJob?.cancel() // cancel proactive loading to prioritize manual scroll
+        val tokenForManualLoad = continuation ?: return
+
+        proactiveLoadJob?.cancel()
         _isLoadingMore.value = true
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -135,7 +133,7 @@ class OnlinePlaylistViewModel @Inject constructor(
                     reportException(throwable)
                 }.also {
                     _isLoadingMore.value = false
-                    // resume proactive loading if there s still a continuation
+
                     if (continuation != null && isActive) {
                         startProactiveBackgroundLoading()
                     }
@@ -145,7 +143,7 @@ class OnlinePlaylistViewModel @Inject constructor(
 
     fun retry() {
         proactiveLoadJob?.cancel()
-        fetchInitialPlaylistData() // this will also restart proactive loading if applicable
+        fetchInitialPlaylistData()
     }
 
     private fun applySongFilters(songs: List<SongItem>): List<SongItem> {

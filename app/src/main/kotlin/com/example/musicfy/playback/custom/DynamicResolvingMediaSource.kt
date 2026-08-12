@@ -47,14 +47,13 @@ class DynamicResolvingMediaSource(
 
     override fun prepareSourceInternal(mediaTransferListener: androidx.media3.datasource.TransferListener?) {
         super.prepareSourceInternal(mediaTransferListener)
-        
+
         fetchScope.launch {
             val mediaId = originalMediaItem.mediaId
             val result = try {
                 fetcherAction(mediaId)
             } catch (e: androidx.media3.common.PlaybackException) {
-                // if a forced backend throws playbackexception propagate it so exoplayer
-                // instead of silently falling back to youtube music
+
                 fetchError = java.io.IOException(e)
                 null
             } catch (e: Exception) {
@@ -67,28 +66,25 @@ class DynamicResolvingMediaSource(
 
             if (result == null) {
                 if (fetchError == null) {
-                    // fetcheraction declined to handle this item without erroring eg custom
-                    // backends disabled fall back to playing the original item youtube
-                    // normally instead of leaving the source unprepared forever
+
                     withContext(Dispatchers.Main) {
                         val source = mediaSourceFactoryProvider(null).createMediaSource(originalMediaItem)
                         innerMediaSource = source
                         prepareChildSource(null, source)
                     }
                 }
-                // if fetcherror is set don t prepare exoplayer will poll
-                // maybethrowsourceinforefresherror and correctly propagate the error
+
                 return@launch
             }
 
             val builder = originalMediaItem.buildUpon().setUri(Uri.parse(result.streamUrl))
-            
+
             if (result.isDash || result.streamUrl.endsWith(".mpd")) {
                 builder.setMimeType(MimeTypes.APPLICATION_MPD)
             }
 
             if (!result.decryptionKey.isNullOrBlank()) {
-                // setup clearkey drm
+
                 val drmCallback = object : MediaDrmCallback {
                     override fun executeProvisionRequest(uuid: UUID, request: ExoMediaDrm.ProvisionRequest): ByteArray {
                         return ByteArray(0)
@@ -127,11 +123,11 @@ class DynamicResolvingMediaSource(
                     .build(drmCallback)
 
                 val localFactory = mediaSourceFactoryProvider(drmManager)
-                
+
                 builder.setDrmConfiguration(
                     MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID).build()
                 )
-                
+
                 val finalMediaItem = builder.build()
                 withContext(Dispatchers.Main) {
                     val source = localFactory.createMediaSource(finalMediaItem)

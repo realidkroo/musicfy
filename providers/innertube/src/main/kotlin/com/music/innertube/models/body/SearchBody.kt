@@ -1,5 +1,4 @@
-// searchbody kt
-// this thing is for search body
+// SearchBody.kt
 
 package com.music.innertube.models.body
 

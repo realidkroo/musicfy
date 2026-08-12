@@ -1,13 +1,4 @@
-// youtubevideobackgroundkt
-// plays the official youtube music video for the current track as a real
-// webview embed video layer inside the cover art card zoomed cropped the
-// cover is muted audio keeps coming from the real playback pipeline not
-// track fades in once the first frame renders the caller keeps the static
-// there s never a blank gap while resolving loading
-
-// wrapped in glassroot so morphingcoverkt s fullscreen ambient backdrop can
-// live decoded frames and redraw a heavily blurred mirrored copy of them as
-// instead of decoding the video a second time see videobackdropblur in
+// YouTubeVideoBackground.kt
 
 package com.example.musicfy.ui.player
 
@@ -42,11 +33,9 @@ fun YouTubeVideoBackground(
     streamUrl: String?,
     isPlaying: Boolean,
     positionMsProvider: () -> Long,
-    // song time > video time anchors from the sync with lyrics sub option see
-    // youtubelyricsvideosynckt null falls back to plain proportional position
+
     lyricVideoAnchors: List<LyricVideoAnchor>? = null,
-    // shared with the fullscreen ambient backdrop videobackdropblur in
-    // blurred mirrored copy reads whatever gets captured here instead of
+
     glassState: GlassState,
     modifier: Modifier = Modifier,
 ) {
@@ -93,11 +82,6 @@ fun YouTubeVideoBackground(
         exoPlayer.playWhenReady = isPlaying
     }
 
-    // keeps the video s own timeline aligned with the song s real position
-    // seeking within the song or ordinary drift against a video of a different
-    // this stuck wherever it happened to be when lyric anchors are available the
-    // video moment actually singing the current lyric line instead of just the
-    // the way through
     LaunchedEffect(exoPlayer, streamUrl, lyricVideoAnchors) {
         while (isActive) {
             val duration = exoPlayer.duration

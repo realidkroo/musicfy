@@ -1,5 +1,4 @@
-// albumartistmapkt
-// this thing is part of album artist map
+// AlbumArtistMap.kt
 
 package com.example.musicfy.db.entities
 

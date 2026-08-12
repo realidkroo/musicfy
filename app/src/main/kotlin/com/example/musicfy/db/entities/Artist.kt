@@ -1,5 +1,4 @@
-// artistkt
-// what is this for you ask its for artist ofc
+// Artist.kt
 
 package com.example.musicfy.db.entities
 

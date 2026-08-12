@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.R
 
-// setup step asking whether to turn on the monochrome backend the answer is given
 @Composable
 fun MonochromeChoiceStep() {
     Column(

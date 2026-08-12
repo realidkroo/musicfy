@@ -1,5 +1,4 @@
-// thumbnailrenderer kt
-// the file functioned as thumbnail renderer
+// ThumbnailRenderer.kt
 
 package com.music.innertube.models
 

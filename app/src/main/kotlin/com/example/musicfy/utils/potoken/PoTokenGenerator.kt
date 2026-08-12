@@ -1,5 +1,4 @@
-// potokengeneratorkt
-// this thing is for po token generator
+// PoTokenGenerator.kt
 
 package com.example.musicfy.utils.potoken
 
@@ -16,7 +15,7 @@ class PoTokenGenerator {
     private val TAG = "PoTokenGenerator"
 
     private val webViewSupported by lazy { runCatching { CookieManager.getInstance() }.isSuccess }
-    private var webViewBadImpl = false // whether the system has a bad webview implementation
+    private var webViewBadImpl = false
 
     private val webPoTokenGenLock = Mutex()
     private var webPoTokenSessionId: String? = null
@@ -42,12 +41,11 @@ class PoTokenGenerator {
                     webViewBadImpl = true
                     null
                 }
-                else -> throw e // includes potokenexception
+                else -> throw e
             }
         }
     }
 
-    // case the current webpotokengenerator threw an error last time
     private suspend fun getWebClientPoToken(videoId: String, sessionId: String, forceRecreate: Boolean): PoTokenResult {
         Timber.tag(TAG).d("Web poToken requested: videoId=$videoId, sessionId=$sessionId")
 
@@ -64,11 +62,8 @@ class PoTokenGenerator {
                         webPoTokenGenerator?.close()
                     }
 
-                    // create a new webpotokengenerator
                     webPoTokenGenerator = PoTokenWebView.getNewPoTokenGenerator(CipherDeobfuscator.appContext)
 
-                    // the streaming potoken needs to be generated exactly once before generating
-                    // any other player tokens
                     webPoTokenStreamingPot = webPoTokenGenerator!!.generatePoToken(webPoTokenSessionId!!)
                     Timber.tag(TAG).d("Streaming poToken generated for sessionId=${webPoTokenSessionId?.take(20)}...")
                 }
@@ -80,13 +75,10 @@ class PoTokenGenerator {
             poTokenGenerator.generatePoToken(videoId)
         } catch (throwable: Throwable) {
             if (hasBeenRecreated) {
-                // the potokengenerator has just been recreated and possibly this is already
-                // second time we try so there is likely nothing we can do
+
                 throw throwable
             } else {
-                // retry this time recreating the webpotokengenerator from scratch
-                // this might happen for example if the app goes in the background and the
-                // content is lost
+
                 Timber.tag(TAG).e(throwable, "Failed to obtain poToken, retrying")
                 return getWebClientPoToken(videoId = videoId, sessionId = sessionId, forceRecreate = true)
             }

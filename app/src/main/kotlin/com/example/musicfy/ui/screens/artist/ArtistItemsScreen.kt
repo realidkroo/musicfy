@@ -1,5 +1,4 @@
-// artistitemsscreenkt
-// this thing is for artist items screen
+// ArtistItemsScreen.kt
 
 package com.example.musicfy.ui.screens.artist
 
@@ -86,9 +85,6 @@ fun ArtistItemsScreen(
     val title by viewModel.title.collectAsState()
     val itemsPage by viewModel.itemsPage.collectAsState()
 
-    // deduplicated once per page change this was previously computed inline in
-    // and again inside the item lambda to read size so every visible row
-    // full length list on every frame while scrolling
     val distinctItems by remember {
         derivedStateOf { itemsPage?.items.orEmpty().distinctBy { it.id } }
     }

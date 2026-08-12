@@ -1,5 +1,4 @@
-// autoplaylistscreenkt
-// this thing is for auto playlist screen
+// AutoPlaylistScreen.kt
 
 package com.example.musicfy.ui.screens.playlist
 
@@ -240,7 +239,7 @@ fun AutoPlaylistScreen(
     var downloadState by remember {
         mutableIntStateOf(Download.STATE_STOPPED)
     }
-    
+
     LaunchedEffect(Unit) {
         println("[UPLOAD_DEBUG] AutoPlaylistScreen LaunchedEffect: playlistId=$playlistId, playlistType=$playlistType, ytmSync=$ytmSync")
         if (ytmSync) {
@@ -666,8 +665,7 @@ private fun AutoPlaylistHeader(
     com.example.musicfy.ui.component.detail.PlaylistScreenHeader(
         thumbnailUrl = songs.firstOrNull { !it.song.thumbnailUrl.isNullOrEmpty() }?.song?.thumbnailUrl,
         title = name,
-        // no creator name for these liked downloaded uploaded are auto generated
-        // system views not a playlist you made with a name worth attaching
+
         userName = "",
         description = staticDescription,
         isPlaying = isPlaying,
@@ -723,7 +721,6 @@ private fun AutoPlaylistHeader(
         modifier = modifier
     )
 }
-
 
 enum class PlaylistType {
     LIKE, DOWNLOAD, UPLOADED, OTHER

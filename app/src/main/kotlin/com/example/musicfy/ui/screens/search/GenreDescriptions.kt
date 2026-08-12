@@ -1,18 +1,9 @@
-// genredescriptionskt
-// blurbs for the mood genre pages
-
-// youtube s browse response carries a title and nothing else no summary no
-// this so the page had only a generated one liner under its heading these
-// category what the thing actually is where it came from and what it sounds
-
-// matching is on the category s own title case and punctuation insensitive
-// afterwards so regional variants of a heading hip hop & rap hip hop
-// entry anything genuinely unknown falls back to a plain descriptive line
+// GenreDescriptions.kt
 
 package com.example.musicfy.ui.screens.search
 
 private val Descriptions: Map<String, String> = mapOf(
-    // ── moods & moments
+
     "chill" to "Low-tempo, low-pressure listening — downtempo electronica, soft indie, quiet " +
         "soul and lo-fi beats. The idea grew out of 90s club chill-out rooms, where DJs kept a " +
         "second, slower room running beside the dancefloor, and it has been shorthand for " +
@@ -48,7 +39,6 @@ private val Descriptions: Map<String, String> = mapOf(
         "running cadence sits. Hip-hop, EDM, hard rock and drill, picked for a steady pulse and " +
         "a constant push.",
 
-    // ── genres
     "african" to "The music of a continent, not a single sound: Afrobeats from Lagos and Accra, " +
         "amapiano from South Africa, highlife, soukous, and Afrobeat proper — the horn-driven, " +
         "politically charged style Fela Kuti built in 1970s Nigeria.",
@@ -113,7 +103,6 @@ private val Descriptions: Map<String, String> = mapOf(
         "differently on its own.",
 )
 
-// a written description for a mood or genre page or a plain generated line if the
 fun genreDescription(title: String): String {
     if (title.isBlank()) return ""
     val key = title.lowercase()
@@ -124,7 +113,6 @@ fun genreDescription(title: String): String {
 
     Descriptions[key]?.let { return it }
 
-    // hip hop & rap against hip hop country & americana against country
     Descriptions.entries
         .firstOrNull { (candidate, _) -> key.startsWith(candidate) || candidate.startsWith(key) }
         ?.let { return it.value }

@@ -1,5 +1,4 @@
-// localalbumradiokt
-// the file functioned as local album radio
+// LocalAlbumRadio.kt
 
 package com.example.musicfy.playback.queues
 

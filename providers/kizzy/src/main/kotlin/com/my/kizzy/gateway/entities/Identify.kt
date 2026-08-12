@@ -1,5 +1,4 @@
-// identify kt
-// what is this for you ask its for identify ofc
+// Identify.kt
 
 package com.my.kizzy.gateway.entities
 

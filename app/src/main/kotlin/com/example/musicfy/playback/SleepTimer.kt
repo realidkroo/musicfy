@@ -1,5 +1,4 @@
-// sleeptimerkt
-// what is this for you ask its for sleep timer ofc
+// SleepTimer.kt
 
 package com.example.musicfy.playback
 
@@ -45,7 +44,6 @@ class SleepTimer(
         }
     }
 
-    // notify the sleep timer that a song transition has occurred outside of normal
     fun notifySongTransition() {
         if (pauseWhenSongEnd) {
             pauseWhenSongEnd = false

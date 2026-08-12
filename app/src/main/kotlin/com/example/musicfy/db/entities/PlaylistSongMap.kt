@@ -1,5 +1,4 @@
-// playlistsongmapkt
-// what is this for you ask its for playlist song map ofc
+// PlaylistSongMap.kt
 
 package com.example.musicfy.db.entities
 

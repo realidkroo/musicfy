@@ -1,5 +1,4 @@
-// composetoimagekt
-// the file functioned as compose to image
+// ComposeToImage.kt
 
 package com.example.musicfy.utils
 
@@ -55,11 +54,10 @@ object ComposeToImage {
         secondaryTextColor: Int? = null,
         lyricsAlignment: Layout.Alignment = Layout.Alignment.ALIGN_CENTER
     ): Bitmap = withContext(Dispatchers.Default) {
-        // use fixed high resolution as requested 2160x2160
-        // this ensures consistent high quality output regardless of the device screen
+
         val imageWidth = 2160
         val imageHeight = 2160
-        
+
         val bitmap = createBitmap(imageWidth, imageHeight)
         val canvas = Canvas(bitmap)
 
@@ -71,14 +69,13 @@ object ComposeToImage {
         val mainTextColor = textColor ?: defaultTextColor
         val secondaryTxtColor = secondaryTextColor ?: defaultSecondaryTextColor
 
-        // pre load cover art if needed for blur gradient or just for the header
         var coverArtBitmap: Bitmap? = null
         if (coverArtUrl != null) {
             try {
                 val imageLoader = ImageLoader(context)
                 val request = ImageRequest.Builder(context)
                     .data(coverArtUrl)
-                    .size(1024) 
+                    .size(1024)
                     .allowHardware(false)
                     .build()
                 val result = imageLoader.execute(request)
@@ -86,7 +83,6 @@ object ComposeToImage {
             } catch (_: Exception) {}
         }
 
-        // draw background
         val backgroundRect = RectF(0f, 0f, imageWidth.toFloat(), imageHeight.toFloat())
         val backgroundPaint = Paint().apply {
             isAntiAlias = true
@@ -98,28 +94,27 @@ object ComposeToImage {
                 canvas.drawRect(backgroundRect, backgroundPaint)
             }
             LyricsBackgroundStyle.BLUR -> {
-                // draw black base
+
                 backgroundPaint.color = 0xFF000000.toInt()
                 canvas.drawRect(backgroundRect, backgroundPaint)
 
                 if (coverArtBitmap != null) {
                     try {
-                        // create a scaled down version for blurring performance
+
                         val scaledBitmap = Bitmap.createScaledBitmap(coverArtBitmap, imageWidth / 10, imageHeight / 10, true)
-                        val blurredBitmap = fastBlur(scaledBitmap, 1f, 20) // radius 20 on small image is large blur
-                        
+                        val blurredBitmap = fastBlur(scaledBitmap, 1f, 20)
+
                         if (blurredBitmap != null) {
                             val blurRect = RectF(0f, 0f, imageWidth.toFloat(), imageHeight.toFloat())
                             canvas.drawBitmap(blurredBitmap, null, blurRect, null)
-                            
-                            // dark overlay for readability
+
                             val overlayPaint = Paint().apply {
-                                color = 0x4D000000.toInt() // 30% black overlay
+                                color = 0x4D000000.toInt()
                             }
                             canvas.drawRect(blurRect, overlayPaint)
                         }
                     } catch (e: Exception) {
-                        // fallback to solid
+
                         backgroundPaint.color = bgColor
                         canvas.drawRect(backgroundRect, backgroundPaint)
                     }
@@ -133,7 +128,7 @@ object ComposeToImage {
                     val palette = Palette.from(coverArtBitmap).generate()
                     val vibrant = palette.getVibrantColor(bgColor)
                     val darkVibrant = palette.getDarkVibrantColor(bgColor)
-                    
+
                     val gradient = LinearGradient(
                         0f, 0f, imageWidth.toFloat(), imageHeight.toFloat(),
                         intArrayOf(vibrant, darkVibrant),
@@ -148,14 +143,11 @@ object ComposeToImage {
                 }
             }
         }
-        
-        // base scale on width relative to the reference design 340dp
-        // 2160 340 ≈ 635
+
         val scale = imageWidth / 340f
-        
+
         val cornerRadius = 20f * scale
 
-        // draw inner border
         val borderPaint = Paint().apply {
             color = mainTextColor
             alpha = (255 * 0.09).toInt()
@@ -166,19 +158,17 @@ object ComposeToImage {
         canvas.drawRoundRect(backgroundRect, cornerRadius, cornerRadius, borderPaint)
 
         val padding = 28f * scale
-        
-        // header section
+
         val coverArtSize = 64f * scale
         val headerBottomPadding = 12f * scale
-        
+
         val coverCornerRadius = 3f * scale
         coverArtBitmap?.let {
             val rect = RectF(padding, padding, padding + coverArtSize, padding + coverArtSize)
             val path = Path().apply {
                 addRoundRect(rect, coverCornerRadius, coverCornerRadius, Path.Direction.CW)
             }
-            
-            // draw border for cover art
+
             val coverBorderPaint = Paint().apply {
                 color = mainTextColor
                 alpha = (255 * 0.16).toInt()
@@ -199,14 +189,14 @@ object ComposeToImage {
         val interRegular = ResourcesCompat.getFont(context, R.font.inter_regular)
             ?: Typeface.create("sans-serif", Typeface.NORMAL)
         val interBold = ResourcesCompat.getFont(context, R.font.inter_bold) ?: interRegular
-        
+
         val titlePaint = TextPaint().apply {
             color = mainTextColor
             textSize = 20f * scale
             typeface = interBold
             isAntiAlias = true
         }
-        
+
         val artistPaint = TextPaint().apply {
             color = secondaryTxtColor
             textSize = 16f * scale
@@ -219,18 +209,17 @@ object ComposeToImage {
             .setMaxLines(1)
             .setEllipsize(android.text.TextUtils.TruncateAt.END)
             .build()
-            
+
         val artistLayout = StaticLayout.Builder.obtain(artistName, 0, artistName.length, artistPaint, textMaxWidth.toInt())
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setMaxLines(1)
             .setEllipsize(android.text.TextUtils.TruncateAt.END)
             .build()
 
-        // vertically align text block with cover art
-        val headerTextHeight = titleLayout.height + artistLayout.height + (2f * scale) // +2dp padding between title and artist
+        val headerTextHeight = titleLayout.height + artistLayout.height + (2f * scale)
         val headerCenterY = padding + coverArtSize / 2f
         val titleY = headerCenterY - headerTextHeight / 2f
-        
+
         canvas.save()
         canvas.translate(textStartX, titleY)
         titleLayout.draw(canvas)
@@ -238,45 +227,36 @@ object ComposeToImage {
         artistLayout.draw(canvas)
         canvas.restore()
 
-        // footer section
         val logoBoxSize = 22f * scale
         val logoIconSize = 16f * scale
         val footerY = imageHeight - padding - logoBoxSize
-        
-        // draw logo background box
+
         val logoBgPaint = Paint().apply {
             color = secondaryTxtColor
             isAntiAlias = true
         }
         val logoBoxRect = RectF(padding, footerY, padding + logoBoxSize, footerY + logoBoxSize)
-        // since it s a circle in preview clip roundedcornershape 50 which is
+
         canvas.drawOval(logoBoxRect, logoBgPaint)
-        
-        // draw logo icon
+
         val rawLogo = context.getDrawable(R.drawable.musicfy_icon)?.toBitmap()
         rawLogo?.let {
             val logoPaint = Paint().apply {
-                // if background is gradient blur tint might be tricky
-                // using bgcolor for tint is safe for solid but for gradient blur
-                // we might want a color that contrasts with secondarytxtcolor
-                // let s use the bgcolor passed in which is likely the dominant color or
-                // or for simplicity use a generic dark light depending on theme
+
                 colorFilter = PorterDuffColorFilter(bgColor, PorterDuff.Mode.SRC_IN)
                 isAntiAlias = true
             }
-            
-            // center logo in box
+
             val logoOffset = (logoBoxSize - logoIconSize) / 2f
             val logoRect = RectF(
-                padding + logoOffset, 
-                footerY + logoOffset, 
-                padding + logoBoxSize - logoOffset, 
+                padding + logoOffset,
+                footerY + logoOffset,
+                padding + logoBoxSize - logoOffset,
                 footerY + logoBoxSize - logoOffset
             )
             canvas.drawBitmap(it, null, logoRect, logoPaint)
         }
-        
-        // draw app name
+
         val appName = context.getString(R.string.app_name)
         val appNamePaint = TextPaint().apply {
             color = secondaryTxtColor
@@ -284,16 +264,14 @@ object ComposeToImage {
             typeface = interBold
             isAntiAlias = true
         }
-        
+
         val appNameX = padding + logoBoxSize + (8f * scale)
-        // center text vertically relative to logo box
+
         val appNameY = footerY + logoBoxSize/2f - (appNamePaint.descent() + appNamePaint.ascent()) / 2f
         canvas.drawText(appName, appNameX, appNameY, appNamePaint)
 
-        // lyrics section
-        // calculate available space
         val lyricsTop = padding + coverArtSize + headerBottomPadding
-        val lyricsBottom = footerY - (12f * scale) // add some padding above footer
+        val lyricsBottom = footerY - (12f * scale)
         val lyricsHeight = lyricsBottom - lyricsTop
         val lyricsWidth = imageWidth - (padding * 2)
 
@@ -304,10 +282,8 @@ object ComposeToImage {
             letterSpacing = 0.005f
         }
 
-        // adaptive font size calculation
-        // start with a large size eg 50sp equivalent and scale down until it fits
-        var lyricsTextSize = 50f * scale 
-        val minLyricsSize = 13f * scale 
+        var lyricsTextSize = 50f * scale
+        val minLyricsSize = 13f * scale
         var lyricsLayout: StaticLayout
 
         while (lyricsTextSize > minLyricsSize) {
@@ -317,15 +293,14 @@ object ComposeToImage {
                 .setLineSpacing(0f, 1.2f)
                 .setIncludePad(false)
                 .build()
-            
+
             if (lyricsLayout.height <= lyricsHeight) {
                 break
             }
-            
-            lyricsTextSize -= 1f * scale // decrease by ~1sp equivalent steps
+
+            lyricsTextSize -= 1f * scale
         }
-        
-        // one final rebuild with the determined size
+
         lyricsPaint.textSize = lyricsTextSize
         lyricsLayout = StaticLayout.Builder.obtain(lyrics, 0, lyrics.length, lyricsPaint, lyricsWidth.toInt())
             .setAlignment(lyricsAlignment)
@@ -333,7 +308,6 @@ object ComposeToImage {
             .setIncludePad(false)
             .build()
 
-        // center vertically in the available space
         val lyricsContentHeight = lyricsLayout.height
         val lyricsY = if (lyricsContentHeight < lyricsHeight) {
              lyricsTop + (lyricsHeight - lyricsContentHeight) / 2f
@@ -349,20 +323,12 @@ object ComposeToImage {
         return@withContext bitmap
     }
 
-    // stack blur v10 from
-    // java author mario klingemann <mario at quasimondocom>
-    //  http://incubator.quasimondo.com
-
-    // created feburary 29 2004
-    // android port yahel bouaziz <yahel at kayenkocom>
-    //  http://www.kayenko.com
-    // ported to kotlin and adapted
     private fun fastBlur(sentBitmap: Bitmap, scale: Float, radius: Int): Bitmap? {
         val width = (sentBitmap.width * scale).roundToInt()
         val height = (sentBitmap.height * scale).roundToInt()
-        
+
         if (width <= 0 || height <= 0) return null
-        
+
         val bitmap = Bitmap.createScaledBitmap(sentBitmap, width, height, false)
         val w = bitmap.width
         val h = bitmap.height

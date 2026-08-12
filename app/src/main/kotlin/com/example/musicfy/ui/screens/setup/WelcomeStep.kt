@@ -57,9 +57,7 @@ enum class CurrentAnimation {
 fun WelcomeStep(isHiding: Boolean = false) {
     var currentAnimation by remember { mutableStateOf(CurrentAnimation.Disc) }
     var thumbnails by remember { mutableStateOf<List<String>>(emptyList()) }
-    
-    // square cover art from youtube music fetched once the hardcoded iytimg list
-    // a fallback those are 16 9 video thumbnails which look wrong cropped into
+
     LaunchedEffect(Unit) {
         val fetched = withContext(Dispatchers.IO) {
             listOf("top hits", "classic rock", "j-pop", "pop hits 2020s")
@@ -79,29 +77,29 @@ fun WelcomeStep(isHiding: Boolean = false) {
         }
 
         val predefinedCovers = listOf(
-            "https://i.ytimg.com/vi/Zi_XLOBDo_Y/sddefault.jpg", // Michael Jackson - Billie Jean
-            "https://i.ytimg.com/vi/fJ9rUzIMcZQ/sddefault.jpg", // Queen - Bohemian Rhapsody
-            "https://i.ytimg.com/vi/hTWKbfoikeg/sddefault.jpg", // Nirvana - Smells Like Teen Spirit
-            "https://i.ytimg.com/vi/dQw4w9WgXcQ/sddefault.jpg", // Rick Astley
-            "https://i.ytimg.com/vi/1w7OgIMMRc4/sddefault.jpg", // Guns N' Roses
-            "https://i.ytimg.com/vi/A_MjCqQoLLA/sddefault.jpg", // The Beatles
-            "https://i.ytimg.com/vi/Gs069dndIYk/sddefault.jpg", // Earth, Wind & Fire
-            "https://i.ytimg.com/vi/4fndeDfaWCg/sddefault.jpg", // Backstreet Boys
-            "https://i.ytimg.com/vi/PWgvGjAhvIw/sddefault.jpg", // Outkast
-            "https://i.ytimg.com/vi/_Yhyp-_hX2s/sddefault.jpg", // Eminem
-            "https://i.ytimg.com/vi/kXYiU_JCYtU/sddefault.jpg", // Linkin Park
-            "https://i.ytimg.com/vi/yKNxeF4KMsY/sddefault.jpg", // Coldplay
-            "https://i.ytimg.com/vi/rYEDA3JcQqw/sddefault.jpg", // Adele
-            "https://i.ytimg.com/vi/4NRXx6U8ABQ/sddefault.jpg", // The Weeknd
-            "https://i.ytimg.com/vi/oygrmJFKYZY/sddefault.jpg", // Dua Lipa
-            "https://i.ytimg.com/vi/ZRtdQ81jPUQ/sddefault.jpg", // YOASOBI (J-Pop)
-            "https://i.ytimg.com/vi/M2cckDmNLMI/sddefault.jpg", // Kenshi Yonezu (J-Pop)
-            "https://i.ytimg.com/vi/mpjTE0qPqJc/sddefault.jpg", // LiSA (J-Pop)
-            "https://i.ytimg.com/vi/Qp3b-RXtz4w/sddefault.jpg", // Ado (J-Pop)
-            "https://i.ytimg.com/vi/OPf0YbXqDm0/sddefault.jpg", // Mark Ronson
-            "https://i.ytimg.com/vi/JGwWNGJdvx8/sddefault.jpg"  // Ed Sheeran
+            "https://i.ytimg.com/vi/Zi_XLOBDo_Y/sddefault.jpg",
+            "https://i.ytimg.com/vi/fJ9rUzIMcZQ/sddefault.jpg",
+            "https://i.ytimg.com/vi/hTWKbfoikeg/sddefault.jpg",
+            "https://i.ytimg.com/vi/dQw4w9WgXcQ/sddefault.jpg",
+            "https://i.ytimg.com/vi/1w7OgIMMRc4/sddefault.jpg",
+            "https://i.ytimg.com/vi/A_MjCqQoLLA/sddefault.jpg",
+            "https://i.ytimg.com/vi/Gs069dndIYk/sddefault.jpg",
+            "https://i.ytimg.com/vi/4fndeDfaWCg/sddefault.jpg",
+            "https://i.ytimg.com/vi/PWgvGjAhvIw/sddefault.jpg",
+            "https://i.ytimg.com/vi/_Yhyp-_hX2s/sddefault.jpg",
+            "https://i.ytimg.com/vi/kXYiU_JCYtU/sddefault.jpg",
+            "https://i.ytimg.com/vi/yKNxeF4KMsY/sddefault.jpg",
+            "https://i.ytimg.com/vi/rYEDA3JcQqw/sddefault.jpg",
+            "https://i.ytimg.com/vi/4NRXx6U8ABQ/sddefault.jpg",
+            "https://i.ytimg.com/vi/oygrmJFKYZY/sddefault.jpg",
+            "https://i.ytimg.com/vi/ZRtdQ81jPUQ/sddefault.jpg",
+            "https://i.ytimg.com/vi/M2cckDmNLMI/sddefault.jpg",
+            "https://i.ytimg.com/vi/mpjTE0qPqJc/sddefault.jpg",
+            "https://i.ytimg.com/vi/Qp3b-RXtz4w/sddefault.jpg",
+            "https://i.ytimg.com/vi/OPf0YbXqDm0/sddefault.jpg",
+            "https://i.ytimg.com/vi/JGwWNGJdvx8/sddefault.jpg"
         ).shuffled()
-        
+
         thumbnails = predefinedCovers
     }
 
@@ -115,7 +113,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
         ),
         label = "bg_morph_progress"
     )
-    
+
     val bgAlpha by animateFloatAsState(
         targetValue = if (isHiding) 0f else 1f,
         animationSpec = tween(600),
@@ -125,15 +123,13 @@ fun WelcomeStep(isHiding: Boolean = false) {
     Box(
         modifier = Modifier.fillMaxSize().clipToBounds()
     ) {
-        // morphing dark green black gradient background
+
         Canvas(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = bgAlpha }) {
             val center1 = Offset(size.width * 0.2f + (size.width * 0.6f * morphProgress), size.height * 0.3f)
             val center2 = Offset(size.width * 0.8f - (size.width * 0.4f * morphProgress), size.height * 0.7f + (size.height * 0.2f * morphProgress))
-            
-            // draw a base pure black
+
             drawRect(Color.Black)
-            
-            // draw very subtle radial gradients for the glowing morph effect
+
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(Color(0xFF0A1F13).copy(alpha = 0.5f), Color.Transparent),
@@ -143,7 +139,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
                 radius = size.width * 0.7f,
                 center = center1
             )
-            
+
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(Color(0xFF07170E).copy(alpha = 0.4f), Color.Transparent),
@@ -155,7 +151,6 @@ fun WelcomeStep(isHiding: Boolean = false) {
             )
         }
 
-        // the animation covering the upper right area
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -169,7 +164,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
                 })
             }
         }
-        // progressive gradient overlay at the bottom covering the text area
+
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -184,8 +179,7 @@ fun WelcomeStep(isHiding: Boolean = false) {
                     )
                 )
         )
-        
-        // the text at bottom left shifted up to avoid next button overlap
+
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -224,7 +218,6 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
         label = "DiscRotation"
     )
 
-    // gentle shake for the arm
     val armShake by infiniteTransition.animateFloat(
         initialValue = -1f,
         targetValue = 1f,
@@ -238,9 +231,9 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
     var currentState by remember { mutableStateOf(SpawningState.Spawning) }
     var isInteracting by remember { mutableStateOf(false) }
     var playDuration by remember { mutableLongStateOf(5000L) }
-    
-    val discOffset = remember { Animatable(1f) } // 1f = hidden top right 0f = visible
-    val armBaseRotation = remember { Animatable(-90f) } // 90f = hidden 15f = playing
+
+    val discOffset = remember { Animatable(1f) }
+    val armBaseRotation = remember { Animatable(-90f) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(isHiding) {
@@ -256,24 +249,22 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
             SpawningState.Hidden -> {
                 discOffset.snapTo(1f)
                 armBaseRotation.snapTo(-90f)
-                // trigger transition to gridanimation instead of spawning again
+
                 if (!isHiding) {
                     onSequenceComplete()
                 }
             }
             SpawningState.Spawning -> {
-                // tail appears first from vertical to partially horizontal
+
                 coroutineScope.launch {
                     armBaseRotation.animateTo(-30f, tween(800, easing = FastOutSlowInEasing))
                 }
-                delay(400) // slight overlap
-                
-                // disc slides in
+                delay(400)
+
                 coroutineScope.launch {
                     discOffset.animateTo(0.0f, spring(dampingRatio = 0.6f, stiffness = 100f))
                 }
-                
-                // tail goes to playing position
+
                 delay(300)
                 armBaseRotation.animateTo(-15f, spring(dampingRatio = 0.6f, stiffness = 200f))
                 currentState = SpawningState.Playing
@@ -283,77 +274,75 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                 currentState = SpawningState.Despawning
             }
             SpawningState.Despawning -> {
-                // arm lifts up
+
                 armBaseRotation.animateTo(-30f, tween(400, easing = FastOutSlowInEasing))
-                
-                // disc slides out
+
                 coroutineScope.launch {
                     discOffset.animateTo(1.0f, spring(dampingRatio = 0.8f, stiffness = 60f))
                 }
                 delay(300)
-                // arm retracts fully
+
                 armBaseRotation.animateTo(-90f, tween(600, easing = FastOutSlowInEasing))
                 delay(600)
                 currentState = SpawningState.Hidden
             }
         }
     }
-    
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val canvasWidth = constraints.maxWidth.toFloat()
         val canvasHeight = constraints.maxHeight.toFloat()
-        
+
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val cx = size.width + (discOffset.value * size.width * 1.5f) // increased to 15f so it stays hidden when scaled
+            val cx = size.width + (discOffset.value * size.width * 1.5f)
             val cy = size.height * 0.3f - (discOffset.value * size.height * 0.6f)
             val discCenter = Offset(cx, cy)
             val maxRadius = size.width * 0.85f
-            
-            // depth effect scale up the disc as it moves away
+
             val discScale = 1.0f + (discOffset.value * 0.5f)
-            
+
             scale(scale = discScale, pivot = discCenter) {
                 rotate(rotation, pivot = discCenter) {
-                    // main disc
+
                     drawCircle(
                         color = Color(0xFF2A2A2A),
                         radius = maxRadius,
                         center = discCenter
                     )
-                    // inner groove 1
+
                     drawCircle(
                         color = Color(0xFF242424),
                         radius = maxRadius * 0.75f,
                         center = discCenter,
                         style = Stroke(width = 2.dp.toPx())
                     )
-                    // inner groove 2
+
                     drawCircle(
                         color = Color(0xFF242424),
                         radius = maxRadius * 0.5f,
                         center = discCenter,
                         style = Stroke(width = 2.dp.toPx())
                     )
-                    // label area
+
                     drawCircle(
                         color = Color(0xFF333333),
                         radius = maxRadius * 0.35f,
                         center = discCenter
                     )
-                    // logo mark on the label to show rotation
+
                     drawCircle(
                         color = Color(0xFF555555),
                         radius = maxRadius * 0.06f,
                         center = Offset(discCenter.x, discCenter.y - maxRadius * 0.2f)
                     )
-                    // ring around hole
+
                     drawCircle(
                         color = Color(0xFF444444),
                         radius = maxRadius * 0.12f,
                         center = discCenter,
                         style = Stroke(width = 4.dp.toPx())
                     )
-                    // center hole background color
+
                     drawCircle(
                         color = Color(0xFF121212),
                         radius = maxRadius * 0.08f,
@@ -361,19 +350,17 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                     )
                 }
             }
-            
-            // reader arm
+
             val armBaseX = -size.width * 0.1f
             val armBaseY = size.height * 0.45f
-            
+
             val activeShake = if (currentState == SpawningState.Playing && !isInteracting) armShake else 0f
-            
+
             rotate(degrees = armBaseRotation.value + activeShake, pivot = Offset(armBaseX, armBaseY)) {
                 val armLength = size.width * 0.8f
                 val armEndX = armBaseX + armLength
                 val armEndY = armBaseY
-                
-                // draw arm line
+
                 drawLine(
                     color = Color(0xFF444444),
                     start = Offset(armBaseX, armBaseY),
@@ -381,11 +368,10 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                     strokeWidth = 14.dp.toPx(),
                     cap = StrokeCap.Round
                 )
-                
-                // draw stylus head pill shape
+
                 val headWidth = 80.dp.toPx()
                 val headHeight = 28.dp.toPx()
-                
+
                 drawRoundRect(
                     color = Color(0xFF666666),
                     topLeft = Offset(armEndX - headWidth / 2, armEndY - headHeight / 2),
@@ -394,15 +380,14 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
                 )
             }
         }
-        
-        // touch target overlay
+
         val angleRad = armBaseRotation.value * kotlin.math.PI / 180.0
         val armLength = canvasWidth * 0.8f
         val armBaseX = -canvasWidth * 0.1f
         val armBaseY = canvasHeight * 0.45f
         val handleX = armBaseX + armLength * kotlin.math.cos(angleRad)
         val handleY = armBaseY + armLength * kotlin.math.sin(angleRad)
-        
+
         Box(
             modifier = Modifier
                 .offset {
@@ -456,13 +441,13 @@ fun DiscAnimation(isHiding: Boolean, onSequenceComplete: () -> Unit) {
 fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplete: () -> Unit) {
     val itemSize = 170.dp
     val spacing = 14.dp
-    
+
     val density = LocalDensity.current
     val pxItemSize = remember(density) { with(density) { itemSize.toPx() } }
     val pxSpacing = remember(density) { with(density) { spacing.toPx() } }
-    
+
     val panOffset = remember { Animatable(0f) }
-    // initialize animatables safely
+
     val scales = remember(thumbnails.size) { List(thumbnails.size) { Animatable(0f) } }
     var isForceHiding by remember { mutableStateOf(false) }
 
@@ -472,37 +457,34 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
             val despawnJobs = thumbnails.mapIndexed { index, _ ->
                 launch {
                     val col = index / 3
-                    delay(col * 20L) // faster hide when force hiding
+                    delay(col * 20L)
                     scales[index].animateTo(0f, spring(dampingRatio = 0.8f, stiffness = 300f))
                 }
             }
             despawnJobs.forEach { it.join() }
         }
     }
-    
+
     LaunchedEffect(thumbnails.size) {
         if (thumbnails.isEmpty() || isForceHiding) return@LaunchedEffect
-        
+
         val totalCols = (thumbnails.size + 2) / 3
         val contentWidth = totalCols * (pxItemSize + pxSpacing)
-        
-        // pan leftwards slowly to give a scanning effect
+
         launch {
             panOffset.animateTo(-contentWidth * 0.4f, tween(7000, easing = LinearEasing))
         }
-        
-        // stagger spawn based on column index
+
         thumbnails.forEachIndexed { index, _ ->
             launch {
                 val col = index / 3
-                delay(col * 120L + (index % 3) * 60L) 
+                delay(col * 120L + (index % 3) * 60L)
                 scales[index].animateTo(1f, spring(dampingRatio = 0.55f, stiffness = 150f))
             }
         }
-        
-        delay(6000) // play for 6 seconds
-        
-        // despawn sequence
+
+        delay(6000)
+
         val despawnJobs = thumbnails.mapIndexed { index, _ ->
             launch {
                 val col = index / 3
@@ -514,21 +496,20 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
         delay(500)
         onSequenceComplete()
     }
-    
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        // start drawing higher up so top row clips slightly more
+
         val startY = -pxItemSize * 0.25f
-        
+
         thumbnails.forEachIndexed { index, url ->
             val col = index / 3
             val row = index % 3
-            
-            // offset rows slightly to right for a masonry look
+
             val rowOffset = if (row % 2 != 0) (pxItemSize + pxSpacing) * 0.5f else 0f
-            
+
             val xPos = 60f + col * (pxItemSize + pxSpacing) + rowOffset
             val yPos = startY + row * (pxItemSize + pxSpacing)
-            
+
             Box(
                 modifier = Modifier
                     .graphicsLayer {
@@ -541,10 +522,10 @@ fun GridAnimation(isHiding: Boolean, thumbnails: List<String>, onSequenceComplet
                     }
                     .size(itemSize)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF242424)) // fallback loading color
+                    .background(Color(0xFF242424))
             ) {
                 if (url.isNotEmpty()) {
-                    // fades up as it decodes rather than snapping over the placeholder tile
+
                     FadeInCover(url = url, modifier = Modifier.fillMaxSize())
                 }
             }

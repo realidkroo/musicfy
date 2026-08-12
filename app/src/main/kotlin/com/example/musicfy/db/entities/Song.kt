@@ -1,5 +1,4 @@
-// songkt
-// this thing is for song
+// Song.kt
 
 package com.example.musicfy.db.entities
 

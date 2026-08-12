@@ -1,5 +1,4 @@
-// csvcolumnmappingdialogkt
-// this thing is for csv column mapping dialog
+// CsvColumnMappingDialog.kt
 
 package com.example.musicfy.ui.menu
 
@@ -73,7 +72,6 @@ fun CsvColumnMappingDialog(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            // preview rows
             if (csvState.previewRows.isNotEmpty()) {
                 Column(
                     modifier = Modifier
@@ -132,7 +130,6 @@ fun CsvColumnMappingDialog(
                 }
             }
 
-            // header checkbox
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -149,7 +146,6 @@ fun CsvColumnMappingDialog(
                 )
             }
 
-            // column selectors
             ColumnSelector(
                 label = stringResource(R.string.artist_name_column),
                 selectedIndex = artistColumnIndex,
@@ -172,7 +168,6 @@ fun CsvColumnMappingDialog(
                 onSelected = { urlColumnIndex = it },
             )
 
-            // buttons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

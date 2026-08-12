@@ -1,5 +1,4 @@
-// feedbackbody kt
-// the file functioned as feedback body
+// FeedbackBody.kt
 
 package com.music.innertube.models.body
 

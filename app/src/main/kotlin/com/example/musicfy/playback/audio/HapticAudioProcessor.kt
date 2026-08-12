@@ -10,7 +10,6 @@ import java.nio.ByteOrder
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-// audioprocessor that detects strong beats like bass hits and triggers haptic
 @UnstableApi
 @Suppress("DEPRECATION")
 class HapticAudioProcessor(
@@ -33,18 +32,15 @@ class HapticAudioProcessor(
     @Volatile
     var focus: HapticFocus = HapticFocus.VIBE
 
-    // haptic parameters
     private var smoothedAmplitude: Float = 0f
-    
+
     private var lastVibrateTimeMs: Long = 0
-    private val hapticUpdateIntervalMs: Long = 30 // send vibration command every 30ms
-    
-    // kick detection & filtering
+    private val hapticUpdateIntervalMs: Long = 30
+
     private var longTermRms: Double = 0.0
     private var shortTermRms: Double = 0.0
     private var lastKickTimeMs: Long = 0
 
-    // filter states
     private var filterState1: Double = 0.0
     private var filterState2: Double = 0.0
 
@@ -56,7 +52,7 @@ class HapticAudioProcessor(
         if (encoding != C.ENCODING_PCM_16BIT) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
-        
+
         return inputAudioFormat
     }
 
@@ -91,35 +87,35 @@ class HapticAudioProcessor(
             repeat(channelCount) { channelIndex ->
                 val sampleIndex = basePosition + (frameIndex * channelCount + channelIndex) * 2
                 val sampleValue = inputBuffer.getShort(sampleIndex).toDouble()
-                
+
                 val filteredValue = when (focus) {
                     HapticFocus.BALANCE -> sampleValue
                     HapticFocus.BASS -> {
-                        // low pass filter ~ 250hz alpha ~ 0034 at 441khz
+
                         filterState1 = filterState1 + 0.034 * (sampleValue - filterState1)
                         filterState1
                     }
                     HapticFocus.VOCAL -> {
-                        // band pass hp at 300hz alpha ~ 0959 lp at 3000hz alpha ~ 0298
+
                         val hp = 0.959 * (filterState1 + sampleValue - filterState2)
                         filterState2 = sampleValue
                         filterState1 = hp
-                        // lp
+
                         val lp = filterState3 + 0.298 * (hp - filterState3)
                         filterState3 = lp
                         lp
                     }
                     HapticFocus.VIBE -> {
-                        // low pass ~ 1000hz alpha ~ 012
+
                         filterState1 = filterState1 + 0.12 * (sampleValue - filterState1)
                         filterState1
                     }
                 }
-                
+
                 sumSquares += filteredValue * filteredValue
             }
         }
-        
+
         val totalSamples = frameCount * channelCount
         val rms = if (totalSamples > 0) sqrt(sumSquares / totalSamples) else 0.0
 
@@ -137,25 +133,24 @@ class HapticAudioProcessor(
         }
 
         val targetAmplitude = intensity * 255f
-        
+
         val attackSmoothing = 0.4f
         val decaySmoothing = 0.6f
-        
+
         if (targetAmplitude > smoothedAmplitude) {
             smoothedAmplitude = (smoothedAmplitude * attackSmoothing) + (targetAmplitude * (1f - attackSmoothing))
         } else {
             smoothedAmplitude = (smoothedAmplitude * decaySmoothing) + (targetAmplitude * (1f - decaySmoothing))
         }
-        
+
         val finalAmplitude = smoothedAmplitude.toInt().coerceIn(0, 255)
 
-        // highlight transient detection
         shortTermRms = (shortTermRms * 0.6) + (rms * 0.4)
         longTermRms = (longTermRms * 0.98) + (rms * 0.02)
         val currentTime = System.currentTimeMillis()
-        
+
         var isHighlight = false
-        // vibrate mainly on transients highlights
+
         if (shortTermRms > (longTermRms * 1.6) && shortTermRms > 1500.0) {
             if (currentTime - lastKickTimeMs > 150) {
                 isHighlight = true
@@ -165,12 +160,12 @@ class HapticAudioProcessor(
 
         if (currentTime - lastVibrateTimeMs >= hapticUpdateIntervalMs) {
             lastVibrateTimeMs = currentTime
-            
+
             if (isHighlight) {
-                // strong pulse on highlights
+
                 onHapticUpdate(finalAmplitude.coerceAtLeast(150), true)
             } else if (finalAmplitude > 40) {
-                // very subtle background vibration instead of continuous buzzing
+
                 onHapticUpdate(finalAmplitude / 4, false)
             }
         }

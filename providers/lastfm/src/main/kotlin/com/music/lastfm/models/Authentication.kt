@@ -1,5 +1,4 @@
-// authentication kt
-// this thing is for authentication
+// Authentication.kt
 
 package com.music.lastfm.models
 
@@ -11,9 +10,9 @@ data class Authentication(
 ) {
     @Serializable
     data class Session(
-        val name: String,       // username
-        val key: String,        // session key
-        val subscriber: Int,    // last fm pro
+        val name: String,
+        val key: String,
+        val subscriber: Int,
     )
 }
 

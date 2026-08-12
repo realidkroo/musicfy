@@ -1,9 +1,4 @@
-// linesliderkt
-// the plain track and fill slider the concepts use a rounded line that
-// with no thumb no ripple and no material chrome
-
-// material3 s slider brings a visible thumb a state layer and its own touch
-// of which match the sheets these appear in this is a drag surface over two
+// LineSlider.kt
 
 package com.example.musicfy.ui.player.menu
 
@@ -35,7 +30,7 @@ fun LineSlider(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     trackHeight: Dp = 6.dp,
-    // touch target is taller than the line itself a 6dp tall strip is unusable
+
     touchHeight: Dp = 28.dp,
     activeColor: Color = Color.White,
     inactiveColor: Color = Color.White.copy(alpha = 0.22f),
@@ -62,8 +57,7 @@ fun LineSlider(
                 detectTapGestures { offset -> report(offset.x) }
             }
             .pointerInput(Unit) {
-                // reports from the absolute position rather than accumulating deltas so the
-                // fill always sits exactly under the finger even after a fast drag
+
                 detectHorizontalDragGestures(
                     onDragStart = { offset -> report(offset.x) },
                     onHorizontalDrag = { change, _ -> report(change.position.x) },

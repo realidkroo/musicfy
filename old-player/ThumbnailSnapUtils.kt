@@ -1,7 +1,4 @@
-// thumbnailsnaputils kt
-// the file functioned as thumbnail snap utils
-
-// musicfy project c 2026 licensed under gpl 3 0 | see git history for contributors snap utilities for thumbnail grid navigation copyright c outertune project custom snaplayoutinfoprovider idea belongs to outertune
+// ThumbnailSnapUtils.kt
 
 package com.example.musicfy.ui.player
 
@@ -14,7 +11,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.ui.util.fastForEach
 import kotlin.math.abs
 
-// custom snaplayoutinfoprovider for horizontal grid snapping behavior provides smooth snapping to items based on velocity and position
 @ExperimentalFoundationApi
 fun ThumbnailSnapLayoutInfoProvider(
     lazyGridState: LazyGridState,
@@ -27,11 +23,10 @@ fun ThumbnailSnapLayoutInfoProvider(
         get() = lazyGridState.layoutInfo
 
     override fun calculateApproachOffset(velocity: Float, decayOffset: Float): Float = 0f
-    
+
     override fun calculateSnapOffset(velocity: Float): Float {
         val bounds = calculateSnappingOffsetBounds()
 
-        // only snap when velocity exceeds threshold
         if (abs(velocity) < velocityThreshold) {
             return if (abs(bounds.start) < abs(bounds.endInclusive)) {
                 bounds.start
@@ -54,12 +49,10 @@ fun ThumbnailSnapLayoutInfoProvider(
         layoutInfo.visibleItemsInfo.fastForEach { item ->
             val offset = calculateDistanceToDesiredSnapPosition(layoutInfo, item, positionInLayout)
 
-            // find item that is closest to the center
             if (offset <= 0 && offset > lowerBoundOffset) {
                 lowerBoundOffset = offset
             }
 
-            // find item that is closest to center but after it
             if (offset >= 0 && offset < upperBoundOffset) {
                 upperBoundOffset = offset
             }
@@ -69,7 +62,6 @@ fun ThumbnailSnapLayoutInfoProvider(
     }
 }
 
-// calculates the distance from an item s current position to its desired snap position
 fun calculateDistanceToDesiredSnapPosition(
     layoutInfo: LazyGridLayoutInfo,
     item: LazyGridItemInfo,
@@ -84,6 +76,5 @@ fun calculateDistanceToDesiredSnapPosition(
     return itemCurrentPosition - desiredDistance
 }
 
-// extension property to get the viewport size along the scroll axis
 val LazyGridLayoutInfo.singleAxisViewportSize: Int
     get() = if (orientation == Orientation.Vertical) viewportSize.height else viewportSize.width

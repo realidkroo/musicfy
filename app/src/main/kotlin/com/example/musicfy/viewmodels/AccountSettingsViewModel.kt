@@ -1,5 +1,4 @@
-// accountsettingsviewmodelkt
-// the file functioned as account settings view model
+// AccountSettingsViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -28,21 +27,17 @@ class AccountSettingsViewModel @Inject constructor(
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
 
-    // logout user and clear all synced content to prevent data mixing between accounts
     fun logoutAndClearSyncedContent(context: Context, onCookieChange: (String) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            // clear all youtube music synced content first
+
             syncUtils.clearAllSyncedContent()
 
-            // then clear account preferences
             App.forgetAccount(context)
 
-            // clear cookie in ui
             onCookieChange("")
         }
     }
 
-    // just logout without clearing library data
     fun logoutKeepData(context: Context, onCookieChange: (String) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             App.forgetAccount(context)
@@ -52,7 +47,6 @@ class AccountSettingsViewModel @Inject constructor(
         }
     }
 
-    // save token credentials atomically to datastore then restart the app this
     fun saveTokenAndRestart(
         context: Context,
         cookie: String,

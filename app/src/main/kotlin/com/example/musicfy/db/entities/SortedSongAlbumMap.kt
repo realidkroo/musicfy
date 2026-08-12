@@ -1,5 +1,4 @@
-// sortedsongalbummapkt
-// this thing is for sorted song album map
+// SortedSongAlbumMap.kt
 
 package com.example.musicfy.db.entities
 

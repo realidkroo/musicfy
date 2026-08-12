@@ -1,5 +1,4 @@
-// artistalbumsscreenkt
-// this thing is for artist albums screen
+// ArtistAlbumsScreen.kt
 
 package com.example.musicfy.ui.screens.artist
 

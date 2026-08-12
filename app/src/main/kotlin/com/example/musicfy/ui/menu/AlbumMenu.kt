@@ -1,5 +1,4 @@
-// albummenukt
-// what is this for you ask its for album menu ofc
+// AlbumMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -421,10 +420,10 @@ fun AlbumMenu(
                         }
                     ),
                     Material3MenuItemData(
-                        title = { 
+                        title = {
                             Text(
-                                text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial" 
-                            ) 
+                                text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial"
+                            )
                         },
                         icon = {
                             Icon(

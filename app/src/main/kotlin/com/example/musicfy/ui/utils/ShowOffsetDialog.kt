@@ -1,5 +1,4 @@
-// showoffsetdialogkt
-// this thing is part of show offset dialog
+// ShowOffsetDialog.kt
 
 package com.example.musicfy.ui.utils
 

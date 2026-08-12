@@ -1,5 +1,4 @@
-// genreviewmodelkt
-// backs the genre mood page opened from the search landing grids
+// GenreViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -28,7 +27,6 @@ constructor(
 
     val result = MutableStateFlow<BrowseResult?>(null)
 
-    // the from the community row the genre s own playlists each resolved to its
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
 
     init {
@@ -45,7 +43,6 @@ constructor(
         }
     }
 
-    // only three playlists are expanded and they are fetched in parallel this row is
     private suspend fun loadCommunity(page: BrowseResult) {
         val candidates = page.items
             .asSequence()

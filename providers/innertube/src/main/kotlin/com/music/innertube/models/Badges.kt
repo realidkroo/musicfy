@@ -1,5 +1,4 @@
-// badges kt
-// this thing is for badges
+// Badges.kt
 
 package com.music.innertube.models
 

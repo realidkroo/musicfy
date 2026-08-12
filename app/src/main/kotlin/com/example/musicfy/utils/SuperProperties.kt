@@ -1,5 +1,4 @@
-// superpropertieskt
-// what is this for you ask its for super properties ofc
+// SuperProperties.kt
 
 package com.example.musicfy.utils
 
@@ -10,12 +9,11 @@ import java.util.Locale
 import java.util.UUID
 
 object SuperProperties {
-    // constants from research for discord android 31413
+
     private const val CLIENT_VERSION = "314.13 - Stable"
     private const val CLIENT_BUILD_NUMBER = 314013
     private const val RELEASE_CHANNEL = "googleRelease"
-    
-    // lazy loaded properties to avoid re generating uuids
+
     val superProperties: JSONObject by lazy {
         JSONObject().apply {
             put("os", "Android")

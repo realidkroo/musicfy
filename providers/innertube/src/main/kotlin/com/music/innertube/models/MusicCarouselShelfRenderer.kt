@@ -1,5 +1,4 @@
-// musiccarouselshelfrenderer kt
-// the file functioned as music carousel shelf renderer
+// MusicCarouselShelfRenderer.kt
 
 package com.music.innertube.models
 
@@ -29,6 +28,6 @@ data class MusicCarouselShelfRenderer(
     data class Content(
         val musicTwoRowItemRenderer: MusicTwoRowItemRenderer?,
         val musicResponsiveListItemRenderer: MusicResponsiveListItemRenderer?,
-        val musicNavigationButtonRenderer: MusicNavigationButtonRenderer?, // navigation button in explore tab
+        val musicNavigationButtonRenderer: MusicNavigationButtonRenderer?,
     )
 }

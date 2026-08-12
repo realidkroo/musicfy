@@ -1,5 +1,4 @@
-// converterskt
-// what is this for you ask its for converters ofc
+// Converters.kt
 
 package com.example.musicfy.db
 

@@ -1,5 +1,4 @@
-// albumkt
-// this thing is part of album
+// Album.kt
 
 package com.example.musicfy.db.entities
 

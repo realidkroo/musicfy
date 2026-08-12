@@ -1,5 +1,4 @@
-// runs kt
-// this thing is part of runs
+// Runs.kt
 
 package com.music.innertube.models
 
@@ -45,13 +44,6 @@ fun List<Run>.oddElements() =
         index % 2 == 0
     }
 
-// the secondary text line on a list item is split on • and the first group is
-// assumed to be the artist segment see splitbyseparator oddelements usage in the
-// page kt parsers but some rows auto generated mixes rows with no real artist
-// credit don t have an artist segment at all so that first group ends up being
-// whatever was first instead e g a raw 3 45 duration string filtering those out
-// where an artist list is built stops a duration from being stored displayed as if it
-// were an artist s name
 private val TIMESTAMP_TEXT_REGEX = Regex("^\\d{1,2}:\\d{2}(:\\d{2})?$")
 
 fun String.looksLikeTimestamp(): Boolean = TIMESTAMP_TEXT_REGEX.matches(trim())

@@ -1,5 +1,4 @@
-// relatedpage kt
-// this thing is part of related page
+// RelatedPage.kt
 
 package com.music.innertube.pages
 
@@ -23,10 +22,9 @@ data class RelatedPage(
 ) {
     companion object {
         fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): SongItem? {
-            // extract library tokens using the new method that properly handles multiple toggle items
+
             val libraryTokens = PageHelper.extractLibraryTokensFromMenuItems(renderer.menu?.menuRenderer?.items)
 
-            // split the secondary line by bullet separator to separate artists from other metadata like views
             val secondaryLineRuns = renderer.flexColumns
                 .getOrNull(1)
                 ?.musicResponsiveListItemFlexColumnRenderer

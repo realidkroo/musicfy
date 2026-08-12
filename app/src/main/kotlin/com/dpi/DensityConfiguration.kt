@@ -1,5 +1,4 @@
-// densityconfigurationkt
-// this thing is for density configuration
+// DensityConfiguration.kt
 
 package com.dpi
 
@@ -12,14 +11,12 @@ import android.util.Log
 import timber.log.Timber
 import kotlin.math.roundToInt
 
-// configuration class for adjusting screen density dynamically applies density
 internal class DensityConfiguration(
     private val densityScale: Float
 ) : ActivityLifecycleManager() {
 
     private var originalDensityDpi: Int = 0
 
-    // applies the density scaling to the application context this method should be
     @SuppressLint("LogNotTimber")
     fun applyDensityScaling(context: Context) {
         if (densityScale == 1.0f) return
@@ -35,7 +32,6 @@ internal class DensityConfiguration(
         }
     }
 
-    // updates the density dpi in the configuration and applies it to resources
     private fun updateDensityDpi(config: Configuration, resources: Resources) {
         val newDensityDpi = (originalDensityDpi * densityScale).roundToInt()
         config.densityDpi = newDensityDpi
@@ -44,22 +40,18 @@ internal class DensityConfiguration(
         resources.updateConfiguration(config, resources.displayMetrics)
     }
 
-    // reapply density scaling when an activity is created
     override fun onActivityCreated(activity: Activity) {
         applyDensityToActivity(activity)
     }
 
-    // reapply density scaling when an activity is resumed
     override fun onActivityResumed(activity: Activity) {
         applyDensityToActivity(activity)
     }
 
-    // reapply density scaling when an activity is started
     override fun onActivityStarted(activity: Activity) {
         applyDensityToActivity(activity)
     }
 
-    // applies the density configuration to a specific activity s resources
     private fun applyDensityToActivity(activity: Activity) {
         try {
             updateDensityDpi(activity.resources.configuration, activity.resources)

@@ -1,5 +1,4 @@
-// explorescreenkt
-// the file functioned as explore screen
+// ExploreScreen.kt
 
 package com.example.musicfy.ui.screens
 
@@ -229,8 +228,6 @@ fun ExploreScreen(
                         val horizontalLazyGridItemWidthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
                         val horizontalLazyGridItemWidth = maxWidth * horizontalLazyGridItemWidthFactor
 
-                        // hoisted filterisinstance + distinctby are o n allocations that
-                        // otherwise re ran on every recomposition of this screen
                         val sectionSongs = remember(section) {
                             section.items.filterIsInstance<SongItem>().distinctBy { it.id }
                         }

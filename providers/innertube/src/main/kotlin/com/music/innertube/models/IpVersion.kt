@@ -1,5 +1,4 @@
-// ipversion kt
-// the file functioned as ip version
+// IpVersion.kt
 
 package com.music.innertube.models
 

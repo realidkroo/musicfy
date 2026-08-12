@@ -1,5 +1,4 @@
-// responsecontext kt
-// what is this for you ask its for response context ofc
+// ResponseContext.kt
 
 package com.music.innertube.models
 

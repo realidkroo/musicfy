@@ -1,5 +1,4 @@
-// appnavigationkt
-// this thing is for app navigation
+// AppNavigation.kt
 
 package com.example.musicfy.ui.component
 
@@ -78,7 +77,6 @@ private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigati
            currentRoute.startsWith("$screenRoute/")
 }
 
-// routes that belong to a tab without being nested under its path the prefix rule
 private val RouteOwners: List<Pair<String, String>> = listOf(
     "search/" to "search_input",
     "genre/" to "search_input",
@@ -93,7 +91,6 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "equalizer" to "settings",
 )
 
-// the tab route that owns currentroute or null if nothing claims it
 private fun owningTabRoute(currentRoute: String?, navigationItems: List<Screens>): String? {
     if (currentRoute == null) return null
     navigationItems.firstOrNull { isRouteSelected(currentRoute, it.route, navigationItems) }
@@ -103,7 +100,6 @@ private fun owningTabRoute(currentRoute: String?, navigationItems: List<Screens>
     }?.second
 }
 
-// which tab the bar should light up falls back to whatever was last selected
 @Composable
 private fun rememberSelectedTabRoute(
     currentRoute: String?,
@@ -129,13 +125,13 @@ fun AppNavigationRail(
     val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
-    
+
     NavigationRail(
         modifier = modifier,
         containerColor = containerColor
     ) {
         Spacer(modifier = Modifier.weight(1f))
-        
+
         navigationItems.forEach { screen ->
             val isSelected = remember(currentRoute, screen.route) {
                 isRouteSelected(currentRoute, screen.route, navigationItems)
@@ -143,11 +139,10 @@ fun AppNavigationRail(
             val iconRes = remember(isSelected, screen) {
                 if (isSelected) screen.iconIdActive else screen.iconIdInactive
             }
-            
+
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
-            
-            // long press detection using interactionsource
+
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
                     var isLongClick = false
@@ -172,14 +167,14 @@ fun AppNavigationRail(
                     }
                 }
             }
-            
+
             NavigationRailItem(
                 selected = isSelected,
-                onClick = { 
+                onClick = {
                     if (!isSearchItem) {
                         onItemClick(screen, isSelected)
                     }
-                    // for search item click is handled via interactionsource
+
                 },
                 interactionSource = interactionSource,
                 icon = {
@@ -191,7 +186,7 @@ fun AppNavigationRail(
                 }
             )
         }
-        
+
         Spacer(modifier = Modifier.weight(1f))
     }
 }
@@ -216,7 +211,7 @@ fun AppNavigationBar(
     androidx.compose.foundation.layout.Box(modifier = modifier) {
         val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
         val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-        
+
         val glassState = LocalGlassState.current ?: remember { GlassState() }
 
         androidx.compose.foundation.layout.Box(
@@ -226,9 +221,7 @@ fun AppNavigationBar(
                 .padding(horizontal = 24.dp, vertical = 8.dp)
                 .align(Alignment.TopCenter)
                 .height(64.dp)
-                // whole bar tilt applied before the clip so the rounded shape tilts with it
-                // a smaller angle than the pill s this is a wide surface and the same
-                // across that width would swing the far end much further
+
                 .press3D(maxTilt = 4f, pressedScale = 0.985f)
                 .clip(RoundedCornerShape(32.dp))
                 .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(32.dp))
@@ -238,9 +231,7 @@ fun AppNavigationBar(
                 blurRadius = { 24f },
                 tint = containerColor.copy(alpha = 0.65f),
                 foundationColor = containerColor,
-                // clamp not the default decal this pill s own bounds are the intended blur
-                // extent no fade out so edges need to read as fully blurred right up to the
-                // border instead of washing to transparent near it
+
                 tileMode = android.graphics.Shader.TileMode.CLAMP,
                 modifier = Modifier.fillMaxSize()
             )
@@ -255,11 +246,11 @@ fun AppNavigationBar(
                     val iconRes = remember(isSelected, screen) {
                         if (isSelected) screen.iconIdActive else screen.iconIdInactive
                     }
-                    
+
                     val isSearchItem = screen == Screens.Search && onSearchLongClick != null
                     val interactionSource = remember { MutableInteractionSource() }
                     val isPressed by interactionSource.collectIsPressedAsState()
-                    
+
                     val scale by animateFloatAsState(
                         targetValue = if (isPressed) 0.85f else 1f,
                         animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
@@ -287,8 +278,7 @@ fun AppNavigationBar(
                         animationSpec = tween(200),
                         label = "nav_item_icon_tint"
                     )
-                    
-                    // long press detection using interactionsource
+
                     if (isSearchItem) {
                         LaunchedEffect(interactionSource) {
                             var isLongClick = false
@@ -313,7 +303,7 @@ fun AppNavigationBar(
                             }
                         }
                     }
-                    
+
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .weight(1f)
@@ -324,7 +314,7 @@ fun AppNavigationBar(
                             .background(animatedBackgroundColor)
                             .clickable(
                                 interactionSource = interactionSource,
-                                indication = null, // remove ripple to reveal color smoothly
+                                indication = null,
                                 onClick = {
                                     if (!isSearchItem) {
                                         onItemClick(screen, isSelected)

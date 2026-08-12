@@ -1,5 +1,4 @@
-// playlistsviewmodelkt
-// the file functioned as playlists view model
+// PlaylistsViewModel.kt
 
 @file:OptIn(ExperimentalCoroutinesApi::class)
 
@@ -43,7 +42,6 @@ constructor(
                 database.playlists(sortType, descending)
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // suspend function that waits for sync to complete
     suspend fun sync() {
         syncUtils.syncSavedPlaylists()
     }

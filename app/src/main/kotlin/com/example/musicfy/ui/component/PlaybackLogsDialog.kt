@@ -1,5 +1,4 @@
-// playbacklogsdialogkt
-// this thing is for playback logs dialog
+// PlaybackLogsDialog.kt
 
 package com.example.musicfy.ui.component
 
@@ -45,13 +44,13 @@ fun PlaybackLogsDialog(
     onDismiss: () -> Unit
 ) {
     val listState = rememberLazyListState()
-    
+
     LaunchedEffect(logs.size) {
         if (logs.isNotEmpty()) {
             listState.animateScrollToItem(logs.size - 1)
         }
     }
-    
+
     val context = LocalContext.current
 
     DefaultDialog(

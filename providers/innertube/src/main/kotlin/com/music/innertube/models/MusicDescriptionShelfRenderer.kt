@@ -1,5 +1,4 @@
-// musicdescriptionshelfrenderer kt
-// this thing is part of music description shelf renderer
+// MusicDescriptionShelfRenderer.kt
 
 package com.music.innertube.models
 

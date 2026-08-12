@@ -1,5 +1,4 @@
-// subscribebody kt
-// this thing is part of subscribe body
+// SubscribeBody.kt
 
 package com.music.innertube.models.body
 

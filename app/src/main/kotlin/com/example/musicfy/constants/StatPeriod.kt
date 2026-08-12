@@ -1,5 +1,4 @@
-// statperiodkt
-// this thing is part of stat period
+// StatPeriod.kt
 
 package com.example.musicfy.constants
 

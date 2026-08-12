@@ -1,5 +1,4 @@
-// griditemplaceholderkt
-// this thing is for grid item placeholder
+// GridItemPlaceholder.kt
 
 package com.example.musicfy.ui.component.shimmer
 
@@ -34,7 +33,7 @@ fun GridItemPlaceHolder(
 ) {
     val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
     val gridHeight = if (gridItemSize == GridItemSize.BIG) GridThumbnailHeight else SmallGridThumbnailHeight
-    
+
     Column(
         modifier =
         if (fillMaxWidth) {

@@ -1,5 +1,4 @@
-// artistvideocanvasprovider kt
-// this thing is part of artist video canvas provider
+// ArtistVideoCanvasProvider.kt
 
 package com.example.musicfy.artistvideo
 
@@ -21,7 +20,7 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 object ArtistVideoCanvasProvider {
-    // we will use archivetune api for fetching the canvas
+
     private const val BASE_URL = "https://artwork-archivetune.koiiverse.cloud/"
 
     private val json = Json {

@@ -1,5 +1,4 @@
-// wikipediakt
-// this thing is part of wikipedia
+// Wikipedia.kt
 
 package com.example.musicfy.utils
 
@@ -16,8 +15,6 @@ import kotlinx.serialization.json.Json
 import timber.log.Timber
 import io.ktor.client.plugins.ResponseException
 
-
-// utility for fetching summaries from wikipedia via the rest api defines a custom
 object Wikipedia {
     private val client by lazy {
         HttpClient(OkHttp) {
@@ -49,9 +46,8 @@ object Wikipedia {
         }
     }.getOrNull()
 
-    // attempts to find the wikipedia summary for a specific album it uses a heuristic
     suspend fun fetchAlbumInfo(albumTitle: String, artistName: String?): String? {
-        // precise queries explicitly include artist name in the search term
+
         if (artistName != null) {
             val preciseQueries = listOf(
                 "$albumTitle ($artistName album)",
@@ -65,7 +61,6 @@ object Wikipedia {
             }
         }
 
-        // generic queries rely on validation of the returned content
         val genericQueries = listOf(
             "$albumTitle (album)",
             albumTitle
@@ -74,8 +69,7 @@ object Wikipedia {
         for (query in genericQueries) {
             val summary = fetchPageSummary(query)
             if (summary != null && !summary.contains("may refer to", ignoreCase = true)) {
-                // if we know the artist ensure the summary actually mentions them
-                // this prevents greatest hits returning the wrong album
+
                 if (artistName != null) {
                     if (summary.contains(artistName, ignoreCase = true)) {
                         return summary

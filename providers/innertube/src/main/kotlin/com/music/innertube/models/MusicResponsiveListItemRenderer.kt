@@ -1,5 +1,4 @@
-// musicresponsivelistitemrenderer kt
-// the file functioned as music responsive list item renderer
+// MusicResponsiveListItemRenderer.kt
 
 @file:OptIn(ExperimentalSerializationApi::class)
 
@@ -14,7 +13,6 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonNames
 
-// typical list item used in musiccarouselshelfrenderer musicshelfrenderer appears in quick picks search results table items etc
 @Serializable
 data class MusicResponsiveListItemRenderer(
     val badges: List<Badges>?,

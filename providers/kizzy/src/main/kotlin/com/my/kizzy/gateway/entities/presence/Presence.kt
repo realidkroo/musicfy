@@ -1,5 +1,4 @@
-// presence kt
-// the file functioned as presence
+// Presence.kt
 
 package com.my.kizzy.gateway.entities.presence
 

@@ -39,18 +39,18 @@ fun ProfileSetupStep(
             .padding(horizontal = 32.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Spacer(modifier = Modifier.height(48.dp)) // moved up slightly
-        
+        Spacer(modifier = Modifier.height(48.dp))
+
         Text(
             text = "Firstly",
             fontSize = 42.sp,
             fontWeight = FontWeight.ExtraBold,
             color = Color.White,
-            letterSpacing = (-2).sp // changed letter spacing
+            letterSpacing = (-2).sp
         )
-        
-        Spacer(modifier = Modifier.height(4.dp)) // reduced spacing
-        
+
+        Spacer(modifier = Modifier.height(4.dp))
+
         Text(
             text = "Set your username and profile picture, its for\nwhen you want to listen with your friend.",
             fontSize = 16.sp,
@@ -58,30 +58,27 @@ fun ProfileSetupStep(
             lineHeight = 22.sp,
             letterSpacing = (-0.5).sp
         )
-        
-        Spacer(modifier = Modifier.height(40.dp)) // adjusted
-        
-        // profile picture placeholder visuals drawn by setupwizardscreen overlay
+
+        Spacer(modifier = Modifier.height(40.dp))
+
         Box(
             modifier = Modifier
                 .size(140.dp)
                 .clip(CircleShape)
                 .clickable(onClick = onProfileTap)
         )
-        
+
         Spacer(modifier = Modifier.height(48.dp))
-        
+
         Text(
             text = "username",
-            fontSize = 14.sp, // made smaller
+            fontSize = 14.sp,
             color = Color.White,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(12.dp))
-        
-        // a plain basictextfield instead of outlinedtextfield the material field
-        // for a label placeholder so squeezing it into 48dp clipped the typed text
+
         BasicTextField(
             value = username,
             onValueChange = onUsernameChange,
@@ -108,9 +105,9 @@ fun ProfileSetupStep(
                 }
             }
         )
-        
+
         Spacer(modifier = Modifier.weight(1f))
-        
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -125,10 +122,10 @@ fun ProfileSetupStep(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "Your data will never be on the musicfy server", // changed text
+                text = "Your data will never be on the musicfy server",
                 fontSize = 12.sp,
                 color = Color(0xFFD0D0D0),
-                fontWeight = FontWeight.Normal, // not bold
+                fontWeight = FontWeight.Normal,
                 lineHeight = 16.sp,
                 modifier = Modifier.weight(1f)
             )

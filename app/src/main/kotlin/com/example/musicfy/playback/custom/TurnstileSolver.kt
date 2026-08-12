@@ -18,15 +18,13 @@ class TurnstileSolver(private val context: Context) {
 
     private var cachedToken: String? = null
     private var tokenTimestamp: Long = 0L
-    // only one webview based solve fetch may run at a time concurrent retries
-    // exoplayer s auto retry on error would otherwise spin up many webviews at
-    // looks like abuse to cloudflare turnstile and gets tokens rejected
+
     private val solveMutex = Mutex()
 
     @Synchronized
     fun getCachedToken(): String? {
         val now = System.currentTimeMillis()
-        if (cachedToken != null && (now - tokenTimestamp) < 4 * 60 * 1000) { // 4 minutes cache
+        if (cachedToken != null && (now - tokenTimestamp) < 4 * 60 * 1000) {
             return cachedToken
         }
         return null
@@ -39,12 +37,12 @@ class TurnstileSolver(private val context: Context) {
         }
 
         return solveMutex.withLock {
-        // another caller may have solved it while we were waiting for the lock
+
         if (!forceRefresh) {
             getCachedToken()?.let { return@withLock it }
         }
 
-        withTimeoutOrNull(15000) { // 15 seconds max
+        withTimeoutOrNull(15000) {
             val deferred = CompletableDeferred<String?>()
 
             Handler(Looper.getMainLooper()).post {
@@ -154,15 +152,11 @@ class TurnstileSolver(private val context: Context) {
         }
     }
 
-    // solves turnstile exchanges the raw widget response for a backend jwt via
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun fetchWithTurnstile(siteKey: String, exchangeUrl: String, targetUrl: String, forceRefresh: Boolean = false): Pair<Int, String?>? {
         return solveMutex.withLock {
-        // exchange tokens are single use at cloudflare s edge never reuse a cached
-        // token here unlike getturnstiletoken s cache which is for callers that
-        // the token s presence not a working exchange
 
-        withTimeoutOrNull(20000) { // 20 seconds max
+        withTimeoutOrNull(20000) {
             val deferred = CompletableDeferred<Pair<Int, String?>?>()
 
             Handler(Looper.getMainLooper()).post {
@@ -315,7 +309,6 @@ class TurnstileSolver(private val context: Context) {
         }
     }
 
-    // same fingerprint bound exchange as fetchwithturnstile but for apis like
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun fetchPlaybackWithTurnstile(
         siteKey: String,
@@ -325,10 +318,8 @@ class TurnstileSolver(private val context: Context) {
         forceRefresh: Boolean = false
     ): Pair<Int, String?>? {
         return solveMutex.withLock {
-        // exchange tokens are single use at cloudflare s edge always solve fresh
-        // reuse a cached raw token across exchange attempts
 
-        withTimeoutOrNull(20000) { // 20 seconds max
+        withTimeoutOrNull(20000) {
             val deferred = CompletableDeferred<Pair<Int, String?>?>()
 
             Handler(Looper.getMainLooper()).post {

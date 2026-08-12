@@ -1,5 +1,4 @@
-// lyricshelperkt
-// this thing is part of lyrics helper
+// LyricsHelper.kt
 
 package com.example.musicfy.lyrics
 
@@ -30,7 +29,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val networkConnectivity: NetworkConnectivityObserver,
 ) {
-    // resolves the ordered list of lyrics providers from the user s saved priority
+
     private suspend fun resolveLyricsProviders(): List<LyricsProvider> {
         val preferences = context.dataStore.data.first()
         val orderString = preferences[LyricsProviderOrderKey].orEmpty()
@@ -39,7 +38,6 @@ constructor(
             return LyricsProviderRegistry.getOrderedProviders(orderString)
         }
 
-        // migration path place the old preferred provider first in the default order
         val preferredEnum = preferences[PreferredLyricsProviderKey]
             .toEnum(PreferredLyricsProvider.YOULYPLUS)
         val preferredName = LyricsProviderRegistry.getProviderNameForEnum(preferredEnum)
@@ -47,8 +45,6 @@ constructor(
         val migratedOrder = listOf(preferredName) + defaultOrder.filter { it != preferredName }
         return migratedOrder.mapNotNull { LyricsProviderRegistry.getProviderByName(it) }
     }
-
-
 
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
     private var currentLyricsJob: Job? = null
@@ -61,17 +57,15 @@ constructor(
             return LyricsWithProvider(cached.lyrics, cached.providerName)
         }
 
-        // check network connectivity before making network requests
-        // use synchronous check as fallback if flow doesn t emit
         val isNetworkAvailable = try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
-            // if network check fails try to proceed anyway
+
             true
         }
-        
+
         if (!isNetworkAvailable) {
-            // still proceed but return not found to avoid hanging
+
             return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
         }
 
@@ -91,26 +85,21 @@ constructor(
                             mediaMetadata.album?.title,
                         )
                         result.onSuccess { lyrics ->
-                            // check if these lyrics have moving text patterns eg word by word sync
+
                             val hasMovingLyrics = lyrics.contains("<") && lyrics.contains(">") && lyrics.contains(":")
                             val currentLyricsWithProvider = LyricsWithProvider(lyrics, provider.name)
 
-                            // word timed lyrics are only worth preferring if the words are
-                            // actually words some providers time each syllable separately and
-                            // space them apart which renders as se men ta ra those are passed
-                            // over so the next provider gets a chance but still kept as a
-                            // last resort fallback since split lyrics beat no lyrics
                             if (hasMovingLyrics && !LyricsUtils.isSyllableSplit(lyrics)) {
                                 return@async currentLyricsWithProvider
                             } else if (fallbackLyrics == null) {
-                                // save the first successful but non moving lyrics as fallback
+
                                 fallbackLyrics = currentLyricsWithProvider
                             }
                         }.onFailure {
                             reportException(it)
                         }
                     } catch (e: Exception) {
-                        // catch network related exceptions like unresolvedaddressexception
+
                         reportException(e)
                     }
                 }
@@ -141,17 +130,15 @@ constructor(
             return
         }
 
-        // check network connectivity before making network requests
-        // use synchronous check as fallback if flow doesn t emit
         val isNetworkAvailable = try {
             networkConnectivity.isCurrentlyConnected()
         } catch (e: Exception) {
-            // if network check fails try to proceed anyway
+
             true
         }
-        
+
         if (!isNetworkAvailable) {
-            // still try to proceed in case of false negative
+
             return
         }
 
@@ -167,7 +154,7 @@ constructor(
                             callback(result)
                         }
                     } catch (e: Exception) {
-                        // catch network related exceptions like unresolvedaddressexception
+
                         reportException(e)
                     }
                 }

@@ -1,5 +1,4 @@
-// importplaylistdialogkt
-// the file functioned as import playlist dialog
+// ImportPlaylistDialog.kt
 
 package com.example.musicfy.ui.menu
 
@@ -25,7 +24,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ImportPlaylistDialog(
     isVisible: Boolean,
-    onGetSong: suspend () -> List<String>, // list of song ids songs should be inserted to database in this function
+    onGetSong: suspend () -> List<String>,
     playlistTitle: String,
     onDismiss: () -> Unit,
     onImportedPlaylist: (String) -> Unit = {},

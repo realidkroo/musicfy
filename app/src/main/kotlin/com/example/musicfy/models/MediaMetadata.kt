@@ -1,5 +1,4 @@
-// mediametadatakt
-// this thing is for media metadata
+// MediaMetadata.kt
 
 package com.example.musicfy.models
 
@@ -89,7 +88,7 @@ fun Song.toMediaMetadata() =
             )
         },
         explicit = song.explicit,
-        // use a non atv type if isvideo is true to indicate it s a video song
+
         musicVideoType = if (song.isVideo) "MUSIC_VIDEO_TYPE_OMV" else null,
         suggestedBy = null,
         localUri = song.localUri,

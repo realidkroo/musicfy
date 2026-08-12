@@ -1,5 +1,4 @@
-// playlistdeletebody kt
-// the file functioned as playlist delete body
+// PlaylistDeleteBody.kt
 
 package com.music.innertube.models.body
 

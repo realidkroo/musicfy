@@ -11,7 +11,6 @@ import okhttp3.Request
 import org.json.JSONObject
 import timber.log.Timber
 
-// resolves streams via custom apis amazon music tidal deezer qobuz based on
 class CustomStreamFetcher(
     private val dataStore: androidx.datastore.core.DataStore<Preferences>,
     private val database: MusicDatabase,
@@ -20,9 +19,9 @@ class CustomStreamFetcher(
     suspend fun fetchStreamUrl(videoId: String): String? {
         val prefs = dataStore.data.first()
         val customApiEnabled = prefs[EnableCustomApiKey] ?: false
-        
+
         if (!customApiEnabled) {
-            return null // fallback to innertube youtube
+            return null
         }
 
         val amazonApiUrl = prefs[AmazonMusicApiUrlKey]?.trim()?.removeSuffix("/") ?: ""
@@ -43,7 +42,7 @@ class CustomStreamFetcher(
 
         val query = "${song.title} $artistsText"
         Timber.tag("CustomStreamFetcher").d("Looking up ASIN for query: $query")
-        
+
         val asin = getAsin(tidalToAsinUrl, query)
         if (asin == null) {
             Timber.tag("CustomStreamFetcher").w("Could not resolve ASIN for query: $query")
@@ -52,8 +51,7 @@ class CustomStreamFetcher(
 
         val spatialAudio = prefs[EnableSpatialAudioKey] ?: false
         val audioQualityRaw = prefs[AudioQualityKey] ?: "LOSSLESS"
-        
-        // map app quality settings to api parameters
+
         val amazonQuality = if (spatialAudio) {
             "DOLBY_ATMOS"
         } else {
@@ -76,11 +74,11 @@ class CustomStreamFetcher(
             val url = "$baseUrl/api/search/songs".toHttpUrlOrNull()?.newBuilder()
                 ?.addQueryParameter("query", query)
                 ?.build() ?: return null
-                
+
             val request = Request.Builder().url(url).build()
             val response = httpClient.newCall(request).execute()
             if (!response.isSuccessful) return null
-            
+
             val body = response.body?.string() ?: return null
             val json = JSONObject(body)
             if (json.optBoolean("success", false)) {
@@ -100,15 +98,15 @@ class CustomStreamFetcher(
         try {
             val urlBuilder = "$baseUrl/api/track/$asin".toHttpUrlOrNull()?.newBuilder()
                 ?.addQueryParameter("quality", quality)
-            
+
             if (bypassToken.isNotBlank()) {
                 urlBuilder?.addQueryParameter("bypass_token", bypassToken)
             }
-            
+
             val request = Request.Builder().url(urlBuilder!!.build()).build()
             val response = httpClient.newCall(request).execute()
             if (!response.isSuccessful) return null
-            
+
             val body = response.body?.string() ?: return null
             val json = JSONObject(body)
             return json.optString("stream_url").takeIf { it.isNotBlank() }

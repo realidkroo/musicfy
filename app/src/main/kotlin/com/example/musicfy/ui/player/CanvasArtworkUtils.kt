@@ -1,6 +1,4 @@
-// canvasartworkutilskt
-// canvas artwork cache + title artist normalization used by herocarouselkt
-// the retired thumbnailkt kept in uiplayer so existing importers don t
+// CanvasArtworkUtils.kt
 
 package com.example.musicfy.ui.player
 

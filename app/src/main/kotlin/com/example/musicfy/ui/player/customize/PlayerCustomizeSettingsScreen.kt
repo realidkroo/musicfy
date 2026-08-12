@@ -1,9 +1,4 @@
-// playercustomizesettingsscreenkt
-// route wrapper for settings → appearance → player customization
-
-// playercustomizescreen draws its own opaque page and its own preview so
-// settings needs nothing more than a destination and a back action there
-// implementation not a player hosted one and a standalone one
+// PlayerCustomizeSettingsScreen.kt
 
 package com.example.musicfy.ui.player.customize
 

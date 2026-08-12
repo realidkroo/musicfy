@@ -1,5 +1,4 @@
-// musicfylyricskt
-// this thing is part of musicfy lyrics
+// MusicfyLyrics.kt
 
 package com.example.musicfy.ui.component
 
@@ -48,7 +47,6 @@ import com.example.musicfy.ui.screens.LyricsPosition
 import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.utils.rememberPreference
 
-// exact apple music style lyrics animation ported from musicfy 503 features
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MusicfyLyricsLine(
@@ -77,7 +75,7 @@ fun MusicfyLyricsLine(
     val targetBlur = if (!appleMusicLyricsBlur || !isAutoScrollActive || isActive || !isSynced || isSelectionModeActive) {
         0f
     } else {
-        // progressive blur further away = more blur for a premium look
+
         when (distanceFromCurrent) {
             1 -> 0f
             2 -> 0f
@@ -96,23 +94,21 @@ fun MusicfyLyricsLine(
         if (nextEntryTime != null) nextEntryTime - entry.time else 4000L
     }
 
-    // heuristic active highlighting should span about 95% of the duration for
     val activeDuration = remember(duration) {
         (duration * 0.95).toLong().coerceAtLeast(300L)
     }
 
-    // segment the line into words with their own time windows
     val wordData = remember(entry.text, entry.words, activeDuration) {
         val isHindiText = com.example.musicfy.lyrics.LyricsUtils.isHindi(entry.text)
         if (!isHindiText && entry.words != null && entry.words.isNotEmpty()) {
-            // use precise word timestamps if available
+
             entry.words.mapIndexed { index, word ->
                 val wordStart = ((word.startTime * 1000).toLong() - entry.time).coerceAtLeast(0L)
                 val wordEnd = ((word.endTime * 1000).toLong() - entry.time).coerceAtLeast(wordStart + 50L)
                 Triple(word.text, wordStart, wordEnd)
             }
         } else {
-            // estimation based on character counts for standard lrc
+
             val words = entry.text.split(" ").filter { it.isNotEmpty() }
             if (words.isEmpty()) {
                 listOf(Triple(entry.text, 0L, activeDuration))
@@ -136,9 +132,9 @@ fun MusicfyLyricsLine(
     val targetAlpha = when {
         !isSynced || (isSelectionModeActive && isSelected) -> 1f
         isActive -> 1f
-        distanceFromCurrent == 1 -> 0.65f // increased from 045f
-        distanceFromCurrent == 2 -> 0.45f // increased from 025f
-        else -> 0.35f // increased from 015f
+        distanceFromCurrent == 1 -> 0.65f
+        distanceFromCurrent == 2 -> 0.45f
+        else -> 0.35f
     }
 
     val animatedAlpha by animateFloatAsState(
@@ -174,7 +170,6 @@ fun MusicfyLyricsLine(
         .padding(horizontal = 24.dp, vertical = (8 * lineSpacing).dp)
         .blur(animatedBlur.dp)
 
-    // multi singer support determine alignment based on agent
     val agentAlignment = when {
         entry.isBackground -> Alignment.CenterHorizontally
         entry.agent == "v1" -> Alignment.Start
@@ -211,14 +206,14 @@ fun MusicfyLyricsLine(
                 else -> Arrangement.Start
             },
             verticalArrangement = Arrangement.spacedBy(
-                // use a capped spacing for internal wrapping to prevent sentence break off
+
                 with(LocalDensity.current) { (textSize * (lineSpacing.coerceAtMost(1.3f) - 1f)).sp.toDp() }
             )
         ) {
             wordData.forEachIndexed { index, (wordText, startRelative, endRelative) ->
                 val lineRelTime = (effectivePlaybackPosition - entry.time).coerceAtLeast(0L)
                 val wordDuration = (endRelative - startRelative).coerceAtLeast(1L)
-                
+
                 val progress by animateFloatAsState(
                     targetValue = when {
                         lineRelTime >= endRelative -> 1f
@@ -231,8 +226,6 @@ fun MusicfyLyricsLine(
 
                 val finalFontWeight = FontWeight.Bold
 
-                // single layer rendering with dynamic shaderbrush
-                // this guarantees perfect alignment because the text is measured and drawn
                 Text(
                     text = wordText,
                     fontSize = textSize.sp,
@@ -245,8 +238,7 @@ fun MusicfyLyricsLine(
                         ),
                         fontFamily = InterFontFamily,
                         fontWeight = finalFontWeight,
-// letterspacing = 05 sp
-                        // cap internal line height for wrapped words
+
                         lineHeight = (textSize * lineSpacing.coerceAtMost(1.3f)).sp,
                         textAlign = agentTextAlign,
                         shadow = androidx.compose.ui.graphics.Shadow(
@@ -260,7 +252,7 @@ fun MusicfyLyricsLine(
                     Text(
                         text = " ",
                         fontSize = textSize.sp,
-                        color = textColor.copy(alpha = if (lineRelTime >= endRelative) 1f else 0.45f), // increased from 035f
+                        color = textColor.copy(alpha = if (lineRelTime >= endRelative) 1f else 0.45f),
                         lineHeight = (textSize * lineSpacing.coerceAtMost(1.3f)).sp,
                         style = TextStyle(
                             fontFamily = InterFontFamily,
@@ -277,7 +269,6 @@ fun MusicfyLyricsLine(
             }
         }
 
-        // romanized text support
         if (showRomanized) {
             val romanizedText by entry.romanizedTextFlow.collectAsState()
             romanizedText?.let { romanized ->
@@ -287,14 +278,13 @@ fun MusicfyLyricsLine(
                     color = textColor.copy(alpha = 0.6f),
                     textAlign = agentTextAlign,
                     fontWeight = FontWeight.SemiBold,
-// letterspacing = 02 sp
+
                     modifier = Modifier.padding(top = 2.dp).fillMaxWidth(),
                     lineHeight = (textSize * 0.65f * lineSpacing.coerceAtMost(1.3f)).sp
                 )
             }
         }
 
-        // translated text support
         if (showTranslated) {
             val translatedText by entry.translatedTextFlow.collectAsState()
             translatedText?.let { translated ->

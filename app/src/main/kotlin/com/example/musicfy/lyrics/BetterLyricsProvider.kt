@@ -1,5 +1,4 @@
-// betterlyricsproviderkt
-// this thing is part of better lyrics provider
+// BetterLyricsProvider.kt
 
 package com.example.musicfy.lyrics
 

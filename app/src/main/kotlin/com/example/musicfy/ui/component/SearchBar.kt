@@ -1,5 +1,4 @@
-// searchbarkt
-// this thing is for search bar
+// SearchBar.kt
 
 package com.example.musicfy.ui.component
 
@@ -96,7 +95,7 @@ fun TopSearch(
                     onActiveChange = onActiveChange,
                     enabled = enabled,
                     placeholder = placeholder,
-                    // icons are handled in navigationicon and actions if preferred or here for
+
                     leadingIcon = null,
                     trailingIcon = null,
                     colors = TextFieldDefaults.colors(
@@ -127,7 +126,7 @@ fun TopSearch(
             scrollBehavior = scrollBehavior,
             windowInsets = windowInsets
         )
-        
+
         if (active) {
             Box(
                 modifier = Modifier
@@ -139,7 +138,7 @@ fun TopSearch(
                     content()
                  }
             }
-            
+
             BackHandler(enabled = active) {
                 onActiveChange(false)
             }
@@ -239,7 +238,6 @@ private fun SearchBarInputField(
     }
 }
 
-// measurement specs
 val InputFieldHeight = 48.dp
 internal val TopAppBarVerticalPadding: Dp = 8.dp
 internal val TopAppBarHorizontalPadding: Dp = 12.dp

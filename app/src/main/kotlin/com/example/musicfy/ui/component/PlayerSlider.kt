@@ -1,5 +1,4 @@
-// playersliderkt
-// what is this for you ask its for player slider ofc
+// PlayerSlider.kt
 
 package com.example.musicfy.ui.component
 

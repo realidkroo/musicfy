@@ -1,5 +1,4 @@
-// keyword kt
-// what is this for you ask its for keyword ofc
+// Keyword.kt
 
 package com.music.kugou.models
 

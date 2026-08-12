@@ -1,5 +1,4 @@
-// albumviewmodelkt
-// what is this for you ask its for album view model ofc
+// AlbumViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -90,10 +89,10 @@ constructor(
                             }
                         }
                     }
-                    
+
                     if (description.value == null && descriptionRuns.value == null) {
                         viewModelScope.launch(Dispatchers.IO) {
-                            val artistName = album?.artists?.firstOrNull()?.name 
+                            val artistName = album?.artists?.firstOrNull()?.name
                                 ?: database.albumWithSongs(albumId).first()?.artists?.firstOrNull()?.name
                             val wikiDescription = Wikipedia.fetchAlbumInfo(it.album.title, artistName)
                             if (wikiDescription != null) {

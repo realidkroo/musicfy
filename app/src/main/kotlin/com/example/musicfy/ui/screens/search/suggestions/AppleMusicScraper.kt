@@ -1,5 +1,4 @@
-// applemusicscraperkt
-// this thing is part of apple music scraper
+// AppleMusicScraper.kt
 
 package com.example.musicfy.ui.screens.search.suggestions
 
@@ -26,7 +25,7 @@ object AppleMusicScraper {
                 .url(url)
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                 .build()
-            
+
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return null
                 response.body?.string()
@@ -42,10 +41,10 @@ object AppleMusicScraper {
         try {
             val url = "https://rss.applemarketingtools.com/api/v2/$countryCode/music/most-played/100/songs.json"
             val response = executeGet(url) ?: return tracks
-            
+
             val json = JSONObject(response)
             val results = json.getJSONObject("feed").getJSONArray("results")
-            
+
             for (i in 0 until results.length()) {
                 val item = results.getJSONObject(i)
                 val rank = i + 1
@@ -54,7 +53,7 @@ object AppleMusicScraper {
                 val artwork = item.getString("artworkUrl100")
                     .replace(Regex("(\\d+)x(\\d+)"), "1400x1400")
                 val appleUrl = item.getString("url")
-                
+
                 tracks.add(SuggestionTrack(rank, title, artist, artwork, appleUrl))
             }
         } catch (e: Exception) {
@@ -68,10 +67,10 @@ object AppleMusicScraper {
         try {
             val url = "https://rss.applemarketingtools.com/api/v2/$countryCode/music/most-played/20/albums.json"
             val response = executeGet(url) ?: return albums
-            
+
             val json = JSONObject(response)
             val results = json.getJSONObject("feed").getJSONArray("results")
-            
+
             for (i in 0 until results.length()) {
                 val item = results.getJSONObject(i)
                 val rank = i + 1
@@ -80,7 +79,7 @@ object AppleMusicScraper {
                 val artwork = item.getString("artworkUrl100")
                     .replace(Regex("(\\d+)x(\\d+)"), "1400x1400")
                 val appleUrl = item.getString("url")
-                
+
                 albums.add(SuggestionAlbum(rank, title, artist, artwork, appleUrl))
             }
         } catch (e: Exception) {
@@ -94,10 +93,10 @@ object AppleMusicScraper {
         try {
             val url = "https://rss.applemarketingtools.com/api/v2/$countryCode/music/most-played/20/music-videos.json"
             val response = executeGet(url) ?: return videos
-            
+
             val json = JSONObject(response)
             val results = json.getJSONObject("feed").getJSONArray("results")
-            
+
             val ids = mutableListOf<String>()
             val videoMap = mutableMapOf<String, SuggestionTrack>()
 
@@ -110,12 +109,10 @@ object AppleMusicScraper {
                 val artwork = item.getString("artworkUrl100")
                     .replace(Regex("(\\d+)x(\\d+)"), "1920x1080")
                 val appleUrl = item.getString("url")
-                
+
                 ids.add(id)
                 videoMap[id] = SuggestionTrack(rank, title, artist, artwork, appleUrl)
             }
-
-            // batch lookup for preview urls removed
 
             videos.addAll(videoMap.values.sortedBy { it.rank })
         } catch (e: Exception) {
@@ -125,20 +122,20 @@ object AppleMusicScraper {
     }
 
     fun getTrendingArtists(tracks: List<SuggestionTrack>): List<SuggestionArtist> {
-        // extract top unique artists from the tracks list
+
         val artistCounts = mutableMapOf<String, Int>()
         val artistImages = mutableMapOf<String, String?>()
-        
+
         tracks.forEach { track ->
-            // handle multiple artists in string
+
             val mainArtist = track.artist.split(",", "&", "feat.", "ft.").first().trim()
             artistCounts[mainArtist] = (artistCounts[mainArtist] ?: 0) + 1
             if (artistImages[mainArtist] == null) {
-                // use a smaller but still high quality version for artist circles
+
                 artistImages[mainArtist] = track.thumbnailUrl?.replace("1920x1080", "500x500")
             }
         }
-        
+
         return artistCounts.toList()
             .sortedByDescending { it.second }
             .take(15)

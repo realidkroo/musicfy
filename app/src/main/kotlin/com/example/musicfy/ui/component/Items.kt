@@ -1,7 +1,4 @@
-// itemskt
-// this thing is for items
-
-// musicfy project c 2026 licensed under gpl 30 | see git history for
+// Items.kt
 
 package com.example.musicfy.ui.component
 
@@ -142,7 +139,6 @@ fun currentGridThumbnailHeight(): Dp {
 
 val LocalGridItemPadding = compositionLocalOf { 12.dp }
 
-// basic list item optimized with inline to reduce recomposition
 @Composable
 inline fun ListItem(
     modifier: Modifier = Modifier,
@@ -263,7 +259,6 @@ fun ListItem(
     contentPadding = contentPadding
 )
 
-// merge badges and subtitle text and pass to basic list item
 @Composable
 fun ListItem(
     modifier: Modifier = Modifier,
@@ -410,10 +405,7 @@ fun SongListItem(
             if (downloadState != null) {
                 Icon.Download(downloadState)
             } else {
-                // remember songid getdownload builds a new flow per call and
-                // collectasstate keys its collector on the flow instance without this every
-                // recomposition of this row cancels and relaunches a coroutine once per
-                // visible row continuously while scrolling
+
                 val downloadUtil = LocalDownloadUtil.current
                 val download by remember(downloadUtil, song.id) {
                     downloadUtil.getDownload(song.id)
@@ -496,8 +488,7 @@ fun SongGridItem(
             if (downloadState != null) {
                 Icon.Download(downloadState)
             } else {
-                // see the note on the other download badge above the flow must be remembered
-                // or collectasstate relaunches its coroutine on every recomposition
+
                 val downloadUtil = LocalDownloadUtil.current
                 val download by remember(downloadUtil, song.id) {
                     downloadUtil.getDownload(song.id)
@@ -687,9 +678,7 @@ fun AlbumGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-    // opt in key for the expand into place open transition see
-    // ui component sharedelementtransitionkt null the default leaves every
-    // existing call site s behavior unchanged
+
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -775,7 +764,7 @@ fun PlaylistListItem(
                     stringResource(R.string.liked) -> R.drawable.favorite_border
                     stringResource(R.string.offline) -> R.drawable.offline
                     stringResource(R.string.cached_playlist) -> R.drawable.cached
-                    // rdrawablebackup as placeholder
+
                     stringResource(R.string.uploaded_playlist) -> R.drawable.backup
                     else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
                 }
@@ -808,9 +797,7 @@ fun PlaylistGridItem(
         }
     },
     fillMaxWidth: Boolean = false,
-    // opt in key for the expand into place open transition see
-    // ui component sharedelementtransitionkt null the default leaves every
-    // existing call site s behavior unchanged
+
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -864,7 +851,7 @@ fun PlaylistGridItem(
                     stringResource(R.string.liked) -> R.drawable.favorite_border
                     stringResource(R.string.offline) -> R.drawable.offline
                     stringResource(R.string.cached_playlist) -> R.drawable.cached
-                    // rdrawablebackup as placeholder
+
                     stringResource(R.string.uploaded_playlist) -> R.drawable.backup
                     else -> if (autoPlaylist) R.drawable.trending_up else R.drawable.queue_music
                 }
@@ -936,7 +923,6 @@ fun MediaMetadataListItem(
         shape = shape
     )
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1020,10 +1006,7 @@ fun YouTubeGridItem(
     isActive: Boolean = false,
     isPlaying: Boolean = false,
     fillMaxWidth: Boolean = false,
-    // opt in key for the expand into place open transition see
-    // ui component sharedelementtransitionkt only meaningful for albumitem
-    // playlistitem matching albumscreen onlineplaylistscreen s headers null
-    // default leaves every existing call site s behavior unchanged
+
     sharedElementKey: String? = null,
 ) = GridItem(
     title = {
@@ -1175,7 +1158,7 @@ fun ItemThumbnail(
     thumbnailRatio: Float = 1f
 ) {
     val cropAlbumArt = LocalCropAlbumArt.current
-    
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -1263,7 +1246,7 @@ fun LocalThumbnail(
     thumbnailRatio: Float = 1f
 ) {
     val cropAlbumArt = LocalCropAlbumArt.current
-    
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -1385,7 +1368,7 @@ fun PlaylistThumbnail(
         1 -> AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(thumbnails[0].resize(544, 544))
-                .apply { /* Removed cache key extensions due to unresolved in env */ }
+                .apply {  }
                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1413,7 +1396,7 @@ fun PlaylistThumbnail(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(thumbnails.getOrNull(index)?.resize(544, 544))
-                        .apply { /* Removed cache key extensions due to unresolved in env */ }
+                        .apply {  }
                         .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                         .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                         .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1609,7 +1592,6 @@ fun SwipeToSongBox(
     }
 }
 
-// helper to animate reset of swipe offset
 private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
     scope.launch {
         animate(
@@ -1620,7 +1602,6 @@ private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
     }
 }
 
-// data holder for swipe visuals
 data class Quadruple<A, B, C, D>(
     val first: A,
     val second: B,
@@ -1668,7 +1649,7 @@ object Icon {
                     .size(16.dp)
                     .padding(end = 2.dp)
             )
-            else -> { /* no icon */ }
+            else -> {  }
         }
     }
 
@@ -1689,9 +1670,7 @@ fun LikedSongsThumbnail(
     size: Dp,
     shape: Shape = RoundedCornerShape(com.example.musicfy.constants.ThumbnailCornerRadius),
     modifier: Modifier = Modifier,
-    // liked songs hero header a bigger version of this same collage caps at 8
-    // instead of this component s original 9 parameterized rather than
-    // duplicating the whole composable for one different number
+
     maxCovers: Int = 9,
 ) {
     val database = LocalDatabase.current
@@ -1740,7 +1719,7 @@ fun LikedSongsThumbnail(
                 }
             }
         }
-        
+
         Icon(
             painter = painterResource(R.drawable.favorite_border),
             contentDescription = null,

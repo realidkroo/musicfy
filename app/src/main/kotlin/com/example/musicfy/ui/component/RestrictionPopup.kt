@@ -1,4 +1,4 @@
-// restriction popup dialog
+// RestrictionPopup.kt
 
 package com.example.musicfy.ui.component
 
@@ -30,7 +30,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.musicfy.R
 
-// dark dialog for locked or wip settings
 @Composable
 fun RestrictionPopup(
     featureName: String,
@@ -56,7 +55,7 @@ fun RestrictionPopup(
                     .fillMaxWidth()
                     .padding(28.dp)
             ) {
-                // lock icon container
+
                 Box(
                     modifier = Modifier
                         .size(68.dp)

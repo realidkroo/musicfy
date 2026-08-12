@@ -1,5 +1,4 @@
-// themeviewmodelkt
-// what is this for you ask its for theme view model ofc
+// ThemeViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -11,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class ThemeViewModel : ViewModel() {
-    // theme state flows
+
     private val _darkMode = MutableStateFlow(DarkMode.AUTO)
     val darkMode: StateFlow<DarkMode> = _darkMode.asStateFlow()
 

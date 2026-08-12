@@ -1,5 +1,4 @@
-// button kt
-// this thing is for button
+// Button.kt
 
 package com.music.innertube.models
 

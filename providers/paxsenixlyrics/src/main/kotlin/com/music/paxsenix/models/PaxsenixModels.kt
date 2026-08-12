@@ -1,5 +1,4 @@
-// paxsenixmodels kt
-// the file functioned as paxsenix models
+// PaxsenixModels.kt
 
 package com.music.paxsenix.models
 

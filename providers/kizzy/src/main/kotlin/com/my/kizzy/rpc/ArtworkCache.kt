@@ -1,5 +1,4 @@
-// artworkcache kt
-// this thing is for artwork cache
+// ArtworkCache.kt
 
 package com.my.kizzy.rpc
 

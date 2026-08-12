@@ -1,5 +1,4 @@
-// accountmenuresponse kt
-// this thing is part of account menu response
+// AccountMenuResponse.kt
 
 package com.music.innertube.models.response
 

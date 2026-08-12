@@ -1,5 +1,4 @@
-// sabrexceptionkt
-// this thing is for sabr exception
+// SabrException.kt
 
 package com.example.musicfy.utils.sabr
 

@@ -1,5 +1,4 @@
-// artistalbumsviewmodelkt
-// what is this for you ask its for artist albums view model ofc
+// ArtistAlbumsViewModel.kt
 
 package com.example.musicfy.viewmodels
 

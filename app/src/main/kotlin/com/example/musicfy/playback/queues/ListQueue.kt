@@ -1,5 +1,4 @@
-// listqueuekt
-// this thing is for list queue
+// ListQueue.kt
 
 package com.example.musicfy.playback.queues
 

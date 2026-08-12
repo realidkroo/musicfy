@@ -1,5 +1,4 @@
-// monochromeapicanvastest kt
-// this thing is part of monochrome api canvas test
+// MonochromeApiCanvasTest.kt
 
 package com.example.musicfy.canvas
 
@@ -21,7 +20,6 @@ class MonochromeApiCanvasTest {
 
     @Test
     fun testCacheBehavior() = runBlocking {
-        // this test would require mocking the httpclient which is set by lazy
-        // in a real project we d use a test httpclient engine
+
     }
 }

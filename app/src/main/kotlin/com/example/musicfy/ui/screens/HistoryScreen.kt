@@ -68,7 +68,7 @@ fun HistoryScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // top bar
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier

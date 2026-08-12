@@ -1,5 +1,4 @@
-// thumbnail kt
-// this thing is for thumbnail
+// Thumbnail.kt
 
 package com.example.musicfy.ui.player
 
@@ -112,7 +111,6 @@ import com.example.musicfy.applecanvas.AppleMusicCanvasProvider
 
 import java.util.Locale
 
-// pre calculated thumbnail dimensions to avoid repeated calculations during recomposition all values are computed once and cached
 @Immutable
 data class ThumbnailDimensions(
     val itemWidth: Dp,
@@ -121,14 +119,12 @@ data class ThumbnailDimensions(
     val cornerRadius: Dp
 )
 
-// cached media items data to prevent recalculation on every recomposition
 @Immutable
 data class MediaItemsData(
     val items: List<MediaItem>,
     val currentIndex: Int
 )
 
-// calculate thumbnail dimensions once based on container size this function is marked as @stable to indicate it produces stable results in landscape mode uses the smaller dimension height to ensure square thumbnail fits
 @Stable
 private fun calculateThumbnailDimensions(
     containerWidth: Dp,
@@ -137,7 +133,7 @@ private fun calculateThumbnailDimensions(
     cornerRadius: Dp = ThumbnailCornerRadius,
     isLandscape: Boolean = false
 ): ThumbnailDimensions {
-    // in landscape use height as the constraining dimension for a square thumbnail
+
     val effectiveSize = if (isLandscape) {
         minOf(containerWidth, containerHeight) - (horizontalPadding * 2)
     } else {
@@ -151,7 +147,6 @@ private fun calculateThumbnailDimensions(
     )
 }
 
-// get media items for the thumbnail carousel calculates previous current and next items based on shuffle mode
 @Stable
 private fun getMediaItems(
     player: Player,
@@ -160,11 +155,11 @@ private fun getMediaItems(
     val timeline = player.currentTimeline
     val currentIndex = player.currentMediaItemIndex
     val shuffleModeEnabled = player.shuffleModeEnabled
-    
+
     val currentMediaItem = try {
         player.currentMediaItem
     } catch (e: Exception) { null }
-    
+
     val previousMediaItem = if (swipeThumbnail && !timeline.isEmpty) {
         val previousIndex = timeline.getPreviousWindowIndex(
             currentIndex,
@@ -189,11 +184,10 @@ private fun getMediaItems(
 
     val items = listOfNotNull(previousMediaItem, currentMediaItem, nextMediaItem)
     val currentMediaIndex = items.indexOf(currentMediaItem)
-    
+
     return MediaItemsData(items, currentMediaIndex)
 }
 
-// get text color based on player background style computed once per background style change
 @Stable
 @Composable
 private fun getTextColor(playerBackground: PlayerBackgroundStyle): Color {
@@ -202,7 +196,6 @@ private fun getTextColor(playerBackground: PlayerBackgroundStyle): Color {
         PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.GLOW_ANIMATED, PlayerBackgroundStyle.APPLE_MUSIC, PlayerBackgroundStyle.LIVE_MESH -> Color.White
     }
 }
-
 
 object CanvasArtworkPlaybackCache {
     private const val defaultMaxSize = 256
@@ -268,15 +261,12 @@ fun Thumbnail(
     val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
 
-    // collect states
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val error by playerConnection.error.collectAsState()
     val queueTitle by playerConnection.queueTitle.collectAsState()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
 
-    // preferences computed once
-    // disable swipe for listen together guests
     val swipeThumbnailPref by rememberPreference(SwipeThumbnailKey, true)
     val swipeThumbnail = swipeThumbnailPref
     val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
@@ -287,14 +277,11 @@ fun Thumbnail(
     )
     val useNewPlayerDesign by rememberPreference(UseNewPlayerDesignKey, defaultValue = true)
     val thumbnailCornerRadius by rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 3f)
-    
-    // pre calculate text color based on background style
+
     val textBackgroundColor = getTextColor(playerBackground)
-    
-    // grid state
+
     val thumbnailLazyGridState = rememberLazyGridState()
-    
-    // calculate media items data memoized
+
     val mediaItemsData by remember(
         playerConnection.player.currentMediaItemIndex,
         playerConnection.player.shuffleModeEnabled,
@@ -305,11 +292,10 @@ fun Thumbnail(
             getMediaItems(playerConnection.player, swipeThumbnail)
         }
     }
-    
+
     val mediaItems = mediaItemsData.items
     val currentMediaIndex = mediaItemsData.currentIndex
 
-    // snap behavior created once per grid state
     val thumbnailSnapLayoutInfoProvider = remember(thumbnailLazyGridState) {
         ThumbnailSnapLayoutInfoProvider(
             lazyGridState = thumbnailLazyGridState,
@@ -320,11 +306,9 @@ fun Thumbnail(
         )
     }
 
-    // current item tracking derived state for efficiency
     val currentItem by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemIndex } }
     val itemScrollOffset by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemScrollOffset } }
 
-    // handle swipe to change song
     LaunchedEffect(itemScrollOffset) {
         if (!thumbnailLazyGridState.isScrollInProgress || !swipeThumbnail || itemScrollOffset != 0 || currentMediaIndex < 0) return@LaunchedEffect
 
@@ -335,7 +319,6 @@ fun Thumbnail(
         }
     }
 
-    // update position when song changes
     LaunchedEffect(mediaMetadata, canSkipPrevious, canSkipNext) {
         val index = maxOf(0, currentMediaIndex)
         if (index >= 0 && index < mediaItems.size) {
@@ -354,7 +337,6 @@ fun Thumbnail(
         }
     }
 
-    // prefetch high quality thumbnails for the carousel items previous current and next
     LaunchedEffect(mediaItems) {
         mediaItems.forEach { item ->
             val artworkUri = item.mediaMetadata.artworkUri?.toString()?.resize(1200, 1200) ?: return@forEach
@@ -367,18 +349,17 @@ fun Thumbnail(
         }
     }
 
-    // seek effect state
     var showSeekEffect by remember { mutableStateOf(false) }
     var seekDirection by remember { mutableStateOf("") }
 
     Box(
         modifier = modifier
             .graphicsLayer {
-                // use hardware layer for entire thumbnail to ensure smooth 120hz animations
+
                 compositingStrategy = CompositingStrategy.Offscreen
             }
     ) {
-        // error view
+
         AnimatedVisibility(
             visible = error != null,
             enter = fadeIn(),
@@ -395,7 +376,6 @@ fun Thumbnail(
             }
         }
 
-        // main thumbnail view
         AnimatedVisibility(
             visible = error == null && !(playerBackground == PlayerBackgroundStyle.APPLE_MUSIC && !isLandscape),
             enter = fadeIn(),
@@ -409,7 +389,7 @@ fun Thumbnail(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = if (isLandscape) Arrangement.Center else Arrangement.Top
             ) {
-                // now playing header hide in landscape mode
+
                 if (useNewPlayerDesign && !isLandscape) {
                     Box(modifier = Modifier.graphicsLayer {
                         alpha = (1f - (lyricsMorphProgress * 3f)).coerceIn(0f, 1f)
@@ -421,8 +401,8 @@ fun Thumbnail(
                             onMoreActionsClick = onMoreActionsClick,
                         )
                     }
-                }        
-                // thumbnail content
+                }
+
                 BoxWithConstraints(
                     contentAlignment = Alignment.Center,
                     modifier = if (isLandscape) {
@@ -431,7 +411,7 @@ fun Thumbnail(
                         Modifier.fillMaxSize()
                     }
                 ) {
-                    // calculate dimensions once per size change considering landscape mode
+
                     val dimensions = remember(maxWidth, maxHeight, isLandscape, thumbnailCornerRadius) {
                         calculateThumbnailDimensions(
                             containerWidth = maxWidth,
@@ -441,19 +421,17 @@ fun Thumbnail(
                         )
                     }
 
-                    // remember the onseek callback to prevent recomposition
                     val onSeekCallback = remember {
                         { direction: String, showEffect: Boolean ->
                             seekDirection = direction
                             showSeekEffect = showEffect
                         }
                     }
-                    
-                    // derive scroll enabled state to prevent unnecessary recomposition
+
                     val isScrollEnabled by remember(swipeThumbnail) {
                         derivedStateOf { swipeThumbnail && isPlayerExpanded() }
                     }
-                    
+
                     LazyHorizontalGrid(
                         state = thumbnailLazyGridState,
                         rows = GridCells.Fixed(1),
@@ -474,25 +452,17 @@ fun Thumbnail(
                                         scaleX = scale
                                         scaleY = scale
 
-                                        // move anchor to top left
                                         transformOrigin = TransformOrigin(0f, 0f)
-                                        
-                                        // original top left of the image inside the lazyhorizontalgrid
+
                                         val originalX = (size.width - currentSizePx) / 2f
                                         val originalY = (size.height - currentSizePx) / 2f
 
-                                        // target top left of the image relative to the entire player sheet
-                                        // the lazyhorizontalgrid is inside boxwithconstraints which is below thumbnailheader approx 50dp
-                                        // wait to bypass exact coordinate tracking we just visually align it
-                                        // targetx = 28 dp targety = 24 dp statusbarspadding + headerheight
-                                        // let s use a known relative target offset
                                         val targetX = 28.dp.toPx()
-                                        val targetY = -(86.dp.toPx()) // approximate upward shift to overcome header and status bar
+                                        val targetY = -(86.dp.toPx())
 
-                                        // instead of absolute target we just translate relative to its origin
                                         val translationXTarget = targetX - originalX
                                         val translationYTarget = targetY - originalY
-                                        
+
                                         translationX = androidx.compose.ui.util.lerp(0f, translationXTarget, p)
                                         translationY = androidx.compose.ui.util.lerp(0f, translationYTarget, p)
                                     }
@@ -501,7 +471,7 @@ fun Thumbnail(
                     ) {
                         items(
                             items = mediaItems,
-                            key = { item -> 
+                            key = { item ->
                                 item.mediaId.ifEmpty { "unknown_${item.hashCode()}" }
                             }
                         ) { item ->
@@ -527,7 +497,6 @@ fun Thumbnail(
             }
         }
 
-        // seek effect
         LaunchedEffect(showSeekEffect) {
             if (showSeekEffect) {
                 delay(1000)
@@ -546,7 +515,6 @@ fun Thumbnail(
     }
 }
 
-// header component showing now playing and queue album title
 @Composable
 private fun ThumbnailHeader(
     queueTitle: String?,
@@ -593,7 +561,6 @@ private fun ThumbnailHeader(
     }
 }
 
-// individual thumbnail item in the carousel
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ThumbnailItem(
@@ -616,13 +583,7 @@ private fun ThumbnailItem(
     val rotatingThumbnail by rememberPreference(RotatingThumbnailKey, defaultValue = false)
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val isCurrentItem = item.mediaId == currentMediaId
-    
-    // only subscribe to the animation frame clock when rotation is actually possible for this
-    // item rotatingthumbnail on and this is the current item infiniterepeatable keeps
-    // requesting a new frame every tick for as long as it s composed even when its target
-    // never changes with up to 3 items mounted at once prev current next this was
-    // continuously invalidating every frame the whole time the player was open regardless of
-    // whether the preference was even enabled it defaults to off
+
     val rotation = if (rotatingThumbnail && isCurrentItem) {
         val infiniteTransition = rememberInfiniteTransition(label = "ThumbnailRotation")
         val r by infiniteTransition.animateFloat(
@@ -658,13 +619,11 @@ private fun ThumbnailItem(
             )
             .padding(horizontal = PlayerHorizontalPadding)
             .graphicsLayer {
-                // render entire thumbnail item on separate hardware layer for smooth animations
-                // offscreen compositing removed to prevent interference with androidview
+
             }
             .pointerInput(Unit) {
                 detectTapGestures(
                     onDoubleTap = { offset ->
-
 
                         val currentPosition = playerConnection.player.currentPosition
                         val duration = playerConnection.player.duration
@@ -725,7 +684,7 @@ private fun ThumbnailItem(
                     cropArtwork = cropAlbumArt
                 )
             }
-            
+
             if (canvasThumbnailAnimation && item.mediaId == currentMediaId && !rotatingThumbnail && playerBackground != PlayerBackgroundStyle.APPLE_MUSIC) {
                 var canvasArtwork by remember(item.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
                 var canvasFetchInFlight by remember(item.mediaId) { mutableStateOf(false) }
@@ -747,15 +706,15 @@ private fun ThumbnailItem(
                         val metadata = item.metadata
                         val albumName = (metadata?.album?.title ?: item.mediaMetadata.albumTitle)?.toString()
                         val duration = metadata?.duration
-                        
+
                         val songTitleRaw = item.mediaMetadata.title?.toString() ?: ""
                         val artistNameRaw = item.mediaMetadata.artist?.toString() ?: ""
-                        
+
                         val songTitle = normalizeCanvasSongTitle(songTitleRaw)
                         val artistName = normalizeCanvasArtistName(artistNameRaw)
-                        
+
                         println("CanvasFetch: Song='$songTitle' (raw='$songTitleRaw'), Artist='$artistName' (raw='$artistNameRaw'), Album='$albumName'")
-                        
+
                         linkedSetOf(
                             songTitle to artistName,
                             songTitleRaw to artistName,
@@ -763,8 +722,7 @@ private fun ThumbnailItem(
                             songTitleRaw to artistNameRaw,
                         ).filter { (s, a) -> s.isNotBlank() && a.isNotBlank() }
                             .firstNotNullOfOrNull { (s, a) ->
-                                // strategy if we have an album prioritize a direct apple music album search first
-                                // to avoid song name collisions across different albums
+
                                 if (!albumName.isNullOrBlank()) {
                                     AppleMusicCanvasProvider.getByAlbumArtist(
                                         album = albumName,
@@ -786,36 +744,29 @@ private fun ThumbnailItem(
                                     )?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
                             }
                     }
-                    
-                    // client side safety check ensure the fetched canvas matches the requested song
-                    // this prevents wrong canvas if a provider returned a generic or incorrect match
+
                     val requestedArtist = item.mediaMetadata.artist?.toString() ?: ""
                     val requestedTitle = item.mediaMetadata.title?.toString() ?: ""
-                    
+
                     val validated = fetched?.let { artwork ->
                         val resultArtist = artwork.artist
                         val resultName = artwork.name
-                        
-                        // check artist
+
                         val artistMatches = if (resultArtist != null && requestedArtist.isNotBlank()) {
                             val normalizedResult = normalizeCanvasArtistName(resultArtist)
                             val normalizedRequested = normalizeCanvasArtistName(requestedArtist)
-                            resultArtist.contains(requestedArtist, ignoreCase = true) || 
+                            resultArtist.contains(requestedArtist, ignoreCase = true) ||
                             requestedArtist.contains(resultArtist, ignoreCase = true) ||
                             normalizedResult.contains(normalizedRequested, ignoreCase = true) ||
                             normalizedRequested.contains(normalizedResult, ignoreCase = true)
                         } else true
 
-                        // album title cross check
-                        // the canvas provider always populates albumname with the album the animation
-                        // belongs to we require this to match the requested track s album or song
-                        // title so we never show an animation for the wrong album by the same artist
                         val requestedAlbum = item.mediaMetadata.albumTitle?.toString() ?: ""
                         val canvasAlbumName = artwork.albumName
                         val canvasSongName = artwork.name
 
                         val titleMatches = when {
-                            // case 1 canvas has an album name → must match requested album
+
                             canvasAlbumName != null && requestedAlbum.isNotBlank() -> {
                                 val normalizedCanvasAlbum = normalizeCanvasSongTitle(canvasAlbumName)
                                 val normalizedRequestedAlbum = normalizeCanvasSongTitle(requestedAlbum)
@@ -824,7 +775,7 @@ private fun ThumbnailItem(
                                 normalizedCanvasAlbum.contains(normalizedRequestedAlbum, ignoreCase = true) ||
                                 normalizedRequestedAlbum.contains(normalizedCanvasAlbum, ignoreCase = true)
                             }
-                            // case 2 canvas has only a song name → match against song title or album
+
                             canvasSongName != null && requestedTitle.isNotBlank() -> {
                                 val normalizedCanvasSong = normalizeCanvasSongTitle(canvasSongName)
                                 val normalizedRequestedTitle = normalizeCanvasSongTitle(requestedTitle)
@@ -840,7 +791,7 @@ private fun ThumbnailItem(
                                     normalizedRequestedAlbum.contains(normalizedCanvasSong, ignoreCase = true)
                                 ))
                             }
-                            // case 3 no name info in canvas at all → allow through
+
                             else -> true
                         }
 
@@ -851,7 +802,7 @@ private fun ThumbnailItem(
                             null
                         }
                     }
-                    
+
                     canvasArtwork = validated
                     if (validated != null) {
                         CanvasArtworkPlaybackCache.put(item.mediaId, validated)
@@ -872,7 +823,6 @@ private fun ThumbnailItem(
     }
 }
 
-// placeholder shown when thumbnail is hidden
 @Composable
 private fun HiddenThumbnailPlaceholder(
     textBackgroundColor: Color,
@@ -893,7 +843,6 @@ private fun HiddenThumbnailPlaceholder(
     }
 }
 
-// actual thumbnail image with caching and hardware layer rendering
 @Composable
 private fun ThumbnailImage(
     artworkUri: String?,
@@ -928,7 +877,6 @@ private fun ThumbnailImage(
     }
 }
 
-// seek effect overlay showing seek direction
 @Composable
 private fun SeekEffectOverlay(
     seekDirection: String,

@@ -1,5 +1,4 @@
-// homepage kt
-// this thing is part of home page
+// HomePage.kt
 
 package com.music.innertube.pages
 
@@ -76,7 +75,7 @@ data class HomePage(
                             title = renderer.title.runs?.firstOrNull()?.text ?: return null,
                             artists = subtitleRuns.filter { run ->
                                 run.navigationEndpoint?.browseEndpoint?.browseId?.startsWith("UC") == true ||
-                                (run.navigationEndpoint?.browseEndpoint != null && 
+                                (run.navigationEndpoint?.browseEndpoint != null &&
                                  run.navigationEndpoint.browseEndpoint.browseId.startsWith("MPREb_") != true)
                             }.map { run ->
                                 Artist(
@@ -84,12 +83,12 @@ data class HomePage(
                                     id = run.navigationEndpoint?.browseEndpoint?.browseId
                                 )
                             }.ifEmpty {
-                                subtitleRuns.firstOrNull()?.let { run -> 
-                                    listOf(Artist(name = run.text, id = null)) 
+                                subtitleRuns.firstOrNull()?.let { run ->
+                                    listOf(Artist(name = run.text, id = null))
                                 } ?: emptyList()
                             },
-                            album = subtitleRuns.firstOrNull { 
-                                it.navigationEndpoint?.browseEndpoint?.browseId?.startsWith("MPREb_") == true 
+                            album = subtitleRuns.firstOrNull {
+                                it.navigationEndpoint?.browseEndpoint?.browseId?.startsWith("MPREb_") == true
                             }?.let {
                                 Album(
                                     name = it.text,

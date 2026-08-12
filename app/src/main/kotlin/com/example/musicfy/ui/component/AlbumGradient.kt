@@ -1,5 +1,4 @@
-// albumgradientkt
-// what is this for you ask its for album gradient ofc
+// AlbumGradient.kt
 
 package com.example.musicfy.ui.component
 
@@ -28,7 +27,6 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
 
 @Composable
 fun AlbumGradient(

@@ -1,5 +1,4 @@
-// commitscreenkt
-// this thing is for commitscreen
+// commitscreen.kt
 
 package com.example.musicfy.core.commitscreen
 
@@ -121,7 +120,7 @@ fun CommitScreen(
 
                     val commitObj = obj.getJSONObject("commit")
                     val fullMessage = commitObj.getString("message")
-                    // take only the first line subject of the commit message
+
                     val message = fullMessage.lines().firstOrNull { it.isNotBlank() } ?: fullMessage
 
                     val authorObj = commitObj.getJSONObject("author")
@@ -131,7 +130,6 @@ fun CommitScreen(
                         ZonedDateTime.parse(rawDate).format(outputFormatter)
                     } catch (e: Exception) { rawDate }
 
-                    // github user info may be null for non github accounts
                     val authorLogin = if (!obj.isNull("author")) {
                         obj.getJSONObject("author").optString("login", null)
                     } else null
@@ -242,7 +240,6 @@ fun CommitScreen(
                 }
             }
 
-            // pull to refresh indicator
             Box(
                 Modifier
                     .align(Alignment.TopCenter)
@@ -256,4 +253,3 @@ fun CommitScreen(
         }
     }
 }
-

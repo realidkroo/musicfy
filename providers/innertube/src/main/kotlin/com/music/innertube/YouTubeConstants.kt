@@ -1,5 +1,4 @@
-// youtubeconstants kt
-// what is this for you ask its for you tube constants ofc
+// YouTubeConstants.kt
 
 package com.music.innertube
 

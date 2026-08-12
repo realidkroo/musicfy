@@ -1,6 +1,4 @@
-// playerslider kt
-// extracted from player kt s controlscontent closure the slider style dispatch
-// new design slider default wavy slim plus the position duration time row below it
+// PlayerSlider.kt
 
 package com.example.musicfy.ui.player
 

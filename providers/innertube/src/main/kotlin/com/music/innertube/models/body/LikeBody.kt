@@ -1,5 +1,4 @@
-// likebody kt
-// this thing is part of like body
+// LikeBody.kt
 
 package com.music.innertube.models.body
 

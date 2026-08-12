@@ -1,5 +1,4 @@
-// localplaylistscreenkt
-// this thing is for local playlist screen
+// LocalPlaylistScreen.kt
 
 package com.example.musicfy.ui.screens.playlist
 
@@ -474,7 +473,6 @@ fun LocalPlaylistScreen(
                     move(viewModel.playlistId, from, to)
                 }
 
-                // sync order with yt music
                 if (viewModel.playlist.value?.playlist?.browseId != null) {
                     viewModel.viewModelScope.launch(Dispatchers.IO) {
                         val playlistSongMap = database.playlistSongMaps(viewModel.playlistId, 0)
@@ -1054,9 +1052,7 @@ fun LocalPlaylistScreen(
                 }
             )
         } else {
-            // collapsing top bar plain back button while the hero cover is visible
-            // morphing into a compact bar mini cover + title blurred backdrop as
-            // the user scrolls past it
+
             DetailCollapsingTopBar(
                 progress = collapseState.morphProgress,
                 glassState = glassState,
@@ -1179,7 +1175,6 @@ fun LocalPlaylistHeader(
         it.contains("studio_square_thumbnail") || it.contains("content://com.musicfy.music")
     } ?: false
 
-
     val result = remember { mutableStateOf<Uri?>(null) }
     var pendingCropDestUri by remember { mutableStateOf<Uri?>(null) }
     var showEditNoteDialog by remember { mutableStateOf(false) }
@@ -1206,13 +1201,13 @@ fun LocalPlaylistHeader(
             val destFile = java.io.File(context.cacheDir, "playlist_cover_crop_${System.currentTimeMillis()}.jpg")
             val destUri = FileProvider.getUriForFile(context, "${context.packageName}.FileProvider", destFile)
             pendingCropDestUri = destUri
-    
+
             val options = UCrop.Options().apply {
                 setCompressionFormat(Bitmap.CompressFormat.JPEG)
                 setCompressionQuality(90)
                 setHideBottomControls(true)
                 setToolbarTitle(context.getString(R.string.edit_playlist_cover))
-                
+
                 setStatusBarLight(!darkTheme)
 
                 setToolbarColor(cropColor.surface.toArgb())
@@ -1239,7 +1234,6 @@ fun LocalPlaylistHeader(
                     overrideThumbnail.value = uri.toString()
                     isCustomThumbnail = true
 
-                    // update the database with the new thumbnail
                     database.query {
                         update(playlist.playlist.copy(thumbnailUrl = uri.toString()))
                     }
@@ -1254,7 +1248,6 @@ fun LocalPlaylistHeader(
                         overrideThumbnail.value = newThumbnailUrl
                         isCustomThumbnail = true
 
-                        // update the database with the new thumbnail url
                         database.query {
                             update(playlist.playlist.copy(thumbnailUrl = newThumbnailUrl))
                         }
@@ -1437,9 +1430,6 @@ fun uriToByteArray(context: Context, uri: Uri): ByteArray? {
     }
 }
 
-// minimal local library song picker for the new add music row no
-// entry point existed before the only prior flow was the reverse a song s
-// add to playlist menu action local library only not a full yt
 @Composable
 private fun AddSongsToPlaylistDialog(
     playlistId: String,

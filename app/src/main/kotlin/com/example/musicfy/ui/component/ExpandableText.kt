@@ -1,5 +1,4 @@
-// expandabletextkt
-// this thing is part of expandable text
+// ExpandableText.kt
 
 package com.example.musicfy.ui.component
 
@@ -94,7 +93,7 @@ fun ExpandableText(
                 }
             }
         )
-        
+
         if (hasOverflow) {
             Box(
                 modifier = Modifier

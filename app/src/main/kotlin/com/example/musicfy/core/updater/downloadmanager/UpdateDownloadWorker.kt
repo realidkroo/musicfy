@@ -1,5 +1,4 @@
-// updatedownloadworkerkt
-// the file functioned as update download worker
+// UpdateDownloadWorker.kt
 
 package com.example.musicfy.core.updater.downloadmanager
 
@@ -78,9 +77,9 @@ class UpdateDownloadWorker(private val context: Context, workerParams: WorkerPar
 
                 if (fileLength > 0) {
                     val progress = (totalBytesRead.toFloat() / fileLength.toFloat() * 100).toInt()
-                    // update notification
+
                     DownloadNotificationManager.updateDownloadProgress(progress, version)
-                    // update workmanager progress for ui observation
+
                     setProgress(workDataOf("progress" to progress.toFloat() / 100f))
                 }
             }

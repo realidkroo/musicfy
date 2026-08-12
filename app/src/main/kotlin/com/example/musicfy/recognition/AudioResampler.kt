@@ -1,5 +1,4 @@
-// audioresamplerkt
-// the file functioned as audio resampler
+// AudioResampler.kt
 
 package com.example.musicfy.recognition
 
@@ -13,7 +12,6 @@ import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-// data class representing decoded audio data with its properties
 data class DecodedAudio(
     val data: ByteArray,
     val channelCount: Int,
@@ -39,7 +37,6 @@ data class DecodedAudio(
     }
 }
 
-// audio resampler using media3 sonicaudioprocessor resamples audio to the
 @OptIn(UnstableApi::class)
 object AudioResampler {
 
@@ -50,14 +47,14 @@ object AudioResampler {
         if (decodedAudio.sampleRate == outputSampleRate) {
             return@withContext Result.success(decodedAudio)
         }
-        
+
         var sonicRef: AudioProcessor? = null
         try {
             val sonic: AudioProcessor = SonicAudioProcessor().apply {
                 setOutputSampleRateHz(outputSampleRate)
             }
             sonicRef = sonic
-            
+
             val inputFormat = AudioProcessor.AudioFormat(
                 decodedAudio.sampleRate,
                 decodedAudio.channelCount,
@@ -95,7 +92,7 @@ object AudioResampler {
                     }
                 }
             }
-            
+
             Result.success(DecodedAudio(
                 data = resampledData,
                 channelCount = outputFormat.channelCount,

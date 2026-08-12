@@ -1,5 +1,4 @@
-// artistviewmodelkt
-// what is this for you ask its for artist view model ofc
+// ArtistViewModel.kt
 
 package com.example.musicfy.viewmodels
 
@@ -48,13 +47,13 @@ class ArtistViewModel @Inject constructor(
 ) : ViewModel() {
     val artistId = savedStateHandle.get<String>("artistId")!!
     var artistPage by mutableStateOf<ArtistPage?>(null)
-    
+
     private val _artistVideoUrl = MutableStateFlow<String?>(null)
     val artistVideoUrl: StateFlow<String?> = _artistVideoUrl
 
     private val _artistVideoSong = MutableStateFlow<com.music.innertube.models.SongItem?>(null)
     val artistVideoSong: StateFlow<com.music.innertube.models.SongItem?> = _artistVideoSong
-    
+
     val libraryArtist = database.artist(artistId)
         .stateIn(viewModelScope, SharingStarted.Lazily, null)
     val librarySongs = context.dataStore.data
@@ -73,7 +72,7 @@ class ArtistViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
-        // load artist page and reload when hide explicit setting changes
+
         viewModelScope.launch {
             context.dataStore.data
                 .map {
@@ -104,8 +103,7 @@ class ArtistViewModel @Inject constructor(
                         .filter { section -> section.items.isNotEmpty() }
 
                     artistPage = page.copy(sections = filteredSections)
-                    
-                    // try to fetch artist video canvas from top songs
+
                     val topSongsSection = page.sections.find { it.items.firstOrNull() is com.music.innertube.models.SongItem }
                     topSongsSection?.items?.forEach { item ->
                         if (item is com.music.innertube.models.SongItem) {

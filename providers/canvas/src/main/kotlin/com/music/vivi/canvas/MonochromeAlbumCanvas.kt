@@ -1,5 +1,4 @@
-// monochromealbumcanvas kt
-// the file functioned as monochrome album canvas
+// MonochromeAlbumCanvas.kt
 
 package com.example.musicfy.canvas
 
@@ -22,7 +21,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-// fetches album canvas artwork from artwork boidu dev used by monochrome
 object MonochromeAlbumCanvas {
     private const val BASE_URL = "https://artwork.boidu.dev/"
 
@@ -56,7 +54,7 @@ object MonochromeAlbumCanvas {
     )
 
     private val cache = ConcurrentHashMap<String, CacheEntry>()
-    private const val CACHE_TTL_MS = 1000L * 60 * 60 * 24 // 24 hours
+    private const val CACHE_TTL_MS = 1000L * 60 * 60 * 24
 
     suspend fun getByAlbumArtist(
         album: String,
@@ -79,12 +77,12 @@ object MonochromeAlbumCanvas {
                 parameter("s", album)
                 parameter("a", artist)
             }
-            
+
             if (response.status == HttpStatusCode.OK) {
                 val body = response.body<kotlinx.serialization.json.JsonObject>()
                 val videoUrl = body["videoUrl"]?.jsonPrimitive?.contentOrNull
                 val animated = body["animated"]?.jsonPrimitive?.contentOrNull
-                
+
                 if (!videoUrl.isNullOrBlank() || !animated.isNullOrBlank()) {
                     CanvasArtwork(
                         name = album,

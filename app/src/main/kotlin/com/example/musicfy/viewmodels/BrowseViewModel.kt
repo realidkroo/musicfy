@@ -1,8 +1,7 @@
-// browseviewmodelkt
-// the file functioned as browse view model
+// BrowseViewModel.kt
 
 package com.example.musicfy.viewmodels
- 
+
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,18 +18,17 @@ class BrowseViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val browseId: String? = savedStateHandle.get<String>("browseId")
- 
+
     val items = MutableStateFlow<List<YTItem>?>(emptyList())
     val title = MutableStateFlow<String?>("")
- 
+
     init {
         viewModelScope.launch {
             browseId?.let {
                 YouTube.browse(browseId, null).onSuccess { result ->
-                    // store the title
+
                     title.value = result.title
- 
-                    // flatten the nested structure to get all ytitems
+
                     val allItems = result.items.flatMap { it.items }
                     items.value = allItems
                 }.onFailure {

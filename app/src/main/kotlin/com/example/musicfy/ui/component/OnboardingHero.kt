@@ -1,7 +1,4 @@
-// onboardingherokt
-// the hero shown in place of herocarousel when there is nothing to carousel
-// install with no last played song no daily discover and no listening
-// concept as the setup wizard s welcome screen but permanently looping
+// OnboardingHero.kt
 
 package com.example.musicfy.ui.component
 
@@ -95,7 +92,6 @@ fun OnboardingHero(
             modifier = Modifier.fillMaxSize()
         )
 
-        // scrim so the copy stays readable over whatever art loads
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -168,7 +164,6 @@ fun OnboardingHero(
     }
 }
 
-// cover art that fades up once it has actually decoded instead of snapping in
 @Composable
 fun FadeInCover(
     url: String,
@@ -190,7 +185,6 @@ fun FadeInCover(
     )
 }
 
-// three columns of cover art tilted and drifting upward forever the blur radius
 @Composable
 private fun TiltedCoverWall(
     covers: List<String>,
@@ -225,7 +219,7 @@ private fun TiltedCoverWall(
         modifier = modifier
             .graphicsLayer {
                 rotationZ = TILT_DEGREES
-                // overscale so the rotated wall still covers the corners of the hero
+
                 scaleX = 2.1f
                 scaleY = 2.1f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -244,8 +238,7 @@ private fun TiltedCoverWall(
             horizontalArrangement = Arrangement.spacedBy(spacing)
         ) {
             repeat(3) { column ->
-                // each column is offset a little so the wall doesn t read as one rigid block
-                // the loop is seamless because the strip repeats its own contents twice
+
                 val strip = remember(covers, column) {
                     val rotated = covers.drop(column * 2) + covers.take(column * 2)
                     (rotated + rotated).take(12)

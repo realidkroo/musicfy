@@ -25,17 +25,17 @@ fun GreetingStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 32.dp, end = 32.dp, bottom = 120.dp), // adjust bottom padding for the next button
+            .padding(start = 32.dp, end = 32.dp, bottom = 120.dp),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.Bottom
     ) {
-        // profile picture placeholder visuals drawn by setupwizardscreen overlay
+
         Spacer(
             modifier = Modifier.size(110.dp)
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Text(
             text = "hi, ${username.lowercase()}!",
             fontSize = 48.sp,
@@ -44,9 +44,9 @@ fun GreetingStep(
             letterSpacing = (-2).sp,
             lineHeight = 48.sp
         )
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         Text(
             text = "Welcome to musicfy!",
             fontSize = 16.sp,

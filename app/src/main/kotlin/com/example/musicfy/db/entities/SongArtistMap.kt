@@ -1,5 +1,4 @@
-// songartistmapkt
-// what is this for you ask its for song artist map ofc
+// SongArtistMap.kt
 
 package com.example.musicfy.db.entities
 

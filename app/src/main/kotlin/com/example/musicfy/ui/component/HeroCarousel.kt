@@ -1,5 +1,4 @@
-// herocarouselkt
-// this thing is for hero carousel
+// HeroCarousel.kt
 
 package com.example.musicfy.ui.component
 
@@ -109,7 +108,7 @@ sealed interface HeroCarouselItem {
     val songTitle: String?
     val artistName: String?
     val albumTitle: String?
-    
+
     fun onPlay(playerConnection: PlayerConnection, navController: NavController)
 }
 
@@ -128,7 +127,7 @@ data class KeepListeningItem(val item: com.example.musicfy.models.MediaMetadata,
     override val songTitle: String? = item.title
     override val artistName: String? = item.artists.joinToString { it.name }
     override val albumTitle: String? = item.album?.title
-    
+
     override fun onPlay(playerConnection: PlayerConnection, navController: NavController) {
         if (isLastPlayed) {
             playerConnection.play()
@@ -150,7 +149,7 @@ data class DiscoverItem(val item: DailyDiscoverItem) : HeroCarouselItem {
     override val songTitle: String? = item.recommendation.title
     override val artistName: String? = (item.recommendation as? SongItem)?.artists?.joinToString { it.name } ?: ""
     override val albumTitle: String? = (item.recommendation as? SongItem)?.album?.name
-    
+
     override fun onPlay(playerConnection: PlayerConnection, navController: NavController) {
         when (val rec = item.recommendation) {
             is SongItem -> playerConnection.playQueue(
@@ -179,16 +178,14 @@ fun HeroCarousel(
     modifier: Modifier = Modifier
 ) {
     val isPlaying by playerConnection.isPlaying.collectAsState()
-    
+
     val carouselItems = remember(keepListening, lastPlayedSong, dailyDiscover) {
         buildList {
-            // add the last played song
+
             lastPlayedSong?.let { add(KeepListeningItem(it, isLastPlayed = true)) }
-            
-            // add daily discover recommendations
+
             dailyDiscover?.take(5)?.forEach { add(DiscoverItem(it)) }
-            
-            // fill the rest up to 5 items with keeplistening history
+
             if (size < 5) {
                 keepListening?.filterIsInstance<com.example.musicfy.db.entities.Song>()
                     ?.filter { song -> none { it is KeepListeningItem && it.mediaId == song.id } }
@@ -203,8 +200,7 @@ fun HeroCarousel(
     val carouselHeight = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
 
     if (carouselItems.isEmpty()) {
-        // nothing to carousel means a clean setup no last played no history no
-        // onboard instead of showing an empty hole
+
         val (username) = rememberPreference(UsernameKey, defaultValue = "")
         OnboardingHero(
             username = username,
@@ -299,7 +295,7 @@ fun HeroCarousel(
                     val s = normalizeCanvasSongTitle(targetItem.songTitle ?: "")
                     val a = normalizeCanvasArtistName(targetItem.artistName ?: "")
                     if (s.isBlank() || a.isBlank()) return@LaunchedEffect
-                    
+
                     val fetched = withContext(Dispatchers.IO) {
                         MonochromeApiCanvas.getBySongArtist(s, a, targetItem.albumTitle)
                             ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
@@ -338,7 +334,7 @@ fun HeroCarousel(
                             }
                         }
                     }
-                    
+
                     AsyncImage(
                         model = heroImageRequest,
                         contentDescription = null,
@@ -359,24 +355,22 @@ fun HeroCarousel(
             }
         }
 
-        // static dark gradient overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.7f), // top dark tint
+                            Color.Black.copy(alpha = 0.7f),
                             Color.Black.copy(alpha = 0.2f),
                             Color.Transparent,
                             Color.Black.copy(alpha = 0.8f),
-                            Color.Black // completely black at the bottom to blend with background
+                            Color.Black
                         )
                     )
                 )
         )
 
-        // dynamic text overlay
         val currentMediaId by playerConnection.mediaMetadata.collectAsState()
 
         Box(modifier = Modifier.fillMaxSize()) {
@@ -425,7 +419,7 @@ fun HeroCarousel(
                             tint = Color.White,
                             modifier = Modifier
                                 .size(24.dp)
-                                .offset(x = if (playing) 0.dp else 2.dp) // visually center the play triangle
+                                .offset(x = if (playing) 0.dp else 2.dp)
                         )
                     }
                 }

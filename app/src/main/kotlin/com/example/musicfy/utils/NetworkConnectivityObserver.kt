@@ -1,5 +1,4 @@
-// networkconnectivityobserverkt
-// what is this for you ask its for network connectivity observer ofc
+// NetworkConnectivityObserver.kt
 
 package com.example.musicfy.utils
 
@@ -11,7 +10,6 @@ import android.net.NetworkRequest
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 
-// simple networkconnectivityobserver based on outertune s implementation provides
 class NetworkConnectivityObserver(context: Context) {
     private val connectivityManager =
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -34,15 +32,14 @@ class NetworkConnectivityObserver(context: Context) {
             .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
             .build()
-        
+
         try {
             connectivityManager.registerNetworkCallback(request, networkCallback)
         } catch (e: Exception) {
-            // fallback assume connected if registration fails
+
             _networkStatus.trySend(true)
         }
-        
-        // send initial state
+
         val isInitiallyConnected = isCurrentlyConnected()
         _networkStatus.trySend(isInitiallyConnected)
     }
@@ -50,17 +47,14 @@ class NetworkConnectivityObserver(context: Context) {
     fun unregister() {
         connectivityManager.unregisterNetworkCallback(networkCallback)
     }
-    
-    // check current connectivity state synchronously
+
     fun isCurrentlyConnected(): Boolean {
         return try {
             val activeNetwork = connectivityManager.activeNetwork
             val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-            
-            // check if we have internet capability
+
             val hasInternet = networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-            
-            // for api 23+ also check if connection is validated
+
             val isValidated =
                 networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
 

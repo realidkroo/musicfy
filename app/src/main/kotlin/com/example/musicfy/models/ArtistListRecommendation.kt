@@ -1,6 +1,4 @@
-// artistlistrecommendationkt
-// this thing is for the unified artist list home section one card per
-// collapsing every similar to x artist seed into a single row of grouped
+// ArtistListRecommendation.kt
 
 package com.example.musicfy.models
 

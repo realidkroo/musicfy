@@ -1,5 +1,4 @@
-// suggestionmodelskt
-// what is this for you ask its for suggestion models ofc
+// SuggestionModels.kt
 
 package com.example.musicfy.ui.screens.search.suggestions
 

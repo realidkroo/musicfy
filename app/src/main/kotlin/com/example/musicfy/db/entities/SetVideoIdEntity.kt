@@ -1,5 +1,4 @@
-// setvideoidentitykt
-// this thing is for set video id entity
+// SetVideoIdEntity.kt
 
 package com.example.musicfy.db.entities
 

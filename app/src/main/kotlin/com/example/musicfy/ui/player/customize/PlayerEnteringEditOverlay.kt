@@ -1,12 +1,4 @@
-// playerenteringeditoverlaykt
-// the beat between you held the artwork and here are the parts you can
-// blurs out behind a single line of text holds then fades away into the
-
-// the blur itself is not drawn here it is a rendereffect on the whole player
-// bottomsheetplayer which owns both because the concept frame blurs
-// title progress bar transport buttons and this overlay has to stay sharp
-// drawing a blurred copy from the glasskit capture would only have covered
-// than blurring them since that capture is scoped to morphingcover s subtree
+// PlayerEnteringEditOverlay.kt
 
 package com.example.musicfy.ui.player.customize
 
@@ -37,21 +29,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-// how long the message stays fully up before it starts leaving
 private const val HoldMillis = 2_200L
 
-// fade used both on the way in and on the way out
 private const val FadeMillis = 360
 
-// total time from long press to the selection layer fademillis in holdmillis
 @Composable
 fun PlayerEnteringEditOverlay(
     onFinished: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // without this back during the hold falls through to the sheet s own handler
-    // the player instead of simply calling the long press off
+
     androidx.activity.compose.BackHandler(onBack = onCancel)
 
     var visible by remember { mutableStateOf(false) }
@@ -69,8 +57,7 @@ fun PlayerEnteringEditOverlay(
         visible = true
         delay(HoldMillis + FadeMillis)
         visible = false
-        // hands over only once this layer has actually faded so the outlines appear
-        // clean screen instead of crossing through the message
+
         delay(FadeMillis.toLong())
         onFinished()
     }
@@ -79,8 +66,7 @@ fun PlayerEnteringEditOverlay(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()
-            // nothing is interactive for the duration including the sheet s own drag
-            // which lives on an ancestor and would otherwise still collapse the player
+
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -88,10 +74,7 @@ fun PlayerEnteringEditOverlay(
                     }
                 }
             }
-            // drawbehind not background background colorcopy alpha = alpha
-            // evaluates the fade in composition so this full screen overlay recomposed
-            // rebuilt its whole modifier chain on every frame of the fade inside the
-            // same read happens in the draw phase and costs a repaint instead
+
             .drawBehind { drawRect(Color.Black.copy(alpha = 0.52f * alpha)) }
     ) {
         Text(

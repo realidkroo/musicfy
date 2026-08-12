@@ -1,5 +1,4 @@
-// newpipe kt
-// this thing is part of new pipe
+// NewPipe.kt
 
 package com.music.innertube
 
@@ -137,7 +136,7 @@ class NewPipeUtils(
                 url,
             )
         } catch (e: Exception) {
-            // don t print stack trace caller handles errors
+
             null
         }
 }
@@ -184,7 +183,7 @@ object NewPipeExtractor {
                 (it.itagItem?.id ?: return@mapNotNull null) to it.content
             }
         } catch (e: Exception) {
-            // don t print stack trace caller handles errors
+
             emptyList()
         }
     }

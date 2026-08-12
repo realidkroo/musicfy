@@ -1,5 +1,4 @@
-// editplaylistresponse kt
-// the file functioned as edit playlist response
+// EditPlaylistResponse.kt
 
 package com.music.innertube.models.response
 

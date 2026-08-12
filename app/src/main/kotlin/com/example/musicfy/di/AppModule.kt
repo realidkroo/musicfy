@@ -1,5 +1,4 @@
-// appmodulekt
-// this thing is for app module
+// AppModule.kt
 
 package com.example.musicfy.di
 

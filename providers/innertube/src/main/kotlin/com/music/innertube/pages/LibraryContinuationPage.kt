@@ -1,5 +1,4 @@
-// librarycontinuationpage kt
-// this thing is for library continuation page
+// LibraryContinuationPage.kt
 
 package com.music.innertube.pages
 

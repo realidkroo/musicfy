@@ -1,5 +1,4 @@
-// editplaylistbody kt
-// what is this for you ask its for edit playlist body ofc
+// EditPlaylistBody.kt
 
 package com.music.innertube.models.body
 

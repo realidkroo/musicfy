@@ -9,14 +9,12 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
-// outcome of a real end to end probe of the monochrome playback backend
 sealed interface MonochromeConnectivityResult {
     data object Success : MonochromeConnectivityResult
     data class Unreachable(val reason: String) : MonochromeConnectivityResult
     data object TurnstileNeeded : MonochromeConnectivityResult
 }
 
-// probes the monochrome playback backend before the user commits to turning the
 suspend fun testMonochromeConnectivity(
     context: Context,
     apiBaseUrl: String = "https://track-api.monochrome.tf",
@@ -54,8 +52,6 @@ suspend fun testMonochromeConnectivity(
         playbackBodyJson = playbackBody,
     )
 
-    // any real http response even a 404 for this made up song proves the
-    // was solved and the exchanged session was accepted that s what we re
     return if (result != null) {
         MonochromeConnectivityResult.Success
     } else {

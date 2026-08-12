@@ -1,5 +1,4 @@
-// downloadnotificationmanagerkt
-// what is this for you ask its for downloadnotificationmanager ofc
+// downloadnotificationmanager.kt
 
 package com.example.musicfy.core.updater.downloadmanager
 
@@ -20,7 +19,7 @@ object DownloadNotificationManager {
     private lateinit var appContext: Context
 
     const val CHANNEL_ID = "download_progress_channel"
-    private const val CHANNEL_NAME = "Download Progress" // will be replaced with contextgetstring in initialize
+    private const val CHANNEL_NAME = "Download Progress"
     private const val NOTIFICATION_ID = 5678
 
     fun initialize(context: Context) {
@@ -43,7 +42,6 @@ object DownloadNotificationManager {
         }
     }
 
-    // show download starting notification
     fun showDownloadStarting(version: String, fileSize: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             showDownloadStartingModern(version, fileSize)
@@ -52,7 +50,6 @@ object DownloadNotificationManager {
         }
     }
 
-    // update download progress notification
     fun updateDownloadProgress(progress: Int, version: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             updateDownloadProgressModern(progress, version)
@@ -61,7 +58,6 @@ object DownloadNotificationManager {
         }
     }
 
-    // show download completed notification
     fun showDownloadComplete(version: String, filePath: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             showDownloadCompleteModern(version, filePath)
@@ -70,7 +66,6 @@ object DownloadNotificationManager {
         }
     }
 
-    // show download failed notification
     fun showDownloadFailed(version: String, errorMessage: String) {
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_warning)
@@ -88,25 +83,23 @@ object DownloadNotificationManager {
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
-    // cancel dismiss the notification
     fun cancelNotification() {
         notificationManager.cancel(NOTIFICATION_ID)
     }
 
-    // ============ modern implementation android 16+ ============
     @RequiresApi(Build.VERSION_CODES.BAKLAVA)
     private fun showDownloadStartingModern(version: String, fileSize: String) {
         val progressStyle = Notification.ProgressStyle()
             .also {
-                // create 4 segments alternating between primary and tertiary colors
+
                 for (i in 0 until 4) {
                     it.addProgressSegment(
                         Notification.ProgressStyle.Segment(25)
                             .setColor(
                                 if (i % 2 == 0) {
-                                    "#4285F4".toColorInt() // primary blue
+                                    "#4285F4".toColorInt()
                                 } else {
-                                    "#8E24AA".toColorInt() // tertiary maroon purple
+                                    "#8E24AA".toColorInt()
                                 }
                             )
                     )
@@ -115,7 +108,7 @@ object DownloadNotificationManager {
             .setProgress(0)
 
         val builder = Notification.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.musicfy_notification) // your app icon
+            .setSmallIcon(R.drawable.musicfy_notification)
             .setContentTitle(appContext.getString(R.string.downloading_update))
             .setContentText(appContext.getString(R.string.version_file_size, version, fileSize))
             .setOngoing(true)
@@ -124,7 +117,6 @@ object DownloadNotificationManager {
             .setCategory(Notification.CATEGORY_PROGRESS)
             .setWhen(System.currentTimeMillis())
 
-        // use safe helpers for android 16 features
         setRequestPromotedOngoingSafely(builder, true)
         setShortCriticalTextSafely(builder, appContext.getString(R.string.starting))
 
@@ -135,15 +127,15 @@ object DownloadNotificationManager {
     private fun updateDownloadProgressModern(progress: Int, version: String) {
         val progressStyle = Notification.ProgressStyle()
             .also {
-                // create 4 segments alternating colors like train carriages
+
                 for (i in 0 until 4) {
                     it.addProgressSegment(
                         Notification.ProgressStyle.Segment(25)
                             .setColor(
                                 if (i % 2 == 0) {
-                                    "#4285F4".toColorInt() // primary blue
+                                    "#4285F4".toColorInt()
                                 } else {
-                                    "#8E24AA".toColorInt() // tertiary maroon purple
+                                    "#8E24AA".toColorInt()
                                 }
                             )
                     )
@@ -152,7 +144,7 @@ object DownloadNotificationManager {
             .setProgress(progress)
 
         val builder = Notification.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.musicfy_notification) // your app icon
+            .setSmallIcon(R.drawable.musicfy_notification)
             .setContentTitle(appContext.getString(R.string.downloading_update))
             .setContentText(appContext.getString(R.string.version_progress, version, progress))
             .setOngoing(progress < 100)
@@ -161,7 +153,6 @@ object DownloadNotificationManager {
             .setCategory(Notification.CATEGORY_PROGRESS)
             .setWhen(System.currentTimeMillis())
 
-        // use safe helpers for android 16 features
         setRequestPromotedOngoingSafely(builder, progress < 100)
         setShortCriticalTextSafely(builder, "$progress%")
 
@@ -192,15 +183,15 @@ object DownloadNotificationManager {
 
         val progressStyle = Notification.ProgressStyle()
             .also {
-                // all segments completed alternating colors
+
                 for (i in 0 until 4) {
                     it.addProgressSegment(
                         Notification.ProgressStyle.Segment(25)
                             .setColor(
                                 if (i % 2 == 0) {
-                                    "#4285F4".toColorInt() // primary blue
+                                    "#4285F4".toColorInt()
                                 } else {
-                                    "#8E24AA".toColorInt() // tertiary maroon purple
+                                    "#8E24AA".toColorInt()
                                 }
                             )
                     )
@@ -209,7 +200,7 @@ object DownloadNotificationManager {
             .setProgress(100)
 
         val builder = Notification.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.updated) // checkmark icon when complete
+            .setSmallIcon(R.drawable.updated)
             .setContentTitle(appContext.getString(R.string.update_ready))
             .setContentText(appContext.getString(R.string.tap_to_install_version, version))
             .setAutoCancel(true)
@@ -219,7 +210,6 @@ object DownloadNotificationManager {
             .setCategory(Notification.CATEGORY_STATUS)
             .setWhen(System.currentTimeMillis())
 
-        // use safe helpers for android 16 features
         setRequestPromotedOngoingSafely(builder, false)
         setShortCriticalTextSafely(builder, appContext.getString(R.string.done))
 
@@ -236,11 +226,11 @@ object DownloadNotificationManager {
     }
 
     private fun setRequestPromotedOngoingSafely(builder: Notification.Builder, promoted: Boolean) {
-        // fallback set via extras first
+
         builder.getExtras().putBoolean("android.requestPromotedOngoing", promoted)
 
         try {
-            // try different possible method names from various previews
+
             val methodNames = arrayOf("setRequestPromotedOngoing", "setPromotedOngoing", "setOngoingActivity")
             for (name in methodNames) {
                 try {
@@ -252,10 +242,9 @@ object DownloadNotificationManager {
         } catch (e: Exception) {}
     }
 
-    // ============ legacy implementation pre android 16 ============
     private fun showDownloadStartingLegacy(version: String, fileSize: String) {
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.musicfy_notification) // your app icon
+            .setSmallIcon(R.drawable.musicfy_notification)
             .setContentTitle(appContext.getString(R.string.downloading_update))
             .setContentText(appContext.getString(R.string.version_file_size, version, fileSize))
             .setProgress(100, 0, false)
@@ -270,7 +259,7 @@ object DownloadNotificationManager {
 
     private fun updateDownloadProgressLegacy(progress: Int, version: String) {
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.musicfy_notification) // your app icon
+            .setSmallIcon(R.drawable.musicfy_notification)
             .setContentTitle(appContext.getString(R.string.downloading_update))
             .setContentText(appContext.getString(R.string.version_progress, version, progress))
             .setProgress(100, progress, false)
@@ -305,7 +294,7 @@ object DownloadNotificationManager {
         )
 
         val notification = NotificationCompat.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.updated) // checkmark icon when complete
+            .setSmallIcon(R.drawable.updated)
             .setContentTitle(appContext.getString(R.string.update_ready))
             .setContentText(appContext.getString(R.string.tap_to_install_version, version))
             .setProgress(0, 0, false)

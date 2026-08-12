@@ -1,5 +1,4 @@
-// onlineplaylistscreenkt
-// this thing is part of online playlist screen
+// OnlinePlaylistScreen.kt
 
 package com.example.musicfy.ui.screens.playlist
 
@@ -725,9 +724,7 @@ private fun OnlinePlaylistHeader(
     }
 
     val isSaved = dbPlaylist?.playlist?.bookmarkedAt != null
-    // a real youtube creator s name if this playlist has one otherwise hidden
-    // entirely rather than falling back to you the signed in account since an
-    // auto generated yt playlist radio mixes algorithmic lists etc isn t yours
+
     val creatorName = playlist.author?.name.orEmpty()
 
     com.example.musicfy.ui.component.detail.PlaylistScreenHeader(

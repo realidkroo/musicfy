@@ -1,8 +1,7 @@
-// browsescreenkt
-// the file functioned as browse screen
+// BrowseScreen.kt
 
 package com.example.musicfy.ui.screens
- 
+
  import androidx.compose.foundation.ExperimentalFoundationApi
  import androidx.compose.foundation.combinedClickable
  import androidx.compose.foundation.layout.asPaddingValues
@@ -57,16 +56,15 @@ package com.example.musicfy.ui.screens
      val playerConnection = LocalPlayerConnection.current ?: return
      val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
      val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
- 
+
      val title by viewModel.title.collectAsState()
      val items by viewModel.items.collectAsState()
- 
+
      val coroutineScope = rememberCoroutineScope()
      val gridItemSize by rememberEnumPreference(GridItemsSizeKey, GridItemSize.BIG)
 
-     // deduplicated once per emission instead of on every recomposition of this
      val distinctItems = remember(items) { items?.distinctBy { it.id } }
- 
+
      LazyVerticalGrid(
          columns = GridCells.Adaptive(minSize = GridThumbnailHeight + if (gridItemSize == GridItemSize.BIG) 24.dp else (-24).dp),
          contentPadding = LocalPlayerAwareWindowInsets.current.asPaddingValues()
@@ -90,7 +88,7 @@ package com.example.musicfy.ui.screens
                                      is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
                                      is ArtistItem -> navController.navigate("artist/${item.id}")
                                      else -> {
-                                         // do nothing
+
                                      }
                                  }
                              },
@@ -103,7 +101,7 @@ package com.example.musicfy.ui.screens
                                                  navController = navController,
                                                  onDismiss = menuState::dismiss
                                              )
- 
+
                                          is PlaylistItem -> {
                                              YouTubePlaylistMenu(
                                                  playlist = item,
@@ -114,16 +112,16 @@ package com.example.musicfy.ui.screens
                                                  }
                                              )
                                          }
- 
+
                                          is ArtistItem -> {
                                              YouTubeArtistMenu(
                                                  artist = item,
                                                  onDismiss = menuState::dismiss
                                              )
                                          }
- 
+
                                          else -> {
-                                             // do nothing
+
                                          }
                                      }
                                  }
@@ -131,7 +129,7 @@ package com.example.musicfy.ui.screens
                          )
                  )
              }
- 
+
              if (items.isEmpty()) {
                  items(8) {
                      ShimmerHost {
@@ -141,7 +139,7 @@ package com.example.musicfy.ui.screens
              }
          }
      }
- 
+
      TopAppBar(
          title = { Text(title ?: "") },
          navigationIcon = {

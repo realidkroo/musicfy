@@ -1,5 +1,4 @@
-// exodownloadservicekt
-// this thing is part of exo download service
+// ExoDownloadService.kt
 
 package com.example.musicfy.playback
 
@@ -19,7 +18,6 @@ import androidx.media3.exoplayer.scheduler.Scheduler
 import com.example.musicfy.R
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-
 
 @AndroidEntryPoint
 class ExoDownloadService : DownloadService(
@@ -74,8 +72,6 @@ class ExoDownloadService : DownloadService(
             ).build()
         ).build()
 
-
-    // this helper will outlive the lifespan of a single instance of
     class TerminalStateNotificationHelper(
         private val context: Context,
         private val notificationHelper: DownloadNotificationHelper,

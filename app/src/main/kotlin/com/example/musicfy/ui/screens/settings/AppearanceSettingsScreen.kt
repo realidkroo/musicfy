@@ -1,13 +1,4 @@
-// appearancesettingsscreenkt
-// appearance section split out of the old flat settingsscreen theme the
-// actually calls darkmodekey s setter it existed as a dead enum before
-// background + its lyrics sync sub option animated canvas + wi fi only
-// quality badge stubbed for a later pass blur then the pre existing
-// toggles kept in a second group so nothing that already worked gets
-
-// chrome back button collapsing title progressive blur bottom bar
-// subsettingsscaffold the rows use the grouped style so parent options with
-// render inside a shared pill
+// AppearanceSettingsScreen.kt
 
 package com.example.musicfy.ui.screens.settings
 
@@ -75,7 +66,6 @@ fun AppearanceSettingsScreen(navController: NavController) {
         defaultValue = false
     )
 
-    // pre existing toggles kept working just moved here from the old flat screen
     val (showPlayerBottomCard, onShowPlayerBottomCardChange) = rememberPreference(
         ShowPlayerBottomCardKey,
         defaultValue = true
@@ -217,8 +207,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                         descriptionText = "Wide blur effects across the app",
                         icon = painterResource(R.drawable.gradient),
                         iconShape = CircleShape,
-                        // stored key is still disable blur only the presentation is positive
-                        // so the switch reads on = blur showing
+
                         onClick = { onDisableBlurChange(!disableBlur) },
                         trailingContent = {
                             AppSwitch(

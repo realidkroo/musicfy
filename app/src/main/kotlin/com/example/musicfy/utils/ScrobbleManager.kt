@@ -1,5 +1,4 @@
-// scrobblemanagerkt
-// what is this for you ask its for scrobble manager ofc
+// ScrobbleManager.kt
 
 package com.example.musicfy.utils
 

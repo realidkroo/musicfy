@@ -1,5 +1,4 @@
-// deeplservicekt
-// this thing is for deep lservice
+// DeepLService.kt
 
 package com.example.musicfy.api
 
@@ -29,16 +28,14 @@ object DeepLService {
         maxRetries: Int = 3
     ): Result<List<String>> = withContext(Dispatchers.IO) {
         var currentAttempt = 0
-        
-        // validate input
+
         if (text.isBlank()) {
             return@withContext Result.failure(Exception("Input text is empty"))
         }
-        
+
         val lines = text.lines()
         val lineCount = lines.size
-        
-        // deepl language codes uppercase
+
         val deeplLangCode = when (targetLanguage.lowercase()) {
             "zh", "zh-cn", "zh-hans" -> "ZH"
             "zh-tw", "zh-hant" -> "ZH"
@@ -48,14 +45,13 @@ object DeepLService {
             "pt-br" -> "PT-BR"
             else -> targetLanguage.uppercase().take(2)
         }
-        
-        // determine if using free or pro api
+
         val baseUrl = if (apiKey.endsWith(":fx")) {
             "https://api-free.deepl.com/v2/translate"
         } else {
             "https://api.deepl.com/v2/translate"
         }
-        
+
         while (currentAttempt < maxRetries) {
             try {
                 val jsonBody = JSONObject().apply {
@@ -80,15 +76,15 @@ object DeepLService {
                 val responseBody = response.body?.string()
 
                 if (!response.isSuccessful) {
-                    // retry on server errors 5xx
+
                     if (response.code >= 500) {
                         currentAttempt++
                         kotlinx.coroutines.delay(1000L * currentAttempt)
                         continue
                     }
-                    
+
                     val errorMsg = try {
-                        JSONObject(responseBody ?: "").optString("message") 
+                        JSONObject(responseBody ?: "").optString("message")
                             ?: "HTTP ${response.code}: ${response.message}"
                     } catch (e: Exception) {
                         "HTTP ${response.code}: ${response.message}"
@@ -107,7 +103,7 @@ object DeepLService {
                     val translatedLines = (0 until translations.length()).map { i ->
                         translations.getJSONObject(i).optString("text", "")
                     }
-                    
+
                     if (translatedLines.size == lineCount) {
                         return@withContext Result.success(translatedLines)
                     } else if (translatedLines.size > lineCount) {

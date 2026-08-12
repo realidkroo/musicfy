@@ -1,5 +1,4 @@
-// queuemenukt
-// this thing is part of queue menu
+// QueueMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -97,8 +96,7 @@ fun QueueMenu(
 
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
     val downloadUtil = LocalDownloadUtil.current
-    // remember id getdownload returns a new flow each call so an
-    // unremembered collectasstate relaunches its coroutine every recomposition
+
     val download by remember(downloadUtil, mediaMetadata.id) {
         downloadUtil.getDownload(mediaMetadata.id)
     }.collectAsState(initial = null)
@@ -182,7 +180,6 @@ fun QueueMenu(
         }
     }
 
-    // song header with like button
     MediaMetadataListItem(
         mediaMetadata = mediaMetadata,
         shape = listItemShape(0, 2),
@@ -234,7 +231,7 @@ fun QueueMenu(
             bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding(),
         ),
     ) {
-        // quick actions grid
+
         item {
             NewActionGrid(
                 actions = listOf(
@@ -295,7 +292,6 @@ fun QueueMenu(
             )
         }
 
-        // play next add to queue
         item {
             Material3MenuGroup(
                 items = listOf(
@@ -341,7 +337,6 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // download section
         item {
             Material3MenuGroup(
                 items = listOf(
@@ -426,7 +421,6 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // navigation section artist album
         item {
             Material3MenuGroup(
                 items = buildList {
@@ -492,7 +486,6 @@ fun QueueMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // details and refetch section
         item {
             Material3MenuGroup(
                 items = buildList {

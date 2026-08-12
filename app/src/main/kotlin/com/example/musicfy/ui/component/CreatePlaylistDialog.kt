@@ -1,5 +1,4 @@
-// createplaylistdialogkt
-// this thing is for create playlist dialog
+// CreatePlaylistDialog.kt
 
 package com.example.musicfy.ui.component
 
@@ -72,12 +71,11 @@ fun CreatePlaylistDialog(
                     bookmarkedAt = LocalDateTime.now(),
                     isEditable = true,
                 )
-                
+
                 database.query {
                     insert(playlistEntity)
                 }
 
-// onplaylistcreated invoke playlistentityid
                 withContext(Dispatchers.Main) {
                     onPlaylistCreated?.invoke(playlistEntity.id)
                 }

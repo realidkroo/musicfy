@@ -1,16 +1,4 @@
-// genrescreenkt
-// the page behind every mood genre tile on the search landing screen
-
-// structurally a clone of the home feed full bleed artwork header sections
-// scrolling cards and a from the community row of big fanned cover cards
-// scroll driven top bar the genre s own title rises out of the header and
-// and travels back down on the way up like the rest of the rebuilt search
-// material 3 components
-
-// the header artwork is the genre s own top playlist cover rather than a
-// is real content for the category it needs no asset shipped with the app
-// changes as the category s featured playlists change categories that return
-// to a gradient built from the tile s own colour so the header never renders
+// GenreScreen.kt
 
 package com.example.musicfy.ui.screens.search
 
@@ -88,7 +76,6 @@ import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.viewmodels.CommunityPlaylistItem
 import com.example.musicfy.viewmodels.GenreViewModel
 
-// how much of the header has to scroll away before the title has fully moved into the bar
 private val HeaderHeight = 300.dp
 
 @Composable
@@ -107,9 +94,6 @@ fun GenreScreen(
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val bottomInset = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()
 
-    // latched and animated on the shared curve exactly like the search bar see
-    // remembercollapseprogress the threshold is most of the header s height so
-    // hands over once the artwork has genuinely gone
     val enterPx = with(density) { (HeaderHeight - statusBar - 96.dp).toPx().coerceAtLeast(1f) }
     val latch = remember(listState) { booleanArrayOf(false) }
     val collapsed by remember(listState, enterPx) {
@@ -164,8 +148,6 @@ fun GenreScreen(
                     )
                 }
 
-                // sections the server returned with no playable items at all rendered as a
-                // heading and a blank strip they are dropped rather than shown empty
                 val sections = browseResult?.items?.filter { it.items.isNotEmpty() }
                 if (sections == null) {
                     item(key = "loading") {
@@ -231,8 +213,6 @@ fun GenreScreen(
                         }
                         item(key = "gap_$index") { Spacer(modifier = Modifier.height(26.dp)) }
 
-                        // slotted in after the first server section the way the home feed puts the
-                        // community row between its own rows rather than at the very bottom
                         if (index == 0) {
                             val cards = community
                             if (cards == null || cards.isNotEmpty()) {
@@ -294,11 +274,6 @@ fun GenreScreen(
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// header
-// ───────────────────────────────────────────────────────────────────────────
-
-// full bleed artwork the genre title and its description the artwork parallaxes
 @Composable
 private fun GenreHeader(
     title: String,
@@ -314,9 +289,7 @@ private fun GenreHeader(
         modifier = Modifier
             .fillMaxWidth()
             .height(HeaderHeight)
-            // without this the artwork s parallax which moves it down as the page
-            // slid the blurred image and its gradient straight out of the header and
-            // first row of cards the gradient flying over the sections
+
             .clipToBounds()
     ) {
         if (artworkUrl != null) {
@@ -328,9 +301,7 @@ private fun GenreHeader(
                     .fillMaxSize()
                     .graphicsLayer {
                         translationY = progressProvider() * parallaxPx
-                        // heavily blurred this is an ambient wash behind the title not a picture
-                        // the user is meant to read built once here not per frame the radius
-                        // is constant and only the layer s transform changes
+
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                             renderEffect = android.graphics.RenderEffect
                                 .createBlurEffect(
@@ -355,8 +326,6 @@ private fun GenreHeader(
             )
         }
 
-        // fades the artwork into the page on both edges so there is no hard seam
-        // bar or above the first row
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -377,8 +346,7 @@ private fun GenreHeader(
                 .padding(start = SearchHorizontalPadding, end = SearchHorizontalPadding, bottom = 28.dp)
                 .graphicsLayer {
                     val p = progressProvider()
-                    // gone by the time the bar s own copy has faded in so the two are never both
-                    // legible at once
+
                     alpha = (1f - p * 1.8f).coerceIn(0f, 1f)
                     val scale = 1f - p * 0.12f
                     scaleX = scale
@@ -413,11 +381,6 @@ private fun GenreHeader(
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// top bar
-// ───────────────────────────────────────────────────────────────────────────
-
-// back affordance plus the title the header hands over to over the same progressive glass
 @Composable
 private fun GenreTopBar(
     glassState: GlassState,
@@ -504,8 +467,7 @@ private fun GenreTopBar(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.graphicsLayer {
-                    // arrives only once the header s own copy has gone and rises the last few dp
-                    // into place rather than simply appearing
+
                     val p = progressProvider()
                     alpha = ((p - 0.55f) / 0.45f).coerceIn(0f, 1f)
                     translationY = (1f - alpha) * risePx
@@ -515,11 +477,6 @@ private fun GenreTopBar(
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// cards
-// ───────────────────────────────────────────────────────────────────────────
-
-// one playlist album artist song in a genre section row
 @Composable
 private fun GenreItemCard(
     item: YTItem,
@@ -565,7 +522,6 @@ private fun GenreItemCard(
     }
 }
 
-// the big from the community card the playlist s own songs fanned out behind
 @Composable
 private fun GenreCommunityCard(
     item: CommunityPlaylistItem,
@@ -580,9 +536,7 @@ private fun GenreCommunityCard(
             .searchCardBorder(20.dp)
             .clickable(onClick = onClick),
     ) {
-        // the fan rotated as one group so the covers stay in register with each
-        // clipped by the card the same construction as the home card minus its
-        // extraction three bitmap decodes per card is too much for a row that
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()

@@ -1,5 +1,4 @@
-// audioformatbadgekt
-// this thing is for audio format badge
+// AudioFormatBadge.kt
 
 package com.example.musicfy.ui.component
 
@@ -31,7 +30,7 @@ fun AudioFormatBadge(
     val mimeType = format?.mimeType?.lowercase() ?: ""
     val codecs = format?.codecs?.lowercase() ?: ""
     val ext = fallbackId?.substringAfterLast('.')?.lowercase() ?: ""
-    
+
     val (spatialAudio) = rememberPreference(EnableSpatialAudioKey, defaultValue = false)
 
     val iconRes = when {

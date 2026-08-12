@@ -1,5 +1,4 @@
-// javascriptutilkt
-// the file functioned as java script util
+// JavaScriptUtil.kt
 
 package com.example.musicfy.utils.potoken
 
@@ -13,7 +12,6 @@ import kotlinx.serialization.json.long
 import okio.ByteString.Companion.decodeBase64
 import okio.ByteString.Companion.toByteString
 
-// parses the raw challenge data obtained from the create endpoint and returns an
 fun parseChallengeData(rawChallengeData: String): String {
     val scrambled = Json.parseToJsonElement(rawChallengeData).jsonArray
 
@@ -60,18 +58,15 @@ fun parseChallengeData(rawChallengeData: String): String {
     )
 }
 
-// parses the raw integrity token data obtained from the generateit endpoint to a
 fun parseIntegrityTokenData(rawIntegrityTokenData: String): Pair<String, Long> {
     val integrityTokenData = Json.parseToJsonElement(rawIntegrityTokenData).jsonArray
     return base64ToU8(integrityTokenData[0].jsonPrimitive.content) to integrityTokenData[1].jsonPrimitive.long
 }
 
-// converts a string usually the identifier used as input to obtainpotoken to
 fun stringToU8(identifier: String): String {
     return newUint8Array(identifier.toByteArray())
 }
 
-// takes a potoken encoded as a sequence of bytes represented as integers
 fun u8ToBase64(poToken: String): String {
     return poToken.split(",")
         .map { it.toUByte().toByte() }
@@ -82,7 +77,6 @@ fun u8ToBase64(poToken: String): String {
         .replace("/", "_")
 }
 
-// takes the scrambled challenge decodes it from base64 adds 97 to each byte
 private fun descramble(scrambledChallenge: String): String {
     return base64ToByteString(scrambledChallenge)
         .map { (it + 97).toByte() }
@@ -90,7 +84,6 @@ private fun descramble(scrambledChallenge: String): String {
         .decodeToString()
 }
 
-// decodes a base64 string encoded in the specific base64 representation used by
 private fun base64ToU8(base64: String): String {
     return newUint8Array(base64ToByteString(base64))
 }
@@ -99,7 +92,6 @@ private fun newUint8Array(contents: ByteArray): String {
     return "new Uint8Array([" + contents.joinToString(separator = ",") { it.toUByte().toString() } + "])"
 }
 
-// decodes a base64 string encoded in the specific base64 representation used by
 private fun base64ToByteString(base64: String): ByteArray {
     val base64Mod = base64
         .replace('-', '+')

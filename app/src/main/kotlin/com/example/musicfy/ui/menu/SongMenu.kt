@@ -1,5 +1,4 @@
-// songmenukt
-// this thing is for song menu
+// SongMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -111,8 +110,7 @@ fun SongMenu(
     val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
     val song = songState.value ?: originalSong
     val downloadUtil = LocalDownloadUtil.current
-    // remember id getdownload returns a new flow each call so an
-    // unremembered collectasstate relaunches its coroutine every recomposition
+
     val download by remember(downloadUtil, originalSong.id) {
         downloadUtil.getDownload(originalSong.id)
     }.collectAsState(initial = null)
@@ -452,10 +450,10 @@ fun SongMenu(
                 items = buildList {
                     add(
                         Material3MenuItemData(
-                            title = { 
+                            title = {
                                 Text(
-                                    text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial" 
-                                ) 
+                                    text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial"
+                                )
                             },
                             icon = {
                                 Icon(

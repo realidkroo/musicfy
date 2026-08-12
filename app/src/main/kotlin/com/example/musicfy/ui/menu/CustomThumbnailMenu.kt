@@ -1,5 +1,4 @@
-// customthumbnailmenukt
-// what is this for you ask its for custom thumbnail menu ofc
+// CustomThumbnailMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -37,8 +36,8 @@ fun CustomThumbnailMenu(
     ) {
         item {
             ListItem(
-                headlineContent = { 
-                    Text(text = stringResource(R.string.choose_from_library)) 
+                headlineContent = {
+                    Text(text = stringResource(R.string.choose_from_library))
                 },
                 leadingContent = {
                     Icon(
@@ -54,8 +53,8 @@ fun CustomThumbnailMenu(
         }
         item {
             ListItem(
-                headlineContent = { 
-                    Text(text = stringResource(R.string.remove_custom_image)) 
+                headlineContent = {
+                    Text(text = stringResource(R.string.remove_custom_image))
                 },
                 leadingContent = {
                     Icon(

@@ -1,9 +1,6 @@
-// changelogscreenkt
-// this thing is for changelogscreen
+// changelogscreen.kt
 
 package com.example.musicfy.core.changelog
-
-
 
 import android.content.Context
 import android.content.Intent
@@ -148,16 +145,16 @@ fun ChangelogScreen(
                     val connection = changelogUrl.openConnection() as HttpURLConnection
                     connection.setRequestProperty("User-Agent", "Musicfy-Changelog-App")
                     connection.setRequestProperty("Accept", "application/json")
-                    
+
                     if (connection.responseCode == 200) {
                         val changelogJson = connection.inputStream.bufferedReader().use { it.readText() }
                         val changelogData = JSONObject(changelogJson)
-                        
+
                         val desc = changelogData.optString("description", null)
                         val imageUrl = changelogData.optString("image", null)
                         val warning = changelogData.optString("warning", null)
                         val changelogArray = changelogData.optJSONArray("changelog")
-                        
+
                         val sections = mutableListOf<ChangelogSection>()
                         if (changelogArray != null) {
                             for (i in 0 until changelogArray.length()) {
@@ -175,7 +172,7 @@ fun ChangelogScreen(
                                         sections.add(ChangelogSection(title, items))
                                     }
                                 } else {
-                                    // fallback this is the old format array of strings
+
                                     val item = changelogArray.optString(i, "")
                                     if (item.isNotBlank()) {
                                         if (sections.isEmpty() || sections[0].title.isNotBlank()) {
@@ -186,7 +183,7 @@ fun ChangelogScreen(
                                 }
                             }
                         }
-                        
+
                         saveChangelogToCache(context, tag, sections, imageUrl, desc, warning)
                         withContext(Dispatchers.Main) {
                             changelogSections = sections
@@ -221,7 +218,7 @@ fun ChangelogScreen(
                 val connection = releasesUrl.openConnection() as HttpURLConnection
                 connection.setRequestProperty("User-Agent", "Musicfy-Changelog-App")
                 connection.setRequestProperty("Accept", "application/vnd.github+json")
-                
+
                 if (connection.responseCode == 200) {
                     val json = connection.inputStream.bufferedReader().use { it.readText() }
                     val array = JSONArray(json)
@@ -303,7 +300,7 @@ fun ChangelogScreen(
                 .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom))
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // version selection chips
+
                 if (availableReleases.isNotEmpty()) {
                     Row(
                         modifier = Modifier
@@ -368,7 +365,7 @@ fun ChangelogScreen(
                             .verticalScroll(rememberScrollState())
                     ) {
                         if (isLoading && availableReleases.isEmpty()) {
-                            // show nothing or a small loader while initial releases are fetching
+
                         } else {
                             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                                 Row(
@@ -388,7 +385,7 @@ fun ChangelogScreen(
                                         }
                                     }
                                 }
-                                
+
                                 updateImage?.let { imageUrl ->
                                     Spacer(modifier = Modifier.height(16.dp))
                                     AsyncImage(
@@ -420,7 +417,7 @@ fun ChangelogScreen(
                                         } else {
                                             Spacer(Modifier.height(16.dp))
                                         }
-                                        
+
                                         section.items.forEach { item ->
                                             val urls = item.extractUrls()
                                             val annotatedText = buildAnnotatedString {
@@ -455,7 +452,7 @@ fun ChangelogScreen(
                                         }
                                     }
                                 }
-                                
+
                                 Spacer(Modifier.height(32.dp))
                             }
                         }
@@ -463,7 +460,6 @@ fun ChangelogScreen(
                 }
             }
 
-            // the loading indicator at the top center
             Box(
                 Modifier
                     .align(Alignment.TopCenter)
@@ -517,7 +513,7 @@ private fun loadChangelogFromCache(context: Context, versionTag: String): Cached
         val cacheFile = File(context.filesDir, "changelog_cache_$versionTag.json")
         if (!cacheFile.exists()) return null
         val cacheData = JSONObject(context.openFileInput("changelog_cache_$versionTag.json").use { it.bufferedReader().readText() })
-        
+
         val sectionsArray = cacheData.optJSONArray("sections")
         val sections = mutableListOf<ChangelogSection>()
         if (sectionsArray != null) {
@@ -532,7 +528,7 @@ private fun loadChangelogFromCache(context: Context, versionTag: String): Cached
                 sections.add(ChangelogSection(title, items))
             }
         }
-        
+
         CachedChangelogData(
             sections = sections,
             image = cacheData.optString("image", null).takeIf { !it.isNullOrBlank() },

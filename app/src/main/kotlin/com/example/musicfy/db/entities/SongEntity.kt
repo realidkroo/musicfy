@@ -1,5 +1,4 @@
-// songentitykt
-// what is this for you ask its for song entity ofc
+// SongEntity.kt
 
 package com.example.musicfy.db.entities
 
@@ -26,18 +25,18 @@ import java.time.LocalDateTime
 data class SongEntity(
     @PrimaryKey val id: String,
     val title: String,
-    val duration: Int = -1, // in seconds
+    val duration: Int = -1,
     val thumbnailUrl: String? = null,
     val albumId: String? = null,
     val albumName: String? = null,
     @ColumnInfo(defaultValue = "0")
     val explicit: Boolean = false,
     val year: Int? = null,
-    val date: LocalDateTime? = null, // id3 tag property
-    val dateModified: LocalDateTime? = null, // file property
+    val date: LocalDateTime? = null,
+    val dateModified: LocalDateTime? = null,
     val liked: Boolean = false,
     val likedDate: LocalDateTime? = null,
-    val totalPlayTime: Long = 0, // in milliseconds
+    val totalPlayTime: Long = 0,
     val inLibrary: LocalDateTime? = null,
     val dateDownload: LocalDateTime? = null,
     @ColumnInfo(name = "isLocal", defaultValue = false.toString())
@@ -79,7 +78,7 @@ data class SongEntity(
     ).also {
         if (syncToYouTube) {
             CoroutineScope(Dispatchers.IO).launch {
-                // use the new reliable method that fetches fresh tokens
+
                 val addToLibrary = inLibrary == null
                 YouTube.toggleSongLibrary(id, addToLibrary)
             }

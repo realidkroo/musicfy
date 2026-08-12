@@ -1,5 +1,4 @@
-// testhazetint kt
-// the file functioned as test haze tint
+// TestHazeTint.kt
 
 import dev.chrisbanes.haze.HazeTint
 import androidx.compose.ui.graphics.Color

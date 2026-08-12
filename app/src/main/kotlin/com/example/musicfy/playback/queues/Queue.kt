@@ -1,5 +1,4 @@
-// queuekt
-// what is this for you ask its for queue ofc
+// Queue.kt
 
 package com.example.musicfy.playback.queues
 

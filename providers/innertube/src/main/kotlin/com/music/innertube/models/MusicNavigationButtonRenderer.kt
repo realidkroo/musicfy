@@ -1,5 +1,4 @@
-// musicnavigationbuttonrenderer kt
-// this thing is for music navigation button renderer
+// MusicNavigationButtonRenderer.kt
 
 package com.music.innertube.models
 

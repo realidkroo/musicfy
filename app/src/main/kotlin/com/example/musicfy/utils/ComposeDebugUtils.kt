@@ -1,5 +1,4 @@
-// composedebugutilskt
-// the file functioned as compose debug utils
+// ComposeDebugUtils.kt
 
 package com.example.musicfy.utils
 
@@ -22,25 +21,17 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlin.math.min
 
-// a modifier that draws a border around elements that are recomposing the
 @Stable
 fun Modifier.recomposeHighlighter(): Modifier = this.then(recomposeModifier)
 
-// use a single instance + @stable to ensure that recompositions can enable
-// modifiercomposed will still remember unique data per call site
 private val recomposeModifier =
     Modifier.composed(inspectorInfo = debugInspectorInfo { name = "recomposeHighlighter" }) {
-        // the total number of compositions that have occurred we re not using a
-        // able to read write the value without invalidating which would cause
-        // recomposition
+
         val totalCompositions = remember { arrayOf(0L) }
         totalCompositions[0]++
 
-        // the value of totalcompositions at the last timeout
         val totalCompositionsAtLastTimeout = remember { mutableLongStateOf(0L) }
 
-        // start the timeout and reset everytime there s a recomposition using
-        // as the key is really just to cause the timer to restart every composition
         LaunchedEffect(totalCompositions[0]) {
             delay(3000)
             totalCompositionsAtLastTimeout.longValue = totalCompositions[0]
@@ -48,11 +39,9 @@ private val recomposeModifier =
 
         Modifier.drawWithCache {
             onDrawWithContent {
-                // draw actual content
+
                 drawContent()
 
-                // below is to draw the highlight if necessary a lot of the logic is copied
-                // modifierborder
                 val numCompositionsSinceTimeout =
                     totalCompositions[0] - totalCompositionsAtLastTimeout.longValue
 
@@ -63,13 +52,11 @@ private val recomposeModifier =
 
                 val (color, strokeWidthPx) =
                     when (numCompositionsSinceTimeout) {
-                        // we need at least one composition to draw so draw the smallest border
-                        // color in blue
+
                         1L -> Color.Blue to 1f
-                        // 2 compositions is _probably_ okay
+
                         2L -> Color.Green to 2.dp.toPx()
-                        // 3 or more compositions before timeout may indicate an issue lerp the
-                        // color from yellow to red and continually increase the border size
+
                         else -> {
                             lerp(
                                 Color.Yellow.copy(alpha = 0.8f),

@@ -1,5 +1,4 @@
-// youtubeplaylistqueuekt
-// the file functioned as you tube playlist queue
+// YouTubePlaylistQueue.kt
 
 package com.example.musicfy.playback.queues
 
@@ -49,7 +48,7 @@ class YouTubePlaylistQueue(
         return withContext(IO) {
             val currentContinuation = continuation ?: return@withContext emptyList()
             var lastException: Throwable? = null
-            
+
             for (attempt in 0..maxRetries) {
                 try {
                     val continuationPage = YouTube.playlistContinuation(currentContinuation).getOrThrow()

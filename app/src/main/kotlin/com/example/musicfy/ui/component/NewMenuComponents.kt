@@ -1,5 +1,4 @@
-// newmenucomponentskt
-// what is this for you ask its for new menu components ofc
+// NewMenuComponents.kt
 
 package com.example.musicfy.ui.component
 
@@ -47,7 +46,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 
-// enhanced action button material 3 expressive design
 @Composable
 fun NewActionButton(
     icon: @Composable () -> Unit,
@@ -63,7 +61,7 @@ fun NewActionButton(
         animationSpec = tween(200),
         label = "background"
     )
-    
+
     val animatedContent by animateColorAsState(
         targetValue = if (enabled) contentColor else contentColor.copy(alpha = 0.5f),
         animationSpec = tween(200),
@@ -102,9 +100,9 @@ fun NewActionButton(
             ) {
                 icon()
             }
-            
+
             Spacer(modifier = Modifier.height(6.dp))
-            
+
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelMedium,
@@ -118,7 +116,6 @@ fun NewActionButton(
     }
 }
 
-// enhanced menu item material 3 expressive design
 @Composable
 fun NewMenuItem(
     headlineContent: @Composable () -> Unit,
@@ -141,7 +138,6 @@ fun NewMenuItem(
     )
 }
 
-// enhanced menu section header material 3 expressive design
 @Composable
 fun NewMenuSectionHeader(
     text: String,
@@ -158,7 +154,6 @@ fun NewMenuSectionHeader(
     )
 }
 
-// enhanced action grid material 3 expressive design
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun NewActionGrid(
@@ -217,7 +212,6 @@ fun NewActionGrid(
     }
 }
 
-// enhanced action data class
 data class NewAction(
     val icon: @Composable () -> Unit,
     val text: String,
@@ -227,7 +221,6 @@ data class NewAction(
     val contentColor: Color = Color.Unspecified
 )
 
-// enhanced menu content material 3 expressive design
 @Composable
 fun NewMenuContent(
     headerContent: @Composable (() -> Unit)? = null,
@@ -239,26 +232,22 @@ fun NewMenuContent(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // header
+
         headerContent?.invoke()
-        
-        // action grid
+
         actionGrid?.invoke()
-        
-        // divider if both header and actions exist
+
         if (headerContent != null && actionGrid != null) {
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 16.dp),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
         }
-        
-        // menu items
+
         menuItems?.invoke()
     }
 }
 
-// enhanced icon button material 3 expressive design
 @Composable
 fun NewIconButton(
     icon: @Composable () -> Unit,
@@ -273,7 +262,7 @@ fun NewIconButton(
         animationSpec = tween(200),
         label = "background"
     )
-    
+
     val animatedContent by animateColorAsState(
         targetValue = if (enabled) contentColor else contentColor.copy(alpha = 0.5f),
         animationSpec = tween(200),
@@ -302,7 +291,6 @@ fun NewIconButton(
     }
 }
 
-// enhanced menu container material 3 expressive design
 @Composable
 fun NewMenuContainer(
     content: @Composable () -> Unit,

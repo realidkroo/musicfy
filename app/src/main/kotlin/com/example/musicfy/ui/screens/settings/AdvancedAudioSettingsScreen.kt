@@ -1,4 +1,5 @@
-// advancedaudiosettingsscreenkt
+// AdvancedAudioSettingsScreen.kt
+
 package com.example.musicfy.ui.screens.settings
 import com.example.musicfy.ui.component.AppSwitch
 
@@ -35,7 +36,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
     val (enableCustomApi, onEnableCustomApiChange) = rememberPreference(EnableCustomApiKey, defaultValue = false)
     val (enableMonochromeBackend, onEnableMonochromeBackendChange) = rememberPreference(EnableMonochromeBackendKey, defaultValue = false)
     val (enableSpatialAudio, onEnableSpatialAudioChange) = rememberPreference(EnableSpatialAudioKey, defaultValue = false)
-    
+
     val (audioQuality, onAudioQualityChange) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
 
     val (amazonMusicApiUrl, onAmazonMusicApiUrlChange) = rememberPreference(AmazonMusicApiUrlKey, defaultValue = "https://amz.geeked.wtf")
@@ -47,7 +48,7 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
     val (deezerFallbackUrl, onDeezerFallbackUrlChange) = rememberPreference(DeezerFallbackUrlKey, defaultValue = "https://dzr.tabs-vs-spaces.wtf")
 
     val (apiInstances, onApiInstancesChange) = rememberPreference(
-        ApiInstancesKey, 
+        ApiInstancesKey,
         defaultValue = "https://hifi.geeked.wtf,https://eu-central.monochrome.tf,https://us-west.monochrome.tf,https://api.monochrome.tf,https://monochrome-api.samidy.com,https://maus.qqdl.site,https://vogel.qqdl.site,https://katze.qqdl.site,https://hund.qqdl.site,https://tidal.kinoplus.online,https://wolf.qqdl.site"
     )
     val (streamingInstances, onStreamingInstancesChange) = rememberPreference(
@@ -139,14 +140,13 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     )
                 )
 
-                // audio quality override
                 Text(
                     text = "Streaming Quality",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
                 )
-                
+
                 QualitySelectionRow(
                     selected = audioQuality == AudioQuality.LOSSLESS,
                     title = "Lossless (FLAC 16-bit)",
@@ -187,7 +187,6 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     )
                 )
 
-                // amazon music
                 Text(
                     text = "Amazon Music",
                     style = MaterialTheme.typography.titleMedium,
@@ -225,7 +224,6 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                 )
 
-                // deezer fallback
                 Text(
                     text = "Deezer Fallback",
                     style = MaterialTheme.typography.titleMedium,
@@ -256,21 +254,18 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                 )
 
-                // instance manager
                 Text(
                     text = "API Instances",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 8.dp)
                 )
-                
+
                 if (enableMonochromeBackend) {
                     InstanceListManager("Monochrome API Instances", monochromeInstances, onMonochromeInstancesChange)
                     InstanceListManager("Streaming Instances", streamingInstances, onStreamingInstancesChange)
                 }
 
-                // amazon music instances use the monochrome list
-                
                 Spacer(modifier = Modifier.height(40.dp))
             }
     }
@@ -298,7 +293,7 @@ fun InstanceListManager(title: String, rawList: String, onListChange: (String) -
 
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        
+
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically

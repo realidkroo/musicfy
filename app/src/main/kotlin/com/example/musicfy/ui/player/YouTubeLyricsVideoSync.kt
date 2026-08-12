@@ -1,10 +1,4 @@
-// youtubelyricsvideosynckt
-// the sync with lyrics sub option of the youtube video background instead
-// video to the song purely by proportional raw position this pairs the
-// with the video s youtube transcript auto generated captions or the
-// when available youtubetranscript already returns whichever track it
-// by matching line text so the video seeks to wherever it s actually singing
-// not just the same fraction of the way through
+// YouTubeLyricsVideoSync.kt
 
 package com.example.musicfy.ui.player
 
@@ -12,13 +6,11 @@ import com.example.musicfy.lyrics.LyricsEntry
 import com.example.musicfy.lyrics.LyricsUtils
 import com.music.innertube.YouTube
 
-// songtimems videotimems a confident lyric line match between the song and the video
 typealias LyricVideoAnchor = Pair<Long, Long>
 
 private val TOKEN_REGEX = Regex("[\\p{L}\\p{N}]+")
 private const val MIN_MATCH_SIMILARITY = 0.35
 
-// fetches the video s transcript and aligns it against the song s own lyrics by
 suspend fun buildLyricVideoAnchors(videoId: String, songLyricsRaw: String?): List<LyricVideoAnchor>? {
     if (videoId.isBlank() || songLyricsRaw.isNullOrBlank()) return null
 
@@ -43,9 +35,6 @@ suspend fun buildLyricVideoAnchors(videoId: String, songLyricsRaw: String?): Lis
         songLine.time to best.first.time
     }
 
-    // keep the mapping monotonic in both directions song time and video time
-    // increasing a handful of noisy mismatched lines otherwise cause the
-    // target to jump backwards mid playback which reads as a stutter
     val monotonic = mutableListOf<LyricVideoAnchor>()
     for (anchor in anchors) {
         val last = monotonic.lastOrNull()
@@ -57,7 +46,6 @@ suspend fun buildLyricVideoAnchors(videoId: String, songLyricsRaw: String?): Lis
     return monotonic.takeIf { it.size >= 2 }
 }
 
-// interpolates a video timeline target from the anchor list for the song s
 fun resolveAnchoredVideoPositionMs(anchors: List<LyricVideoAnchor>, songPositionMs: Long): Long? {
     if (anchors.size < 2) return null
     if (songPositionMs <= anchors.first().first || songPositionMs >= anchors.last().first) return null
@@ -82,7 +70,6 @@ private fun jaccardSimilarity(a: Set<String>, b: Set<String>): Double {
     return if (union == 0) 0.0 else intersection.toDouble() / union
 }
 
-// text matching not something to redo on every recomposition track revisit a
 object LyricVideoAnchorCache {
     private const val maxSize = 32
     private val map = LinkedHashMap<String, List<LyricVideoAnchor>?>(maxSize, 0.75f, true)

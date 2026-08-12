@@ -1,5 +1,4 @@
-// playermenukt
-// what is this for you ask its for player menu ofc
+// PlayerMenu.kt
 
 package com.example.musicfy.ui.menu
 
@@ -114,8 +113,7 @@ fun PlayerMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsState()
-    
-    // cast state for volume control safely access castconnectionhandler to
+
     val castHandler = remember(playerConnection) {
         try {
             playerConnection.service.castConnectionHandler
@@ -126,13 +124,12 @@ fun PlayerMenu(
     val isCasting by castHandler?.isCasting?.collectAsState() ?: remember { mutableStateOf(false) }
     val castVolume by castHandler?.castVolume?.collectAsState() ?: remember { mutableFloatStateOf(1f) }
     val castDeviceName by castHandler?.castDeviceName?.collectAsState() ?: remember { mutableStateOf<String?>(null) }
-    
+
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
 
     val downloadUtil = LocalDownloadUtil.current
-    // remember id getdownload returns a new flow each call so an
-    // unremembered collectasstate relaunches its coroutine every recomposition
+
     val download by remember(downloadUtil, mediaMetadata.id) {
         downloadUtil.getDownload(mediaMetadata.id)
     }.collectAsState(initial = null)
@@ -145,8 +142,6 @@ fun PlayerMenu(
     var showChoosePlaylistDialog by rememberSaveable {
         mutableStateOf(false)
     }
-    
-
 
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
@@ -163,8 +158,6 @@ fun PlayerMenu(
             showChoosePlaylistDialog = false
         }
     )
-
-
 
     var showSelectArtistDialog by rememberSaveable {
         mutableStateOf(false)
@@ -244,7 +237,7 @@ fun PlayerMenu(
                 showSleepTimerDialog = false
             },
             onReset = {
-                sleepTimerValue = 30f // default value
+                sleepTimerValue = 30f
             },
             content = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -289,7 +282,7 @@ fun PlayerMenu(
                 .padding(horizontal = 24.dp)
                 .padding(top = 24.dp, bottom = 6.dp),
         ) {
-            // show cast indicator when casting
+
             if (isCasting && castDeviceName != null) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -312,7 +305,7 @@ fun PlayerMenu(
                     )
                 }
             }
-            
+
             VolumeSlider(
                 value = if (isCasting) castVolume else playerVolume.value,
                 onValueChange = { volume ->
@@ -467,11 +460,11 @@ fun PlayerMenu(
                             )
                         )
                     }
-                    // add to library option
+
                     val isInLibrary = librarySong?.song?.inLibrary != null
                     add(
                         Material3MenuItemData(
-                            title = { 
+                            title = {
                                 Text(
                                     text = stringResource(
                                         if (isInLibrary) R.string.remove_from_library
@@ -583,8 +576,6 @@ fun PlayerMenu(
                 )
             )
         }
-
-
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 

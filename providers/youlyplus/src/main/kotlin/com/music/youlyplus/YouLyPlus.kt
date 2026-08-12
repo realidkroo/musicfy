@@ -1,5 +1,4 @@
-// youlyplus kt
-// this thing is for you ly plus
+// YouLyPlus.kt
 
 package com.music.youlyplus
 
@@ -20,23 +19,19 @@ import kotlinx.coroutines.selects.select
 import kotlinx.serialization.json.Json
 import java.util.concurrent.atomic.AtomicReference
 
-// youlyplus lyricsplus kpoe api client this replicates the multi server fetch strategy from the youlyplus browser extension ibratabian17 youlyplus querying community hosted instances of the open source lyricsplus backend ibratabian17 lyricsplus api endpoint get server v2 lyrics get title= &artist= &duration=
 object YouLyPlus {
 
-    // mirror of youlyplus extension s kpoe_servers constant
     private val BASE_SERVERS = listOf(
-        "https://lyricsplus.prjktla.my.id",       // youly's server
-        "https://lyricsplus.atomix.one",          // meow's mirror
-        "https://lyricsplus.binimum.org",         // binimum's server
-        "https://lyricsplus.prjktla.workers.dev", // ibra's cf worker
-        "https://lyricsplus-seven.vercel.app",    // jigen's mirror
-        "https://lyrics-plus-backend.vercel.app", // ibra's vercel
+        "https://lyricsplus.prjktla.my.id",
+        "https://lyricsplus.atomix.one",
+        "https://lyricsplus.binimum.org",
+        "https://lyricsplus.prjktla.workers.dev",
+        "https://lyricsplus-seven.vercel.app",
+        "https://lyrics-plus-backend.vercel.app",
     )
 
-    // remembers the last server that returned a valid result so it is tried first on the next call giving a fast path on repeated fetches
     private val lastWorkingServer = AtomicReference<String?>(null)
 
-    // returns the server list with the last working server promoted to front
     private val servers: List<String>
         get() {
             val lws = lastWorkingServer.get() ?: return BASE_SERVERS
@@ -61,7 +56,6 @@ object YouLyPlus {
         }
     }
 
-    // fetch lyrics by racing all servers in parallel returns the first non blank result records the winning server so future calls skip the slow ones
     suspend fun getLyrics(
         title: String,
         artist: String,
@@ -78,7 +72,7 @@ object YouLyPlus {
         }
 
         try {
-            // poll until one server returns a usable result
+
             val remaining = jobs.toMutableList()
             while (remaining.isNotEmpty()) {
                 val (winServer, winLyrics) = select {
@@ -104,7 +98,6 @@ object YouLyPlus {
         }
     }
 
-    // collect all lyrics options across servers invokes callback for each distinct non blank result each server is queried in parallel callbacks are delivered as results arrive
     suspend fun getAllLyrics(
         title: String,
         artist: String,
@@ -141,17 +134,15 @@ object YouLyPlus {
         }
     }
 
-    // converts a list of lyricsitem with millisecond time to a standard mm ss xxx lrc string supports word by word rich sync if syllables are present
     private fun List<com.music.youlyplus.models.LyricsItem>.convertToLrc(): String? {
         if (isEmpty()) return null
         return joinToString("\n") { item ->
             val lineTime = item.time ?: 0L
-            
-            // check if any syllable or the item itself is marked as background
+
             val isBg = item.syllabus?.any { it.isBackground == true } == true
             val lineTimestamp = formatTime(lineTime)
             val bgMarker = if (isBg) "{bg}" else ""
-            
+
             val syllabus = item.syllabus
             if (!syllabus.isNullOrEmpty()) {
                 val sb = StringBuilder(lineTimestamp)
@@ -160,7 +151,7 @@ object YouLyPlus {
                     val sylTime = syl.time ?: 0L
                     sb.append(formatTime(sylTime, isSyllable = true))
                     sb.append(syl.text ?: "")
-                    // add space after word if it s missing and not the last word
+
                     if (syl.text?.endsWith(" ") == false) {
                         sb.append(" ")
                     }
@@ -172,7 +163,6 @@ object YouLyPlus {
         }
     }
 
-
     private fun formatTime(timeMs: Long, isSyllable: Boolean = false): String {
         val minutes = (timeMs / 1000) / 60
         val seconds = (timeMs / 1000) % 60
@@ -181,7 +171,6 @@ object YouLyPlus {
         val suffix = if (isSyllable) ">" else "]"
         return "%s%02d:%02d.%03d%s".format(prefix, minutes, seconds, millis, suffix)
     }
-
 
     private suspend fun fetchFromServer(
         baseUrl: String,

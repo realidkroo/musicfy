@@ -1,5 +1,4 @@
-// datastorekt
-// this thing is for data store
+// DataStore.kt
 
 package com.example.musicfy.utils
 
@@ -28,24 +27,20 @@ import kotlin.properties.ReadOnlyProperty
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-// process wide in memory mirror of the preferences file why this exists
 object PreferencesCache {
-    // snapshot state so compose can subscribe written from a background collector
+
     private val snapshotState = mutableStateOf(emptyPreferences())
 
-    // plain mirror for non compose callers so they never touch the snapshot system
     @Volatile
     private var plain: Preferences = emptyPreferences()
 
     @Volatile
     private var warm: Boolean = false
 
-    // scope for preference writes deliberately not tied to any composition see set
     private val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val snapshot: State<Preferences> get() = snapshotState
 
-    // starts the single collector that keeps the mirror current call once from
     fun start(context: Context, scope: CoroutineScope) {
         val store = context.applicationContext.dataStore
         scope.launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
@@ -57,7 +52,6 @@ object PreferencesCache {
         }
     }
 
-    // current preferences falls back to a single blocking read if something asks
     fun current(store: DataStore<Preferences>): Preferences {
         if (warm) return plain
         val prefs = runBlocking(Dispatchers.IO) { store.data.first() }
@@ -68,8 +62,7 @@ object PreferencesCache {
     }
 
     fun <T> set(store: DataStore<Preferences>, key: Preferences.Key<T>, value: T) {
-        // intentionally not remembercoroutinescope a toggle that dismisses its
-        // would otherwise cancel its own write when the composable left composition
+
         writeScope.launch {
             store.edit { it[key] = value }
         }
@@ -96,15 +89,13 @@ inline fun <reified T : Enum<T>> enumPreference(
     defaultValue: T,
 ) = ReadOnlyProperty<Any?, T> { _, _ -> context.dataStore[key].toEnum(defaultValue) }
 
-// observes a single preference no coroutine and no flow per call site
 @Composable
 fun <T> rememberPreference(
     key: Preferences.Key<T>,
     defaultValue: T,
 ): MutableState<T> {
     val store = LocalContext.current.applicationContext.dataStore
-    // seeds the mirror before the first read so the first frame shows the stored
-    // than the default a no op once the process is warm
+
     PreferencesCache.current(store)
 
     val valueState = remember(key, defaultValue) {

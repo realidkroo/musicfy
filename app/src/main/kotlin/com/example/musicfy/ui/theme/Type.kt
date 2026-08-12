@@ -1,5 +1,4 @@
-// typekt
-// this thing is for type
+// Type.kt
 
 package com.example.musicfy.ui.theme
 
@@ -22,10 +21,6 @@ val InterFontFamily = FontFamily(
     Font(R.font.inter_bold, FontWeight.Bold)
 )
 
-// global type spec inter semibold everywhere 5% letter spacing tight
-// expressed in em rather than a fixed sp so 5% scales correctly across
-// in the scale 57sp display down to 11sp label instead of a flat offset
-// barely there tracking on large text and crushed overlapping on small text
 private val GlobalFontWeight = FontWeight.SemiBold
 private val GlobalLetterSpacing = (-0.05).em
 

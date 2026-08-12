@@ -1,5 +1,4 @@
-// homescreenkt
-// this thing is part of home screen
+// HomeScreen.kt
 
 package com.example.musicfy.ui.screens
 
@@ -219,9 +218,6 @@ import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableIntStateOf
 import com.example.musicfy.viewmodels.DailyDiscoverItem
 
-
-// display order is built explicitly in homesections below not derived from
-// declarations this is just identity + the stable key each section
 sealed class HomeSection(val id: String) {
     data object RecentlyPlayed : HomeSection("recently_played")
     data object MostPlayed : HomeSection("most_played")
@@ -233,15 +229,7 @@ sealed class HomeSection(val id: String) {
     data object FromTheCommunity : HomeSection("from_the_community")
     data object ArtistList : HomeSection("artist_list")
     data object AllTimeHits : HomeSection("all_time_hits")
-    // keyed by the section s own title not just index the server doesn t
-    // guarantee section order content stays identical between fetches and an
-    // index based key made a reload silently swap whatever content was in a given
-    // visual slot reading as the whole feed resetting
-    // id includes index not just title youtube regularly returns two sections
-    // title and continuations append more of them which made this id collide
-    // spacer key and both section item keys down with it and crashing lazycolumn
-    // key was already used index is the section s position in the home page
-    // unique by construction
+
     data class HomePageSection(val index: Int, val title: String) : HomeSection("home_page_section_${index}_$title")
 }
 
@@ -309,7 +297,7 @@ fun CommunityPlaylistCard(
             val fallbackColors = premiumDarkColors[(item.playlist.id.hashCode() and 0x7FFFFFFF) % premiumDarkColors.size]
 
             val color1 by animateColorAsState(
-                targetValue = extractedColors.getOrNull(0)?.let { 
+                targetValue = extractedColors.getOrNull(0)?.let {
                     Color(androidx.core.graphics.ColorUtils.blendARGB(it.toArgb(), android.graphics.Color.BLACK, 0.65f))
                 } ?: fallbackColors[0],
                 animationSpec = tween(800), label = ""
@@ -551,7 +539,6 @@ fun DailyDiscoverCard(
     }
 }
 
-
 @Composable
 fun AllTimeHitsCard(
     item: YTItem,
@@ -635,8 +622,6 @@ fun HomeScreen(
 
     val isLoading: Boolean by viewModel.isLoading.collectAsState()
 
-    // same emptiness test herocarousel uses to swap itself for onboardinghero
-    // being onboarded the musicfy home titles stay out of the way
     val isFreshSetup = mediaMetadata == null &&
         lastPlayedSong == null &&
         dailyDiscover.isNullOrEmpty() &&
@@ -654,8 +639,6 @@ fun HomeScreen(
     val profilePicUri by rememberPreference(ProfilePicUriKey, "")
     val randomizeHomeOrder = false
 
-    // the setup flow saves the user s chosen photo as an absolute local path
-    // everywhere on home the linked music account avatar remains a fallback
     val localProfileImageUrl = profilePicUri
         .takeIf { it.isNotBlank() }
         ?.let { if (it.contains("://")) it else "file://$it" }
@@ -671,10 +654,6 @@ fun HomeScreen(
         }
     }
 
-    // top bar profile dropdown profilemenuprogress not just the open closed
-    // profilemenuoverlay s morph reads every frame and it s kept alive mounted
-    // whole close animation too see showprofilemenuoverlay below so
-    // reverse of expanding instead of an abrupt disappearance
     var profileMenuOpen by remember { mutableStateOf(false) }
     val profileMenuProgress = remember { Animatable(0f) }
     LaunchedEffect(profileMenuOpen) {
@@ -700,7 +679,7 @@ fun HomeScreen(
     BackHandler(enabled = profileMenuOpen) { profileMenuOpen = false }
 
     val scope = rememberCoroutineScope()
-    // track randomization job
+
     var randomizeJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     val lazylistState = rememberLazyListState()
@@ -723,8 +702,7 @@ fun HomeScreen(
             (firstItemScrollOffset / carouselHeightPx).coerceIn(0f, 1f)
         }
     }
-    // keep these callbacks stable their reads occur inside graphics layers which
-    // compose update the transform without recomposing the carousel during every
+
     val scrollOffsetProvider = remember { { firstItemScrollOffset } }
     val heroScrollProgressProvider = remember { { heroScrollProgress } }
 
@@ -740,7 +718,6 @@ fun HomeScreen(
             randomSeed = System.currentTimeMillis()
         }
     }
-
 
     LaunchedEffect(scrollToTop?.value) {
         if (scrollToTop?.value == true) {
@@ -768,7 +745,7 @@ fun HomeScreen(
 
     if (selectedChip != null) {
         BackHandler {
-            // if a chip is selected go back to the normal homepage first
+
             viewModel.toggleChip(selectedChip)
         }
     }
@@ -857,8 +834,7 @@ fun HomeScreen(
 
             is Playlist -> PlaylistGridItem(
                 playlist = it,
-                // liked navigates to auto_playlist liked which now has its own real
-                // hero header the collage same playlist <id> key scheme applies
+
                 sharedElementKey = "playlist-${it.id}",
                 modifier = Modifier
                     .fillMaxWidth()
@@ -878,10 +854,6 @@ fun HomeScreen(
         }
     }
 
-    // compact card for horizontally scrolling preview rows recently played
-    // same currentgridheight driven by the user s grid size preference speed
-    // youtubegriditem cards resolve to so the two rows read as one consistent
-    // instead of recently played looking a different size from its neighbor row
     val compactLocalItemCard: @Composable (LocalItem) -> Unit = { localItem ->
         val subtitle = when (localItem) {
             is Song -> localItem.artists.joinToString(", ") { it.name }
@@ -930,7 +902,6 @@ fun HomeScreen(
             )
         }
 
-        // same key scheme as albumgriditem playlistgriditem ytgriditem above
         val sharedElementKey = when (localItem) {
             is Album -> "album-${localItem.id}"
             is Playlist -> "playlist-${localItem.id}"
@@ -990,9 +961,7 @@ fun HomeScreen(
             isPlaying = isPlaying,
             coroutineScope = scope,
             thumbnailRatio = 1f,
-            // local online liked playlist screens all share the same playlist <id>
-            // key scheme so one key format covers whichever destination this
-            // actually lands on
+
             sharedElementKey = when {
                 item is AlbumItem -> "album-${item.id}"
                 item is PlaylistItem -> "playlist-${item.id}"
@@ -1059,14 +1028,6 @@ fun HomeScreen(
         )
     }
 
-    // explicit sequential order not a weight map to sort by requested order
-    // recently played most played from the community jump back in speed dial
-    // history artist list account playlists don t forget these songs kept
-    // just not called out explicitly one yt home section all time hits then the
-    // rest of the yt home sections a weight based sort can t cleanly interleave
-    // exactly one yt section then a named section then the rest of the yt
-    // sections without fragile fractional weights so this just builds the list
-    // the order it should render once
     val homeSections by remember {
         derivedStateOf {
             val list = mutableListOf<HomeSection>()
@@ -1099,10 +1060,6 @@ fun HomeScreen(
         forgottenFavoritesLazyGridState.scrollToItem(0)
     }
 
-    // home wide tight tracking every card here songlistitem griditems etc
-    // materialthemetypography so overriding it just for this screen s
-    // applies consistently everywhere in home without touching the app wide type
-    // by search library settings player
     val baseTypography = MaterialTheme.typography
     val homeTypography = remember(baseTypography) {
         val tightenSp = 0.6f
@@ -1159,15 +1116,8 @@ fun HomeScreen(
                 )
             }
 
-            // wrap lazycolumn to allow fixed top bar overlay
             val homeGlassState = remember { GlassState() }
-            // separate capture from homeglassstate above which only ever wraps the
-            // for the unrelated scroll driven hero blur this one wraps this whole box
-            // list content and the top bar chrome so profilemenuoverlay below a true
-            // outside this box added after it closes can blur a real capture of
-            // that s actually behind it keeping the consumer outside the wrapped subtree
-            // same precaution seamblurkt takes relative to morphingcover s glassroot a
-            // nested inside the wrapped subtree would end up capturing and blurring
+
             val profileMenuGlassState = remember { GlassState() }
             Box(
                 modifier = Modifier
@@ -1316,9 +1266,7 @@ fun HomeScreen(
                                                 items = mostPlayed,
                                                 key = { _, it -> it.id }
                                             ) { index, song ->
-                                                // leading rank column number left aligned within it
-                                                // not centered so the digit itself hugs the row s
-                                                // left margin instead of floating with a visible gap
+
                                                 Row(
                                                     verticalAlignment = Alignment.CenterVertically,
                                                     modifier = Modifier.width(horizontalLazyGridItemWidth)
@@ -1373,7 +1321,7 @@ fun HomeScreen(
                                                 }
                                             }
                                         }
-                                        // subtle trailing edge gradient cue that more content follows
+
                                         Box(
                                             modifier = Modifier
                                                 .align(Alignment.CenterEnd)
@@ -1426,14 +1374,10 @@ fun HomeScreen(
                                         ) {
                                             itemsIndexed(
                                                 items = history,
-                                                // duplicates are expected same song played repeatedly so
-                                                // key on position rather than song id
+
                                                 key = { index, item -> "history_${index}_${item.id}" }
                                             ) { _, song ->
-                                                // flush with the grid s own 24dp contentpadding
-                                                // no leading rank column here that s most
-                                                // played s thing so nothing should indent this
-                                                // past where every other row s content starts
+
                                                 SongListItem(
                                                     song = song,
                                                     downloadState = allDownloads[song.id]?.state,
@@ -1470,7 +1414,7 @@ fun HomeScreen(
                                                 )
                                             }
                                         }
-                                        // subtle trailing edge gradient cue that more content follows
+
                                         Box(
                                             modifier = Modifier
                                                 .align(Alignment.CenterEnd)
@@ -1608,7 +1552,7 @@ fun HomeScreen(
                         }
                         HomeSection.DailyDiscover -> {
                             dailyDiscover?.takeIf { it.isNotEmpty() }?.let { discoverList ->
-                                // added a tittle new update
+
                                 item(key = "daily_discover_title") {
                                     val title = stringResource(R.string.your_daily_discover)
                                     NavigationTitle(
@@ -1702,7 +1646,7 @@ fun HomeScreen(
                                             },
                                             modifier = Modifier.padding(horizontal = 12.dp)
                                         )
-                                        
+
                                         androidx.compose.material3.DropdownMenu(
                                             expanded = showProfileMenu,
                                             onDismissRequest = { showProfileMenu = false }
@@ -1783,7 +1727,7 @@ fun HomeScreen(
                                 }
 
                                 item(key = "forgotten_favorites_list") {
-                                    // take min in case list size is less than 4
+
                                     val rows = min(4, forgottenFavorites.size)
                                     LazyHorizontalGrid(
                                         state = forgottenFavoritesLazyGridState,
@@ -1797,7 +1741,7 @@ fun HomeScreen(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(ListItemHeight * rows)
-                                            
+
                                     ) {
                                         itemsIndexed(
                                             items = forgottenFavorites,
@@ -1805,8 +1749,6 @@ fun HomeScreen(
                                         ) { index, originalSong ->
                                             val song = originalSong
 
-                                            // same leading column width as most played s rank number
-                                            // just empty here so thumbnails line up across sections
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.width(horizontalLazyGridItemWidth)
@@ -1857,7 +1799,7 @@ fun HomeScreen(
                         is HomeSection.HomePageSection -> {
                             val sectionData = homePage?.sections?.getOrNull(section.index)
                             sectionData?.let {
-                                // check if section contains songs for play all functionality
+
                                 val sectionSongs = sectionData.items.filterIsInstance<SongItem>()
                                 val hasPlayableSongs = sectionSongs.isNotEmpty()
 
@@ -1906,9 +1848,6 @@ fun HomeScreen(
                                     )
                                 }
 
-                                // always a horizontal row of cover forward grid cards the old
-                                // songs only branch rendered gray list rows here which looked
-                                // out of place among the rest of home s card based sections
                                 item(key = "home_section_list_${section.id}") {
                                     LazyRow(
                                         contentPadding = PaddingValues(start = 24.dp, end = 24.dp),
@@ -1961,19 +1900,13 @@ fun HomeScreen(
                 item(key = "bottom_spacer") {
                     Spacer(modifier = Modifier.height(30.dp))
                 }
-            } // end of lazycolumn
-            } // end of compositionlocalprovider
+            }
+            }
 
-            // fixed top bar overlay
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // ─── true progressive blur using glasskit rendernode capture ───
-                // matches the weatherify settings screen approach exactly
-                // gated by a derivedstateof boolean like isscrolled below so this only
-                // recomposes at the mount unmount boundary not on every scroll pixel the
-                // continuously varying reads inside stay deferred to the draw phase via
-                // heroscrollprogressprovider so the fade still animates smoothly
+
                 val showHeroOverlay by remember { derivedStateOf { heroScrollProgressProvider() > 0.01f } }
                 if (showHeroOverlay) {
                     Box(
@@ -1989,17 +1922,12 @@ fun HomeScreen(
                             },
                             foundationColor = backgroundColor,
                             direction = BlurDirection.BottomToTop,
-                            // three quality layers keep the progressive glass gradient while
-                            // reducing full screen offscreen blur passes during scrolling
+
                             steps = 3,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
 
-                    // tinted background overlay that fades with scroll built in the draw phase
-                    // ondrawbehind rather than via background brush since this box is
-                    // now only recomposed at the showherooverlay boundary baking the gradient s
-                    // alpha stops at composition time would freeze the fade instead of animating
                     Box(
                         modifier = Modifier
                             .matchParentSize()
@@ -2044,15 +1972,13 @@ fun HomeScreen(
                         scaleY = scale
                         transformOrigin = TransformOrigin(0f, 0.5f)
                     }, contentAlignment = Alignment.CenterStart) {
-                        // onboarding owns the top of the screen on a clean setup so the wordmark
-                        // stays hidden until the user scrolls past the hero where home takes over
+
                         val wordmarkAlpha by animateFloatAsState(
                             targetValue = if (isFreshSetup) 0f else 1f,
                             animationSpec = tween(durationMillis = 400),
                             label = "wordmarkAlpha"
                         )
 
-                        // musicfy text
                         Text(
                             text = "Musicfy",
                             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Normal),
@@ -2074,7 +2000,7 @@ fun HomeScreen(
                                 }
                             }
                         )
-                        // home text
+
                         Text(
                             text = "Home",
                             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Normal),
@@ -2098,10 +2024,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // profile pill glasskit frosted glass no haze glow also the trigger for
-                    // profilemenuoverlay its own bounds whatever shape they currently are
-                    // bare circle when unscrolled full pill once scrolled are what that overlay
-                    // morphs from via ongloballypositioned below
                     Box(
                         modifier = Modifier
                             .graphicsLayer {
@@ -2116,7 +2038,7 @@ fun HomeScreen(
                             .clickable { profileMenuOpen = true },
                         contentAlignment = Alignment.CenterEnd
                     ) {
-                        // frosted glass background for the pill
+
                         if (topBarProgress > 0.01f) {
                             GlassPillBackground(
                                 state = homeGlassState,
@@ -2131,7 +2053,7 @@ fun HomeScreen(
                                     .matchParentSize()
                                     .graphicsLayer { alpha = topBarProgress }
                             )
-                            // subtle border
+
                             Box(
                                 modifier = Modifier
                                     .matchParentSize()
@@ -2162,12 +2084,6 @@ fun HomeScreen(
                                 )
                             }
 
-                            // hidden alpha > 0 almost as soon as the menu starts opening
-                            // profilemenuoverlay s own floating avatar takes over from exactly
-                            // this position so the handoff between the two reads as one image
-                            // continuing to move rather than a visible swap ramped 6x progress
-                            // instead of 1 1 so it s fully gone well before the floating copy has
-                            // travelled far enough for a gap between them to be visible
                             val avatarBoundsModifier = Modifier
                                 .onGloballyPositioned { profileAvatarBounds = it.boundsInRoot() }
                                 .graphicsLayer { alpha = (1f - profileMenuProgress.value * 6f).coerceIn(0f, 1f) }
@@ -2202,7 +2118,7 @@ fun HomeScreen(
                     }
                 }
             }
-        } // end of box wrapping lazycolumn
+        }
 
             ProfileMenuOverlay(
                 visible = showProfileMenuOverlay,
@@ -2222,5 +2138,3 @@ fun HomeScreen(
     }
     }
 }
-
-

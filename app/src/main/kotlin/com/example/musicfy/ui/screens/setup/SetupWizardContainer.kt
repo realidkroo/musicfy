@@ -63,17 +63,15 @@ fun SetupWizardContainer(
         }
     }
 
-    // calculate dynamic progress combining transition progress and drag offset
     val dragProgress = (1f - (dragOffsetY / 1200f)).coerceIn(0f, 1f)
     val effectiveProgress = overlayProgress.value * dragProgress
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
         val backgroundTopEdge = topInset + 8.dp
-        // if stacked under another modal remove padding so it peeks perfectly at
+
         val foregroundTopEdge = if (isStacked) 0.dp else backgroundTopEdge + 12.dp
 
-        // main app content shrinks dynamically based on setup wizard position
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -93,7 +91,6 @@ fun SetupWizardContainer(
             content()
         }
 
-        // setup wizard overlay
         if (overlayProgress.value > 0f) {
             Box(
                 modifier = Modifier
@@ -103,7 +100,7 @@ fun SetupWizardContainer(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { /* Disable background clicks */ }
+                    ) {  }
             )
 
             Box(
@@ -112,9 +109,7 @@ fun SetupWizardContainer(
                     .padding(top = foregroundTopEdge * effectiveProgress)
                     .graphicsLayer {
                         val inverseProgress = 1f - overlayProgress.value
-                        // travel a bit past the full layer height so the wizard is
-                        // fully off screen before it unmounts instead of getting cut
-                        // off mid slide on taller screens
+
                         translationY = inverseProgress * (size.height * 1.15f) + dragOffsetY
                     }
             ) {

@@ -1,5 +1,4 @@
-// menu kt
-// this thing is for menu
+// Menu.kt
 
 package com.music.innertube.models
 

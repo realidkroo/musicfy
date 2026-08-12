@@ -10,7 +10,6 @@ import okhttp3.OkHttpClient
 import org.json.JSONObject
 import timber.log.Timber
 
-// monochrome s in house lossless playback api track apimonochrometf matching
 class MonochromePlaybackStreamFetcher(
     private val dataStore: androidx.datastore.core.DataStore<Preferences>,
     private val database: MusicDatabase,
@@ -63,8 +62,7 @@ class MonochromePlaybackStreamFetcher(
         val playbackUrl = "$apiBaseUrl/playback"
 
         for (attempt in 0 until 2) {
-            // solve turnstile exchange for a session and post playback all from the
-            // webview context since the exchanged session is fingerprint bound to that
+
             val fetchResult = turnstileSolver.fetchPlaybackWithTurnstile(
                 siteKey, exchangeUrl, playbackUrl, requestBody, forceRefresh = attempt > 0
             )

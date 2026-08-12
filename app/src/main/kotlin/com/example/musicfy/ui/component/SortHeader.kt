@@ -1,5 +1,4 @@
-// sortheaderkt
-// the file functioned as sort header
+// SortHeader.kt
 
 package com.example.musicfy.ui.component
 

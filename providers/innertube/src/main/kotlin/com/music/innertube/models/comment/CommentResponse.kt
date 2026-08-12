@@ -1,5 +1,4 @@
-// commentresponse kt
-// what is this for you ask its for comment response ofc
+// CommentResponse.kt
 
 package com.music.innertube.models.comment
 

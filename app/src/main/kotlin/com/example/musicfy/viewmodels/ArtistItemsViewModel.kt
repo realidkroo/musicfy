@@ -1,5 +1,4 @@
-// artistitemsviewmodelkt
-// this thing is part of artist items view model
+// ArtistItemsViewModel.kt
 
 package com.example.musicfy.viewmodels
 

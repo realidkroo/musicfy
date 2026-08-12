@@ -1,5 +1,4 @@
-// shimmerhostkt
-// what is this for you ask its for shimmer host ofc
+// ShimmerHost.kt
 
 package com.example.musicfy.ui.component.shimmer
 
