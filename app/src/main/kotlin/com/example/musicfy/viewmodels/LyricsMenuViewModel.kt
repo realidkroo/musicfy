@@ -94,9 +94,29 @@ constructor(
             lyricsEntity?.let(::delete)
             val lyricsWithProvider =
                 runBlocking {
-                    lyricsHelper.getLyrics(mediaMetadata)
+                    // forceRefresh, or the helper's in-memory cache hands back the exact result
+                    // this just deleted and the refetch becomes a no-op.
+                    lyricsHelper.getLyrics(mediaMetadata, forceRefresh = true)
                 }
             upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
         }
+    }
+
+    /**
+     * Stores hand-edited lyrics for a song.
+     *
+     * Saved under the provider name [USER_EDITED] so the edit is recognisable later and so a
+     * refetch does not silently overwrite something the user typed without them asking for it.
+     */
+    fun saveLyrics(songId: String, lyrics: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            database.query {
+                upsert(LyricsEntity(id = songId, lyrics = lyrics, provider = USER_EDITED))
+            }
+        }
+    }
+
+    companion object {
+        const val USER_EDITED = "UserEdited"
     }
 }

@@ -7,8 +7,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.media3.common.Player
+import com.example.musicfy.constants.PlayerHorizontalPadding
+import com.example.musicfy.extensions.toggleRepeatMode
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -91,6 +97,9 @@ fun BottomSheetPlayer(
     var editPhase by remember { mutableStateOf(PlayerEditPhase.NONE) }
 
     var showActionMenu by remember { mutableStateOf(false) }
+    // Which surface opened the menu. The lyrics tools only appear when it came from the lyrics
+    // page, where they have something visible to act on.
+    var menuFromLyrics by remember { mutableStateOf(false) }
 
     val menuReveal = remember { mutableFloatStateOf(0f) }
 
@@ -269,7 +278,10 @@ fun BottomSheetPlayer(
                     onImmersiveChange = { lyricsImmersive = it },
                     isSheetDragging = isSheetInTransition,
                     isMorphing = lyricsMorphing,
-                    onOpenMenu = { showActionMenu = true },
+                    onOpenMenu = {
+                        menuFromLyrics = true
+                        showActionMenu = true
+                    },
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
@@ -318,7 +330,10 @@ fun BottomSheetPlayer(
                         .graphicsLayer { alpha = (1f - lyricsProgress / 0.35f).coerceIn(0f, 1f) }
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.12f))
-                        .clickable { showActionMenu = true },
+                        .clickable {
+                            menuFromLyrics = false
+                            showActionMenu = true
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -386,6 +401,39 @@ fun BottomSheetPlayer(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Repeat + like live here while the lyrics are up: the song info row they
+                    // normally sit in is faded out, so they stack above the progress bar instead.
+                    // Height tracks the lyrics transition so the controls don't jump when it opens.
+                    if (lyricsMounted) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = PlayerHorizontalPadding)
+                                .padding(bottom = 12.dp * lyricsProgress)
+                                .height(75.dp * lyricsProgress)
+                                .wrapContentHeight(align = Alignment.Bottom, unbounded = true)
+                                .graphicsLayer { alpha = lyricsProgress },
+                            verticalArrangement = Arrangement.spacedBy(7.dp),
+                            horizontalAlignment = Alignment.End,
+                        ) {
+                            val repeatMode = transportState.repeatMode
+                            PressScaleActionButton(
+                                icon = R.drawable.repeat,
+                                boldIcon = true,
+                                tint = if (repeatMode != Player.REPEAT_MODE_OFF) Color.White else Color.White.copy(alpha = 0.85f),
+                                containerColor = if (repeatMode != Player.REPEAT_MODE_OFF) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
+                                badgeText = if (repeatMode == Player.REPEAT_MODE_ONE) "1" else null,
+                                onClick = { playerConnection.player.toggleRepeatMode() },
+                            )
+                            PressScaleActionButton(
+                                icon = if (trackInfo.liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
+                                tint = if (trackInfo.liked) Color.White else Color.White.copy(alpha = 0.85f),
+                                containerColor = if (trackInfo.liked) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
+                                onClick = playerConnection::toggleLike,
+                            )
+                        }
+                    }
+
                     PlayerProgressSlider()
                 }
 
@@ -429,6 +477,7 @@ fun BottomSheetPlayer(
 
         if (showActionMenu) {
             PlayerActionMenu(
+                fromLyrics = menuFromLyrics,
                 onDismiss = {
                     showActionMenu = false
                     menuReveal.floatValue = 0f

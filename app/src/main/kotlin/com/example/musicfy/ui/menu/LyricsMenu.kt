@@ -398,21 +398,10 @@ fun LyricsMenu(
                             showEditDialog = true
                         }
                     ),
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.cached),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        text = stringResource(R.string.refetch),
-                        onClick = {
-                            onDismiss()
-                            viewModel.refetchLyrics(mediaMetadataProvider(), lyricsProvider())
-                        }
-                    ),
+                    // "Refetch" removed: the provider picker below re-fetches as part of choosing
+                    // a source, so a second button that silently re-runs the same query with the
+                    // same settings was an action whose only visible outcome was "nothing looks
+                    // different".
                     NewAction(
                         icon = {
                             Icon(

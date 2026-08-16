@@ -19,7 +19,9 @@ class LyricsScreenViewModel
 @Inject
 constructor(
     private val lyricsHelper: LyricsHelper,
-    private val database: MusicDatabase,
+    // Exposed so the lyrics screen can hand it to LyricsTranslationHelper, which persists a
+    // finished translation against the song row.
+    val database: MusicDatabase,
 ) : ViewModel() {
     private val requestedIds = mutableSetOf<String>()
 

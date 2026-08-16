@@ -217,6 +217,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableIntStateOf
 import com.example.musicfy.viewmodels.DailyDiscoverItem
+import com.example.musicfy.ui.component.navigateToTab
 
 sealed class HomeSection(val id: String) {
     data object RecentlyPlayed : HomeSection("recently_played")
@@ -670,7 +671,7 @@ fun HomeScreen(
     val profileMenuItems = remember {
         listOf(
             ProfileMenuItem(icon = R.drawable.settings, label = "Musicfy Settings") {
-                navController.navigate("settings")
+                navController.navigateToTab("settings")
             },
             ProfileMenuItem(icon = R.drawable.account, label = "Switch Profile") {},
             ProfileMenuItem(icon = R.drawable.logout, label = "Log Out and reset") {},
@@ -1668,7 +1669,7 @@ fun HomeScreen(
                                                 text = { Text(stringResource(R.string.settings)) },
                                                 onClick = {
                                                     showProfileMenu = false
-                                                    navController.navigate("settings")
+                                                    navController.navigateToTab("settings")
                                                 },
                                                 leadingIcon = {
                                                     Icon(

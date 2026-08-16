@@ -85,6 +85,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import androidx.compose.ui.graphics.Color
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -182,6 +183,11 @@ fun YouTubeSongMenu(
     }
 
     ListItem(
+        // This one is Material3's ListItem, which takes colors rather than a background — same
+        // goal as the other menu headers: no grey card behind the item at the top of the sheet.
+        colors = androidx.compose.material3.ListItemDefaults.colors(
+            containerColor = Color.Transparent,
+        ),
         headlineContent = {
             Text(
                 text = song.title,
@@ -401,7 +407,7 @@ fun YouTubeSongMenu(
                                     if (isPinned) {
                                         database.speedDialDao.delete(song.id)
                                     } else {
-                                        database.speedDialDao.insert(SpeedDialItem.fromYTItem(song))
+                                        database.pinToSpeedDial(SpeedDialItem.fromYTItem(song))
                                     }
                                 }
                                 onDismiss()

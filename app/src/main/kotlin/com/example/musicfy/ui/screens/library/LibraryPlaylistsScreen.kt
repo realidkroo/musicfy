@@ -1,4 +1,4 @@
-// LibraryArtistsScreen.kt
+// LibraryPlaylistsScreen.kt
 
 package com.example.musicfy.ui.screens.library
 
@@ -10,34 +10,35 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.menu.ArtistMenu
+import com.example.musicfy.ui.menu.PlaylistMenu
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
 
 @Composable
-fun LibraryArtistsScreen(
+fun LibraryPlaylistsScreen(
     navController: NavController,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
 ) {
     val viewModel: LibraryHomeViewModel = hiltViewModel()
-    val artists by viewModel.artists.collectAsState()
+    val playlists by viewModel.playlists.collectAsState()
     val menuState = LocalMenuState.current
     val coroutineScope = rememberCoroutineScope()
 
     LibraryEntityListScreen(
-        title = "Artist",
-        subtitle = "All artist on your library listed here.",
-        searchPlaceholder = "Find artist listed here, by the lyrics, or the music",
-        items = artists,
+        title = "Playlist",
+        subtitle = "All playlist on your library listed here.",
+        searchPlaceholder = "Find song listed here, by the lyrics, or the artist",
+        items = playlists,
         idOf = { it.id },
-        nameOf = { it.artist.name },
-        subtitleOf = { null },
-        thumbnailOf = { it.artist.thumbnailUrl },
-        onClick = { artist -> navController.navigate("artist/${artist.id}") },
-        onLongClick = { artist ->
+        nameOf = { it.playlist.name },
+        subtitleOf = { "${it.songCount} songs" },
+        thumbnailOf = { it.thumbnails.firstOrNull() },
+        largeRows = true,
+        onClick = { playlist -> navController.navigate("local_playlist/${playlist.id}") },
+        onLongClick = { playlist ->
             menuState.show {
-                ArtistMenu(
-                    originalArtist = artist,
+                PlaylistMenu(
+                    playlist = playlist,
                     coroutineScope = coroutineScope,
                     onDismiss = menuState::dismiss,
                 )

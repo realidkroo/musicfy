@@ -42,6 +42,8 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.musicfy.ui.screens.Screens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -69,6 +71,33 @@ private data class NavItemState(
     val iconRes: Int
 )
 
+/**
+ * Navigates to a top-level tab exactly the way the navigation bar does.
+ *
+ * Anything that jumps to a tab from inside another tab MUST use this rather than a plain
+ * `navigate(route)`, and the reason is subtle enough to be worth spelling out.
+ *
+ * A plain `navigate("settings")` from the profile menu pushes Settings on top of the *Home* tab's
+ * stack, because that is where you were standing. Tapping Home in the bar then runs
+ * `popUpTo(startDestination) { saveState = true }`, which sweeps that pushed Settings entry into
+ * the state saved *for Home* — and `restoreState = true` on the very same call immediately puts it
+ * back. The result is that tapping Home lands you on Settings, which is precisely the bug this
+ * fixes, and it looks like the bar is ignoring you when in fact it is faithfully restoring a stack
+ * that Settings should never have been part of.
+ *
+ * Going through here instead means a tab is always entered *as* a tab, so it never becomes a child
+ * of whichever tab happened to be on screen when you left.
+ */
+fun NavController.navigateToTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
     if (currentRoute == null) return false
@@ -95,9 +124,16 @@ private fun owningTabRoute(currentRoute: String?, navigationItems: List<Screens>
     if (currentRoute == null) return null
     navigationItems.firstOrNull { isRouteSelected(currentRoute, it.route, navigationItems) }
         ?.let { return it.route }
-    return RouteOwners.firstOrNull { (prefix, _) ->
+    RouteOwners.firstOrNull { (prefix, _) ->
         currentRoute == prefix || currentRoute.startsWith(prefix)
-    }?.second
+    }?.let { return it.second }
+
+    // Catch-all so RouteOwners does not have to stay exhaustive. Every settings sub-screen added
+    // from here on is owned by the settings tab without anyone having to remember to list it —
+    // forgetting to leaves the bar highlighting the wrong tab, and (before the isCurrent fix
+    // below) made that tab's button stop working entirely.
+    if (currentRoute.endsWith("_settings") || currentRoute.startsWith("settings")) return "settings"
+    return null
 }
 
 @Composable
@@ -242,7 +278,22 @@ fun AppNavigationBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 navigationItems.forEach { screen ->
+                    // Two different questions, which were being answered by one value:
+                    //
+                    //   isSelected — should this tab LOOK lit? Sticky, so a detail page opened
+                    //     from a tab keeps that tab lit rather than clearing the bar.
+                    //   isCurrent  — are we ACTUALLY on this tab right now? Decides whether a tap
+                    //     navigates or just scrolls to top.
+                    //
+                    // Feeding the sticky value to onItemClick is what made the bar feel broken.
+                    // Reach a screen no tab claims (settings from the profile page) and the
+                    // highlight stays stuck on the previous tab; tapping that tab then reported
+                    // "already selected", so it scrolled to top instead of navigating and you were
+                    // left sitting on settings wondering why Home did nothing.
                     val isSelected = screen.route == selectedTabRoute
+                    val isCurrent = remember(currentRoute, screen.route) {
+                        isRouteSelected(currentRoute, screen.route, navigationItems)
+                    }
                     val iconRes = remember(isSelected, screen) {
                         if (isSelected) screen.iconIdActive else screen.iconIdInactive
                     }
@@ -293,7 +344,7 @@ fun AppNavigationBar(
                                     }
                                     is androidx.compose.foundation.interaction.PressInteraction.Release -> {
                                         if (!isLongClick) {
-                                            onItemClick(screen, isSelected)
+                                            onItemClick(screen, isCurrent)
                                         }
                                     }
                                     is androidx.compose.foundation.interaction.PressInteraction.Cancel -> {
@@ -317,7 +368,7 @@ fun AppNavigationBar(
                                 indication = null,
                                 onClick = {
                                     if (!isSearchItem) {
-                                        onItemClick(screen, isSelected)
+                                        onItemClick(screen, isCurrent)
                                     }
                                 }
                             ),

@@ -125,8 +125,9 @@ fun SongInfoRow(
     }
 }
 
+/** Shared with the lyrics page, so its repeat/like pair matches the player's exactly. */
 @Composable
-private fun PressScaleActionButton(
+fun PressScaleActionButton(
     icon: Int,
     tint: Color,
     containerColor: Color,

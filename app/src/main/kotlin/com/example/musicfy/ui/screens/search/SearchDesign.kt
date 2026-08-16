@@ -136,10 +136,14 @@ fun rememberCollapseProgress(listState: LazyListState): State<Float> {
 }
 
 @Composable
-fun searchTopBarHeight(withTitle: Boolean = true, extra: Dp = 0.dp): Dp {
+fun searchTopBarHeight(
+    withTitle: Boolean = true,
+    extra: Dp = 0.dp,
+    titleBlockHeight: Dp = SearchTitleBlockHeight,
+): Dp {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     return statusBar + SearchTopClearance +
-        (if (withTitle) SearchTitleBlockHeight else 0.dp) +
+        (if (withTitle) titleBlockHeight else 0.dp) +
         SearchFieldHeight + extra + 32.dp
 }
 
@@ -154,16 +158,27 @@ fun SearchGlassTopBar(
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
 
+    /** Small line under the title, e.g. "All songs on your library listed here." */
+    subtitle: String? = null,
+
+    /**
+     * Height of the title block. Defaults to the Search tab's title-only height; the Library
+     * screens pass a taller value because their block carries a subtitle line as well. This is the
+     * distance the block travels as it collapses, so it has to match what is actually rendered or
+     * the search field lands in the wrong place at rest.
+     */
+    titleBlockHeight: Dp = SearchTitleBlockHeight,
+
     below: (@Composable () -> Unit)? = null,
     field: @Composable () -> Unit,
 ) {
     val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val pageColor = SearchColors.page(pureBlack)
     val density = LocalDensity.current
-    val titleTravelPx = with(density) { SearchTitleBlockHeight.toPx() }
+    val titleTravelPx = with(density) { titleBlockHeight.toPx() }
 
     val avatarReservePx = with(density) { (AvatarSize + 12.dp).toPx() }
-    val avatarDropPx = with(density) { (SearchFieldHeight / 2 - SearchTitleBlockHeight / 2).toPx() }
+    val avatarDropPx = with(density) { (SearchFieldHeight / 2 - titleBlockHeight / 2).toPx() }
 
     val blurCache = remember { mutableMapOf<Int, androidx.compose.ui.graphics.RenderEffect>() }
 
@@ -214,7 +229,7 @@ fun SearchGlassTopBar(
 
                 Box(
                     modifier = Modifier
-                        .height(SearchTitleBlockHeight)
+                        .height(titleBlockHeight)
                         .fillMaxWidth()
                         .padding(horizontal = SearchHorizontalPadding)
                         .graphicsLayer {
@@ -242,11 +257,7 @@ fun SearchGlassTopBar(
                         },
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    Column(verticalArrangement = Arrangement.Center) {
                         Text(
                             text = title,
                             style = MaterialTheme.typography.displaySmall.copy(
@@ -256,6 +267,15 @@ fun SearchGlassTopBar(
                             color = SearchColors.Primary,
                             maxLines = 1,
                         )
+                        if (subtitle != null) {
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                color = SearchColors.Secondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }

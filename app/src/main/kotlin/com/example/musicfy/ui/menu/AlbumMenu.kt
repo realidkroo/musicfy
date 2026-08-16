@@ -85,6 +85,7 @@ import com.example.musicfy.ui.component.NewActionGrid
 import com.example.musicfy.ui.component.SongListItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Color
 
 @SuppressLint("MutableCollectionMutableState")
 @Composable
@@ -259,6 +260,7 @@ fun AlbumMenu(
 
     AlbumListItem(
         album = album,
+        backgroundColor = Color.Transparent,
         showLikedIcon = false,
         badges = {},
         trailingContent = {
@@ -422,7 +424,7 @@ fun AlbumMenu(
                     Material3MenuItemData(
                         title = {
                             Text(
-                                text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial"
+                                text = if (isPinned) "Unpin from library" else "Pin to library"
                             )
                         },
                         icon = {
@@ -436,7 +438,7 @@ fun AlbumMenu(
                                 if (isPinned) {
                                     database.speedDialDao.delete(album.id)
                                 } else {
-                                    database.speedDialDao.insert(
+                                    database.pinToSpeedDial(
                                         SpeedDialItem(
                                             id = album.id,
                                             secondaryId = album.album.playlistId,

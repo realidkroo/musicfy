@@ -436,7 +436,7 @@ object LyricsUtils {
             }
         }
 
-        return insertInstrumentalPauses(result.sorted())
+        return result.sorted()
     }
 
     private fun repairRichSyncPlainText(text: String): String {
@@ -537,7 +537,7 @@ object LyricsUtils {
             }
             i++
         }
-        return insertInstrumentalPauses(result.sorted())
+        return result.sorted()
     }
 
     private fun parseWordTimestamps(data: String): List<WordTimestamp>? {
@@ -592,49 +592,217 @@ object LyricsUtils {
             }.toList()
     }
 
+    /**
+     * How early a line lights up before its own timestamp. Singers anticipate the beat and the
+     * scroll needs a head start, but this is also why a line can look "wrong" at the boundary, so
+     * it is a named constant rather than a literal buried in the loop.
+     */
+    const val LineLeadInMs = 300L
+
+    /**
+     * Index of the line that should read as ACTIVE at [position], or -1 before the first line.
+     *
+     * Returns [lines].size — one past the end — once playback has run past the final line's own
+     * end, so callers can tell "the last line is being sung" apart from "the lyrics are over".
+     * Without that distinction the last line stayed lit through the entire outro.
+     */
     fun findCurrentLineIndex(
         lines: List<LyricsEntry>,
         position: Long,
     ): Int {
+        if (lines.isEmpty()) return -1
+        if (position >= lyricsEndMs(lines)) return lines.size
         for (index in lines.indices) {
-            if (lines[index].time >= position + 300L) {
+            if (lines[index].time >= position + LineLeadInMs) {
                 return index - 1
             }
         }
         return lines.lastIndex
     }
 
-    private fun insertInstrumentalPauses(entries: List<LyricsEntry>): List<LyricsEntry> {
-        if (entries.isEmpty()) return entries
+    /**
+     * When a line stops being sung: the end of its last word if the line is word-synced, otherwise
+     * the start of the next line, otherwise a plain-LRC guess.
+     */
+    fun lineEndMs(lines: List<LyricsEntry>, index: Int): Long {
+        val entry = lines.getOrNull(index) ?: return 0L
+        entry.words?.lastOrNull()?.let { return (it.endTime * 1000).toLong() }
+        lines.getOrNull(index + 1)?.let { return it.time }
+        return entry.time + UntimedLineDurationMs
+    }
 
-        val result = mutableListOf<LyricsEntry>()
-        val gapThresholdMs = 15000L
+    /** Where the lyrics as a whole finish. */
+    fun lyricsEndMs(lines: List<LyricsEntry>): Long {
+        if (lines.isEmpty()) return 0L
+        return lineEndMs(lines, lines.lastIndex)
+    }
 
-        val firstEntry = entries.first()
-        if (firstEntry.time > gapThresholdMs) {
-            result.add(LyricsEntry(time = 0L, text = "•••", isBackground = false))
+    /** Fallback duration for a line with no word timings and no successor. */
+    private const val UntimedLineDurationMs = 5_000L
+
+    // ---------------------------------------------------------------------------------------
+    // Provider result grading
+    //
+    // These exist because provider selection used to accept a result on
+    // `contains("<") && contains(">") && contains(":")`, which is true of any LRC file with an
+    // emoticon in it and false of several genuinely word-synced formats. Grading a result means
+    // parsing it once and looking at what actually came out.
+    // ---------------------------------------------------------------------------------------
+
+    /** How finely a lyrics payload is timed. Ordered worst to best; compared by ordinal. */
+    enum class SyncKind { NONE, PLAIN, LINE, WORD }
+
+    fun syncKind(rawLyrics: String): SyncKind {
+        if (rawLyrics.isBlank() || rawLyrics == "LYRICS_NOT_FOUND") return SyncKind.NONE
+        val entries = try {
+            parseLyrics(rawLyrics)
+        } catch (_: Exception) {
+            return SyncKind.NONE
+        }
+        if (entries.isEmpty()) {
+            // Parsed to nothing but has text in it — unsynced plain lyrics.
+            return if (rawLyrics.any(Char::isLetter)) SyncKind.PLAIN else SyncKind.NONE
+        }
+        // One word timing on one line is noise; a genuinely word-synced payload has them
+        // throughout. Requiring half the lines keeps a stray <00:12.34> from promoting a
+        // line-synced file.
+        val wordSynced = entries.count { (it.words?.size ?: 0) > 1 }
+        if (wordSynced * 2 >= entries.size && wordSynced > 0) return SyncKind.WORD
+        return SyncKind.LINE
+    }
+
+    /**
+     * Writing systems we care about telling apart when deciding whether a provider handed back
+     * the song or handed back a translation of it.
+     */
+    enum class Script { LATIN, HAN, KANA, HANGUL, CYRILLIC, ARABIC, DEVANAGARI, THAI, GREEK, HEBREW, UNKNOWN }
+
+    private fun scriptOf(ch: Char): Script? {
+        if (!ch.isLetter()) return null
+        return when (ch.code) {
+            in 0x0041..0x024F -> Script.LATIN
+            in 0x0370..0x03FF -> Script.GREEK
+            in 0x0400..0x052F -> Script.CYRILLIC
+            in 0x0590..0x05FF -> Script.HEBREW
+            in 0x0600..0x06FF, in 0x0750..0x077F -> Script.ARABIC
+            in 0x0900..0x097F -> Script.DEVANAGARI
+            in 0x0E00..0x0E7F -> Script.THAI
+            in 0x3040..0x30FF -> Script.KANA
+            in 0xAC00..0xD7AF, in 0x1100..0x11FF -> Script.HANGUL
+            in 0x3400..0x4DBF, in 0x4E00..0x9FFF, in 0xF900..0xFAFF -> Script.HAN
+            else -> null
+        }
+    }
+
+    /**
+     * The script most of [text] is written in.
+     *
+     * Kana wins over Han whenever any kana is present: Japanese is mostly kanji by character count
+     * but the presence of kana is decisive, and calling a Japanese song "Chinese" sends it to the
+     * pinyin romanizer, which is exactly the "why is this in Chinese" symptom.
+     */
+    fun dominantScript(text: String): Script {
+        val counts = HashMap<Script, Int>()
+        var total = 0
+        for (ch in text) {
+            val s = scriptOf(ch) ?: continue
+            counts[s] = (counts[s] ?: 0) + 1
+            total++
+        }
+        if (total == 0) return Script.UNKNOWN
+        if ((counts[Script.KANA] ?: 0) > 0) return Script.KANA
+        if ((counts[Script.HANGUL] ?: 0) * 4 >= total) return Script.HANGUL
+        return counts.maxByOrNull { it.value }?.key ?: Script.UNKNOWN
+    }
+
+    /** Whether a payload carries `{agent:…}` voice tags — i.e. can drive left/right duet layout. */
+    fun hasVoiceTags(rawLyrics: String): Boolean = rawLyrics.contains("{agent:")
+
+    /**
+     * Character range each timed word occupies inside [text].
+     *
+     * Word timings arrive as bare strings with no offsets, so the position has to be recovered by
+     * walking the line. Mirrors the same walk [com.example.musicfy.ui.player.LyricsGlowLine] does
+     * to build its karaoke mask, so the romanisation lines up with the sweep rather than drifting
+     * out of step with it. A word that cannot be located yields an empty range and is skipped.
+     */
+    fun wordCharRanges(text: String, words: List<WordTimestamp>): List<IntRange> {
+        var searchFrom = 0
+        return words.map { word ->
+            val trimmed = word.text.trim()
+            if (trimmed.isEmpty()) return@map IntRange.EMPTY
+            val start = text.indexOf(trimmed, searchFrom)
+            if (start < 0) return@map IntRange.EMPTY
+            searchFrom = start + trimmed.length
+            start until searchFrom
+        }
+    }
+
+    /**
+     * Romanises Japanese [text] **once, with full sentence context**, returning each token's
+     * reading tagged with the character range it came from.
+     *
+     * The context matters: kuromoji picks a kanji's reading from its neighbours, so feeding it one
+     * word at a time gets measurably worse readings than feeding it the line. But rendering wants
+     * per-word readings, so the answer is not "romanise per word" — it is "romanise the line and
+     * keep the offsets", which is what this returns. Callers regroup the tokens onto whatever word
+     * boundaries they care about via [wordCharRanges].
+     */
+    suspend fun romanizeJapaneseAligned(text: String): List<Pair<IntRange, String>> =
+        withContext(Dispatchers.Default) {
+            val tokens = kuromojiTokenizer.tokenize(text)
+            tokens.mapIndexed { index, token ->
+                val reading = token.reading?.takeIf { it.isNotEmpty() && it != "*" } ?: token.surface
+                val next = tokens.getOrNull(index + 1)
+                val nextReading = next?.reading?.takeIf { it.isNotEmpty() && it != "*" } ?: next?.surface
+                val start = token.position
+                (start until start + token.surface.length) to katakanaToRomaji(reading, nextReading)
+            }
         }
 
-        for (i in 0 until entries.size - 1) {
-            val current = entries[i]
-            val next = entries[i + 1]
-            result.add(current)
-
-            val currentEndTime = if (!current.words.isNullOrEmpty()) {
-                (current.words.last().endTime * 1000).toLong()
-            } else {
-                current.time + 5000L
+    /**
+     * Per-word readings for [text], positioned over the characters they belong to.
+     *
+     * Returns kuromoji's own tokens rather than regrouping them onto the provider's syllable
+     * timings. An earlier version did regroup, and it was wrong twice over: Apple's Japanese
+     * timings are per *syllable* (13-22 per line), and a single kuromoji token spans several of
+     * them — so every syllable in a token got that token's whole reading and the output repeated
+     * itself. Kuromoji's tokens already are the word boundaries a reader wants a reading over.
+     *
+     * Returns null when there is nothing useful to show, so callers can skip the ruby row.
+     */
+    suspend fun rubyFor(text: String, script: Script): List<RubyToken>? = when (script) {
+        Script.KANA -> romanizeJapaneseAligned(text)
+            .mapNotNull { (range, reading) ->
+                val clean = reading.trim()
+                // Latin runs inside Japanese lyrics ("pool", "JANE DOE") are already readable;
+                // a reading over them is noise.
+                if (clean.isEmpty() || range.isEmpty()) return@mapNotNull null
+                val surface = text.substring(range.first, (range.last + 1).coerceAtMost(text.length))
+                if (surface.none { scriptOf(it) == Script.KANA || scriptOf(it) == Script.HAN }) {
+                    return@mapNotNull null
+                }
+                RubyToken(range.first, range.last + 1, clean)
             }
+            .takeIf { it.isNotEmpty() }
 
-            val gap = next.time - currentEndTime
-            if (gap > gapThresholdMs) {
-
-                result.add(LyricsEntry(time = currentEndTime + 2000L, text = "•••", isBackground = false))
-            }
+        Script.HAN -> withContext(Dispatchers.Default) {
+            // Pinyin is per character, so each Han character is its own ruby.
+            text.mapIndexedNotNull { index, ch ->
+                if (ch !in '一'..'鿿') return@mapIndexedNotNull null
+                RubyToken(index, index + 1, Pinyin.toPinyin(ch).lowercase(Locale.getDefault()))
+            }.takeIf { it.isNotEmpty() }
         }
 
-        result.add(entries.last())
-        return result
+        else -> null
+    }
+
+    /** The script of the lyric text only, with timestamps and markup stripped. */
+    fun lyricsScript(rawLyrics: String): Script {
+        val stripped = rawLyrics
+            .replace(Regex("\\[[^\\]]*\\]"), " ")
+            .replace(Regex("<[^>]*>"), " ")
+        return dominantScript(stripped)
     }
 
     fun katakanaToRomaji(katakana: String?): String {
