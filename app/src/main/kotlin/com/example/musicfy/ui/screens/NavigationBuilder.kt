@@ -191,9 +191,34 @@ fun NavGraphBuilder.navigationBuilder(
         route = "library",
         popEnterTransition = { fadeIn(tween(150)) },
     ) {
-        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
-            LibraryTabScreen(navController = navController)
+        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+        val isSystemInDarkTheme = isSystemInDarkTheme()
+        val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
+            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
         }
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            com.example.musicfy.ui.screens.library.LibraryHomeScreen(
+                navController = navController,
+                pureBlack = remember(pureBlackEnabled, useDarkTheme) { pureBlackEnabled && useDarkTheme },
+            )
+        }
+    }
+
+    composable("library/songs") {
+        com.example.musicfy.ui.screens.library.LibrarySongsScreen(navController = navController)
+    }
+
+    composable("library/playlists") {
+        com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController)
+    }
+
+    composable("library/added") {
+        com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController)
+    }
+
+    composable("library/downloaded") {
+        com.example.musicfy.ui.screens.library.LibraryDownloadedScreen(navController = navController)
     }
 
     composable(Screens.Settings.route) {
@@ -484,348 +509,15 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable("library/albums") {
-        LibraryAlbumsScreen(navController, scrollBehavior)
+        com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController)
     }
 
     composable("library/artists") {
-        LibraryArtistsScreen(navController, scrollBehavior)
+        com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController)
     }
 }
 
-@Composable
-private fun LibraryTabScreen(navController: NavHostController) {
-    val context = LocalContext.current
-    val database = LocalDatabase.current
-    val coroutineScope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val songs by database.allSongs().collectAsState(initial = emptyList())
-    val playlists by database.playlists(PlaylistSortType.SONG_COUNT, descending = true)
-        .collectAsState(initial = emptyList())
-
-    var importProgress by remember { mutableFloatStateOf(-1f) }
-    var isImporting by remember { mutableStateOf(false) }
-
-    val automaticPlaylists = remember(songs) {
-        listOf(
-            LibraryAutoPlaylist(
-                title = "Liked Songs",
-                subtitle = "${songs.count { it.song.liked }} songs",
-                playTime = songs.filter { it.song.liked }.sumOf { it.song.totalPlayTime },
-                route = "auto_playlist/liked"
-            ),
-            LibraryAutoPlaylist(
-                title = "Downloaded",
-                subtitle = "${songs.count { it.song.isDownloaded }} songs",
-                playTime = songs.filter { it.song.isDownloaded }.sumOf { it.song.totalPlayTime },
-                route = "auto_playlist/downloaded"
-            ),
-            LibraryAutoPlaylist(
-                title = "Local Songs",
-                subtitle = "${songs.count { it.song.isLocal }} songs",
-                playTime = songs.filter { it.song.isLocal }.sumOf { it.song.totalPlayTime },
-                route = "auto_playlist/local"
-            ),
-            LibraryAutoPlaylist(
-                title = "Uploaded",
-                subtitle = "${songs.count { it.song.isUploaded }} songs",
-                playTime = songs.filter { it.song.isUploaded }.sumOf { it.song.totalPlayTime },
-                route = "auto_playlist/uploaded"
-            )
-        ).sortedByDescending { it.playTime }
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenMultipleDocuments(),
-        onResult = { uris: List<Uri> ->
-            if (uris.isEmpty()) return@rememberLauncherForActivityResult
-            isImporting = true
-            importProgress = 0f
-            coroutineScope.launch {
-                var successCount = 0
-                var failCount = 0
-                val total = uris.size
-                for ((index, uri) in uris.withIndex()) {
-                    try {
-
-                        context.contentResolver.takePersistableUriPermission(
-                            uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
-
-                        val metadata = withContext(Dispatchers.IO) {
-                            extractAudioMetadata(context, uri)
-                        }
-
-                        val songId = "LOCAL_${UUID.randomUUID()}"
-                        val thumbnailUrl = withContext(Dispatchers.IO) {
-                            metadata.embeddedArtwork?.let { artworkData ->
-                                try {
-                                    val artworkFile = java.io.File(
-                                        context.cacheDir,
-                                        "artwork_${songId.hashCode()}.jpg"
-                                    )
-                                    artworkFile.writeBytes(artworkData)
-                                    android.net.Uri.fromFile(artworkFile).toString()
-                                } catch (_: Exception) { null }
-                            }
-                        }
-
-                        withContext(Dispatchers.IO) {
-                            database.transaction {
-                                insert(
-                                    SongEntity(
-                                        id = songId,
-                                        title = metadata.title,
-                                        duration = metadata.durationSeconds,
-                                        thumbnailUrl = thumbnailUrl,
-                                        albumName = metadata.album,
-                                        isLocal = true,
-                                        inLibrary = LocalDateTime.now(),
-                                        localUri = uri.toString(),
-                                    )
-                                )
-
-                                val artistName = metadata.artist
-                                val artistId = artistByName(artistName)?.id
-                                    ?: ArtistEntity.generateArtistId()
-                                insert(
-                                    ArtistEntity(
-                                        id = artistId,
-                                        name = artistName,
-                                        isLocal = true,
-                                    )
-                                )
-                                insert(
-                                    SongArtistMap(
-                                        songId = songId,
-                                        artistId = artistId,
-                                        position = 0,
-                                    )
-                                )
-
-                                val mimeType = metadata.mimeType ?: "audio/mpeg"
-                                val codecs = when {
-                                    mimeType.contains("flac") -> "flac"
-                                    mimeType.contains("opus") || mimeType.contains("ogg") -> "opus"
-                                    mimeType.contains("mp4") || mimeType.contains("m4a") || mimeType.contains("aac") -> "mp4a.40.2"
-                                    mimeType.contains("wav") -> "pcm"
-                                    else -> "mp3"
-                                }
-                                upsert(
-                                    FormatEntity(
-                                        id = songId,
-                                        itag = -1,
-                                        mimeType = mimeType,
-                                        codecs = codecs,
-                                        bitrate = metadata.bitrate ?: 0,
-                                        sampleRate = metadata.sampleRate,
-                                        contentLength = 0L,
-                                        loudnessDb = null,
-                                        perceptualLoudnessDb = null,
-                                        playbackUrl = null
-                                    )
-                                )
-                            }
-                        }
-                        successCount++
-                    } catch (e: Exception) {
-                        failCount++
-                    }
-                    importProgress = (index + 1).toFloat() / total
-                }
-                isImporting = false
-                importProgress = -1f
-
-                val message = if (failCount == 0) {
-                    "Imported $successCount song${if (successCount != 1) "s" else ""}"
-                } else {
-                    "Imported $successCount, failed $failCount"
-                }
-                snackbarHostState.showSnackbar(message)
-            }
-        }
-    )
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-            contentPadding = WindowInsets.systemBars
-                .only(WindowInsetsSides.Horizontal)
-                .asPaddingValues()
-        ) {
-            item(key = "library_title") {
-                NavigationTitle(title = stringResource(R.string.your_library))
-            }
-            item(key = "library_import") {
-                LibraryImportCard(
-                    totalSongs = songs.size,
-                    totalPlaylists = playlists.size,
-                    isImporting = isImporting,
-                    importProgress = importProgress,
-                    onClick = {
-                        if (!isImporting) {
-                            launcher.launch(
-                                arrayOf(
-                                    "audio/*",
-                                    "audio/mpeg",
-                                    "audio/mp4",
-                                    "audio/flac",
-                                    "audio/ogg",
-                                    "audio/wav",
-                                    "audio/x-wav",
-                                    "audio/aac"
-                                )
-                            )
-                        }
-                    }
-                )
-            }
-            item(key = "library_categories_title") {
-                Text(
-                    text = "Categories",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-            }
-            item(key = "library_categories") {
-                Column(Modifier.padding(horizontal = 24.dp)) {
-                    LibraryCategoryRow("Liked Songs") { navController.navigate("auto_playlist/liked") }
-                    LibraryCategoryRow("Downloaded") { navController.navigate("auto_playlist/downloaded") }
-                    LibraryCategoryRow("Albums") { navController.navigate("library/albums") }
-                    LibraryCategoryRow("Local") { navController.navigate("auto_playlist/local") }
-                    LibraryCategoryRow("Artist") { navController.navigate("library/artists") }
-                }
-            }
-            item(key = "library_playlists_title") {
-                Text(
-                    text = "Playlists",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.64f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-            }
-            items(
-                items = automaticPlaylists,
-                key = { "library_auto_${it.title}" }
-            ) { playlist ->
-                LibraryPlaylistRow(
-                    title = playlist.title,
-                    subtitle = playlist.subtitle,
-                    onClick = { navController.navigate(playlist.route) }
-                )
-            }
-            items(
-                items = playlists,
-                key = { "library_playlist_${it.id}" }
-            ) { playlist ->
-                LibraryPlaylistRow(
-                    title = playlist.title,
-                    subtitle = "${playlist.songCount} songs",
-                    onClick = { navController.navigate("local_playlist/${playlist.id}") }
-                )
-            }
-        }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-    }
-}
-
-private data class LibraryAutoPlaylist(
-    val title: String,
-    val subtitle: String,
-    val playTime: Long,
-    val route: String,
-)
-
-@Composable
-private fun LibraryImportCard(
-    totalSongs: Int,
-    totalPlaylists: Int,
-    isImporting: Boolean,
-    importProgress: Float,
-    onClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .padding(horizontal = 24.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.72f))
-            .clickable(onClick = onClick)
-            .padding(18.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.add_circle),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = if (isImporting) "Importing songs..." else "Add more song here!",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "Total songs - $totalSongs | Total Playlist - $totalPlaylists",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        if (isImporting && importProgress >= 0f) {
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { importProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "${(importProgress * 100).toInt()}%",
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
-    }
-}
-
-private data class LocalAudioMetadata(
+internal data class LocalAudioMetadata(
     val title: String,
     val artist: String,
     val album: String?,
@@ -836,7 +528,7 @@ private data class LocalAudioMetadata(
     val embeddedArtwork: ByteArray?,
 )
 
-private fun extractAudioMetadata(
+internal fun extractAudioMetadata(
     context: android.content.Context,
     uri: Uri,
 ): LocalAudioMetadata {
@@ -889,87 +581,3 @@ private fun extractAudioMetadata(
     }
 }
 
-@Composable
-private fun LibraryCategoryRow(
-    label: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .border(
-                width = 0.5.dp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.20f),
-                shape = RoundedCornerShape(0.dp)
-            )
-            .clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.90f))
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            text = label,
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun LibraryPlaylistRow(
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(horizontal = 24.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp)
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(58.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.playlist_play),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(32.dp)
-            )
-        }
-        Spacer(Modifier.width(14.dp))
-        Column {
-            Text(
-                text = title,
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = subtitle,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}

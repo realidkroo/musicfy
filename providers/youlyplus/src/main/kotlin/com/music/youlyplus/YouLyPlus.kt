@@ -141,12 +141,18 @@ object YouLyPlus {
 
             val isBg = item.syllabus?.any { it.isBackground == true } == true
             val lineTimestamp = formatTime(lineTime)
-            val bgMarker = if (isBg) "{bg}" else ""
+            // A line is either a background vocal or attributed to a voice, never both — the app's
+            // parser treats {bg} as its own kind of line and centres it regardless of singer.
+            val marker = when {
+                isBg -> "{bg}"
+                !item.element?.singer.isNullOrBlank() -> "{agent:${item.element?.singer}}"
+                else -> ""
+            }
 
             val syllabus = item.syllabus
             if (!syllabus.isNullOrEmpty()) {
                 val sb = StringBuilder(lineTimestamp)
-                sb.append(bgMarker)
+                sb.append(marker)
                 syllabus.forEach { syl ->
                     val sylTime = syl.time ?: 0L
                     sb.append(formatTime(sylTime, isSyllable = true))
@@ -158,7 +164,7 @@ object YouLyPlus {
                 }
                 sb.toString().trim()
             } else {
-                lineTimestamp + bgMarker + (item.text ?: "")
+                lineTimestamp + marker + (item.text ?: "")
             }
         }
     }

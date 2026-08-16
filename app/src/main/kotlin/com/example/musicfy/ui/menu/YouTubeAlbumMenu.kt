@@ -77,6 +77,7 @@ import com.example.musicfy.ui.component.YouTubeListItem
 import com.example.musicfy.utils.reportException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MutableCollectionMutableState")
@@ -237,6 +238,7 @@ fun YouTubeAlbumMenu(
     }
 
     YouTubeListItem(
+        backgroundColor = Color.Transparent,
         item = albumItem,
         badges = {},
         trailingContent = {
@@ -396,7 +398,7 @@ fun YouTubeAlbumMenu(
                     Material3MenuItemData(
                         title = {
                             Text(
-                                text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial"
+                                text = if (isPinned) "Unpin from library" else "Pin to library"
                             )
                         },
                         icon = {
@@ -410,7 +412,7 @@ fun YouTubeAlbumMenu(
                                 if (isPinned) {
                                     database.speedDialDao.delete(albumItem.id)
                                 } else {
-                                    database.speedDialDao.insert(SpeedDialItem.fromYTItem(albumItem))
+                                    database.pinToSpeedDial(SpeedDialItem.fromYTItem(albumItem))
                                 }
                             }
                             onDismiss()

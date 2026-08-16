@@ -1,90 +1,48 @@
+// LibraryAlbumsScreen.kt
+
 package com.example.musicfy.ui.screens.library
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.LocalDatabase
-import com.example.musicfy.LocalPlayerAwareWindowInsets
-import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.R
-import com.example.musicfy.constants.AlbumSortType
-import com.example.musicfy.ui.component.IconButton
-import com.example.musicfy.ui.component.LibraryAlbumGridItem
-import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.utils.backToMain
+import com.example.musicfy.viewmodels.LibraryHomeViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LibraryAlbumsScreen(
     navController: NavController,
-    scrollBehavior: TopAppBarScrollBehavior,
+    modifier: Modifier = Modifier,
+    pureBlack: Boolean = false,
 ) {
-    val database = LocalDatabase.current
-    val menuState = LocalMenuState.current
-    val coroutineScope = rememberCoroutineScope()
-    val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val viewModel: LibraryHomeViewModel = hiltViewModel()
+    val albums by viewModel.albums.collectAsState()
 
-    val albums by database.albums(AlbumSortType.CREATE_DATE, true).collectAsState(initial = emptyList())
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 160.dp),
-            contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom).asPaddingValues(),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                TopAppBar(
-                    title = { Text("Albums") },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = navController::navigateUp,
-                            onLongClick = navController::backToMain
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.arrow_back_ios),
-                                contentDescription = null
-                            )
-                        }
-                    },
-                    scrollBehavior = scrollBehavior
-                )
-            }
-
-            items(
-                items = albums,
-                key = { it.id }
-            ) { album ->
-                LibraryAlbumGridItem(
-                    navController = navController,
-                    menuState = menuState,
-                    coroutineScope = coroutineScope,
-                    album = album,
-                    isActive = album.id == mediaMetadata?.album?.id,
-                    isPlaying = isPlaying,
-                    modifier = Modifier.animateItem()
-                )
-            }
+    val entries = remember(albums) {
+        albums.map {
+            LibraryGridEntry(
+                id = it.id,
+                title = it.title,
+                subtitle = it.artists.joinToString { a -> a.name }.ifBlank { null },
+                thumbnailUrl = it.album.thumbnailUrl,
+            )
         }
     }
+
+    LibraryGridScreen(
+        title = "Albums",
+        subtitle = "All album on your library listed here.",
+        searchPlaceholder = "Find song listed here, by the lyrics, or the artist",
+        entries = entries,
+        onOpen = { navController.navigate("album/${it.id}") },
+        // Both buttons open the newest album rather than building a queue across every album:
+        // this screen only loads album metadata, so a real "play everything" would mean fetching
+        // every album's tracklist up front just to make one button work.
+        onPlay = { albums.firstOrNull()?.let { navController.navigate("album/${it.id}") } },
+        onShuffle = { albums.randomOrNull()?.let { navController.navigate("album/${it.id}") } },
+        modifier = modifier,
+        pureBlack = pureBlack,
+    )
 }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -107,13 +108,22 @@ fun MenuSheetSurface(
 
         LaunchedEffect(Unit) {
             if (offsetPx.floatValue != Float.MAX_VALUE) return@LaunchedEffect
-            val start = if (wrapHeight) {
 
-                snapshotFlow { measuredHeightPx.floatValue }.first { it > 0f }
-            } else {
-                maxSheetPx
-            }
+            // Do not start the entrance until the sheet has actually been measured AND drawn once.
+            //
+            // This is the whole reason opening the menu felt slow. Everything a menu costs —
+            // composing a dozen-plus rows, inflating a vector drawable for each one, the artwork
+            // request, reading the audio device — landed on the very frame the animation began,
+            // so the opening frames were starved and the slide stuttered before it settled. None
+            // of that work got cheaper here; it just no longer happens *during* the animation.
+            //
+            // offsetPx starts at Float.MAX_VALUE, which parks the sheet far off-screen, so this
+            // warm-up frame is invisible: the expensive first layout and draw happen out of sight,
+            // and the animation then runs against a composition that is already warm.
+            snapshotFlow { measuredHeightPx.floatValue }.first { it > 0f }
+            withFrameNanos { }
 
+            val start = if (wrapHeight) measuredHeightPx.floatValue else maxSheetPx
             val target = if (wrapHeight) 0f else start * (1f - halfDetent / fullDetent)
             setOffset(start)
             animate(
@@ -223,13 +233,15 @@ fun MenuSheetSurface(
                 .fillMaxWidth()
                 .then(
                     if (wrapHeight) {
-                        Modifier
-                            .heightIn(max = maxHeight * fullDetent)
-                            .onSizeChanged { measuredHeightPx.floatValue = it.height.toFloat() }
+                        Modifier.heightIn(max = maxHeight * fullDetent)
                     } else {
                         Modifier.height(maxHeight * fullDetent)
                     }
                 )
+                // Reported for both kinds of sheet, not just wrapHeight ones. A wrapHeight sheet
+                // needs the value to know how far to travel; a fixed-height sheet needs it purely
+                // as the signal that layout has happened, which is what the entrance waits on.
+                .onSizeChanged { measuredHeightPx.floatValue = it.height.toFloat() }
                 .nestedScroll(sheetNestedScroll)
                 .graphicsLayer { translationY = offsetPx.floatValue }
                 .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))

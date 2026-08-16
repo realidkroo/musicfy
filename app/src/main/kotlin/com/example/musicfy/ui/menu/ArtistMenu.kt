@@ -44,6 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun ArtistMenu(
@@ -60,6 +61,7 @@ fun ArtistMenu(
 
     ArtistListItem(
         artist = artist,
+        backgroundColor = Color.Transparent,
         badges = {},
         trailingContent = {},
     )
@@ -165,7 +167,7 @@ fun ArtistMenu(
                                     if (isPinned) {
                                         database.speedDialDao.delete(artist.id)
                                     } else {
-                                        database.speedDialDao.insert(
+                                        database.pinToSpeedDial(
                                             SpeedDialItem(
                                                 id = artist.id,
                                                 title = artist.artist.name,

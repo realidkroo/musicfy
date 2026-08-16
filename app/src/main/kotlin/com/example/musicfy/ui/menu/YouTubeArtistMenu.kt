@@ -42,6 +42,7 @@ import com.example.musicfy.ui.component.YouTubeListItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 
@@ -58,6 +59,7 @@ fun YouTubeArtistMenu(
     val coroutineScope = rememberCoroutineScope()
 
     YouTubeListItem(
+        backgroundColor = Color.Transparent,
         item = artist,
         trailingContent = {},
     )
@@ -118,7 +120,7 @@ fun YouTubeArtistMenu(
                                     if (isPinned) {
                                         database.speedDialDao.delete(artist.id)
                                     } else {
-                                        database.speedDialDao.insert(SpeedDialItem.fromYTItem(artist))
+                                        database.pinToSpeedDial(SpeedDialItem.fromYTItem(artist))
                                     }
                                 }
                                 onDismiss()

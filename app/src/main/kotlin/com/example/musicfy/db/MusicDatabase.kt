@@ -53,6 +53,22 @@ class MusicDatabase(
     val speedDialDao: SpeedDialDao
         get() = delegate.speedDialDao
 
+    /**
+     * Pins [item], evicting the oldest pin first if that would push the count past
+     * [com.example.musicfy.db.daos.SpeedDialDao.Companion.MaxPinned].
+     *
+     * The one place pins are created. Every menu that offers "Pin to Speed dial" should call this
+     * instead of `speedDialDao.insert` directly — the cap only holds if there's a single entry
+     * point enforcing it, and scattering the limit check across each menu's onClick would drift
+     * the moment one of them was written (or edited) without it.
+     */
+    suspend fun pinToSpeedDial(item: com.example.musicfy.db.entities.SpeedDialItem) {
+        if (speedDialDao.count() >= SpeedDialDao.MaxPinned) {
+            speedDialDao.oldest()?.let { speedDialDao.delete(it.id) }
+        }
+        speedDialDao.insert(item)
+    }
+
     val openHelper: SupportSQLiteOpenHelper
         get() = delegate.openHelper
 

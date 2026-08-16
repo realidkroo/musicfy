@@ -547,6 +547,7 @@ fun SongGridItem(
 fun ArtistListItem(
     artist: Artist,
     modifier: Modifier = Modifier,
+    backgroundColor: Color = Color.Unspecified,
     badges: @Composable RowScope.() -> Unit = {
         if (artist.artist.bookmarkedAt != null) {
             Icon(
@@ -581,6 +582,7 @@ fun ArtistListItem(
     },
     trailingContent = trailingContent,
     modifier = modifier,
+    backgroundColor = backgroundColor,
 )
 
 @Composable
@@ -636,6 +638,7 @@ fun AlbumListItem(
     },
     isActive: Boolean = false,
     isPlaying: Boolean = false,
+    backgroundColor: Color = Color.Unspecified,
     trailingContent: @Composable RowScope.() -> Unit = {},
 ) = ListItem(
     title = album.album.title,
@@ -655,7 +658,8 @@ fun AlbumListItem(
         )
     },
     trailingContent = trailingContent,
-    modifier = modifier
+    modifier = modifier,
+    backgroundColor = backgroundColor
 )
 
 @Composable
@@ -944,6 +948,7 @@ fun YouTubeListItem(
     },
     shape: Shape = RectangleShape,
     drawHighlight: Boolean = true,
+    backgroundColor: Color = Color.Unspecified,
 ) {
     val swipeEnabled = com.example.musicfy.LocalSwipeToSong.current
 
@@ -974,7 +979,8 @@ fun YouTubeListItem(
             isSelected = isSelected,
             isActive = isActive,
             shape = shape,
-            drawHighlight = drawHighlight
+            drawHighlight = drawHighlight,
+            backgroundColor = backgroundColor
         )
     }
 

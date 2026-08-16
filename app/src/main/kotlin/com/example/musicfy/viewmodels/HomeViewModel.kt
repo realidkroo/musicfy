@@ -292,7 +292,7 @@ class HomeViewModel @Inject constructor(
             if (isPinned) {
                 database.speedDialDao.delete(speedDialItem.id)
             } else {
-                database.speedDialDao.insert(speedDialItem)
+                database.pinToSpeedDial(speedDialItem)
             }
         }
     }

@@ -6,7 +6,10 @@ import android.content.Context
 import com.music.innertube.YouTube
 
 object YouTubeSubtitleLyricsProvider : LyricsProvider {
-    override val name = "YouTube Subtitle"
+    // Must match the registry key, not the display name: this string is what gets persisted on
+    // LyricsEntity.provider and later fed back through LyricsProviderRegistry, which only knows
+    // the un-spaced form. See LyricsProviderRegistry.getDisplayName for the pretty version.
+    override val name = "YouTubeSubtitle"
 
     override fun isEnabled(context: Context) = true
 

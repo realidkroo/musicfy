@@ -86,6 +86,7 @@ import com.example.musicfy.viewmodels.OnlineSearchSuggestionViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
+import com.example.musicfy.ui.component.navigateToTab
 
 @Composable
 fun SearchScreen(
@@ -239,7 +240,7 @@ fun SearchScreen(
             title = "Search",
             blurActive = blurActive,
             trailing = {
-                SearchAvatar(imageUrl = profilePicStr.ifBlank { null }, onClick = { navController.navigate("settings") })
+                SearchAvatar(imageUrl = profilePicStr.ifBlank { null }, onClick = { navController.navigateToTab("settings") })
             },
         ) {
             SearchField(

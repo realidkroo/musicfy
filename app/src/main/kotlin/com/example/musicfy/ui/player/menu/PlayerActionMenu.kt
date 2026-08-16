@@ -53,17 +53,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.ui.utils.resize
 
+/**
+ * @param fromLyrics true when the menu was opened from the lyrics page. The lyrics tools are only
+ *   meaningful there — offering "edit lyrics" or "refetch lyrics" from the player, where there may
+ *   not even be lyrics on screen, is an action with no visible consequence.
+ */
 @Composable
 fun PlayerActionMenu(
     onDismiss: () -> Unit,
     onEditPlayer: () -> Unit,
     modifier: Modifier = Modifier,
+    fromLyrics: Boolean = false,
 
     onReveal: ((Float) -> Unit)? = null,
 ) {
@@ -75,6 +82,15 @@ fun PlayerActionMenu(
     var showSleepTimer by remember { mutableStateOf(false) }
     var showAudioDevices by remember { mutableStateOf(false) }
     var showPlaybackSpeed by remember { mutableStateOf(false) }
+    var showLyricsEditor by remember { mutableStateOf(false) }
+    var showLyricsProvider by remember { mutableStateOf(false) }
+    var showLyricsTranslation by remember { mutableStateOf(false) }
+
+    // Only touched by the lyrics section. hiltViewModel() itself is cheap, but the flows are
+    // collected lazily so a menu opened from the player does no lyrics work at all.
+    val lyricsMenuViewModel: com.example.musicfy.viewmodels.LyricsMenuViewModel = hiltViewModel()
+    val lyricsMetadata by playerConnection.mediaMetadata.collectAsState()
+    val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
 
     MenuSheetSurface(
         onDismiss = onDismiss,
@@ -130,6 +146,48 @@ fun PlayerActionMenu(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                }
+
+                if (fromLyrics) {
+                    MenuDivider()
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        MenuCard(
+                            icon = R.drawable.translate,
+                            title = "Ai translation",
+                            // Greyed out until the AI translation settings are filled in — an
+                            // enabled button that silently does nothing is worse than a disabled
+                            // one that says so.
+                            enabled = false,
+                            onClick = {},
+                            modifier = Modifier.weight(1f),
+                        )
+                        MenuCard(
+                            icon = R.drawable.edit,
+                            title = "Edit lyrics",
+                            onClick = { showLyricsEditor = true },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Refetch removed — picking a provider already re-fetches, so a separate
+                    // button that re-ran the same query with unchanged settings had no visible
+                    // outcome.
+                    MenuRow(
+                        icon = R.drawable.lyrics,
+                        title = "Lyrics provider",
+                        onClick = { showLyricsProvider = true },
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    MenuRow(
+                        icon = R.drawable.translate,
+                        title = "lyrics translation",
+                        onClick = { showLyricsTranslation = true },
+                    )
                 }
 
                 MenuDivider()
@@ -208,6 +266,15 @@ fun PlayerActionMenu(
     if (showPlaybackSpeed) {
         PlaybackSpeedSheet(onDismiss = { showPlaybackSpeed = false })
     }
+    if (showLyricsEditor) {
+        LyricsEditorSheet(onDismiss = { showLyricsEditor = false })
+    }
+    if (showLyricsProvider) {
+        LyricsProviderSheet(onDismiss = { showLyricsProvider = false })
+    }
+    if (showLyricsTranslation) {
+        LyricsTranslationSheet(onDismiss = { showLyricsTranslation = false })
+    }
 }
 
 @Composable
@@ -221,18 +288,70 @@ private fun MenuDivider() {
     )
 }
 
+/**
+ * The tall two-up card used for the headline lyrics actions: icon on its own row, label beneath.
+ * Same surface and disabled treatment as [MenuRow], just a different shape.
+ */
+@Composable
+private fun MenuCard(
+    icon: Int,
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val contentAlpha = if (enabled) 1f else 0.35f
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(MenuRowSurface)
+            .clickable(
+                enabled = enabled,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(14.dp)
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.9f * contentAlpha))
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = Color.Black.copy(alpha = 0.75f),
+                modifier = Modifier.size(13.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(30.dp))
+        Text(
+            text = title,
+            color = Color.White.copy(alpha = contentAlpha),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 @Composable
 private fun MenuRow(
     icon: Int,
     title: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val contentAlpha = if (enabled) 1f else 0.35f
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MenuRowSurface)

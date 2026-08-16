@@ -452,6 +452,74 @@ object LyricsTranslationHelper {
         }
     }
 
+    /**
+     * Translates via Google Translate, which needs no API key.
+     *
+     * This exists so the translate toggle does something for a user who has not pasted an
+     * OpenRouter or DeepL key into settings — previously that user got silence. Callers should
+     * prefer this whenever no AI key is configured.
+     */
+    fun translateWithGoogle(
+        lyrics: List<LyricsEntry>,
+        targetLanguage: String,
+        mode: String,
+        scope: CoroutineScope,
+        songId: String = "",
+        database: MusicDatabase? = null,
+    ) {
+        translationJob?.cancel()
+        _status.value = TranslationStatus.Translating
+        lyrics.forEach { it.translatedTextFlow.value = null }
+
+        translationJob = scope.launch(Dispatchers.IO) {
+            val indexed = lyrics.mapIndexedNotNull { index, entry ->
+                if (entry.text.isNotBlank()) index to entry else null
+            }
+            if (indexed.isEmpty()) {
+                _status.value = TranslationStatus.Idle
+                return@launch
+            }
+
+            val translated = GoogleTranslateEngine.translate(
+                lines = indexed.map { it.second.text },
+                targetLanguage = targetLanguage,
+            )
+            if (translated == null) {
+                _status.value = TranslationStatus.Error("Translation failed")
+                return@launch
+            }
+
+            indexed.forEachIndexed { idx, (originalIndex, _) ->
+                lyrics[originalIndex].translatedTextFlow.value = translated.getOrNull(idx)
+            }
+            _hasActiveTranslations.value = true
+            _status.value = TranslationStatus.Success
+
+            val lyricsText = indexed.joinToString("\n") { it.second.text }
+            translationCache[getCacheKey(lyricsText, mode, targetLanguage)] = translated
+
+            if (songId.isNotBlank() && database != null) {
+                try {
+                    val current = database.lyrics(songId).first()
+                    if (current != null) {
+                        database.query {
+                            upsert(
+                                current.copy(
+                                    translatedLyrics = translated.joinToString("\n"),
+                                    translationLanguage = targetLanguage,
+                                    translationMode = mode,
+                                ),
+                            )
+                        }
+                        _translationSaved.tryEmit(Unit)
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to persist Google translations")
+                }
+            }
+        }
+    }
+
     sealed class TranslationStatus {
         data object Idle : TranslationStatus()
         data object Translating : TranslationStatus()

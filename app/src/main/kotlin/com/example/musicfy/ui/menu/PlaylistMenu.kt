@@ -66,6 +66,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun PlaylistMenu(
@@ -250,6 +251,7 @@ fun PlaylistMenu(
 
     PlaylistListItem(
         playlist = playlist,
+        backgroundColor = Color.Transparent,
         trailingContent = {
             if (playlist.playlist.isEditable != true) {
                 IconButton(
@@ -458,7 +460,7 @@ fun PlaylistMenu(
                         Material3MenuItemData(
                             title = {
                                 Text(
-                                    text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial"
+                                    text = if (isPinned) "Unpin from library" else "Pin to library"
                                 )
                             },
                             icon = {
@@ -472,7 +474,7 @@ fun PlaylistMenu(
                                     if (isPinned) {
                                         database.speedDialDao.delete(playlist.id)
                                     } else {
-                                        database.speedDialDao.insert(
+                                        database.pinToSpeedDial(
                                             SpeedDialItem(
                                                 id = playlist.id,
                                                 title = playlist.playlist.name,

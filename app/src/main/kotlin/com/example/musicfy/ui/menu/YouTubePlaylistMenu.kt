@@ -85,6 +85,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MutableCollectionMutableState")
@@ -136,6 +137,7 @@ fun YouTubePlaylistMenu(
     )
 
     YouTubeListItem(
+        backgroundColor = Color.Transparent,
         item = playlist,
         trailingContent = {
             if (playlist.id != "LM" && !playlist.isEditable) {
@@ -484,7 +486,7 @@ fun YouTubePlaylistMenu(
                     Material3MenuItemData(
                         title = {
                             Text(
-                                text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial"
+                                text = if (isPinned) "Unpin from library" else "Pin to library"
                             )
                         },
                         icon = {
@@ -498,7 +500,7 @@ fun YouTubePlaylistMenu(
                                 if (isPinned) {
                                     database.speedDialDao.delete(playlist.id)
                                 } else {
-                                    database.speedDialDao.insert(SpeedDialItem.fromYTItem(playlist))
+                                    database.pinToSpeedDial(SpeedDialItem.fromYTItem(playlist))
                                 }
                             }
                             onDismiss()

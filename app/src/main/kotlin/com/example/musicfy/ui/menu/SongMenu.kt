@@ -93,6 +93,7 @@ import com.example.musicfy.viewmodels.CachePlaylistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun SongMenu(
@@ -300,7 +301,10 @@ fun SongMenu(
     SongListItem(
         song = song,
         badges = {},
-        shape = listItemShape(0, 2),
+        // Flat, like the player's own sheet header. ListItem paints surfaceContainer by default,
+        // which put a grey card behind the track at the top of every menu while the rows beneath
+        // it were flat — two different surfaces in one sheet.
+        backgroundColor = Color.Transparent,
         trailingContent = {
             IconButton(
                 onClick = {
@@ -452,7 +456,7 @@ fun SongMenu(
                         Material3MenuItemData(
                             title = {
                                 Text(
-                                    text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial"
+                                    text = if (isPinned) "Unpin from library" else "Pin to library"
                                 )
                             },
                             icon = {
@@ -466,7 +470,7 @@ fun SongMenu(
                                     if (isPinned) {
                                         database.speedDialDao.delete(song.id)
                                     } else {
-                                        database.speedDialDao.insert(
+                                        database.pinToSpeedDial(
                                             SpeedDialItem(
                                                 id = song.id,
                                                 title = song.song.title,
