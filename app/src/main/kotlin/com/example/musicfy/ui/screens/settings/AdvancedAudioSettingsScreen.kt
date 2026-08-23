@@ -36,6 +36,10 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
     val (enableCustomApi, onEnableCustomApiChange) = rememberPreference(EnableCustomApiKey, defaultValue = false)
     val (enableMonochromeBackend, onEnableMonochromeBackendChange) = rememberPreference(EnableMonochromeBackendKey, defaultValue = false)
     val (enableSpatialAudio, onEnableSpatialAudioChange) = rememberPreference(EnableSpatialAudioKey, defaultValue = false)
+    val (fallbackToYouTube, onFallbackToYouTubeChange) = rememberPreference(
+        com.example.musicfy.constants.MonochromeFallbackToYouTubeKey,
+        defaultValue = true,
+    )
 
     val (audioQuality, onAudioQualityChange) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
 
@@ -147,25 +151,79 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
                     modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
                 )
 
+                Text(
+                    text = "Lossless tiers stream from the Monochrome backend and need it enabled above. The other tiers stream from YouTube.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                )
+
+                Text(
+                    text = "Monochrome",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp)
+                )
                 QualitySelectionRow(
-                    selected = audioQuality == AudioQuality.LOSSLESS,
-                    title = "Lossless (FLAC 16-bit)",
-                    onClick = { onAudioQualityChange(AudioQuality.LOSSLESS) }
+                    selected = audioQuality == AudioQuality.DOLBY_ATMOS,
+                    title = "Dolby Atmos (E-AC-3 JOC)",
+                    onClick = { onAudioQualityChange(AudioQuality.DOLBY_ATMOS) }
                 )
                 QualitySelectionRow(
                     selected = audioQuality == AudioQuality.HI_RES_LOSSLESS,
-                    title = "Hi-Res Lossless (FLAC 24-bit)",
+                    title = "Hi-Res Lossless (FLAC up to 24-bit)",
                     onClick = { onAudioQualityChange(AudioQuality.HI_RES_LOSSLESS) }
                 )
                 QualitySelectionRow(
+                    selected = audioQuality == AudioQuality.LOSSLESS,
+                    title = "Lossless (FLAC 16-bit/44.1kHz)",
+                    onClick = { onAudioQualityChange(AudioQuality.LOSSLESS) }
+                )
+
+                Text(
+                    text = "YouTube",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp)
+                )
+                QualitySelectionRow(
                     selected = audioQuality == AudioQuality.HIGH,
-                    title = "High (320kbps OPUS/AAC)",
+                    title = "High (best available, OPUS/AAC)",
                     onClick = { onAudioQualityChange(AudioQuality.HIGH) }
                 )
                 QualitySelectionRow(
+                    selected = audioQuality == AudioQuality.MEDIUM,
+                    title = "Medium (~128-160kbps)",
+                    onClick = { onAudioQualityChange(AudioQuality.MEDIUM) }
+                )
+                QualitySelectionRow(
                     selected = audioQuality == AudioQuality.LOW,
-                    title = "Low (128kbps)",
+                    title = "Low (~50-70kbps)",
                     onClick = { onAudioQualityChange(AudioQuality.LOW) }
+                )
+                QualitySelectionRow(
+                    selected = audioQuality == AudioQuality.AUTO,
+                    title = "Auto (best the active backend offers)",
+                    onClick = { onAudioQualityChange(AudioQuality.AUTO) }
+                )
+
+                SettingsGroup(
+                    title = "Fallback",
+                    style = SettingsGroupStyle.Grouped,
+                    items = listOf(
+                        SettingsItem(
+                            title = { Text("Fall back to YouTube Music") },
+                            descriptionText = "When Monochrome cannot serve a track, stream it from YouTube Music instead of failing",
+                            icon = painterResource(R.drawable.play),
+                            onClick = { onFallbackToYouTubeChange(!fallbackToYouTube) },
+                            trailingContent = {
+                                AppSwitch(
+                                    checked = fallbackToYouTube,
+                                    onCheckedChange = onFallbackToYouTubeChange
+                                )
+                            }
+                        )
+                    )
                 )
 
                 SettingsGroup(

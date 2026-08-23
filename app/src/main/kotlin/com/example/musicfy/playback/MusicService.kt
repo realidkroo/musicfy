@@ -43,11 +43,14 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR
+import androidx.media3.datasource.cache.Cache
+import androidx.media3.datasource.cache.ContentMetadata
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -383,6 +386,12 @@ class MusicService :
     private var silenceSkipJob: Job? = null
 
     private val songUrlCache = HashMap<String, Pair<String, Long>>()
+
+    /**
+     * Container type and total byte length per media id, needed to decide whether a stream
+     * may be read in chunks and whether the cache already holds the whole thing.
+     */
+    private val songFormatCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String?, Long?>>()
 
     private val bypassCacheForQualityChange = mutableSetOf<String>()
 
@@ -2673,6 +2682,98 @@ class MusicService :
         }
     }
 
+    /**
+     * Container type and total byte length for a track, from the in-memory cache when we have
+     * already resolved it this session, otherwise from the stored format row.
+     */
+    private fun formatMetadata(mediaId: String): Pair<String?, Long?> =
+        songFormatCache.getOrPut(mediaId) {
+            val stored = runCatching {
+                runBlocking(Dispatchers.IO) { database.format(mediaId).first() }
+            }.getOrNull()
+            stored?.mimeType to stored?.contentLength?.takeIf { it > 0L }
+        }
+
+    /** Total byte length a cache recorded for this track when it first fetched it. */
+    private fun cachedContentLength(mediaId: String): Long? =
+        sequenceOf(downloadCache, playerCache)
+            .mapNotNull { cache ->
+                runCatching { ContentMetadata.getContentLength(cache.getContentMetadata(mediaId)) }
+                    .getOrNull()
+                    ?.takeIf { it > 0L }
+            }.firstOrNull()
+
+    /**
+     * How many bytes are cached in one unbroken run starting at [position], across both caches.
+     * Stops at the first gap - a span that starts past the cursor means the run has ended.
+     */
+    private fun continuousCachedLength(
+        mediaId: String,
+        position: Long,
+        requestedLength: Long,
+    ): Long {
+        val targetEnd = position + requestedLength
+        val spans = sequenceOf<Cache>(downloadCache, playerCache)
+            .flatMap { cache ->
+                runCatching { cache.getCachedSpans(mediaId).toList() }.getOrNull().orEmpty().asSequence()
+            }
+            .filter { span -> span.position + span.length > position }
+            .sortedBy { span -> span.position }
+
+        var cursor = position
+        for (span in spans) {
+            if (span.position > cursor) break
+            cursor = maxOf(cursor, span.position + span.length)
+            if (cursor >= targetEnd) break
+        }
+        return (cursor - position).coerceAtLeast(0L)
+    }
+
+    /** True only when every byte the player asked for is already on disk. */
+    private fun isRangeFullyCached(
+        mediaId: String,
+        dataSpec: DataSpec,
+        knownContentLength: Long?,
+    ): Boolean {
+        val contentLength = knownContentLength ?: cachedContentLength(mediaId)
+        val requestedLength = when {
+            dataSpec.length > 0L -> dataSpec.length
+            contentLength != null && contentLength > dataSpec.position -> contentLength - dataSpec.position
+            // Open-ended read and nothing tells us how long the track is. A completed
+            // download is all-or-nothing so it is still safe to serve, but the streaming
+            // cache routinely holds partial entries and must not be trusted here.
+            else -> return runCatching {
+                downloadCache.isCached(mediaId, dataSpec.position, 1)
+            }.getOrDefault(false)
+        }
+        return continuousCachedLength(mediaId, dataSpec.position, requestedLength) >= requestedLength
+    }
+
+    /**
+     * Post a visible, named playback error. The media notification channel is IMPORTANCE_LOW and
+     * silent by design, so failures posted there go unnoticed - errors get their own channel.
+     */
+    private fun notifyPlaybackError(title: String, message: String) {
+        runCatching {
+            val nm = getSystemService(NotificationManager::class.java) ?: return
+            nm.createNotificationChannel(
+                android.app.NotificationChannel(
+                    ERROR_CHANNEL_ID,
+                    getString(R.string.playback_error_channel_name),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ),
+            )
+            val notification = NotificationCompat.Builder(this, ERROR_CHANNEL_ID)
+                .setSmallIcon(R.drawable.musicfy_notification)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                .setAutoCancel(true)
+                .build()
+            nm.notify(ERROR_NOTIFICATION_ID, notification)
+        }.onFailure { Timber.tag(TAG).w(it, "Could not post playback error notification") }
+    }
+
     private fun createDataSourceFactory(): DataSource.Factory {
         return ResolvingDataSource.Factory(createCacheDataSource()) { dataSpec ->
             val mediaId = dataSpec.key ?: error("No media id")
@@ -2685,20 +2786,27 @@ class MusicService :
             }
 
             if (!shouldBypassCache) {
-                if (downloadCache.isCached(
-                        mediaId,
-                        dataSpec.position,
-                        if (dataSpec.length >= 0) dataSpec.length else 1
-                    ) ||
-                    playerCache.isCached(mediaId, dataSpec.position, CHUNK_LENGTH)
-                ) {
+                val knownContentLength = formatMetadata(mediaId).second
+
+                // Only serve straight from cache when the whole requested range is really
+                // there. The media item's uri is the bare video id, so a dataSpec that runs
+                // off the end of a partial cache entry sends ExoPlayer to fetch "<videoId>"
+                // as if it were a url, which fails.
+                if (isRangeFullyCached(mediaId, dataSpec, knownContentLength)) {
                     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                     return@Factory dataSpec
                 }
 
-                songUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }?.let {
+                songUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }?.let { cached ->
                     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
-                    return@Factory dataSpec.withUri(it.first.toUri())
+                    val resolved = dataSpec.withUri(cached.first.toUri())
+                    val length = resolveStreamChunkLength(
+                        requestedLength = dataSpec.length,
+                        position = dataSpec.position,
+                        knownContentLength = knownContentLength,
+                        chunkLength = CHUNK_LENGTH,
+                    )
+                    return@Factory resolved.subrange(0L, length ?: CHUNK_LENGTH)
                 }
             } else {
                 Timber.tag("MusicService").i("BYPASSING CACHE for $mediaId due to quality change")
@@ -2713,6 +2821,16 @@ class MusicService :
                 )
             }.getOrElse { throwable ->
                 when (throwable) {
+                    is com.example.musicfy.utils.YTPlayerUtils.TruncatedStreamException -> {
+                        val message = throwable.message ?: getString(R.string.error_stream_truncated_title)
+                        notifyPlaybackError(getString(R.string.error_stream_truncated_title), message)
+                        throw PlaybackException(
+                            message,
+                            throwable,
+                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                        )
+                    }
+
                     is PlaybackException -> throw throwable
 
                     is java.net.ConnectException, is java.net.UnknownHostException -> {
@@ -2758,7 +2876,7 @@ class MusicService :
                             id = mediaId,
                             itag = format.itag,
                             mimeType = format.mimeType.split(";")[0],
-                            codecs = format.mimeType.split("codecs=")[1].removeSurrounding("\""),
+                            codecs = format.mimeType.substringAfter("codecs=", "").removeSurrounding("\""),
                             bitrate = format.bitrate,
                             sampleRate = format.audioSampleRate,
                             contentLength = format.contentLength ?: 0L,
@@ -2778,7 +2896,16 @@ class MusicService :
 
                 songUrlCache[mediaId] =
                     streamUrl to System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
-                return@Factory dataSpec.withUri(streamUrl.toUri()).subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
+                songFormatCache[mediaId] = format.mimeType to format.contentLength
+
+                val resolved = dataSpec.withUri(streamUrl.toUri())
+                val length = resolveStreamChunkLength(
+                    requestedLength = dataSpec.length,
+                    position = dataSpec.position,
+                    knownContentLength = format.contentLength,
+                    chunkLength = CHUNK_LENGTH,
+                )
+                return@Factory resolved.subrange(0L, length ?: CHUNK_LENGTH)
             }
         }
     }
@@ -2852,11 +2979,21 @@ class MusicService :
                         }
 
                         if (result == null) {
-                            throw androidx.media3.common.PlaybackException(
-                                "High-quality backend forced: Stream not found",
-                                null,
-                                androidx.media3.common.PlaybackException.ERROR_CODE_REMOTE_ERROR
-                            )
+                            // Returning null lets DynamicResolvingMediaSource fall through to
+                            // the normal YouTube path. Users who only ever want lossless can
+                            // turn the fallback off and get a hard failure instead.
+                            val fallbackToYouTube = kotlinx.coroutines.runBlocking {
+                                dataStore.data.first()[com.example.musicfy.constants.MonochromeFallbackToYouTubeKey] ?: true
+                            }
+                            if (!fallbackToYouTube) {
+                                throw androidx.media3.common.PlaybackException(
+                                    "Monochrome could not serve this track",
+                                    null,
+                                    androidx.media3.common.PlaybackException.ERROR_CODE_REMOTE_ERROR
+                                )
+                            }
+                            Timber.tag("StreamFetch").i("No Monochrome stream for $mediaId, falling back to YouTube")
+                            return@DynamicResolvingMediaSource null
                         }
                         result
                     },
@@ -3343,6 +3480,8 @@ class MusicService :
         const val SHUFFLE_ACTION = "__shuffle__"
 
         const val CHANNEL_ID = "music_channel_01"
+        const val ERROR_CHANNEL_ID = "playback_errors_01"
+        const val ERROR_NOTIFICATION_ID = 889
         const val NOTIFICATION_ID = 888
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 512 * 1024L

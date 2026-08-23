@@ -781,14 +781,17 @@ fun AudioQualitySelector(context: Context) {
 
         val options = listOf(
             stringResource(R.string.audio_quality_auto),
-            stringResource(R.string.audio_quality_high),
-            stringResource(R.string.audio_quality_low)
+            stringResource(R.string.audio_quality_low),
+            stringResource(R.string.audio_quality_medium),
+            stringResource(R.string.audio_quality_high)
         )
         val selectedIndex = when (audioQuality) {
             AudioQuality.AUTO -> 0
-            AudioQuality.HIGH -> 1
-            AudioQuality.LOW -> 2
-            else -> 0
+            AudioQuality.LOW -> 1
+            AudioQuality.MEDIUM -> 2
+            AudioQuality.HIGH -> 3
+            // Monochrome tiers are chosen in Advanced audio settings; show Auto here.
+            AudioQuality.LOSSLESS, AudioQuality.HI_RES_LOSSLESS, AudioQuality.DOLBY_ATMOS -> 0
         }
 
         androidx.compose.foundation.layout.FlowRow(
@@ -805,8 +808,9 @@ fun AudioQualitySelector(context: Context) {
                     onCheckedChange = {
                         val newQuality = when (index) {
                             0 -> AudioQuality.AUTO
-                            1 -> AudioQuality.HIGH
-                            else -> AudioQuality.LOW
+                            1 -> AudioQuality.LOW
+                            2 -> AudioQuality.MEDIUM
+                            else -> AudioQuality.HIGH
                         }
                         onAudioQualityChange(newQuality)
                         applyAudioQuality(context, newQuality)

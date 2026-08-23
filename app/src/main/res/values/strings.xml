@@ -310,6 +310,7 @@
     <string name="audio_quality_auto">Auto</string>
     <string name="audio_quality_high">High</string>
     <string name="audio_quality_low">Low</string>
+    <string name="audio_quality_medium">Medium</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
@@ -391,4 +392,6 @@
     <string name="standard_lyrics_blur">Standard lyrics blur</string>
     <string name="listen_together_smart_resync">Smart Network Resync</string>
     <string name="listen_together_smart_resync_desc">Automatically catch up with the host after a connection drop</string>
+    <string name="error_stream_truncated_title">YouTube would only send 32 seconds</string>
+    <string name="playback_error_channel_name">Playback errors</string>
 </resources>

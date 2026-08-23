@@ -5,7 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.json.JSONObject
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
@@ -17,8 +16,9 @@ sealed interface MonochromeConnectivityResult {
 
 suspend fun testMonochromeConnectivity(
     context: Context,
-    apiBaseUrl: String = "https://track-api.monochrome.tf",
-    siteKey: String = "0x4AAAAAADgxqF6QVMm0GLHH",
+    apiBaseUrl: String = MonochromePlaybackStreamFetcher.DEFAULT_API_BASE_URL,
+    siteKey: String = MonochromePlaybackStreamFetcher.DEFAULT_SITE_KEY,
+    apiToken: String = MonochromePlaybackStreamFetcher.DEFAULT_API_TOKEN,
 ): MonochromeConnectivityResult {
     val baseUrl = apiBaseUrl.trim().removeSuffix("/")
 
@@ -28,7 +28,7 @@ suspend fun testMonochromeConnectivity(
                 .connectTimeout(6, TimeUnit.SECONDS)
                 .callTimeout(8, TimeUnit.SECONDS)
                 .build()
-            val request = Request.Builder().url(baseUrl).head().build()
+            val request = Request.Builder().url("$baseUrl/api/v2/track/").get().build()
             client.newCall(request).execute().use { null }
         } catch (e: Exception) {
             Timber.tag("MonochromeConnTest").w(e, "Reachability check failed")
@@ -39,20 +39,18 @@ suspend fun testMonochromeConnectivity(
         return MonochromeConnectivityResult.Unreachable(unreachableReason)
     }
 
+    // Reaching the host is not enough - the API only answers with a valid session
+    // token, so solve the challenge once here and cache it for playback to reuse.
     val solver = TurnstileSolver(context)
-    val playbackBody = JSONObject().apply {
-        put("song_name", "Connectivity Test")
-        put("artist", "Musicfy")
-    }.toString()
-
-    val result = solver.fetchPlaybackWithTurnstile(
+    val jwt = solver.getSessionJwt(
         siteKey = siteKey,
-        exchangeUrl = "$baseUrl/auth/turnstile",
-        playbackUrl = "$baseUrl/playback",
-        playbackBodyJson = playbackBody,
+        exchangeUrl = "$baseUrl/api/auth/turnstile",
+        apiToken = apiToken,
+        forceRefresh = true,
+        ignoreCooldown = true,
     )
 
-    return if (result != null) {
+    return if (jwt != null) {
         MonochromeConnectivityResult.Success
     } else {
         MonochromeConnectivityResult.TurnstileNeeded

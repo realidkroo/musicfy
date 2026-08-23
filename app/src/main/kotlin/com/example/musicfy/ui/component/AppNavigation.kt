@@ -113,6 +113,8 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "browse/" to "search_input",
     "library/" to "library",
     "advanced_audio_settings" to "settings",
+    "cipher_settings" to "settings",
+    "playback_diagnostics" to "settings",
     "appearance_settings" to "settings",
     "playback_settings" to "settings",
     "experimental_settings" to "settings",

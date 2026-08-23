@@ -223,6 +223,42 @@ import javax.inject.Inject
 private const val BackgroundZoomOnExpand = true
 
 @Suppress("DEPRECATION", "ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+/**
+ * Marker recording that the setup wizard has run on *this* install.
+ *
+ * It lives in no-backup storage on purpose. Android Auto Backup restores our DataStore onto
+ * a fresh install, which brings back setupCompleted and the saved username - so a brand new
+ * install would skip onboarding entirely and greet a user who never went through it. Settings
+ * still restore as before; only the "have we onboarded here" answer is install-local.
+ */
+private const val SETUP_MARKER_FILE = "setup_wizard_completed"
+
+private fun hasOnboardedOnThisInstall(context: android.content.Context): Boolean {
+    if (runCatching { java.io.File(context.noBackupFilesDir, SETUP_MARKER_FILE).exists() }.getOrDefault(false)) {
+        return true
+    }
+    // Installs that predate the marker cannot prove they onboarded, and we must not drag every
+    // existing user back through the wizard on update. An in-place update is the proof we need:
+    // a restored backup always lands on a first install, where firstInstallTime and
+    // lastUpdateTime are the same moment. Backfill so this only ever runs once.
+    if (isUpgradedInstall(context)) {
+        markOnboardedOnThisInstall(context)
+        return true
+    }
+    return false
+}
+
+/** True when this package has been updated in place at least once, i.e. it is not a fresh install. */
+private fun isUpgradedInstall(context: android.content.Context): Boolean =
+    runCatching {
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        info.lastUpdateTime > info.firstInstallTime
+    }.getOrDefault(false)
+
+private fun markOnboardedOnThisInstall(context: android.content.Context) {
+    runCatching { java.io.File(context.noBackupFilesDir, SETUP_MARKER_FILE).createNewFile() }
+}
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     companion object {
@@ -431,7 +467,10 @@ class MainActivity : ComponentActivity() {
         }
 
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
-        val pureBlack = true
+        // Pure black only makes sense on top of the dark scheme; forcing it in light mode
+        // paints a black background under light-mode colours and the app looks dark on a
+        // phone set to light.
+        val pureBlack = pureBlackEnabled && useDarkTheme
 
         val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
@@ -765,6 +804,10 @@ class MainActivity : ComponentActivity() {
 
                 val setupCompleted by rememberPreference(com.example.musicfy.constants.SetupCompletedKey, false)
                 var forceShowSetup by remember { mutableStateOf(false) }
+                // Seeded once per process: a restored backup can say setup is done on an
+                // install that has never actually shown the wizard. Kept as state because
+                // finishing the wizard writes the marker and must dismiss it right away.
+                var onboardedHere by remember { mutableStateOf(hasOnboardedOnThisInstall(context)) }
 
                 val betaDismissed by rememberPreference(com.example.musicfy.constants.BetaNoticeDismissedKey, false)
                 var showBetaNotice by remember { mutableStateOf(!betaDismissed) }
@@ -809,9 +852,11 @@ class MainActivity : ComponentActivity() {
                         }
                     ) {
                         SetupWizardContainer(
-                            isVisible = !setupCompleted || forceShowSetup,
+                            isVisible = !setupCompleted || !onboardedHere || forceShowSetup,
                             isStacked = showBetaNotice,
                             onSetupCompleted = { username, uri ->
+                                markOnboardedOnThisInstall(context)
+                                onboardedHere = true
                                 coroutineScope.launch(Dispatchers.IO) {
 
                                     var savedUriStr = ""
@@ -1328,6 +1373,8 @@ val SubSettingsRoutes = setOf(
     "playback_settings",
     "experimental_settings",
     "advanced_audio_settings",
+    "cipher_settings",
+    "playback_diagnostics",
 )
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }

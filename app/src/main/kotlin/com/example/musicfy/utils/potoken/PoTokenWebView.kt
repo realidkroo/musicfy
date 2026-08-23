@@ -16,7 +16,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.OkHttpClient
@@ -170,6 +172,20 @@ class PoTokenWebView private constructor(
 
     suspend fun generatePoToken(identifier: String): String {
         return withContext(Dispatchers.Main) {
+            try {
+                withTimeout(MINT_TIMEOUT_MS) {
+                    mintPoToken(identifier)
+                }
+            } catch (e: TimeoutCancellationException) {
+                // Drop the emitter so a later callback cannot resume a dead continuation.
+                popPoTokenContinuation(identifier)
+                throw PoTokenException("Minting a poToken for $identifier timed out after ${MINT_TIMEOUT_MS}ms")
+            }
+        }
+    }
+
+    private suspend fun mintPoToken(identifier: String): String {
+        return run {
             suspendCancellableCoroutine { cont ->
                 Timber.tag(TAG).d("generatePoToken() called with identifier $identifier")
                 addPoTokenEmitter(identifier, cont)
@@ -290,15 +306,36 @@ class PoTokenWebView private constructor(
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.3"
         private const val JS_INTERFACE = "PoTokenWebView"
 
+        /** Cold start: WebView boot plus the BotGuard bootstrap round trips. */
+        private const val COLD_START_TIMEOUT_MS = 45_000L
+
+        /** Warm path: the engine is already up, so minting one token should be quick. */
+        private const val MINT_TIMEOUT_MS = 10_000L
+
         private val httpClient = OkHttpClient.Builder()
             .proxy(YouTube.proxy)
             .build()
 
+        /**
+         * Booting BotGuard is the step that can silently never finish - the WebView simply
+         * stops making progress and the continuation is never resumed. Without a bound on it
+         * the caller waits forever, which on the playback path means a track that buffers
+         * indefinitely and never raises an error anyone can see.
+         */
         suspend fun getNewPoTokenGenerator(context: Context): PoTokenWebView {
             return withContext(Dispatchers.Main) {
-                suspendCancellableCoroutine { cont ->
-                    val potWv = PoTokenWebView(context, cont)
-                    potWv.loadHtmlAndObtainBotguard()
+                var pending: PoTokenWebView? = null
+                try {
+                    withTimeout(COLD_START_TIMEOUT_MS) {
+                        suspendCancellableCoroutine { cont ->
+                            val potWv = PoTokenWebView(context, cont)
+                            pending = potWv
+                            potWv.loadHtmlAndObtainBotguard()
+                        }
+                    }
+                } catch (e: TimeoutCancellationException) {
+                    runCatching { pending?.close() }
+                    throw PoTokenException("BotGuard did not initialise within ${COLD_START_TIMEOUT_MS}ms")
                 }
             }
         }

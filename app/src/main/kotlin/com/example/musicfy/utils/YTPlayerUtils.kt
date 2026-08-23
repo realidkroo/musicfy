@@ -12,6 +12,7 @@ import com.music.innertube.models.YouTubeClient.Companion.ANDROID_CREATOR
 import com.example.musicfy.utils.BotDetectionMitigator
 import com.music.innertube.models.YouTubeClient.Companion.ANDROID_VR_1_43_32
 import com.music.innertube.models.YouTubeClient.Companion.ANDROID_VR_1_61_48
+import com.music.innertube.models.YouTubeClient.Companion.ANDROID_VR_1_65_10
 import com.music.innertube.models.YouTubeClient.Companion.ANDROID_VR_NO_AUTH
 import com.music.innertube.models.YouTubeClient.Companion.IOS
 import com.music.innertube.models.YouTubeClient.Companion.IPADOS
@@ -79,22 +80,51 @@ object YTPlayerUtils {
 
     private val poTokenGenerator = PoTokenGenerator()
 
-    private val MAIN_CLIENT: YouTubeClient = ANDROID_VR_1_43_32
+    /** True once the BotGuard engine holds a usable session token. Surfaced in diagnostics. */
+    val hasPoToken: Boolean
+        get() = poTokenGenerator.hasSessionToken
+
+    /**
+     * Boot the BotGuard engine before the first track needs it. Safe to call more than once.
+     */
+    suspend fun preWarmPoToken() {
+        val sessionId = (if (YouTube.cookie != null) YouTube.dataSyncId else null)
+            ?: YouTube.visitorData
+            ?: return
+        poTokenGenerator.preWarm(sessionId)
+    }
+
+    /**
+     * WEB_REMIX is the only client that yields a *complete* stream, because it is the one
+     * that carries a PoToken (useWebPoTokens = true), which gets appended to the stream url
+     * as `pot=`. Measured against googlevideo: an untokened url serves roughly the first
+     * 786 KB and answers 403 for any range starting past that - about 32 seconds of audio.
+     * IOS returns tidy non-ciphered urls and looks like it works, which is exactly the trap;
+     * it has no PoToken so it is only useful as a partial-playback fallback.
+     */
+    private val MAIN_CLIENT: YouTubeClient = WEB_REMIX
 
     private val METADATA_CLIENT: YouTubeClient = WEB_REMIX
 
+    /**
+     * Ordered so the clients that can carry a stream PoToken come first - they are the only
+     * ones that can serve a whole track for music content. The rest follow because they still
+     * work for ordinary videos, but any stream they produce is validated for truncation before
+     * it is accepted, so a crippled url can never be handed to the player.
+     */
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
-        ANDROID_VR_1_61_48,
         WEB_REMIX,
+        WEB,
+        WEB_CREATOR,
+        IPADOS,
+        ANDROID_VR_1_43_32,
+        ANDROID_VR_1_61_48,
+        ANDROID_VR_1_65_10,
+        ANDROID_VR_NO_AUTH,
         TVHTML5_SIMPLY_EMBEDDED_PLAYER,
         TVHTML5,
         ANDROID_CREATOR,
-        IPADOS,
-        ANDROID_VR_NO_AUTH,
         MOBILE,
-        IOS,
-        WEB,
-        WEB_CREATOR
     )
     data class PlaybackData(
         val audioConfig: PlayerResponse.PlayerConfig.AudioConfig?,
@@ -150,7 +180,7 @@ object YTPlayerUtils {
         if (MAIN_CLIENT.useWebPoTokens && sessionId != null) {
             Timber.tag(logTag).d("Generating PoToken for MAIN_CLIENT with sessionId")
             try {
-                poToken = poTokenGenerator.getWebClientPoToken(videoId, sessionId)
+                poToken = poTokenGenerator.poTokenFor(videoId, sessionId)
                 if (poToken != null) {
                     Timber.tag(logTag).d("PoToken generated successfully")
                 }
@@ -172,7 +202,7 @@ object YTPlayerUtils {
                 val metaSessionId = YouTube.dataSyncId
                 if (METADATA_CLIENT.useWebPoTokens && metaSessionId != null) {
                     try {
-                        metaPoToken = poTokenGenerator.getWebClientPoToken(videoId, metaSessionId)
+                        metaPoToken = poTokenGenerator.poTokenFor(videoId, metaSessionId)
                     } catch (e: Exception) {
                         Timber.tag(logTag).e(e, "Metadata PoToken generation failed")
                     }
@@ -228,6 +258,7 @@ object YTPlayerUtils {
         var format: PlayerResponse.StreamingData.Format? = null
         var streamUrl: String? = null
         var streamExpiresInSeconds: Int? = null
+        val truncatedClients = mutableListOf<String>()
         var streamPlayerResponse: PlayerResponse? = null
         var retryMainPlayerResponse: PlayerResponse? = if (usedAgeRestrictedClient != null) mainPlayerResponse else null
 
@@ -278,7 +309,7 @@ object YTPlayerUtils {
                 if (client.useWebPoTokens && poToken == null && sessionId != null) {
                     Timber.tag(logTag).d("Lazily generating PoToken for fallback web client: ${client.clientName}")
                     try {
-                        poToken = poTokenGenerator.getWebClientPoToken(videoId, sessionId)
+                        poToken = poTokenGenerator.poTokenFor(videoId, sessionId)
                     } catch (e: Exception) {
                         Timber.tag(logTag).e(e, "Lazy PoToken generation failed")
                     }
@@ -306,25 +337,39 @@ object YTPlayerUtils {
 
                 val responseToUse = streamPlayerResponse
 
-                format =
-                    findFormat(
-                        responseToUse,
-                        audioQuality,
-                        connectivityManager,
-                    )
+                val clientLabel =
+                    if (clientIndex == -1) MAIN_CLIENT.clientName else STREAM_FALLBACK_CLIENTS[clientIndex].clientName
 
-                if (format == null) {
-                    Timber.tag(logTag).d("No suitable format found for client: ${if (clientIndex == -1) MAIN_CLIENT.clientName else STREAM_FALLBACK_CLIENTS[clientIndex].clientName}")
+                val formatCandidates = selectAudioFormatCandidates(
+                    responseToUse,
+                    audioQuality,
+                    connectivityManager.isActiveNetworkMetered,
+                )
+
+                if (formatCandidates.isEmpty()) {
+                    Timber.tag(logTag).d("No suitable format found for client: $clientLabel")
                     continue
                 }
 
-                Timber.tag(logTag).d("Format found: ${format.mimeType}, bitrate: ${format.bitrate}")
+                // Walk the candidates so a format we cannot deobfuscate falls back to the
+                // next best one instead of throwing away an otherwise healthy client.
+                for (candidate in formatCandidates) {
+                    val candidateUrl =
+                        findUrlOrNull(candidate, videoId, responseToUse, skipNewPipe = wasOriginallyAgeRestricted)
+                    if (candidateUrl != null) {
+                        format = candidate
+                        streamUrl = candidateUrl
+                        break
+                    }
+                    Timber.tag(logTag).d("Could not resolve URL for ${candidate.mimeType}@${candidate.bitrate}, trying next candidate")
+                }
 
-                streamUrl = findUrlOrNull(format, videoId, responseToUse, skipNewPipe = wasOriginallyAgeRestricted)
-                if (streamUrl == null) {
-                    Timber.tag(logTag).d("Stream URL not found for format")
+                if (format == null || streamUrl == null) {
+                    Timber.tag(logTag).d("Stream URL not found for any candidate format on client: $clientLabel")
                     continue
                 }
+
+                Timber.tag(logTag).d("Format selected: ${format.mimeType}, bitrate: ${format.bitrate} ($clientLabel)")
 
                 val currentClient = if (clientIndex == -1) {
                     usedAgeRestrictedClient ?: MAIN_CLIENT
@@ -366,27 +411,35 @@ object YTPlayerUtils {
 
                 val isPrivatelyOwned = streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
 
-                if (clientIndex == STREAM_FALLBACK_CLIENTS.size - 1 || isPrivatelyOwned) {
-
-                    if (isPrivatelyOwned) {
-                        Timber.tag(logTag).d("Skipping validation for privately owned track: ${currentClient.clientName}")
-                        println("[PLAYBACK_DEBUG] Using stream without validation for PRIVATELY_OWNED_TRACK")
-                    } else {
-                        Timber.tag(logTag).d("Using last fallback client without validation: ${STREAM_FALLBACK_CLIENTS[clientIndex].clientName}")
-                    }
-                    Log.i(TAG, "Playback: client=${currentClient.clientName}, videoId=$videoId, private=$isPrivatelyOwned")
+                // Privately owned uploads are not subject to the PoToken window and sometimes
+                // reject probe requests, so they stay exempt. Every other stream is validated,
+                // including the last candidate - accepting it blindly is how a truncated url
+                // used to reach the player.
+                if (isPrivatelyOwned) {
+                    Timber.tag(logTag).d("Skipping validation for privately owned track: ${currentClient.clientName}")
+                    Log.i(TAG, "Playback: client=${currentClient.clientName}, videoId=$videoId, private=true")
                     break
                 }
 
-                if (validateStatus(streamUrl!!)) {
+                val validation = validateStatus(streamUrl!!, format.contentLength)
+                if (validation == StreamValidation.OK) {
 
                     Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
-                    PlaybackLogManager.log(PlaybackLogLevel.INFO, "Stream validated", currentClient.clientName)
+                    PlaybackLogManager.log(
+                        PlaybackLogLevel.INFO,
+                        "Stream validated",
+                        "client=${currentClient.clientName} itag=${format.itag} " +
+                            "pot=${poToken?.streamingDataPoToken?.length ?: 0} " +
+                            "bytes=${format.contentLength ?: 0}",
+                    )
 
                     Log.i(TAG, "Playback: client=${currentClient.clientName}, videoId=$videoId")
                     break
                 } else {
                     Timber.tag(logTag).d("Stream validation failed for client: ${currentClient.clientName}")
+                    if (validation == StreamValidation.TRUNCATED) {
+                        truncatedClients += currentClient.clientName
+                    }
 
                     if (currentClient.useWebPoTokens) {
                         var nTransformWorked = false
@@ -395,7 +448,7 @@ object YTPlayerUtils {
                             val nTransformed = CipherDeobfuscator.transformNParamInUrl(streamUrl!!)
                             if (nTransformed != streamUrl) {
                                 Timber.tag(logTag).d("CipherDeobfuscator n-transform applied, re-validating...")
-                                if (validateStatus(nTransformed)) {
+                                if (validateStatus(nTransformed, format.contentLength) == StreamValidation.OK) {
                                     Timber.tag(logTag).d("N-transformed URL VALIDATED OK!")
                                     streamUrl = nTransformed
                                     nTransformWorked = true
@@ -451,6 +504,15 @@ object YTPlayerUtils {
         }
 
         if (streamUrl == null) {
+            if (truncatedClients.isNotEmpty()) {
+                Timber.tag(logTag).e("All streams truncated: ${truncatedClients.joinToString()}")
+                PlaybackLogManager.log(
+                    PlaybackLogLevel.ERROR,
+                    "All streams truncated",
+                    "clients=${truncatedClients.joinToString()} poToken=${poToken != null}",
+                )
+                throw TruncatedStreamException(truncatedClients.toList(), poToken != null)
+            }
             Timber.tag(logTag).e("Could not find stream url")
             throw Exception("Could not find stream url")
         }
@@ -539,50 +601,192 @@ object YTPlayerUtils {
         playerResponse: PlayerResponse,
         audioQuality: AudioQuality,
         connectivityManager: ConnectivityManager,
-    ): PlayerResponse.StreamingData.Format? {
-        Timber.tag(logTag).d("Finding format with audioQuality: $audioQuality, network metered: ${connectivityManager.isActiveNetworkMetered}")
+    ): PlayerResponse.StreamingData.Format? =
+        selectAudioFormatCandidates(
+            playerResponse,
+            audioQuality,
+            connectivityManager.isActiveNetworkMetered,
+        ).firstOrNull()
 
-        val format = playerResponse.streamingData?.adaptiveFormats
-            ?.filter { it.isAudio && it.isOriginal }
-            ?.maxByOrNull {
-                it.bitrate * when (audioQuality) {
-                    AudioQuality.AUTO -> if (connectivityManager.isActiveNetworkMetered) -1 else 1
-                    AudioQuality.HIGH -> 1
-                    AudioQuality.LOW -> -1
-                    AudioQuality.LOSSLESS, AudioQuality.HI_RES_LOSSLESS -> 1
-                } + (if (it.mimeType.startsWith("audio/webm")) 10240 else 0)
-            }
+    /**
+     * Returns every usable audio format ordered best-first for [audioQuality].
+     *
+     * Callers walk this list so that a format whose URL cannot be resolved (ciphered
+     * without a working deobfuscator, for example) falls back to the next best one
+     * instead of discarding the whole client.
+     */
+    internal fun selectAudioFormatCandidates(
+        playerResponse: PlayerResponse,
+        audioQuality: AudioQuality,
+        networkMetered: Boolean,
+    ): List<PlayerResponse.StreamingData.Format> {
+        Timber.tag(logTag).d("Finding format with audioQuality: $audioQuality, network metered: $networkMetered")
 
-        if (format != null) {
-            Timber.tag(logTag).d("Selected format: ${format.mimeType}, bitrate: ${format.bitrate}")
-        } else {
+        val audioFormats = playerResponse.streamingData?.adaptiveFormats
+            ?.filter { it.isAudio && it.bitrate > 0 }
+            ?.filter { !it.url.isNullOrEmpty() || !it.signatureCipher.isNullOrEmpty() || !it.cipher.isNullOrEmpty() }
+            .orEmpty()
+
+        if (audioFormats.isEmpty()) {
             Timber.tag(logTag).d("No suitable audio format found")
+            return emptyList()
         }
 
-        return format
+        // Prefer the original (non auto-dubbed) track when the response offers both.
+        val originalFormats = audioFormats.filter { it.isOriginal }
+        val usableFormats = originalFormats.ifEmpty { audioFormats }
+
+        val effectiveQuality = when (audioQuality) {
+            AudioQuality.AUTO -> if (networkMetered) AudioQuality.MEDIUM else AudioQuality.HIGH
+            // Lossless and Atmos tiers are served by the Monochrome backend; when
+            // YouTube is the source we still want its best available stream.
+            AudioQuality.LOSSLESS, AudioQuality.HI_RES_LOSSLESS, AudioQuality.DOLBY_ATMOS -> AudioQuality.HIGH
+            else -> audioQuality
+        }
+
+        // YouTube's audio ladder is roughly: ~50k (itag 139/249), ~70k (250),
+        // ~128k AAC (140), ~160k Opus (251). The MEDIUM ceiling sits just under the
+        // Opus rung so it lands on 128k AAC while HIGH keeps the best stream.
+        val targetBitrateBps = when (effectiveQuality) {
+            AudioQuality.LOW -> 70_000
+            AudioQuality.MEDIUM -> 135_000
+            else -> null // HIGH: take the best available
+        }
+
+        val preferHigher = compareByDescending<PlayerResponse.StreamingData.Format> { !it.url.isNullOrEmpty() }
+            .thenByDescending { it.bitrate }
+            .thenByDescending { codecRank(extractCodec(it.mimeType)) }
+            .thenByDescending { it.audioSampleRate ?: 0 }
+
+        val preferLowerAboveTarget = compareByDescending<PlayerResponse.StreamingData.Format> { !it.url.isNullOrEmpty() }
+            .thenBy { it.bitrate }
+            .thenByDescending { codecRank(extractCodec(it.mimeType)) }
+            .thenByDescending { it.audioSampleRate ?: 0 }
+
+        val candidates = if (targetBitrateBps == null) {
+            usableFormats.sortedWith(preferHigher)
+        } else {
+            // Best stream at or below the target, then the cheapest one above it.
+            usableFormats.filter { it.bitrate <= targetBitrateBps }.sortedWith(preferHigher) +
+                usableFormats.filter { it.bitrate > targetBitrateBps }.sortedWith(preferLowerAboveTarget)
+        }
+
+        Timber.tag(logTag).d(
+            "Format candidates ($effectiveQuality): " + candidates.take(8).joinToString {
+                "${it.mimeType}@${it.bitrate}${if (it.url.isNullOrEmpty()) " (cipher)" else ""}"
+            }
+        )
+
+        return candidates
     }
 
-    private fun validateStatus(url: String): Boolean {
-        Timber.tag(logTag).d("Validating stream URL status")
+    private fun extractCodec(mimeType: String): String? =
+        Regex("""codecs="([^"]+)"""").find(mimeType)
+            ?.groupValues?.getOrNull(1)
+            ?.split(",")?.firstOrNull()?.trim()
+
+    private fun codecRank(codec: String?): Int = when {
+        codec.isNullOrBlank() -> 0
+        codec.contains("opus", ignoreCase = true) -> 3
+        codec.contains("mp4a", ignoreCase = true) -> 2
+        else -> 1
+    }
+
+    /**
+     * Checks a resolved stream URL is actually fetchable.
+     *
+     * Uses a one-byte ranged GET rather than HEAD: googlevideo answers HEAD with 403
+     * on URLs issued by the iOS/iPadOS clients even when the URL is perfectly good,
+     * which previously caused every working stream to be thrown away.
+     */
+    /**
+     * Largest offset an *untokened* stream url will serve. Measured against googlevideo:
+     * `bytes=0-786431` returns 206, `bytes=0-1048575` returns 403, and any range starting past
+     * the window returns 403 even on a freshly issued url. At 128 kbps that window is about
+     * 32 seconds of audio, which is what a crippled url sounds like.
+     */
+    private const val UNTOKENED_WINDOW_BYTES = 786_432L
+
+    /** Offset probed to prove a url will serve beyond the untokened window. */
+    private const val TRUNCATION_PROBE_OFFSET = 1_048_576L
+
+    private fun rangeStatus(url: String, range: String): Int? {
         try {
             val requestBuilder = okhttp3.Request.Builder()
-                .head()
+                .get()
                 .url(url)
+                .header("Range", range)
                 .header("User-Agent", YouTubeClient.USER_AGENT_WEB)
 
             YouTube.cookie?.let { cookie ->
                 requestBuilder.addHeader("Cookie", cookie)
             }
 
-            val response = httpClient.newCall(requestBuilder.build()).execute()
-            val isSuccessful = response.isSuccessful
-            Timber.tag(logTag).d("Stream URL validation result: ${if (isSuccessful) "Success" else "Failed"} (${response.code})")
-            return isSuccessful
+            httpClient.newCall(requestBuilder.build()).execute().use {
+                return it.code
+            }
         } catch (e: Exception) {
             Timber.tag(logTag).e(e, "Stream URL validation failed with exception")
             reportException(e)
         }
-        return false
+        return null
+    }
+
+    /**
+     * A url is only usable if it serves the *whole* track. Probing byte 0 is not enough:
+     * an untokened url answers that happily and then 403s the moment playback crosses
+     * [UNTOKENED_WINDOW_BYTES], which is exactly how a missing PoToken has repeatedly
+     * disguised itself as a playback bug. When we know the track is longer than the window,
+     * probe past it as well.
+     */
+    /** Why a candidate stream url was accepted or turned down. */
+    internal enum class StreamValidation { OK, REJECTED, TRUNCATED }
+
+    /**
+     * Thrown when every client produced a url that only serves YouTube's untokened preview
+     * window. Playing it would give the listener about 32 seconds and look like a broken app,
+     * so we fail instead and say why.
+     */
+    class TruncatedStreamException(
+        val clients: List<String>,
+        val hadPoToken: Boolean,
+    ) : Exception(
+        if (hadPoToken) {
+            "YouTube rejected this device's PoToken, so it will only serve about 32 seconds per track."
+        } else {
+            "No PoToken could be generated, so YouTube will only serve about 32 seconds per track."
+        },
+    )
+
+    private fun validateStatus(url: String, contentLength: Long? = null): StreamValidation {
+        Timber.tag(logTag).d("Validating stream URL status")
+        val headCode = rangeStatus(url, "bytes=0-0") ?: return StreamValidation.REJECTED
+        if (headCode != 200 && headCode != 206) {
+            Timber.tag(logTag).d("Stream URL validation result: Failed ($headCode)")
+            return StreamValidation.REJECTED
+        }
+
+        if (contentLength == null || contentLength <= UNTOKENED_WINDOW_BYTES) {
+            // Short enough to fit inside the window, so there is nothing past it to prove.
+            Timber.tag(logTag).d("Stream URL validation result: Success ($headCode)")
+            return StreamValidation.OK
+        }
+
+        val probeOffset = minOf(TRUNCATION_PROBE_OFFSET, contentLength - 1)
+        val probeCode = rangeStatus(url, "bytes=$probeOffset-$probeOffset")
+        // A null code means the probe itself failed (network, timeout). That is not evidence
+        // of truncation, and rejecting on it would drop good streams on a flaky connection.
+        val servesFullTrack = probeCode == null || probeCode == 200 || probeCode == 206
+        if (!servesFullTrack) {
+            Timber.tag(logTag).w("Stream is truncated - offset $probeOffset returned $probeCode (no usable PoToken)")
+            PlaybackLogManager.log(
+                PlaybackLogLevel.WARNING,
+                "Truncated stream rejected",
+                "offset=$probeOffset code=$probeCode",
+            )
+            return StreamValidation.TRUNCATED
+        }
+        return StreamValidation.OK
     }
     data class SignatureTimestampResult(
         val timestamp: Int?,

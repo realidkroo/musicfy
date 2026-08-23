@@ -152,6 +152,24 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     )
                     add(
                         SettingsItem(
+                            title = { Text("Cipher") },
+                            descriptionText = "Player script status, countdown and refresh",
+                            icon = painterResource(R.drawable.key),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { navController.navigate("cipher_settings") }
+                        )
+                    )
+                    add(
+                        SettingsItem(
+                            title = { Text("Playback diagnostics") },
+                            descriptionText = "Which client served each track, and PoToken state",
+                            icon = painterResource(R.drawable.info),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { navController.navigate("playback_diagnostics") }
+                        )
+                    )
+                    add(
+                        SettingsItem(
                             title = { Text("Repeat initial setup") },
                             descriptionText = "Re-run the setup wizard",
                             icon = painterResource(R.drawable.restore),
