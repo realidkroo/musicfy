@@ -85,6 +85,21 @@ class App : Application(), SingletonImageLoader.Factory {
             initializeSettings()
             observeSettingsChanges()
         }
+
+        applicationScope.launch(Dispatchers.IO) {
+            // Boot BotGuard once a session id exists. Without a PoToken YouTube serves only a
+            // ~32 second preview window, and paying the engine's cold start inside the playback
+            // resolver stalls the first track instead.
+            val ready = kotlinx.coroutines.withTimeoutOrNull(60_000) {
+                while (YouTube.visitorData == null && YouTube.dataSyncId == null) {
+                    kotlinx.coroutines.delay(500)
+                }
+                true
+            }
+            if (ready == true) {
+                com.example.musicfy.utils.YTPlayerUtils.preWarmPoToken()
+            }
+        }
     }
 
     private suspend fun initializeSettings() {

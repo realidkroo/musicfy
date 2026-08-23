@@ -57,18 +57,22 @@ fun PlaybackSettingsScreen(navController: NavController) {
 
     fun qualityLabel(q: AudioQuality) = when (q) {
         AudioQuality.AUTO -> "Auto"
-        AudioQuality.HIGH -> "High"
         AudioQuality.LOW -> "Low"
+        AudioQuality.MEDIUM -> "Medium"
+        AudioQuality.HIGH -> "High"
         AudioQuality.LOSSLESS -> "Lossless"
         AudioQuality.HI_RES_LOSSLESS -> "Hi-Res Lossless"
+        AudioQuality.DOLBY_ATMOS -> "Dolby Atmos"
     }
 
     fun nextQuality(q: AudioQuality) = when (q) {
         AudioQuality.AUTO -> AudioQuality.LOW
-        AudioQuality.LOW -> AudioQuality.HIGH
+        AudioQuality.LOW -> AudioQuality.MEDIUM
+        AudioQuality.MEDIUM -> AudioQuality.HIGH
         AudioQuality.HIGH -> AudioQuality.LOSSLESS
         AudioQuality.LOSSLESS -> AudioQuality.HI_RES_LOSSLESS
-        AudioQuality.HI_RES_LOSSLESS -> AudioQuality.AUTO
+        AudioQuality.HI_RES_LOSSLESS -> AudioQuality.DOLBY_ATMOS
+        AudioQuality.DOLBY_ATMOS -> AudioQuality.AUTO
     }
 
     SubSettingsScaffold(

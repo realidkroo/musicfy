@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.R
 import com.example.musicfy.playback.custom.MonochromeConnectivityResult
+import com.example.musicfy.playback.custom.MonochromePlaybackStreamFetcher
 import com.example.musicfy.playback.custom.testMonochromeConnectivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -70,8 +71,10 @@ fun MonochromeOnboardingContent(
     val uriHandler = LocalUriHandler.current
     val coroutineScope = rememberCoroutineScope()
     var state by remember { mutableStateOf<MonochromeSheetState>(MonochromeSheetState.Info) }
+    var showChallenge by remember { mutableStateOf(false) }
     val isTesting = state is MonochromeSheetState.Testing
     val isSuccess = state is MonochromeSheetState.Success
+    val needsChallenge = state is MonochromeSheetState.TurnstileNeeded
 
     fun runTest() {
         state = MonochromeSheetState.Testing
@@ -98,6 +101,22 @@ fun MonochromeOnboardingContent(
                 }
             }
         }
+    }
+
+    if (showChallenge) {
+        MonochromeChallengeDialog(
+            apiBaseUrl = MonochromePlaybackStreamFetcher.DEFAULT_API_BASE_URL,
+            apiToken = MonochromePlaybackStreamFetcher.DEFAULT_API_TOKEN,
+            siteKey = MonochromePlaybackStreamFetcher.DEFAULT_SITE_KEY,
+            onDismiss = { showChallenge = false },
+            onResult = { success ->
+                showChallenge = false
+                if (success) {
+                    onEnabled()
+                    state = MonochromeSheetState.Success
+                }
+            },
+        )
     }
 
     Box(
@@ -146,7 +165,7 @@ fun MonochromeOnboardingContent(
         when (val s = state) {
             MonochromeSheetState.Info -> {
                 title = "Powered by Monochrome"
-                description = "[this currently doenst work. this currently doenst work.this currently doenst work.this currently doenst work.] Thanks to the Monochrome dev, you can play FLAC music on your device. Please support the dev and their incredible passion for this project! You can also directly use Monochrome in your browser — visit their website and their GitHub for more!"
+                description = "Thanks to the Monochrome dev, you can play FLAC music on your device. Their API is protected by Cloudflare, so you may be asked to complete a quick check — it lasts about an hour. Please support the dev and their incredible passion for this project! You can also use Monochrome directly in your browser — visit their website and GitHub for more."
                 code = null
             }
             MonochromeSheetState.Testing -> {
@@ -165,9 +184,9 @@ fun MonochromeOnboardingContent(
                 code = s.reason
             }
             MonochromeSheetState.TurnstileNeeded -> {
-                title = "Something wrong"
-                description = "You might need to fill the Turnstile challenge, or use the Monochrome website instead. Sorry!"
-                code = "turnstile-token-needed"
+                title = "One quick check"
+                description = "Monochrome is protected by Cloudflare. Tap below to complete the check — it usually takes a second, and the session lasts about an hour."
+                code = "turnstile-challenge-required"
             }
         }
 
@@ -215,7 +234,10 @@ fun MonochromeOnboardingContent(
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = { if (!isTesting && !isSuccess) runTest() },
+            onClick = {
+                if (isTesting || isSuccess) return@Button
+                if (needsChallenge) showChallenge = true else runTest()
+            },
             enabled = !isTesting && !isSuccess,
             modifier = Modifier
                 .fillMaxWidth()
@@ -239,6 +261,7 @@ fun MonochromeOnboardingContent(
                     contentDescription = null,
                     modifier = Modifier.size(22.dp),
                 )
+                needsChallenge -> Text(text = "Verify with Cloudflare", fontWeight = FontWeight.Bold)
                 else -> Text(text = "Continue", fontWeight = FontWeight.Bold)
             }
         }

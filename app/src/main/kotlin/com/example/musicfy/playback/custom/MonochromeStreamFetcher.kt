@@ -28,7 +28,7 @@ class MonochromeStreamFetcher(
         }
 
         val instancesString = prefs[MonochromeInstancesKey]?.takeIf { it.isNotBlank() }
-            ?: "https://api.monochrome.tf,https://monochrome-api.samidy.com"
+            ?: "https://monochrome-api.samidy.com"
         val instances = instancesString.split(",").map { it.trim().removeSuffix("/") }.filter { it.isNotEmpty() }
 
         if (instances.isEmpty()) {
@@ -47,13 +47,16 @@ class MonochromeStreamFetcher(
         val audioQualityRaw = prefs[AudioQualityKey] ?: "LOSSLESS"
         val monochromeQuality = when (audioQualityRaw) {
             "AUTO" -> "LOSSLESS"
+            "DOLBY_ATMOS" -> "DOLBY_ATMOS_EAC3_HIGH"
             "HI_RES_LOSSLESS" -> "HI_RES_LOSSLESS"
             "LOSSLESS" -> "LOSSLESS"
-            "HIGH" -> "HIGH"
+            // The backend has no MEDIUM tier; HIGH is its lossy ceiling.
+            "MEDIUM", "HIGH" -> "HIGH"
             "LOW" -> "LOW"
             else -> "LOSSLESS"
         }
         val manifestFormats = when (monochromeQuality) {
+            "DOLBY_ATMOS_EAC3_HIGH" -> listOf("EAC3_JOC")
             "HI_RES_LOSSLESS" -> listOf("FLAC_HIRES")
             "LOSSLESS" -> listOf("FLAC")
             "HIGH" -> listOf("AACLC")
@@ -61,8 +64,10 @@ class MonochromeStreamFetcher(
             else -> listOf("FLAC")
         }
 
+        // The former public streaming hosts (hifi.geeked.wtf, *.qqdl.site) no longer
+        // resolve; leave this empty by default and fall through to the track endpoint.
         val streamingInstancesString = prefs[com.example.musicfy.constants.StreamingInstancesKey]?.takeIf { it.isNotBlank() }
-            ?: "https://hifi.geeked.wtf,https://maus.qqdl.site,https://vogel.qqdl.site,https://katze.qqdl.site,https://hund.qqdl.site,https://wolf.qqdl.site"
+            ?: ""
         val streamingInstances = streamingInstancesString.split(",").map { it.trim().removeSuffix("/") }.filter { it.isNotEmpty() }
 
         var lastError: Exception? = null
@@ -161,10 +166,26 @@ class MonochromeStreamFetcher(
 
                         if (legacyResponse.isSuccessful) {
                             val legacyBody = legacyResponse.body?.string()
-                            val result = legacyBody?.let { extractUrlFromManifest(it) }
-                            if (result != null) {
-                                Timber.tag("MonochromeFetcher").i("Found stream via legacy endpoint on $instance: ${result.streamUrl}")
-                                return result.copy(source = "Monochrome")
+                            // Response shape: { "version": .., "data": { "assetPresentation": ..,
+                            // "manifest": "<base64>" } } - the manifest has to be pulled out
+                            // before it can be decoded.
+                            val data = legacyBody
+                                ?.let { runCatching { JSONObject(it) }.getOrNull() }
+                                ?.optJSONObject("data")
+
+                            val assetPresentation = data?.optString("assetPresentation").orEmpty()
+                            if (assetPresentation.equals("PREVIEW", ignoreCase = true)) {
+                                // Instances without a paid upstream account only return a
+                                // 30-second clip; playing that as the full song is worse than
+                                // falling through to YouTube.
+                                Timber.tag("MonochromeFetcher").w("$instance returned a PREVIEW asset, skipping")
+                            } else {
+                                val manifest = data?.optString("manifest")?.takeIf { it.isNotBlank() }
+                                val result = manifest?.let { extractUrlFromManifest(it) }
+                                if (result != null) {
+                                    Timber.tag("MonochromeFetcher").i("Found stream via legacy endpoint on $instance")
+                                    return result.copy(source = "Monochrome")
+                                }
                             }
                         } else {
                             Timber.tag("MonochromeFetcher").w("Legacy track fetch failed on $instance: ${legacyResponse.code}")

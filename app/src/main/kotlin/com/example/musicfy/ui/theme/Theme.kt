@@ -31,7 +31,7 @@ val DefaultThemeColor = Color(0xFF8E8E8E)
 @Composable
 fun MusicfyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    pureBlack: Boolean = true,
+    pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
     content: @Composable () -> Unit,
 ) {

@@ -14,7 +14,8 @@ object PlayerJsFetcher {
     private const val TAG = "musicfy_CipherFetcher"
     private const val IFRAME_API_URL = "https://www.youtube.com/iframe_api"
     private const val PLAYER_JS_URL_TEMPLATE = "https://www.youtube.com/s/player/%s/player_ias.vflset/en_GB/base.js"
-    private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L
+    /** How long a downloaded player script is reused before it is re-fetched. */
+    const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L
 
     private val httpClient = OkHttpClient.Builder()
         .proxy(YouTube.proxy)
@@ -61,6 +62,45 @@ object PlayerJsFetcher {
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "getPlayerJs exception: ${e.message}")
             null
+        }
+    }
+
+    /**
+     * Snapshot of the on-disk player-script cache, for the cipher status screen.
+     *
+     * @param playerHash YouTube's identifier for the cached player script.
+     * @param lastUpdatedMs when the script was downloaded, or null if nothing is cached.
+     * @param sizeBytes size of the cached script.
+     */
+    data class CipherCacheStatus(
+        val playerHash: String?,
+        val lastUpdatedMs: Long?,
+        val sizeBytes: Long,
+    ) {
+        val hasCache: Boolean get() = playerHash != null && lastUpdatedMs != null
+
+        /** Milliseconds until the cache goes stale; zero once it has expired. */
+        val remainingMs: Long
+            get() = lastUpdatedMs?.let { (it + CACHE_TTL_MS - System.currentTimeMillis()).coerceAtLeast(0L) } ?: 0L
+
+        val isExpired: Boolean get() = !hasCache || remainingMs <= 0L
+    }
+
+    /** Reads cache metadata without downloading anything. */
+    fun readCacheStatus(): CipherCacheStatus {
+        return try {
+            val hashFile = getHashFile()
+            if (!hashFile.exists()) return CipherCacheStatus(null, null, 0L)
+
+            val hashData = hashFile.readText().split("\n")
+            val hash = hashData.getOrNull(0)?.takeIf { it.isNotBlank() }
+            val timestamp = hashData.getOrNull(1)?.trim()?.toLongOrNull()
+            val size = hash?.let { getCacheFile(it).takeIf(File::exists)?.length() } ?: 0L
+
+            CipherCacheStatus(hash, timestamp, size)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error reading cache status: ${e.message}")
+            CipherCacheStatus(null, null, 0L)
         }
     }
 

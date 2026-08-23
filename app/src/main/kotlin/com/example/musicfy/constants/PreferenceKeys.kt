@@ -94,11 +94,22 @@ val AudioQualityKey = stringPreferencesKey("audioQuality")
 val IpVersionKey = stringPreferencesKey("ipVersion")
 
 enum class AudioQuality {
+    /** Best available from whichever backend is active. */
     AUTO,
-    HIGH,
+
+    // YouTube tiers
     LOW,
+    MEDIUM,
+    HIGH,
+
+    // Monochrome (TIDAL-backed) tiers
     LOSSLESS,
-    HI_RES_LOSSLESS
+    HI_RES_LOSSLESS,
+    DOLBY_ATMOS;
+
+    /** Tiers only the Monochrome backend can serve; YouTube has no equivalent. */
+    val usesMonochrome: Boolean
+        get() = this == LOSSLESS || this == HI_RES_LOSSLESS || this == DOLBY_ATMOS
 }
 
 val AudioOffload = booleanPreferencesKey("enableOffload")
@@ -756,6 +767,10 @@ val EnableSpatialAudioKey = booleanPreferencesKey("enableSpatialAudio")
 
 val EnableMonochromePlaybackBackendKey = booleanPreferencesKey("enableMonochromePlaybackBackend")
 val MonochromePlaybackApiUrlKey = stringPreferencesKey("monochromePlaybackApiUrl")
+val MonochromePlaybackApiTokenKey = stringPreferencesKey("monochromePlaybackApiToken")
+
+/** When Monochrome cannot resolve a track, fall back to YouTube instead of failing. */
+val MonochromeFallbackToYouTubeKey = booleanPreferencesKey("monochromeFallbackToYouTube")
 val EnableStreamDebugToastsKey = booleanPreferencesKey("enableStreamDebugToasts")
 
 val AmazonMusicApiUrlKey = stringPreferencesKey("amazonMusicApiUrl")
