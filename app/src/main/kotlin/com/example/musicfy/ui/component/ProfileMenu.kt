@@ -2,7 +2,6 @@
 
 package com.example.musicfy.ui.component
 
-import android.graphics.RuntimeShader
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
@@ -105,14 +104,14 @@ private fun rowReveal(progress: Float, start: Float, end: Float) =
 
 @RequiresApi(33)
 private fun Modifier.warpEffect(
-    shader: RuntimeShader,
+    shader: Any,
     time: () -> Float,
     amount: () -> Float,
 ): Modifier = this.graphicsLayer {
-    shader.setFloatUniform("resolution", size.width, size.height)
-    shader.setFloatUniform("time", time())
-    shader.setFloatUniform("amount", amount())
-    renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "image").asComposeRenderEffect()
+    shader.setAgslUniform("resolution", size.width, size.height)
+    shader.setAgslUniform("time", time())
+    shader.setAgslUniform("amount", amount())
+    renderEffect = agslRenderEffect(shader, "image").asComposeRenderEffect()
 }
 
 private const val WarpShaderSrc = """
@@ -159,7 +158,7 @@ fun ProfileMenuOverlay(
         }
     }
     val warpShader = remember {
-        if (Build.VERSION.SDK_INT >= 33) RuntimeShader(WarpShaderSrc) else null
+        if (Build.VERSION.SDK_INT >= 33) createAgslShader(WarpShaderSrc) else null
     }
     val warpTime = remember { mutableFloatStateOf(0f) }
     LaunchedEffect(isAnimating) {

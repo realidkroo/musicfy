@@ -93,7 +93,7 @@ fun SubSettingsScaffold(
     val scrollState = rememberScrollState()
     val glassState = remember { GlassState() }
 
-    val headerFoundationColor = if (isSystemInDarkTheme()) Color.Black else MaterialTheme.colorScheme.surface
+    val headerFoundationColor = Color.Black
 
     val collapseDistancePx = with(density) { CollapseDistanceDp.dp.toPx() }
     val progressProvider = { (scrollState.value / collapseDistancePx).coerceIn(0f, 1f) }

@@ -28,9 +28,9 @@ import com.example.musicfy.ui.utils.resize
 import kotlinx.coroutines.isActive
 
 @Composable
-fun rememberWarpShader(): android.graphics.RuntimeShader? = remember {
+fun rememberWarpShader(): Any? = remember {
     if (android.os.Build.VERSION.SDK_INT >= 33) {
-        android.graphics.RuntimeShader(
+        createAgslShader(
             """
             uniform float2 resolution;
             uniform float time;
@@ -62,7 +62,7 @@ fun CoverGradientBackdrop(
     height: Dp,
     animate: Boolean,
     modifier: Modifier = Modifier,
-    shader: android.graphics.RuntimeShader? = rememberWarpShader(),
+    shader: Any? = rememberWarpShader(),
     timeProvider: (() -> Float)? = null,
 ) {
     val context = LocalContext.current
@@ -111,14 +111,13 @@ fun CoverGradientBackdrop(
 
 @androidx.annotation.RequiresApi(33)
 private fun Modifier.liquidWarpEffect(
-    shader: android.graphics.RuntimeShader,
+    shader: Any,
     time: () -> Float,
 ): Modifier = this.graphicsLayer {
 
-    shader.setFloatUniform("resolution", size.width, size.height)
-    shader.setFloatUniform("time", time())
-    renderEffect = android.graphics.RenderEffect
-        .createRuntimeShaderEffect(shader, "image")
+    shader.setAgslUniform("resolution", size.width, size.height)
+    shader.setAgslUniform("time", time())
+    renderEffect = agslRenderEffect(shader, "image")
         .asComposeRenderEffect()
     clip = true
 }

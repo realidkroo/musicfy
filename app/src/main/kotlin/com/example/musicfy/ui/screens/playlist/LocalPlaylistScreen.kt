@@ -131,6 +131,7 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.LocalSyncUtils
 import com.example.musicfy.R
 import com.example.musicfy.constants.DarkModeKey
+import com.example.musicfy.ui.theme.ForceDarkTheme
 import com.example.musicfy.constants.PlaylistEditLockKey
 import com.example.musicfy.constants.PlaylistSongSortDescendingKey
 import com.example.musicfy.constants.PlaylistSongSortType
@@ -1192,7 +1193,7 @@ fun LocalPlaylistHeader(
     )
 
     val cropColor = MaterialTheme.colorScheme
-    val darkTheme = darkMode == DarkMode.ON || (darkMode == DarkMode.AUTO && isSystemInDarkTheme())
+    val darkTheme = ForceDarkTheme
 
     val pickLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()

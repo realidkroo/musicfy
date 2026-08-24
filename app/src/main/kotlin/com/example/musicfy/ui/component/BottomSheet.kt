@@ -38,11 +38,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -105,14 +108,19 @@ fun BottomSheet(
         )
     }
         if (!isPillTransition) {
+            val sheetCornerShape = remember { RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) }
+            // Latches once the sheet has been opened, so later drags reuse the composed content.
+            var contentEverShown by remember { mutableStateOf(false) }
+
             Box(
                 modifier = modifier
                     .fillMaxSize()
                     .graphicsLayer {
                         val y = (state.expandedBound - state.value).toPx().coerceAtLeast(0f)
                         translationY = y
-                        val cornerRadius = if (!state.isExpanded) 16.dp.toPx() else 0f
-                        shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
+                        // Pre-built shapes: this block runs every frame of the drag, and
+                        // allocating a RoundedCornerShape per frame is pure churn.
+                        shape = if (!state.isExpanded) sheetCornerShape else RectangleShape
                         clip = true
                     }
                     .pointerInput(state, isExpandable) {
@@ -146,7 +154,14 @@ fun BottomSheet(
                     BackHandler(onBack = state::collapseSoft)
                 }
 
-                if (!state.isCollapsed) {
+                // Composing the sheet content is expensive, and gating it on `!isCollapsed`
+                // meant the whole player subtree was built the instant a drag started - the
+                // stutter in the first few pixels of a swipe up. Once it has been shown, keep
+                // it composed; alpha already hides it while collapsed.
+                if (!state.isCollapsed && !contentEverShown) {
+                    SideEffect { contentEverShown = true }
+                }
+                if (contentEverShown || !state.isCollapsed) {
                     BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxSize()

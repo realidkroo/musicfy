@@ -1125,7 +1125,7 @@ fun HomeScreen(
                     .fillMaxSize()
                     .glassRoot(profileMenuGlassState, isActive = { profileMenuProgress.value > 0f })
             ) {
-                val backgroundColor = if (isSystemInDarkTheme()) Color.Black else MaterialTheme.colorScheme.surface
+                val backgroundColor = Color.Black
                 CompositionLocalProvider(
                     com.example.musicfy.ui.component.LocalGridItemPadding provides 0.dp
                 ) {

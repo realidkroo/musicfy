@@ -34,12 +34,6 @@ import com.example.musicfy.utils.rememberPreference
 
 @Composable
 fun AppearanceSettingsScreen(navController: NavController) {
-    val (darkMode, onDarkModeChange) = rememberEnumPreference(
-        com.example.musicfy.constants.DarkModeKey,
-        defaultValue = DarkMode.AUTO
-    )
-    val isSystemDark = isSystemInDarkTheme()
-    val isDarkNow = if (darkMode == DarkMode.AUTO) isSystemDark else darkMode == DarkMode.ON
 
     val (playVideoBackground, onPlayVideoBackgroundChange) = rememberPreference(
         PlayVideoBackgroundKey,
@@ -102,21 +96,6 @@ fun AppearanceSettingsScreen(navController: NavController) {
         SettingsGroup(
             style = SettingsGroupStyle.Grouped,
             items = buildList {
-                add(
-                    SettingsItem(
-                        title = { Text("Theme") },
-                        descriptionText = if (isDarkNow) "Dark" else "Light",
-                        icon = painterResource(R.drawable.contrast),
-                        iconShape = CircleShape,
-                        onClick = { onDarkModeChange(if (isDarkNow) DarkMode.OFF else DarkMode.ON) },
-                        trailingContent = {
-                            AppSwitch(
-                                checked = isDarkNow,
-                                onCheckedChange = { checked -> onDarkModeChange(if (checked) DarkMode.ON else DarkMode.OFF) }
-                            )
-                        }
-                    )
-                )
                 add(
                     SettingsItem(
                         title = { Text("Lyrics letter animation") },

@@ -392,6 +392,6 @@
     <string name="standard_lyrics_blur">Standard lyrics blur</string>
     <string name="listen_together_smart_resync">Smart Network Resync</string>
     <string name="listen_together_smart_resync_desc">Automatically catch up with the host after a connection drop</string>
-    <string name="error_stream_truncated_title">YouTube would only send 32 seconds</string>
+    <string name="error_stream_unavailable_title">Couldn\'t play this track</string>
     <string name="playback_error_channel_name">Playback errors</string>
 </resources>

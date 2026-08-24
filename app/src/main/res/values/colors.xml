@@ -7,5 +7,5 @@
     <!-- Widget colors for light mode -->
     <color name="widget_text_primary">#1C1B1F</color>
     <color name="widget_text_secondary">#49454F</color>
-    <color name="window_background">#FFFFFF</color>
+    <color name="window_background">#000000</color>
 </resources>

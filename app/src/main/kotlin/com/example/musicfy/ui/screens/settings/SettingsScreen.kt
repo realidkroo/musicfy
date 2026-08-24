@@ -167,7 +167,7 @@ fun SettingsScreen(
     val glassState = remember { GlassState() }
 
     val scrollProgressProvider = { (scrollState.value / 120f).coerceIn(0f, 1f) }
-    val backgroundColor = if (isSystemInDarkTheme()) Color.Black else MaterialTheme.colorScheme.surface
+    val backgroundColor = Color.Black
 
     Scaffold(
         modifier = Modifier.graphicsLayer {

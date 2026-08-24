@@ -48,6 +48,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
@@ -76,6 +78,9 @@ import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 private val ControlsDrawShift = 64.dp
+
+/** Small upward nudge for the seek bar and its timestamps, so they sit off the controls below. */
+private val SeekBarLift = 6.dp
 
 private const val EnterBlurRadius = 34f
 
@@ -159,6 +164,14 @@ fun BottomSheetPlayer(
     val density = LocalDensity.current
 
     var controlsInset by remember { mutableStateOf(220.dp) }
+
+    /**
+     * Distance from the bottom of the seek bar to the bottom of the screen.
+     *
+     * The lyrics list is inset by this so its bottom fade lands *below* the seek bar. Insetting
+     * by the whole controls block instead put the fade up on the repeat/like buttons.
+     */
+    var lyricsBottomInset by remember { mutableStateOf(120.dp) }
 
     var lyricsImmersive by remember { mutableStateOf(false) }
     val controlsHidden by animateFloatAsState(
@@ -274,7 +287,7 @@ fun BottomSheetPlayer(
                     onClose = { showLyrics = false },
                     screenHeight = screenHeight,
 
-                    contentBottomInset = controlsInset,
+                    contentBottomInset = lyricsBottomInset,
                     onImmersiveChange = { lyricsImmersive = it },
                     isSheetDragging = isSheetInTransition,
                     isMorphing = lyricsMorphing,
@@ -434,7 +447,24 @@ fun BottomSheetPlayer(
                         }
                     }
 
-                    PlayerProgressSlider()
+                    // Column, not Box: PlayerProgressSlider emits the track and the timestamp
+                    // row as two siblings, so a Box would stack the timestamps on top of the
+                    // seek bar instead of below it.
+                    Column(
+                        modifier = Modifier
+                            .offset(y = -SeekBarLift)
+                            .onGloballyPositioned { coords ->
+                                val rootHeight = coords.findRootCoordinates().size.height
+                                val bottomY = coords.positionInRoot().y + coords.size.height
+                                val insetPx = (rootHeight - bottomY).coerceAtLeast(0f)
+                                val inset = with(density) { insetPx.toDp() }
+                                if ((inset - lyricsBottomInset).value.absoluteValue > 0.5f) {
+                                    lyricsBottomInset = inset
+                                }
+                            }
+                    ) {
+                        PlayerProgressSlider()
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))

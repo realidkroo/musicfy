@@ -8,8 +8,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -28,21 +26,27 @@ import com.materialkolor.score.Score
 
 val DefaultThemeColor = Color(0xFF8E8E8E)
 
+/**
+ * musicfy renders dark-only.
+ *
+ * The light palette was never finished - large parts of the UI hardcode white text and dark
+ * glass - so on a light-mode phone the app looked broken rather than light. Pinned here as one
+ * switch instead of being decided independently at every call site.
+ */
+const val ForceDarkTheme = true
+
 @Composable
 fun MusicfyTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = ForceDarkTheme,
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
 
-    val useSystemDynamicColor = false
-
-    val baseColorScheme = if (useSystemDynamicColor) {
-
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    } else {
+    // Dynamic (Material You) colour is deliberately not used - the app ships its own palette.
+    // The branch is gone rather than dead-but-present: dynamic*ColorScheme is API 31.
+    val baseColorScheme = run {
 
         if (darkTheme) {
             darkColorScheme(
