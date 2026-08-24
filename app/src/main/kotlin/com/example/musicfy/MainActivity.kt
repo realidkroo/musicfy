@@ -134,6 +134,7 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.AppBarHeight
 import com.example.musicfy.constants.AppLanguageKey
 import com.example.musicfy.constants.DarkModeKey
+import com.example.musicfy.ui.theme.ForceDarkTheme
 import com.example.musicfy.constants.DefaultOpenTabKey
 import com.example.musicfy.constants.CropAlbumArtKey
 import com.example.musicfy.constants.GridItemsSizeKey
@@ -456,11 +457,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
-        val isSystemInDarkTheme = isSystemInDarkTheme()
-        val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
-        }
+        val useDarkTheme = ForceDarkTheme
 
         LaunchedEffect(useDarkTheme) {
             setSystemBarAppearance(useDarkTheme)

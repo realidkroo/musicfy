@@ -388,10 +388,11 @@ class MusicService :
     private val songUrlCache = HashMap<String, Pair<String, Long>>()
 
     /**
-     * Container type and total byte length per media id, needed to decide whether a stream
-     * may be read in chunks and whether the cache already holds the whole thing.
+     * Headers that must accompany the stream request for each track, keyed by media id.
+     * googlevideo checks Origin/Referer against the client that issued the url, so a cached
+     * url replayed without them is rejected.
      */
-    private val songFormatCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String?, Long?>>()
+    private val songStreamHeaders = java.util.concurrent.ConcurrentHashMap<String, Map<String, String>>()
 
     private val bypassCacheForQualityChange = mutableSetOf<String>()
 
@@ -2683,70 +2684,18 @@ class MusicService :
     }
 
     /**
-     * Container type and total byte length for a track, from the in-memory cache when we have
-     * already resolved it this session, otherwise from the stored format row.
+     * How many bytes of this track the player still needs from [dataSpec.position].
+     *
+     * Metrolist's approach: prefer the length the player asked for, else derive it from the
+     * stored content length. Guessing a chunk when neither is known makes a partially cached
+     * track look complete, which is how replay used to break.
      */
-    private fun formatMetadata(mediaId: String): Pair<String?, Long?> =
-        songFormatCache.getOrPut(mediaId) {
-            val stored = runCatching {
-                runBlocking(Dispatchers.IO) { database.format(mediaId).first() }
-            }.getOrNull()
-            stored?.mimeType to stored?.contentLength?.takeIf { it > 0L }
-        }
-
-    /** Total byte length a cache recorded for this track when it first fetched it. */
-    private fun cachedContentLength(mediaId: String): Long? =
-        sequenceOf(downloadCache, playerCache)
-            .mapNotNull { cache ->
-                runCatching { ContentMetadata.getContentLength(cache.getContentMetadata(mediaId)) }
-                    .getOrNull()
-                    ?.takeIf { it > 0L }
-            }.firstOrNull()
-
-    /**
-     * How many bytes are cached in one unbroken run starting at [position], across both caches.
-     * Stops at the first gap - a span that starts past the cursor means the run has ended.
-     */
-    private fun continuousCachedLength(
-        mediaId: String,
-        position: Long,
-        requestedLength: Long,
-    ): Long {
-        val targetEnd = position + requestedLength
-        val spans = sequenceOf<Cache>(downloadCache, playerCache)
-            .flatMap { cache ->
-                runCatching { cache.getCachedSpans(mediaId).toList() }.getOrNull().orEmpty().asSequence()
-            }
-            .filter { span -> span.position + span.length > position }
-            .sortedBy { span -> span.position }
-
-        var cursor = position
-        for (span in spans) {
-            if (span.position > cursor) break
-            cursor = maxOf(cursor, span.position + span.length)
-            if (cursor >= targetEnd) break
-        }
-        return (cursor - position).coerceAtLeast(0L)
-    }
-
-    /** True only when every byte the player asked for is already on disk. */
-    private fun isRangeFullyCached(
-        mediaId: String,
-        dataSpec: DataSpec,
-        knownContentLength: Long?,
-    ): Boolean {
-        val contentLength = knownContentLength ?: cachedContentLength(mediaId)
-        val requestedLength = when {
-            dataSpec.length > 0L -> dataSpec.length
-            contentLength != null && contentLength > dataSpec.position -> contentLength - dataSpec.position
-            // Open-ended read and nothing tells us how long the track is. A completed
-            // download is all-or-nothing so it is still safe to serve, but the streaming
-            // cache routinely holds partial entries and must not be trusted here.
-            else -> return runCatching {
-                downloadCache.isCached(mediaId, dataSpec.position, 1)
-            }.getOrDefault(false)
-        }
-        return continuousCachedLength(mediaId, dataSpec.position, requestedLength) >= requestedLength
+    private fun requiredCachedLength(mediaId: String, dataSpec: DataSpec): Long {
+        if (dataSpec.length >= 0) return dataSpec.length
+        val contentLength = runCatching {
+            runBlocking(Dispatchers.IO) { database.format(mediaId).first()?.contentLength }
+        }.getOrNull()?.takeIf { it > 0L }
+        return contentLength?.let { (it - dataSpec.position).coerceAtLeast(1L) } ?: CHUNK_LENGTH
     }
 
     /**
@@ -2786,27 +2735,20 @@ class MusicService :
             }
 
             if (!shouldBypassCache) {
-                val knownContentLength = formatMetadata(mediaId).second
+                val requiredLength = requiredCachedLength(mediaId, dataSpec)
 
-                // Only serve straight from cache when the whole requested range is really
-                // there. The media item's uri is the bare video id, so a dataSpec that runs
-                // off the end of a partial cache entry sends ExoPlayer to fetch "<videoId>"
-                // as if it were a url, which fails.
-                if (isRangeFullyCached(mediaId, dataSpec, knownContentLength)) {
+                if (downloadCache.isCached(mediaId, dataSpec.position, requiredLength) ||
+                    playerCache.isCached(mediaId, dataSpec.position, requiredLength)
+                ) {
                     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                     return@Factory dataSpec
                 }
 
                 songUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }?.let { cached ->
                     scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
-                    val resolved = dataSpec.withUri(cached.first.toUri())
-                    val length = resolveStreamChunkLength(
-                        requestedLength = dataSpec.length,
-                        position = dataSpec.position,
-                        knownContentLength = knownContentLength,
-                        chunkLength = CHUNK_LENGTH,
-                    )
-                    return@Factory resolved.subrange(0L, length ?: CHUNK_LENGTH)
+                    return@Factory dataSpec
+                        .withUri(cached.first.toUri())
+                        .withRequestHeaders(dataSpec.httpRequestHeaders + songStreamHeaders[mediaId].orEmpty())
                 }
             } else {
                 Timber.tag("MusicService").i("BYPASSING CACHE for $mediaId due to quality change")
@@ -2821,16 +2763,6 @@ class MusicService :
                 )
             }.getOrElse { throwable ->
                 when (throwable) {
-                    is com.example.musicfy.utils.YTPlayerUtils.TruncatedStreamException -> {
-                        val message = throwable.message ?: getString(R.string.error_stream_truncated_title)
-                        notifyPlaybackError(getString(R.string.error_stream_truncated_title), message)
-                        throw PlaybackException(
-                            message,
-                            throwable,
-                            PlaybackException.ERROR_CODE_REMOTE_ERROR,
-                        )
-                    }
-
                     is PlaybackException -> throw throwable
 
                     is java.net.ConnectException, is java.net.UnknownHostException -> {
@@ -2849,11 +2781,19 @@ class MusicService :
                         )
                     }
 
-                    else -> throw PlaybackException(
-                        getString(R.string.error_unknown),
-                        throwable,
-                        PlaybackException.ERROR_CODE_REMOTE_ERROR
-                    )
+                    else -> {
+                        // Surface the reason rather than a silent stall; the media notification
+                        // channel is silent by design so errors get their own.
+                        notifyPlaybackError(
+                            getString(R.string.error_stream_unavailable_title),
+                            throwable.message ?: getString(R.string.error_unknown),
+                        )
+                        throw PlaybackException(
+                            getString(R.string.error_unknown),
+                            throwable,
+                            PlaybackException.ERROR_CODE_REMOTE_ERROR
+                        )
+                    }
                 }
             }
 
@@ -2896,16 +2836,12 @@ class MusicService :
 
                 songUrlCache[mediaId] =
                     streamUrl to System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
-                songFormatCache[mediaId] = format.mimeType to format.contentLength
+                songStreamHeaders[mediaId] = nonNullPlayback.streamHeaders
 
-                val resolved = dataSpec.withUri(streamUrl.toUri())
-                val length = resolveStreamChunkLength(
-                    requestedLength = dataSpec.length,
-                    position = dataSpec.position,
-                    knownContentLength = format.contentLength,
-                    chunkLength = CHUNK_LENGTH,
-                )
-                return@Factory resolved.subrange(0L, length ?: CHUNK_LENGTH)
+                return@Factory dataSpec
+                    .withUri(streamUrl.toUri())
+                    .subrange(dataSpec.uriPositionOffset, CHUNK_LENGTH)
+                    .withRequestHeaders(dataSpec.httpRequestHeaders + nonNullPlayback.streamHeaders)
             }
         }
     }

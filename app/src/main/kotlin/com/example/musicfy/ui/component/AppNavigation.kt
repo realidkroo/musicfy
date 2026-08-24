@@ -247,7 +247,7 @@ fun AppNavigationBar(
     val selectedTabRoute = rememberSelectedTabRoute(currentRoute, navigationItems)
 
     androidx.compose.foundation.layout.Box(modifier = modifier) {
-        val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+        val containerColor = if (pureBlack) Color.Black else GlassChromeColor
         val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
 
         val glassState = LocalGlassState.current ?: remember { GlassState() }
@@ -266,7 +266,7 @@ fun AppNavigationBar(
         ) {
             GlassPillBackground(
                 state = glassState,
-                blurRadius = { 24f },
+                blurRadius = { GlassChromeBlurRadius },
                 tint = containerColor.copy(alpha = 0.65f),
                 foundationColor = containerColor,
 

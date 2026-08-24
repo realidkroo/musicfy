@@ -77,6 +77,7 @@ import androidx.navigation.navArgument
 import com.example.musicfy.R
 import com.example.musicfy.LocalDatabase
 import com.example.musicfy.constants.DarkModeKey
+import com.example.musicfy.ui.theme.ForceDarkTheme
 import com.example.musicfy.constants.PlaylistSortType
 import com.example.musicfy.constants.PureBlackKey
 import com.example.musicfy.db.entities.ArtistEntity
@@ -173,11 +174,7 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(Screens.Search.route) {
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
-        val isSystemInDarkTheme = isSystemInDarkTheme()
-        val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
-        }
+        val useDarkTheme = ForceDarkTheme
         val pureBlack = remember(pureBlackEnabled, useDarkTheme) {
             pureBlackEnabled && useDarkTheme
         }
@@ -192,11 +189,7 @@ fun NavGraphBuilder.navigationBuilder(
         popEnterTransition = { fadeIn(tween(150)) },
     ) {
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
-        val isSystemInDarkTheme = isSystemInDarkTheme()
-        val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
-        }
+        val useDarkTheme = ForceDarkTheme
         CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
             com.example.musicfy.ui.screens.library.LibraryHomeScreen(
                 navController = navController,
@@ -487,11 +480,7 @@ fun NavGraphBuilder.navigationBuilder(
         ),
     ) {
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
-        val isSystemInDarkTheme = isSystemInDarkTheme()
-        val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
-            if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
-        }
+        val useDarkTheme = ForceDarkTheme
         GenreScreen(
             navController = navController,
             pureBlack = remember(pureBlackEnabled, useDarkTheme) {

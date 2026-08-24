@@ -3,18 +3,16 @@
 package com.example.musicfy.utils.potoken
 
 /**
- * The tokens produced by one BotGuard minting cycle.
+ * The two tokens produced by one BotGuard minting cycle.
  *
- * Two bindings exist: a token minted from the **video id**, and one minted from the
- * **session id** (visitorData, or dataSyncId when signed in). Which one googlevideo accepts
- * on the stream url is not obvious - ArchiveTune, which streams full-length audio, sends the
- * video-bound token there and keeps the session-bound one only as a fallback. We do the same.
+ * The pairing is not intuitive and musicfy had it backwards: the **session**-bound token belongs
+ * in the player request, and the **video**-bound token is the one googlevideo wants on the stream
+ * url as `pot=`. Metrolist and ArchiveTune - both of which stream full-length audio - agree on
+ * this, so the field names describe where each token goes rather than what it was minted from.
  */
 class PoTokenResult(
-    /** Video-bound. Sent in the player request's `serviceIntegrityDimensions`. */
+    /** Minted from the session id. Sent in the player request's `serviceIntegrityDimensions`. */
     val playerRequestPoToken: String,
-    /** Video-bound. Appended to the stream url as `pot=`. */
+    /** Minted from the video id. Appended to the stream url as `pot=`. */
     val streamingDataPoToken: String,
-    /** Session-bound. Retried on the stream url if the video-bound token is rejected. */
-    val sessionPoToken: String?,
 )

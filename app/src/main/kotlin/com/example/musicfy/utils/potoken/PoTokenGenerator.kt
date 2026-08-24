@@ -159,15 +159,12 @@ class PoTokenGenerator {
             }
         }
 
-        Timber.tag(TAG).d("poToken generated successfully: video-bound=${playerPot.take(20)}..., session-bound=${streamingPot.take(20)}...")
+        Timber.tag(TAG).d("poToken generated: session=${streamingPot.take(20)}... video=${playerPot.take(20)}...")
 
-        // The video-bound token goes on the stream url, matching ArchiveTune. Sending the
-        // session-bound one there leaves the url effectively untokened, and googlevideo then
-        // serves only its ~786 KB preview window - about 32 seconds of audio.
+        // Session token in the player request, video token on the stream url - see PoTokenResult.
         return PoTokenResult(
-            playerRequestPoToken = playerPot,
+            playerRequestPoToken = streamingPot,
             streamingDataPoToken = playerPot,
-            sessionPoToken = streamingPot,
         )
     }
 }

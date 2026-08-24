@@ -70,6 +70,9 @@ constructor(
     private val ipVersion by enumPreference(context, IpVersionKey, IpVersion.AUTO)
     private val songUrlCache = HashMap<String, Pair<String, Long>>()
 
+    /** Per-track stream request headers, so a cached url is replayed with its client's Origin. */
+    private val songStreamHeaders = HashMap<String, Map<String, String>>()
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val downloads = MutableStateFlow<Map<String, Download>>(emptyMap())
@@ -112,7 +115,9 @@ constructor(
             }
 
             songUrlCache[mediaId]?.takeIf { it.second < System.currentTimeMillis() }?.let {
-                return@Factory dataSpec.withUri(it.first.toUri())
+                return@Factory dataSpec
+                    .withUri(it.first.toUri())
+                    .withRequestHeaders(dataSpec.httpRequestHeaders + songStreamHeaders[mediaId].orEmpty())
             }
 
             val playbackData = runBlocking(Dispatchers.IO) {
@@ -177,7 +182,10 @@ constructor(
             }
 
             songUrlCache[mediaId] = streamUrl to playbackData.streamExpiresInSeconds * 1000L
-            dataSpec.withUri(streamUrl.toUri())
+            songStreamHeaders[mediaId] = playbackData.streamHeaders
+            dataSpec
+                .withUri(streamUrl.toUri())
+                .withRequestHeaders(dataSpec.httpRequestHeaders + playbackData.streamHeaders)
         }
 
     val downloadNotificationHelper =

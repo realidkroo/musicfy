@@ -936,7 +936,7 @@ private fun rememberWaveModifier(
 
     val shader = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            android.graphics.RuntimeShader(WaveAgsl)
+            createAgslShader(WaveAgsl)
         } else {
             null
         }
@@ -974,35 +974,35 @@ private fun rememberWaveModifier(
             LyricsFontSize.toPx() * 0.5f
         }
 
-        shader.setFloatUniform("headX", headX)
-        shader.setFloatUniform("spanBehind", charWidth * WaveCharsBehind)
-        shader.setFloatUniform("spanAhead", charWidth * WaveCharsAhead)
-        shader.setFloatUniform("liftPx", WaveLiftPx * amp)
-        shader.setFloatUniform("zoomAmt", WaveZoom * amp)
-        shader.setFloatUniform("baseY", layout.getLineBaseline(headLine))
-        shader.setFloatUniform("lineTop", layout.getLineTop(headLine))
-        shader.setFloatUniform("lineBottom", layout.getLineBottom(headLine))
-        shader.setFloatUniform("bloom", BloomStrength * head.glow.floatValue * amp)
-        shader.setFloatUniform("bloomR", BloomRadiusPx)
-        shader.setFloatUniform("bloomLag", charWidth * BloomLagChars)
-        shader.setFloatUniform("bloomSpan", charWidth * BloomSpanChars)
-        shader.setFloatUniform("highQuality", if (highBloom) 1f else 0f)
-        shader.setFloatUniform("lineLeft", layout.getLineLeft(headLine))
+        shader.setAgslUniform("headX", headX)
+        shader.setAgslUniform("spanBehind", charWidth * WaveCharsBehind)
+        shader.setAgslUniform("spanAhead", charWidth * WaveCharsAhead)
+        shader.setAgslUniform("liftPx", WaveLiftPx * amp)
+        shader.setAgslUniform("zoomAmt", WaveZoom * amp)
+        shader.setAgslUniform("baseY", layout.getLineBaseline(headLine))
+        shader.setAgslUniform("lineTop", layout.getLineTop(headLine))
+        shader.setAgslUniform("lineBottom", layout.getLineBottom(headLine))
+        shader.setAgslUniform("bloom", BloomStrength * head.glow.floatValue * amp)
+        shader.setAgslUniform("bloomR", BloomRadiusPx)
+        shader.setAgslUniform("bloomLag", charWidth * BloomLagChars)
+        shader.setAgslUniform("bloomSpan", charWidth * BloomSpanChars)
+        shader.setAgslUniform("highQuality", if (highBloom) 1f else 0f)
+        shader.setAgslUniform("lineLeft", layout.getLineLeft(headLine))
 
         // Let the trailing glow continue onto the line the sweep just wrapped off, instead of
         // being clipped at the line break.
         if (headLine > 0) {
-            shader.setFloatUniform("hasPrev", 1f)
-            shader.setFloatUniform("prevTop", layout.getLineTop(headLine - 1))
-            shader.setFloatUniform("prevBottom", layout.getLineBottom(headLine - 1))
-            shader.setFloatUniform("prevRight", layout.getLineRight(headLine - 1))
-            shader.setFloatUniform("prevBaseY", layout.getLineBaseline(headLine - 1))
+            shader.setAgslUniform("hasPrev", 1f)
+            shader.setAgslUniform("prevTop", layout.getLineTop(headLine - 1))
+            shader.setAgslUniform("prevBottom", layout.getLineBottom(headLine - 1))
+            shader.setAgslUniform("prevRight", layout.getLineRight(headLine - 1))
+            shader.setAgslUniform("prevBaseY", layout.getLineBaseline(headLine - 1))
         } else {
-            shader.setFloatUniform("hasPrev", 0f)
-            shader.setFloatUniform("prevTop", 0f)
-            shader.setFloatUniform("prevBottom", 0f)
-            shader.setFloatUniform("prevRight", 0f)
-            shader.setFloatUniform("prevBaseY", 0f)
+            shader.setAgslUniform("hasPrev", 0f)
+            shader.setAgslUniform("prevTop", 0f)
+            shader.setAgslUniform("prevBottom", 0f)
+            shader.setAgslUniform("prevRight", 0f)
+            shader.setAgslUniform("prevBaseY", 0f)
         }
 
         renderEffect = cache.effectFor(shader, headX, amp, head.glow.floatValue, headLine)
@@ -1022,7 +1022,7 @@ private class WaveEffectCache {
     private var effect: androidx.compose.ui.graphics.RenderEffect? = null
 
     fun effectFor(
-        shader: android.graphics.RuntimeShader,
+        shader: Any,
         headX: Float,
         amplitude: Float,
         glow: Float,
@@ -1040,8 +1040,7 @@ private class WaveEffectCache {
         lastAmp = a
         lastGlow = g
         lastLine = headLine
-        return android.graphics.RenderEffect
-            .createRuntimeShaderEffect(shader, "content")
+        return agslRenderEffect(shader, "content")
             .asComposeRenderEffect()
             .also { effect = it }
     }

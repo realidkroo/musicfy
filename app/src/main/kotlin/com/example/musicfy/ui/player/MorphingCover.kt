@@ -99,6 +99,15 @@ import com.example.musicfy.ui.player.customize.PlayerBackgroundContent
 import com.example.musicfy.ui.player.customize.CoverGradientBackdrop
 import com.example.musicfy.ui.player.customize.coverArtBox
 import com.example.musicfy.ui.player.customize.isDisc
+import com.example.musicfy.ui.component.GlassChromeBlurRadius
+import com.example.musicfy.ui.component.agslRenderEffect
+import com.example.musicfy.ui.component.createAgslShader
+import com.example.musicfy.ui.component.setAgslUniform
+import com.example.musicfy.ui.component.drawGlassNode
+import com.example.musicfy.ui.component.glassNodeHasContent
+import com.example.musicfy.ui.component.glassNodeHeight
+import com.example.musicfy.ui.component.glassNodeWidth
+import com.example.musicfy.ui.component.GlassChromeColor
 import com.example.musicfy.ui.component.GlassPillBackground
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.glassRoot
@@ -395,7 +404,7 @@ fun MorphingCover(
 
     val warpShader = remember {
         if (android.os.Build.VERSION.SDK_INT >= 33) {
-            android.graphics.RuntimeShader(
+            createAgslShader(
                 """
                 uniform float2 resolution;
                 uniform float time;
@@ -514,7 +523,7 @@ fun MorphingCover(
             }
         }
         if (isPillMounted) {
-            val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+            val containerColor = if (pureBlack) Color.Black else GlassChromeColor
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -527,7 +536,7 @@ fun MorphingCover(
             ) {
                 GlassPillBackground(
                     state = navBackdropGlassState,
-                    blurRadius = { 24f },
+                    blurRadius = { GlassChromeBlurRadius },
                     tint = containerColor.copy(alpha = 0.65f),
                     foundationColor = containerColor,
 
@@ -861,9 +870,12 @@ private fun VideoBackdropBlur(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                        90f, 90f, android.graphics.Shader.TileMode.CLAMP
-                    ).asComposeRenderEffect()
+                    // createBlurEffect is API 31; this block runs on every device.
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        renderEffect = android.graphics.RenderEffect.createBlurEffect(
+                            90f, 90f, android.graphics.Shader.TileMode.CLAMP
+                        ).asComposeRenderEffect()
+                    }
                 }
         ) {
             drawFillScaledVideoNode(glassState, flip = false)
@@ -874,9 +886,11 @@ private fun VideoBackdropBlur(
                 .fillMaxSize()
                 .graphicsLayer {
                     alpha = 0.6f
-                    renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                        90f, 90f, android.graphics.Shader.TileMode.CLAMP
-                    ).asComposeRenderEffect()
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        renderEffect = android.graphics.RenderEffect.createBlurEffect(
+                            90f, 90f, android.graphics.Shader.TileMode.CLAMP
+                        ).asComposeRenderEffect()
+                    }
                 }
         ) {
             drawFillScaledVideoNode(glassState, flip = true)
@@ -889,9 +903,10 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFillScaledVideo
     flip: Boolean,
 ) {
     val node = glassState.renderNode
-    if (node == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S || !node.hasDisplayList()) return
-    val nodeWidth = node.width.toFloat()
-    val nodeHeight = node.height.toFloat()
+    if (node == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return
+    if (!glassNodeHasContent(node)) return
+    val nodeWidth = glassNodeWidth(node).toFloat()
+    val nodeHeight = glassNodeHeight(node).toFloat()
     if (nodeWidth <= 0f || nodeHeight <= 0f) return
 
     val fillScale = maxOf(size.width / nodeWidth, size.height / nodeHeight)
@@ -904,18 +919,18 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFillScaledVideo
         translate(left = offsetX, top = if (flip) offsetY + scaledHeight else offsetY)
         scale(scaleX = fillScale, scaleY = if (flip) -fillScale else fillScale, pivot = Offset.Zero)
     }) {
-        drawIntoCanvas { it.nativeCanvas.drawRenderNode(node) }
+        drawIntoCanvas { it.nativeCanvas.drawGlassNode(node) }
     }
 }
 
 @androidx.annotation.RequiresApi(33)
 private fun Modifier.liquidWarpEffect(
-    shader: android.graphics.RuntimeShader,
+    shader: Any,
     time: () -> Float,
 ): Modifier = this.graphicsLayer {
 
-    shader.setFloatUniform("resolution", size.width, size.height)
-    shader.setFloatUniform("time", time())
-    renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "image").asComposeRenderEffect()
+    shader.setAgslUniform("resolution", size.width, size.height)
+    shader.setAgslUniform("time", time())
+    renderEffect = agslRenderEffect(shader, "image").asComposeRenderEffect()
     clip = true
 }
