@@ -531,13 +531,15 @@ fun LyricsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 36.dp)
-                .padding(top = 14.dp, bottom = 10.dp)
+                .padding(horizontal = LyricsHeaderArtX)
+                // Matches where the morph layer actually draws the cover, so the hitbox sits on
+                // the artwork and the menu centres against it.
+                .padding(top = LyricsHeaderArtTopFromStatusBar, bottom = 10.dp)
         ) {
 
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(LyricsHeaderArtSize)
                     .clip(RoundedCornerShape(10.dp))
 
                     .clickable { if (immersive) immersive = false else onClose() }

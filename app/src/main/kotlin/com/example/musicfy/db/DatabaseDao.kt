@@ -281,6 +281,10 @@ interface DatabaseDao {
 
     @Transaction
     @RewriteQueriesToDropUnusedColumns
+    /** Total time spent listening, in milliseconds, across every recorded play event. */
+    @Query("SELECT COALESCE(SUM(playTime), 0) FROM event")
+    fun totalListeningTimeMs(): Flow<Long>
+
     @Query(
         """
         SELECT s.*

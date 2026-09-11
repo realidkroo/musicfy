@@ -140,8 +140,27 @@ data class KeepListeningItem(val item: com.example.musicfy.models.MediaMetadata,
     }
 }
 
-data class DiscoverItem(val item: DailyDiscoverItem) : HeroCarouselItem {
-    override fun getTitleLabel(isPlaying: Boolean): String = if (isPlaying) "Now playing" else "Sounds like ${item.seed.title}..."
+/**
+ * A recommendation card.
+ *
+ * [suggestionStyle] rotates the wording so a run of recommendations does not read as the same
+ * sentence repeated. Assigned by position when the carousel is built, so it is stable for a given
+ * card rather than changing on recomposition.
+ */
+data class DiscoverItem(
+    val item: DailyDiscoverItem,
+    val suggestionStyle: Int = 0,
+) : HeroCarouselItem {
+    override fun getTitleLabel(isPlaying: Boolean): String = if (isPlaying) {
+        "Now playing"
+    } else {
+        when (suggestionStyle % 4) {
+            0 -> "Based on what you're listening to"
+            1 -> "Based on ${item.seed.title}"
+            2 -> "Because you were listening to ${item.seed.title}"
+            else -> "You may like this"
+        }
+    }
     override val mainText: String = item.recommendation.title
     override val subText: String = (item.recommendation as? SongItem)?.artists?.joinToString(", ") { it.name } ?: ""
     override val thumbnailUrl: String? = item.recommendation.thumbnail
@@ -184,7 +203,9 @@ fun HeroCarousel(
 
             lastPlayedSong?.let { add(KeepListeningItem(it, isLastPlayed = true)) }
 
-            dailyDiscover?.take(5)?.forEach { add(DiscoverItem(it)) }
+            dailyDiscover?.take(5)?.forEachIndexed { index, discover ->
+                add(DiscoverItem(discover, suggestionStyle = index))
+            }
 
             if (size < 5) {
                 keepListening?.filterIsInstance<com.example.musicfy.db.entities.Song>()
@@ -214,17 +235,27 @@ fun HeroCarousel(
         return
     }
 
-    val initialPage = remember(carouselItems.size) {
-        (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % carouselItems.size)
-    }
-    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { Int.MAX_VALUE })
+    // With one card the infinite pager still wrapped around to the same item, so it drifted and
+    // auto-advanced against itself with nothing to advance to. One card is a static hero.
+    val isSingleItem = carouselItems.size == 1
 
-    LaunchedEffect(pagerState, carouselItems.size) {
-        while (true) {
-            delay(5000)
-            if (!pagerState.isScrollInProgress) {
-                val nextPage = pagerState.currentPage + 1
-                pagerState.animateScrollToPage(nextPage, animationSpec = tween(800))
+    val initialPage = remember(carouselItems.size) {
+        if (isSingleItem) 0
+        else (Int.MAX_VALUE / 2) - ((Int.MAX_VALUE / 2) % carouselItems.size)
+    }
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { if (isSingleItem) 1 else Int.MAX_VALUE },
+    )
+
+    if (!isSingleItem) {
+        LaunchedEffect(pagerState, carouselItems.size) {
+            while (true) {
+                delay(5000)
+                if (!pagerState.isScrollInProgress) {
+                    val nextPage = pagerState.currentPage + 1
+                    pagerState.animateScrollToPage(nextPage, animationSpec = tween(800))
+                }
             }
         }
     }
@@ -236,6 +267,7 @@ fun HeroCarousel(
     ) {
         HorizontalPager(
             state = pagerState,
+            userScrollEnabled = !isSingleItem,
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val realPage = page % carouselItems.size

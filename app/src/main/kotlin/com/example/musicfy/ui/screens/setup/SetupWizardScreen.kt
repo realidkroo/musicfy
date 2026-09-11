@@ -78,6 +78,9 @@ fun SetupWizardScreen(
     var lastPickedUri by remember { mutableStateOf<Uri?>(null) }
     var isLeavingWelcome by remember { mutableStateOf(false) }
 
+    /** Scroll of the profile page, so the morph overlay's circle tracks the content under it. */
+    val profileScrollState = androidx.compose.foundation.rememberScrollState()
+
     val (_, onEnableMonochromeBackendChange) = rememberPreference(
         EnableMonochromeBackendKey,
         defaultValue = false
@@ -203,7 +206,8 @@ fun SetupWizardScreen(
 
                                 val existing = lastPickedUri
                                 if (existing != null) selectedUncroppedUri = existing else openPhotoPicker()
-                            }
+                            },
+                            scrollState = profileScrollState,
                         )
                     }
                     PAGE_GREETING -> Box(pageModifier) {
@@ -253,7 +257,13 @@ fun SetupWizardScreen(
                 if (pageOffset > 0f && pageOffset < 3f) {
                     val progress = (pageOffset - 1f).coerceIn(0f, 1f)
 
-                    val page1Y = 242.dp
+                    // Subtracting the page's scroll keeps the drawn circle glued to its
+                    // placeholder now that the profile step scrolls. It only affects page 1, and
+                    // the lerp below fades that out as the morph moves to page 2.
+                    val profileScroll = with(androidx.compose.ui.platform.LocalDensity.current) {
+                        profileScrollState.value.toDp()
+                    }
+                    val page1Y = 242.dp - profileScroll
                     val page1X = 32.dp
                     val page1Size = 140.dp
 

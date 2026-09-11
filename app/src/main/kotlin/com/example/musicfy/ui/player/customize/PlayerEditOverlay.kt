@@ -69,6 +69,9 @@ enum class PlayerEditPhase {
 
     ENTERING,
 
+    /** The zoomed-out style picker shown once the enter animation finishes. */
+    STYLE_SELECT,
+
     SELECTING,
 
     CUSTOMIZING,

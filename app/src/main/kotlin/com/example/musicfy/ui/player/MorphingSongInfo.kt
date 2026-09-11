@@ -68,12 +68,17 @@ fun MorphingSongInfo(
 
         Column(
             modifier = Modifier
-                .widthIn(max = maxTextWidth)
+                // Fixed width, not widthIn: the fade below is positioned as a fraction of this
+                // Column, so with wrap-content it started at 86% of whatever the *text* measured
+                // and short titles faded for no reason. At a fixed width the transparent band
+                // always sits just left of the ... menu, and a title that never reaches it is
+                // simply drawn whole.
+                .width(maxTextWidth)
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithCache {
                     val fade = Brush.horizontalGradient(
                         0f to Color.Black,
-                        0.86f to Color.Black,
+                        FadeStartFraction to Color.Black,
                         1f to Color.Transparent,
                     )
                     onDrawWithContent {
@@ -117,3 +122,6 @@ fun MorphingSongInfo(
 }
 
 private val maxTextWidth = 210.dp
+
+/** Where the title's trailing fade begins, as a fraction of [maxTextWidth] - just shy of the menu. */
+private const val FadeStartFraction = 0.9f

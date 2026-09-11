@@ -3,7 +3,10 @@
 ---
 <div align="center">
 
+  <img width="100" height="100" alt="Musicfy Icon" src="assets/icon.png" />
+
   # Musicfy
+
   <sub>cool music player for android, open source, packed with features and doesn’t collect ur data >_<</sub>
 
 </div>
@@ -12,8 +15,8 @@
 
 > [!WARNING]
 > Support for android 8+ is available but won’t get many features as on android 13+.
-
-Musicfy is an open source music player, with cool clean user interface and customizable. It’s a yt music wrapper, and Monochrome ( unstable ).
+>
+> Musicfy is an open source music player, with cool clean user interface and customizable. It’s a yt music wrapper, and Monochrome ( unstable ).
 
 > [!WARNING]
 > This app still on beta!
@@ -47,3 +50,7 @@ Musicfy is an open source music player, with cool clean user interface and custo
 - **Last.fm** by [Last.fm](https://www.lastfm.com/) -- For scrobbling and metadata provider support.
 
 ---
+
+<div align="center">
+  <sub>Built with care for open source music lovers everywhere.</sub>
+</div>

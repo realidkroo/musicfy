@@ -819,6 +819,7 @@ class MainActivity : ComponentActivity() {
                     LocalGlassState provides glassState,
                     LocalHideAppChrome provides hideAppChrome,
                     LocalDetailAccentColor provides detailAccentColor,
+                    LocalArtworkColor provides themeColor,
                     LocalPlayerAwareWindowInsets provides playerAwareWindowInsets,
                     LocalDownloadUtil provides downloadUtil,
                     LocalShimmerTheme provides ShimmerTheme,
@@ -1372,6 +1373,8 @@ val SubSettingsRoutes = setOf(
     "advanced_audio_settings",
     "cipher_settings",
     "playback_diagnostics",
+    "musicfy_settings",
+    "other_settings",
 )
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
@@ -1417,6 +1420,14 @@ val LocalCropAlbumArt = compositionLocalOf { false }
 val LocalGridItemSize = compositionLocalOf { GridItemSize.BIG }
 val LocalSwipeToSong = compositionLocalOf { false }
 val LocalIsPlayerExpanded = compositionLocalOf { false }
+
+/**
+ * Colour extracted from the current track's artwork.
+ *
+ * Exposed so Material 3 surfaces in the player can be seeded from the music rather than the device
+ * wallpaper - which is the whole point of the M3 player styles.
+ */
+val LocalArtworkColor = androidx.compose.runtime.compositionLocalOf { DefaultThemeColor }
 
 val LocalDetailAccentColor = staticCompositionLocalOf<androidx.compose.runtime.MutableState<Color?>> {
     androidx.compose.runtime.mutableStateOf(null)

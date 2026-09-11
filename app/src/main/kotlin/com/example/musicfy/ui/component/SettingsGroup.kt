@@ -13,6 +13,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -198,9 +199,34 @@ private fun SettingsItemRow(
     item: SettingsItem,
     style: SettingsGroupStyle,
 ) {
+    // A row arrived at from settings search claims the request the first time it composes, flashes
+    // briefly, then clears it - so the highlight fires once rather than every time the page opens.
+    val key = item.highlightKey
+    androidx.compose.runtime.LaunchedEffect(key, SettingsHighlight.pending) {
+        if (key != null && SettingsHighlight.pending == key) {
+            SettingsHighlight.pending = null
+            SettingsHighlight.active = key
+            kotlinx.coroutines.delay(2400)
+            if (SettingsHighlight.active == key) SettingsHighlight.active = null
+        }
+    }
+
+    val isFlashing = key != null && SettingsHighlight.active == key
+    val highlightAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isFlashing) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 450),
+        label = "settingsHighlight",
+    )
+    val highlightColor = MaterialTheme.colorScheme.primary
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .drawBehind {
+                if (highlightAlpha > 0.01f) {
+                    drawRect(color = highlightColor.copy(alpha = 0.22f * highlightAlpha))
+                }
+            }
             .clickable(
                 enabled = item.enabled && item.onClick != null,
                 onClick = { item.onClick?.invoke() }
@@ -336,5 +362,7 @@ data class SettingsItem(
     val enabled: Boolean = true,
     val isVisible: Boolean = true,
     val isSubOption: Boolean = false,
+    /** Identifier used by settings search to flash this row when the user arrives from a result. */
+    val highlightKey: String? = null,
     val onClick: (() -> Unit)? = null
 )

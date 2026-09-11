@@ -55,6 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import com.example.musicfy.lyrics.LyricsEntry
+import com.example.musicfy.ui.component.agslRenderEffect
+import com.example.musicfy.ui.component.createAgslShader
+import com.example.musicfy.ui.component.setAgslUniform
 
 enum class LyricsLineState { ACTIVE, UPCOMING, PAST, DEFAULT }
 
@@ -67,6 +70,15 @@ enum class LyricsLineState { ACTIVE, UPCOMING, PAST, DEFAULT }
  * so in the live player every voice rendered flush left and duets were impossible to follow.
  */
 enum class LyricsAlignment { START, CENTER, END }
+
+/**
+ * Side room for a lyric line.
+ *
+ * Sized for the *zoomed* line, not the resting one: the active line scales to 1.06 in a
+ * graphicsLayer, which happens after layout, so a line that already fills the width grows past
+ * the screen edges. Long wrapped lines - CJK especially - hit this on every active line.
+ */
+private val LyricsLineHorizontalPadding = 44.dp
 
 private val LyricsFontSize = 32.sp
 private val LyricsLineHeight = 40.sp
@@ -176,7 +188,10 @@ fun LyricsGlowLine(
             .fillMaxWidth()
             .clickable(onClick = onClick)
 
-            .padding(vertical = 16.dp, horizontal = 36.dp)
+            // Horizontal room has to cover the zoom as well as the resting line: padding is a
+            // layout modifier, so it is applied *before* the 1.06 active scale below, and a line
+            // that already fills the width then grows past both edges.
+            .padding(vertical = 16.dp, horizontal = LyricsLineHorizontalPadding)
             .graphicsLayer {
                 this.alpha = alpha
                 scaleX = scale

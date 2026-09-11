@@ -39,6 +39,22 @@ import com.example.musicfy.utils.makeTimeString
 fun PlayerProgressSlider(modifier: Modifier = Modifier) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val progress by playerConnection.uiState.progressState.collectAsState()
+    val transportState by playerConnection.uiState.transportState.collectAsState()
+    val seekBarStyle by com.example.musicfy.utils.rememberEnumPreference(
+        com.example.musicfy.constants.SeekBarStyleKey,
+        com.example.musicfy.ui.component.SeekBarStyle.DEFAULT,
+    )
+
+    // The Material 3 bars follow the artwork palette; the plain and default bars stay white so
+    // they keep working over any cover.
+    val artworkColor = com.example.musicfy.LocalArtworkColor.current
+    val isM3Bar = seekBarStyle == com.example.musicfy.ui.component.SeekBarStyle.M3_EXPRESSIVE ||
+        seekBarStyle == com.example.musicfy.ui.component.SeekBarStyle.M3_EXPRESSIVE_LINE
+    val barActiveColor = if (isM3Bar) {
+        com.example.musicfy.ui.theme.ArtworkPalette.from(artworkColor).accent
+    } else {
+        Color.White
+    }
 
     var sliderPosition by remember { mutableStateOf<Long?>(null) }
     val displayedPosition = sliderPosition ?: progress.position
@@ -68,13 +84,16 @@ fun PlayerProgressSlider(modifier: Modifier = Modifier) {
             interactionSource = trackInteractionSource,
             thumb = { Spacer(modifier = Modifier.size(0.dp)) },
             track = { sliderState ->
-                PlayerSliderTrack(
-                    sliderState = sliderState,
-                    trackHeight = trackHeight,
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = Color.White,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.24f)
-                    )
+                val range = sliderState.valueRange
+                val span = (range.endInclusive - range.start).takeIf { it > 0f }
+                val fraction = span?.let { (sliderState.value - range.start) / it } ?: 0f
+                com.example.musicfy.ui.component.SeekBarTrack(
+                    style = seekBarStyle,
+                    fraction = fraction,
+                    activeColor = barActiveColor,
+                    inactiveColor = Color.White.copy(alpha = 0.24f),
+                    animateWave = transportState.isPlaying,
+                    active = isTrackDragged || isTrackPressed,
                 )
             },
             modifier = Modifier

@@ -9,6 +9,9 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.example.musicfy.utils.dataStore
+import androidx.datastore.preferences.core.edit
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -376,14 +379,38 @@ class TurnstileSolver(private val context: Context) {
         }
     }
 
-    fun getCachedSessionJwt(): String? = synchronized(SessionCache) {
+    fun getCachedSessionJwt(): String? {
+        synchronized(SessionCache) {
+            val nowSeconds = System.currentTimeMillis() / 1000
+            // 60s of leeway so a token cannot expire mid-request.
+            if (cachedSessionJwt != null && sessionJwtExpirySeconds > nowSeconds + 60) {
+                return cachedSessionJwt
+            }
+        }
+        // Nothing usable in memory - fall back to the last one we persisted, so a cold start
+        // reuses a challenge already solved rather than opening another one.
+        return loadPersistedJwt()
+    }
+
+    private fun loadPersistedJwt(): String? = try {
+        val prefs = kotlinx.coroutines.runBlocking {
+            context.dataStore.data.first()
+        }
+        val jwt = prefs[com.example.musicfy.constants.MonochromeTurnstileJwtKey]
+        val expiry = prefs[com.example.musicfy.constants.MonochromeTurnstileJwtExpiryKey] ?: 0L
         val nowSeconds = System.currentTimeMillis() / 1000
-        // 60s of leeway so a token cannot expire mid-request.
-        if (cachedSessionJwt != null && sessionJwtExpirySeconds > nowSeconds + 60) {
-            cachedSessionJwt
+        if (!jwt.isNullOrBlank() && expiry > nowSeconds + 60) {
+            synchronized(SessionCache) {
+                cachedSessionJwt = jwt
+                sessionJwtExpirySeconds = expiry
+            }
+            jwt
         } else {
             null
         }
+    } catch (e: Exception) {
+        Timber.tag("TurnstileSolver").w(e, "Could not read the stored Turnstile JWT")
+        null
     }
 
     fun clearSessionJwt() = synchronized(SessionCache) {
@@ -392,11 +419,22 @@ class TurnstileSolver(private val context: Context) {
     }
 
     private fun storeSessionJwt(jwt: String) {
+        val expiry = jwtExpirySeconds(jwt) ?: (System.currentTimeMillis() / 1000 + 3600)
         synchronized(SessionCache) {
             cachedSessionJwt = jwt
-            sessionJwtExpirySeconds = jwtExpirySeconds(jwt) ?: (System.currentTimeMillis() / 1000 + 3600)
+            sessionJwtExpirySeconds = expiry
         }
         clearHeadlessCooldown()
+
+        // Persisted so the next cold start can skip the challenge entirely.
+        runCatching {
+            kotlinx.coroutines.runBlocking {
+                context.dataStore.edit { prefs ->
+                    prefs[com.example.musicfy.constants.MonochromeTurnstileJwtKey] = jwt
+                    prefs[com.example.musicfy.constants.MonochromeTurnstileJwtExpiryKey] = expiry
+                }
+            }
+        }.onFailure { Timber.tag("TurnstileSolver").w(it, "Could not persist the Turnstile JWT") }
     }
 
     /**

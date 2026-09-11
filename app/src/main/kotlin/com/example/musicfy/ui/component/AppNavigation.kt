@@ -115,6 +115,8 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "advanced_audio_settings" to "settings",
     "cipher_settings" to "settings",
     "playback_diagnostics" to "settings",
+    "musicfy_settings" to "settings",
+    "other_settings" to "settings",
     "appearance_settings" to "settings",
     "playback_settings" to "settings",
     "experimental_settings" to "settings",
