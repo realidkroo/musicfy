@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,104 +33,117 @@ fun ProfileSetupStep(
     username: String,
     onUsernameChange: (String) -> Unit,
     profilePicUri: Uri?,
-    onProfileTap: () -> Unit
+    onProfileTap: () -> Unit,
+    // Hoisted: the avatar itself is drawn by the wizard's morph overlay, not here, so the wizard
+    // needs this to keep the drawn circle travelling with the content it belongs to.
+    scrollState: ScrollState,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 32.dp),
-        horizontalAlignment = Alignment.Start
-    ) {
-        Spacer(modifier = Modifier.height(48.dp))
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        // The avatar was a flat 140dp. At a large display size that plus the fixed spacers is
+        // taller than the screen, so the username field and the wizard's Next button ended up
+        // below the fold with no way to reach them. Sized against the viewport now, and the whole
+        // step scrolls so nothing can be stranded off-screen again.
+        val avatarSize = (maxHeight * 0.17f).coerceIn(88.dp, 140.dp)
+        val topGap = (maxHeight * 0.06f).coerceIn(24.dp, 48.dp)
 
-        Text(
-            text = "Firstly",
-            fontSize = 42.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.White,
-            letterSpacing = (-2).sp
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "Set your username and profile picture, its for\nwhen you want to listen with your friend.",
-            fontSize = 16.sp,
-            color = Color(0xFFB3B3B3),
-            lineHeight = 22.sp,
-            letterSpacing = (-0.5).sp
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        Box(
+        Column(
             modifier = Modifier
-                .size(140.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onProfileTap)
-        )
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        Text(
-            text = "username",
-            fontSize = 14.sp,
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        BasicTextField(
-            value = username,
-            onValueChange = onUsernameChange,
-            singleLine = true,
-            textStyle = TextStyle(
-                color = Color.White,
-                fontSize = 16.sp,
-                lineHeight = 20.sp
-            ),
-            cursorBrush = SolidColor(Color.White),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(percent = 50))
-                .background(Color(0xFF2C2C2C)),
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    innerTextField()
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 120.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.Start
         ) {
-            Icon(
-                painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_dialog_info),
-                contentDescription = null,
-                tint = Color(0xFF888888),
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.height(topGap))
+
             Text(
-                text = "Your data will never be on the musicfy server",
-                fontSize = 12.sp,
-                color = Color(0xFFD0D0D0),
-                fontWeight = FontWeight.Normal,
-                lineHeight = 16.sp,
-                modifier = Modifier.weight(1f)
+                text = "Firstly",
+                fontSize = 42.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                letterSpacing = (-2).sp
             )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Set your username and profile picture, its for\nwhen you want to listen with your friend.",
+                fontSize = 16.sp,
+                color = Color(0xFFB3B3B3),
+                lineHeight = 22.sp,
+                letterSpacing = (-0.5).sp
+            )
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(avatarSize)
+                    .clip(CircleShape)
+                    .clickable(onClick = onProfileTap)
+            )
+
+            Spacer(modifier = Modifier.height(topGap))
+
+            Text(
+                text = "username",
+                fontSize = 14.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            BasicTextField(
+                value = username,
+                onValueChange = onUsernameChange,
+                singleLine = true,
+                textStyle = TextStyle(
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    lineHeight = 20.sp
+                ),
+                cursorBrush = SolidColor(Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(Color(0xFF2C2C2C)),
+                decorationBox = { innerTextField ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        innerTextField()
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 120.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = androidx.compose.ui.res.painterResource(android.R.drawable.ic_dialog_info),
+                    contentDescription = null,
+                    tint = Color(0xFF888888),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Your data will never be on the musicfy server",
+                    fontSize = 12.sp,
+                    color = Color(0xFFD0D0D0),
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 16.sp,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }

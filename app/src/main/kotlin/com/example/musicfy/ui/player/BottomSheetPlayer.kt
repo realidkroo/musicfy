@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -61,6 +63,7 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerBackgroundStyle
 import com.example.musicfy.constants.PlayerBackgroundStyleKey
 import com.example.musicfy.constants.PlayerCoverStyle
+import com.example.musicfy.constants.DefaultPlayerCoverStyle
 import com.example.musicfy.constants.PlayerCoverStyleKey
 import com.example.musicfy.constants.ShowPlayerBottomCardKey
 import com.example.musicfy.ui.component.BottomSheet
@@ -70,13 +73,20 @@ import com.example.musicfy.ui.player.customize.PlayerCustomizeScreen
 import com.example.musicfy.ui.player.customize.PlayerEditOverlay
 import com.example.musicfy.ui.player.customize.PlayerEditPhase
 import com.example.musicfy.ui.player.customize.PlayerEditTarget
-import com.example.musicfy.ui.player.customize.PlayerEnteringEditOverlay
 import com.example.musicfy.ui.player.menu.PlayerActionMenu
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
+/**
+ * How far the controls are pulled up over the artwork.
+ *
+ * This only makes sense for an edge-to-edge cover, where the art bleeds behind the controls and
+ * the overlap is the intended look. Every other cover style ends its artwork above the controls,
+ * so the same 64dp lift dragged the title, timestamps and seek bar back up onto the cover - the
+ * overlap that showed up once SQUARED became the default on devices without blur.
+ */
 private val ControlsDrawShift = 64.dp
 
 /** Small upward nudge for the seek bar and its timestamps, so they sit off the controls below. */
@@ -109,7 +119,12 @@ fun BottomSheetPlayer(
     val menuReveal = remember { mutableFloatStateOf(0f) }
 
     var showEditHint by remember { mutableStateOf(false) }
-    val coverStyle by rememberEnumPreference(PlayerCoverStyleKey, PlayerCoverStyle.EDGE_TO_EDGE)
+    val coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
+    val (playerStyle, onPlayerStyleChange) = rememberEnumPreference(
+        com.example.musicfy.constants.PlayerStyleKey,
+        com.example.musicfy.constants.PlayerStyle.DEFAULT,
+    )
+    val controlsDrawShift = if (coverStyle == PlayerCoverStyle.EDGE_TO_EDGE) ControlsDrawShift else 0.dp
     val backgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
         PlayerBackgroundStyle.COVER_GRADIENT,
@@ -254,7 +269,7 @@ fun BottomSheetPlayer(
                     coverStyle = coverStyle,
                     backgroundStyle = backgroundStyle,
                     editMode = editPhase != PlayerEditPhase.NONE,
-                    onLongPressCover = { editPhase = PlayerEditPhase.ENTERING },
+                    onLongPressCover = { editPhase = PlayerEditPhase.STYLE_SELECT },
                     onArtBoundsChanged = { coverArtRect = it },
                 )
                 MorphingSongInfo(
@@ -272,6 +287,61 @@ fun BottomSheetPlayer(
             },
             collapsedContent = {},
         ) {
+
+            // Alternate styles replace the player outright rather than drawing over it, so none
+            // of the default composition - blur, morphing cover, controls - runs while one is
+            // active.
+            if (playerStyle != com.example.musicfy.constants.PlayerStyle.DEFAULT) {
+                val stylePalette = com.example.musicfy.ui.theme.ArtworkPalette.from(
+                    com.example.musicfy.LocalArtworkColor.current
+                )
+                // The alternate styles draw their own full screen, which meant they also swallowed
+                // the player's own gestures - there was no way to close them or reach the editor.
+                // Both live here so every style gets them for free.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onVerticalDrag = { change, amount ->
+                                    // Only the top strip pulls the sheet down, so a drag lower on
+                                    // the screen is still free for the style's own gestures.
+                                    if (change.position.y < size.height * 0.25f && amount > 14f) {
+                                        state.collapseSoft()
+                                    }
+                                },
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onLongPress = { editPhase = PlayerEditPhase.STYLE_SELECT },
+                            )
+                        },
+                ) {
+                when (playerStyle) {
+                    com.example.musicfy.constants.PlayerStyle.LYRICS_ABSTRACT ->
+                        com.example.musicfy.ui.player.styles.LyricsAbstractStyle(
+                            surface = stylePalette.surface,
+                            accent = stylePalette.accent,
+                            onOpenMenu = { showActionMenu = true },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
+                    com.example.musicfy.constants.PlayerStyle.SIMPLE,
+                    com.example.musicfy.constants.PlayerStyle.SIMPLE_COMPACT ->
+                        com.example.musicfy.ui.player.styles.SimplePlayerStyle(
+                            compact = playerStyle == com.example.musicfy.constants.PlayerStyle.SIMPLE_COMPACT,
+                            surface = stylePalette.surface,
+                            played = stylePalette.container,
+                            onOpenMenu = { showActionMenu = true },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
+                    com.example.musicfy.constants.PlayerStyle.DEFAULT -> Unit
+                }
+                }
+                return@BottomSheet
+            }
 
             SeamBlur(
                 glassState = morphingGlassState,
@@ -317,6 +387,7 @@ fun BottomSheetPlayer(
                     onOpenLyrics = { showLyrics = true },
 
                     onOpenQueue = { playerConnection.player.seekToNext() },
+                    onLongPress = { editPhase = PlayerEditPhase.STYLE_SELECT },
                     lyricsProgressProvider = { lyricsProgress },
 
                     modifier = Modifier
@@ -397,13 +468,13 @@ fun BottomSheetPlayer(
                         val bounds = coords.boundsInRoot()
                         controlsRect = androidx.compose.ui.geometry.Rect(
                             left = bounds.left,
-                            top = bounds.top - with(density) { ControlsDrawShift.toPx() },
+                            top = bounds.top - with(density) { controlsDrawShift.toPx() },
                             right = bounds.right,
                             bottom = bounds.bottom,
                         )
                     }
             ) {
-                Column(modifier = Modifier.offset(y = -ControlsDrawShift)) {
+                Column(modifier = Modifier.offset(y = -controlsDrawShift)) {
                     Spacer(modifier = Modifier.height(20.dp))
 
                     Box(
@@ -513,26 +584,31 @@ fun BottomSheetPlayer(
                     menuReveal.floatValue = 0f
                 },
                 onEditPlayer = {
-                    showEditHint = true
-                    editPhase = PlayerEditPhase.CUSTOMIZING
+                    // Same destination as a long press: the style picker, with the current player
+                    // zooming back behind it. Jumping straight into the cover editor skipped the
+                    // choice of style entirely.
+                    editPhase = PlayerEditPhase.STYLE_SELECT
                 },
                 onReveal = { menuReveal.floatValue = it },
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
-        if (editPhase == PlayerEditPhase.ENTERING) {
-            PlayerEnteringEditOverlay(
-                onFinished = {
-
-                    if (editPhase == PlayerEditPhase.ENTERING) {
-                        editPhase = PlayerEditPhase.SELECTING
-                    }
+        if (editPhase == PlayerEditPhase.STYLE_SELECT) {
+            com.example.musicfy.ui.player.customize.PlayerStyleSelector(
+                selected = playerStyle,
+                artworkUrl = trackInfo.thumbnailUrl,
+                onSelect = { onPlayerStyleChange(it) },
+                onEdit = {
+                    // Straight to "what do you want to edit" rather than dropping the user into
+                    // the cover carousel, which assumed the answer.
+                    editPhase = PlayerEditPhase.SELECTING
                 },
-                onCancel = { editPhase = PlayerEditPhase.NONE },
+                onDismiss = { editPhase = PlayerEditPhase.NONE },
                 modifier = Modifier.fillMaxSize(),
             )
         }
+
     }
 }
 

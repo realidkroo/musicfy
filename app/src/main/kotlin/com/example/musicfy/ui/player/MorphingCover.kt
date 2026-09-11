@@ -178,6 +178,17 @@ private const val PILL_FADE_END = 0.15f
 
 private val LyricsHeaderCornerRadius = 12.dp
 
+/*
+ * Where the cover actually lands in lyrics mode. LyricsScreen's header has to place its hitbox and
+ * its menu button against these exact values - the artwork is drawn by the morph layer, not by the
+ * header, so the two are only aligned if they agree on the numbers. They previously did not: the
+ * header put its 60dp hitbox at statusBar + 14dp while the art rendered at statusBar + 28dp, so
+ * taps landed above the artwork and the menu sat 14dp high of the cover's centre.
+ */
+internal val LyricsHeaderArtSize = 60.dp
+internal val LyricsHeaderArtX = 36.dp
+internal val LyricsHeaderArtTopFromStatusBar = 28.dp
+
 private val SquaredCoverCornerRadius = 22.dp
 
 private fun lerpF(start: Float, stop: Float, fraction: Float): Float =
@@ -339,9 +350,9 @@ fun MorphingCover(
             miniTextX = miniTextX,
             miniTextWidth = miniTextWidth,
 
-            lyricsArtSize = 60.dp,
-            lyricsArtX = 36.dp,
-            lyricsArtY = statusBarTop + 28.dp,
+            lyricsArtSize = LyricsHeaderArtSize,
+            lyricsArtX = LyricsHeaderArtX,
+            lyricsArtY = statusBarTop + LyricsHeaderArtTopFromStatusBar,
             fullTextX = 24.dp,
             fullTextY = maxHeight * 0.63f + 24.dp,
             fullTextWidth = (maxWidth - 48.dp).coerceAtLeast(0.dp),

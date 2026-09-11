@@ -85,6 +85,7 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Crossfade") },
+                            highlightKey = "Crossfade",
                             descriptionText = "Blend one track into the next",
                             icon = painterResource(R.drawable.linear_scale),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -128,6 +129,7 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Equalizer") },
+                            highlightKey = "Equalizer",
                             descriptionText = "10-band parametric EQ",
                             icon = painterResource(R.drawable.equalizer),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -137,6 +139,7 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Audio quality") },
+                            highlightKey = "Audio quality",
                             description = { Text(qualityLabel(audioQuality)) },
                             icon = painterResource(R.drawable.graphic_eq),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -146,6 +149,7 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Skip silence") },
+                            highlightKey = "Skip silence",
                             descriptionText = "Skip silent parts",
                             icon = painterResource(R.drawable.fast_forward),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -171,6 +175,7 @@ fun PlaybackSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Audio normalization") },
+                            highlightKey = "Audio normalization",
                             descriptionText = "Even out loudness between tracks",
                             icon = painterResource(R.drawable.volume_up),
                             iconShape = androidx.compose.foundation.shape.CircleShape,

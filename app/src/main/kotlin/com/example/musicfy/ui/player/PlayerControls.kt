@@ -16,6 +16,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -82,26 +83,23 @@ fun PlayerTransportRow(modifier: Modifier = Modifier) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val transportState by playerConnection.uiState.transportState.collectAsState()
 
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(30.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = PlayerHorizontalPadding)
-    ) {
-        AnimatedPressScaleSkipButton(
-            icon = R.drawable.avd_skip_previous,
-            onClick = playerConnection::seekToPrevious,
-            enabled = transportState.canSkipPrevious,
-            tint = Color.White,
-            iconSize = 54.dp,
-            modifier = Modifier.size(74.dp)
-        )
+    val buttonStyle by com.example.musicfy.utils.rememberEnumPreference(
+        com.example.musicfy.constants.ButtonStyleKey,
+        com.example.musicfy.ui.component.ButtonStyle.DEFAULT,
+    )
+    val artworkColor = com.example.musicfy.LocalArtworkColor.current
+    val palette = remember(artworkColor) {
+        com.example.musicfy.ui.theme.ArtworkPalette.from(artworkColor)
+    }
 
-        AnimatedPressScalePlayPauseButton(
+    if (buttonStyle != com.example.musicfy.ui.component.ButtonStyle.DEFAULT) {
+        com.example.musicfy.ui.component.PlayerTransportButtons(
+            style = buttonStyle,
             isPlaying = transportState.isPlaying,
-            playbackState = transportState.playbackState,
-            onClick = {
+            canSkipPrevious = transportState.canSkipPrevious,
+            canSkipNext = transportState.canSkipNext,
+            onPrevious = playerConnection::seekToPrevious,
+            onPlayPause = {
                 if (transportState.playbackState == Player.STATE_ENDED) {
                     playerConnection.player.seekTo(0, 0)
                     playerConnection.player.playWhenReady = true
@@ -109,19 +107,70 @@ fun PlayerTransportRow(modifier: Modifier = Modifier) {
                     playerConnection.togglePlayPause()
                 }
             },
-            tint = Color.White,
-            iconSize = 54.dp,
-            modifier = Modifier.size(74.dp)
+            onNext = playerConnection::seekToNext,
+            colors = com.example.musicfy.ui.component.TransportColors(
+                accent = palette.accent,
+                onAccent = palette.onAccent,
+                container = palette.container,
+                onContainer = palette.onContainer,
+            ),
+            modifier = modifier.padding(horizontal = PlayerHorizontalPadding),
         )
+        return
+    }
 
-        AnimatedPressScaleSkipButton(
-            icon = R.drawable.avd_skip_next,
-            onClick = playerConnection::seekToNext,
-            enabled = transportState.canSkipNext,
-            tint = Color.White,
-            iconSize = 54.dp,
-            modifier = Modifier.size(74.dp)
-        )
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = PlayerHorizontalPadding)
+    ) {
+        // Fixed 74dp buttons look right at the default display size and shrink into the layout at
+        // smaller ones, where the same dp covers a smaller share of a now-wider viewport. Sized
+        // against the row instead, clamped so they never grow silly or drop below a comfortable
+        // touch target.
+        val buttonSize = (maxWidth * 0.21f).coerceIn(64.dp, 96.dp)
+        val iconSize = buttonSize * 0.73f
+        val gap = (maxWidth * 0.09f).coerceIn(22.dp, 40.dp)
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            AnimatedPressScaleSkipButton(
+                icon = R.drawable.avd_skip_previous,
+                onClick = playerConnection::seekToPrevious,
+                enabled = transportState.canSkipPrevious,
+                tint = Color.White,
+                iconSize = iconSize,
+                modifier = Modifier.size(buttonSize)
+            )
+
+            AnimatedPressScalePlayPauseButton(
+                isPlaying = transportState.isPlaying,
+                playbackState = transportState.playbackState,
+                onClick = {
+                    if (transportState.playbackState == Player.STATE_ENDED) {
+                        playerConnection.player.seekTo(0, 0)
+                        playerConnection.player.playWhenReady = true
+                    } else {
+                        playerConnection.togglePlayPause()
+                    }
+                },
+                tint = Color.White,
+                iconSize = iconSize,
+                modifier = Modifier.size(buttonSize)
+            )
+
+            AnimatedPressScaleSkipButton(
+                icon = R.drawable.avd_skip_next,
+                onClick = playerConnection::seekToNext,
+                enabled = transportState.canSkipNext,
+                tint = Color.White,
+                iconSize = iconSize,
+                modifier = Modifier.size(buttonSize)
+            )
+        }
     }
 }
 

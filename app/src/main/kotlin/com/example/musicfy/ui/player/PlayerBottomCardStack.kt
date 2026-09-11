@@ -47,6 +47,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -95,6 +99,8 @@ fun PlayerBottomCardStack(
     progressProvider: () -> Float,
     onOpenLyrics: () -> Unit,
     onOpenQueue: () -> Unit,
+    /** Long press opens the player editor, matching the cover's gesture. */
+    onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 
     lyricsProgressProvider: () -> Float = { 0f },
@@ -155,31 +161,65 @@ fun PlayerBottomCardStack(
         modifier = modifier
             .fillMaxWidth()
             .height(CardHeight + PeekOffset)
-            .draggable(
-                state = dragState,
-                orientation = Orientation.Vertical,
-                onDragStarted = { dragAccum = 0f },
-                onDragStopped = {
+            // Directional on purpose. A plain vertical `draggable` claimed *every* drag that
+            // began on the card, so touching it made the player impossible to swipe closed. The
+            // flip only ever runs upward, so a downward drag is left unconsumed for the sheet.
+            .pointerInput(Unit) {
+                val slop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var claimed = false
+                    var travelled = 0f
+                    dragAccum = 0f
 
-                    if (abs(dragAccum) >= flipDistancePx * 0.4f) {
-                        frontIndex = 1 - frontIndex
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+
+                        val dy = change.positionChange().y
+                        travelled += dy
+
+                        if (!claimed) {
+                            if (travelled < -slop) {
+                                claimed = true
+                                dragAccum = 0f
+                            } else if (travelled > slop) {
+                                // Heading down: hand the gesture to the sheet and stop watching.
+                                break
+                            }
+                        }
+
+                        if (claimed) {
+                            change.consume()
+                            dragAccum += -dy
+                            val frac = (abs(dragAccum) / flipDistancePx).coerceIn(0f, 1f)
+                            val target = if (frontIndex == 0) frac else 1f - frac
+                            scope.launch { flip.snapTo(target) }
+                        }
                     }
-                    scope.launch {
-                        flip.animateTo(
-                            targetValue = frontIndex.toFloat(),
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                stiffness = Spring.StiffnessMediumLow,
-                            ),
-                        )
+
+                    if (claimed) {
+                        if (abs(dragAccum) >= flipDistancePx * 0.4f) {
+                            frontIndex = 1 - frontIndex
+                        }
+                        scope.launch {
+                            flip.animateTo(
+                                targetValue = frontIndex.toFloat(),
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessMediumLow,
+                                ),
+                            )
+                        }
                     }
-                },
-            )
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-            ) {
-                if (frontIndex == 1) onOpenQueue() else onOpenLyrics()
+                }
+            }
+            .pointerInput(onLongPress) {
+                detectTapGestures(
+                    onLongPress = { onLongPress() },
+                    onTap = { if (frontIndex == 1) onOpenQueue() else onOpenLyrics() },
+                )
             }
     ) {
 

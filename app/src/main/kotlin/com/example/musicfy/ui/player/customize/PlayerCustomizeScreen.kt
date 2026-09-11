@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -74,6 +75,7 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.constants.PlayerBackgroundStyle
 import com.example.musicfy.constants.PlayerBackgroundStyleKey
 import com.example.musicfy.constants.PlayerCoverStyle
+import com.example.musicfy.constants.DefaultPlayerCoverStyle
 import com.example.musicfy.constants.PlayerCoverStyleKey
 import com.example.musicfy.constants.ShowBigDiscStylesKey
 import com.example.musicfy.ui.component.AppSwitch
@@ -161,7 +163,7 @@ fun PlayerCustomizeScreen(
     val isPlaying = playerConnection?.uiState?.transportState?.collectAsState()?.value?.isPlaying == true
     val queueIndex = playerConnection?.uiState?.queueState?.collectAsState()?.value?.currentIndex ?: 0
 
-    var coverStyle by rememberEnumPreference(PlayerCoverStyleKey, PlayerCoverStyle.EDGE_TO_EDGE)
+    var coverStyle by rememberEnumPreference(PlayerCoverStyleKey, DefaultPlayerCoverStyle)
     var backgroundStyle by rememberEnumPreference(
         PlayerBackgroundStyleKey,
         PlayerBackgroundStyle.COVER_GRADIENT,
@@ -200,9 +202,24 @@ fun PlayerCustomizeScreen(
     val stageGlass = remember { GlassState() }
 
     var interacting by remember { mutableStateOf(false) }
+    var showSeekBarSheet by remember { mutableStateOf(false) }
+    var showButtonSheet by remember { mutableStateOf(false) }
+    var buttonStyle by rememberEnumPreference(
+        com.example.musicfy.constants.ButtonStyleKey,
+        com.example.musicfy.ui.component.ButtonStyle.DEFAULT,
+    )
+    var seekBarStyle by rememberEnumPreference(
+        com.example.musicfy.constants.SeekBarStyleKey,
+        com.example.musicfy.ui.component.SeekBarStyle.DEFAULT,
+    )
+    // 0 = cover, 1 = background, 2 = controls. Kept as one continuous value so dragging between
+    // them stays smooth rather than snapping between discrete pages.
     val sectionValue = remember { mutableFloatStateOf(0f) }
     val sectionProvider = remember { { sectionValue.floatValue } }
-    val onBackgroundSection by remember { derivedStateOf { sectionValue.floatValue > 0.5f } }
+    val onControlsSection by remember {
+        derivedStateOf { sectionValue.floatValue > 0.5f && sectionValue.floatValue <= 1.5f }
+    }
+    val onBackgroundSection by remember { derivedStateOf { sectionValue.floatValue > 1.5f } }
 
     val density = LocalDensity.current
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -227,7 +244,7 @@ fun PlayerCustomizeScreen(
 
         val dragState = rememberDraggableState { delta ->
             sectionValue.floatValue =
-                (sectionValue.floatValue - delta / sectionTravelPx).coerceIn(0f, 1f)
+                (sectionValue.floatValue - delta / sectionTravelPx).coerceIn(0f, SectionCount)
         }
 
         val pageWidthPx = with(density) { (screenWidth * 0.33f).toPx() }
@@ -283,7 +300,31 @@ fun PlayerCustomizeScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-
+                    // Softens both ends of the cover preview so it reads as a strip being scrolled
+                    // through rather than a panel with hard edges. Strongest on the cover section
+                    // and eased out as the stage shrinks, where the edges are wanted.
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithCache {
+                        val fadeHeight = size.height * CoverFadeFraction
+                        val top = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black),
+                            startY = 0f,
+                            endY = fadeHeight,
+                        )
+                        val bottom = Brush.verticalGradient(
+                            colors = listOf(Color.Black, Color.Transparent),
+                            startY = size.height - fadeHeight,
+                            endY = size.height,
+                        )
+                        onDrawWithContent {
+                            drawContent()
+                            val strength = (1f - sectionProvider()).coerceIn(0f, 1f)
+                            if (strength > 0.01f) {
+                                drawRect(brush = top, blendMode = BlendMode.DstIn, alpha = strength)
+                                drawRect(brush = bottom, blendMode = BlendMode.DstIn, alpha = strength)
+                            }
+                        }
+                    }
                     .glassRoot(stageGlass, isActive = { !interacting && sectionProvider() < 0.55f })
             ) {
                 PreviewStage(
@@ -324,8 +365,8 @@ fun PlayerCustomizeScreen(
             )
 
             SectionContent(
+                index = 0,
                 topOffset = screenHeight * CoverRegionFraction + 14.dp,
-                enterFromBelow = false,
                 sectionProvider = sectionProvider,
                 screenHeightPx = screenHeightPx,
             ) {
@@ -339,7 +380,7 @@ fun PlayerCustomizeScreen(
                 )
                 Spacer(modifier = Modifier.height(18.dp))
                 Text(
-                    text = "Scroll down to edit background",
+                    text = "Scroll down to edit controls",
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -349,9 +390,9 @@ fun PlayerCustomizeScreen(
             }
 
             SectionContent(
+                index = 2,
                 topOffset = screenHeight *
                     (BackgroundStageTopFraction + BackgroundStageHeightFraction) + 26.dp,
-                enterFromBelow = true,
                 sectionProvider = sectionProvider,
                 screenHeightPx = screenHeightPx,
             ) {
@@ -362,6 +403,29 @@ fun PlayerCustomizeScreen(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 PageDots(count = backgroundStyles.size, selected = backgroundCarousel.page)
+            }
+
+            // Controls page. The stage has slid down by now, so this sits where the player's own
+            // buttons and timestamps were - you edit them roughly where they live.
+            SectionContent(
+                index = 1,
+                topOffset = screenHeight * ControlsSectionTopFraction,
+                sectionProvider = sectionProvider,
+                screenHeightPx = screenHeightPx,
+            ) {
+                SectionCaption(title = "Controls", subtitle = "Buttons and seek bar", centered = true)
+                Spacer(modifier = Modifier.height(20.dp))
+                ControlsStyleRow(
+                    label = "Seek bar",
+                    value = seekBarStyle.displayName,
+                    onClick = { showSeekBarSheet = true },
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                ControlsStyleRow(
+                    label = "Buttons",
+                    value = buttonStyle.displayName,
+                    onClick = { showButtonSheet = true },
+                )
             }
         }
 
@@ -382,7 +446,11 @@ fun PlayerCustomizeScreen(
                 lineHeight = 18.sp,
             )
             Text(
-                text = if (onBackgroundSection) "Background" else "cover",
+                text = when {
+                    onControlsSection -> "Controls"
+                    onBackgroundSection -> "Background"
+                    else -> "cover"
+                },
                 color = Color.White.copy(alpha = 0.7f),
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
@@ -393,6 +461,34 @@ fun PlayerCustomizeScreen(
             onClick = onBack,
             modifier = Modifier.align(Alignment.TopStart),
         )
+
+        if (showButtonSheet) {
+            val artworkColor = com.example.musicfy.LocalArtworkColor.current
+            val palette = remember(artworkColor) {
+                com.example.musicfy.ui.theme.ArtworkPalette.from(artworkColor)
+            }
+            ButtonStyleSheet(
+                selected = buttonStyle,
+                colors = com.example.musicfy.ui.component.TransportColors(
+                    accent = palette.accent,
+                    onAccent = palette.onAccent,
+                    container = palette.container,
+                    onContainer = palette.onContainer,
+                ),
+                onSelect = { buttonStyle = it },
+                onDismiss = { showButtonSheet = false },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        if (showSeekBarSheet) {
+            SeekBarStyleSheet(
+                selected = seekBarStyle,
+                onSelect = { seekBarStyle = it },
+                onDismiss = { showSeekBarSheet = false },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         if (showLongPressHint) {
             LongPressHint(
@@ -417,6 +513,18 @@ fun PlayerCustomizeScreen(
     }
 }
 
+/** Number of editable sections; the section value runs from 0 to this. */
+/** Height of the cover stage's top and bottom fade, as a fraction of the stage. */
+private const val CoverFadeFraction = 0.12f
+
+private const val SectionCount = 2f
+
+/** Where the controls page's own content sits, below the dropped stage. */
+private const val ControlsSectionTopFraction = 0.62f
+
+/** How far down the stage slides when the controls section is open. */
+private const val ControlsStageDropFraction = 0.16f
+
 private const val BackgroundStageTopFraction = 0.13f
 private const val BackgroundStageHeightFraction = 0.63f
 private const val BackgroundStageWidthFraction = 0.78f
@@ -440,11 +548,19 @@ private fun Modifier.stageLayout(
     val endW = fullW * BackgroundStageWidthFraction
     val endH = fullH * BackgroundStageHeightFraction
 
-    val w = lerp(startW, endW, s)
-    val h = lerp(startH, endH, s)
+    // Sizing belongs to the cover-to-background move only; section 2 keeps that size and slides
+    // the whole stage down instead, which is what clears room for the controls being edited.
+    // Controls sit at section 1 and only drop the stage; the background resize happens on the
+    // way to section 2, so the two moves stay independent.
+    val drop = s.coerceIn(0f, 1f)
+    val shrink = (s - 1f).coerceIn(0f, 1f)
+
+    val w = lerp(startW, endW, shrink)
+    val h = lerp(startH, endH, shrink)
     val gap = with(density) { StagePageGap.toPx() }
-    val x = lerp(0f, (fullW - endW) / 2f, s) + pageOffsetProvider() * (endW + gap) * s
-    val y = lerp(0f, fullH * BackgroundStageTopFraction, s)
+    val x = lerp(0f, (fullW - endW) / 2f, shrink) + pageOffsetProvider() * (endW + gap) * shrink
+    val y = lerp(0f, fullH * BackgroundStageTopFraction, shrink) +
+        drop * fullH * ControlsStageDropFraction
 
     val placeable = measurable.measure(
         Constraints.fixed(w.toInt().coerceAtLeast(1), h.toInt().coerceAtLeast(1))
@@ -611,8 +727,8 @@ private fun CoverPreviewContent(
 
 @Composable
 private fun SectionContent(
+    index: Int,
     topOffset: Dp,
-    enterFromBelow: Boolean,
     sectionProvider: () -> Float,
     screenHeightPx: Float,
     content: @Composable ColumnScope.() -> Unit,
@@ -622,14 +738,11 @@ private fun SectionContent(
             .fillMaxWidth()
             .padding(top = topOffset)
             .graphicsLayer {
-                val s = sectionProvider()
-                if (enterFromBelow) {
-                    translationY = (1f - s) * screenHeightPx * 0.30f
-                    alpha = ((s - 0.5f) * 2.5f).coerceIn(0f, 1f)
-                } else {
-                    translationY = -s * screenHeightPx * 0.30f
-                    alpha = (1f - s * 2.5f).coerceIn(0f, 1f)
-                }
+                // Distance from this section, so one rule covers every page: a section slides up
+                // and fades as you move past it, and in from below as you approach.
+                val d = sectionProvider() - index
+                translationY = -d * screenHeightPx * 0.30f
+                alpha = (1f - kotlin.math.abs(d) * 2.5f).coerceIn(0f, 1f)
             },
         content = content,
     )
@@ -852,6 +965,36 @@ private fun LongPressHint(modifier: Modifier = Modifier) {
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/**
+ * A tappable "label - current value" row, used by the controls page to open a style sheet.
+ */
+@Composable
+private fun ControlsStyleRow(label: String, value: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.10f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = value,
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 13.sp,
         )
     }
 }

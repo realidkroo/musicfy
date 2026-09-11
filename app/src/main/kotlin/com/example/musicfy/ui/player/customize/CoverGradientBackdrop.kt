@@ -26,6 +26,9 @@ import coil3.size.Size as CoilSize
 import com.example.musicfy.ui.player.BackdropBlurTransformation
 import com.example.musicfy.ui.utils.resize
 import kotlinx.coroutines.isActive
+import com.example.musicfy.ui.component.agslRenderEffect
+import com.example.musicfy.ui.component.createAgslShader
+import com.example.musicfy.ui.component.setAgslUniform
 
 @Composable
 fun rememberWarpShader(): Any? = remember {

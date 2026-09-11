@@ -2,6 +2,7 @@
 
 package com.example.musicfy.constants
 
+import android.os.Build
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -413,7 +414,40 @@ enum class PlayerCoverStyle {
     DISC_ALBUM,
 }
 
+/**
+ * Whole-player presets, picked from the style selector reached by long-pressing the player.
+ *
+ * Every style can be edited; the editor adapts to whichever one is active.
+ */
+enum class PlayerStyle(val displayName: String) {
+    DEFAULT("Default"),
+    LYRICS_ABSTRACT("Lyrics abstract"),
+    SIMPLE("Simple"),
+    SIMPLE_COMPACT("Simple compact"),
+}
+
+val PlayerStyleKey = stringPreferencesKey("playerStyle")
+
+val SeekBarStyleKey = stringPreferencesKey("seekBarStyle")
+
+val ButtonStyleKey = stringPreferencesKey("buttonStyle")
+
 val PlayerCoverStyleKey = stringPreferencesKey("playerCoverStyle")
+
+/**
+ * Cover style to use when the user has not picked one.
+ *
+ * Edge-to-edge art leans on the backdrop blur behind it to separate the cover from the controls,
+ * and that blur needs API 31. Below that the full-bleed art runs straight under the chrome with
+ * nothing softening it, so squared reads far better there. This is only the *default* - an
+ * explicit choice in Player customise still wins on every device.
+ */
+val DefaultPlayerCoverStyle: PlayerCoverStyle
+    get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        PlayerCoverStyle.EDGE_TO_EDGE
+    } else {
+        PlayerCoverStyle.SQUARED
+    }
 
 val ShowBigDiscStylesKey = booleanPreferencesKey("showBigDiscStyles")
 
@@ -768,6 +802,15 @@ val EnableSpatialAudioKey = booleanPreferencesKey("enableSpatialAudio")
 val EnableMonochromePlaybackBackendKey = booleanPreferencesKey("enableMonochromePlaybackBackend")
 val MonochromePlaybackApiUrlKey = stringPreferencesKey("monochromePlaybackApiUrl")
 val MonochromePlaybackApiTokenKey = stringPreferencesKey("monochromePlaybackApiToken")
+
+/**
+ * Last Turnstile session JWT and its expiry, persisted so a solved challenge survives a restart.
+ *
+ * Without this the token lived only in memory, so every cold start paid a fresh WebView challenge
+ * before Monochrome could play anything - which is what made it feel like it never loaded.
+ */
+val MonochromeTurnstileJwtKey = stringPreferencesKey("monochromeTurnstileJwt")
+val MonochromeTurnstileJwtExpiryKey = longPreferencesKey("monochromeTurnstileJwtExpiry")
 
 /** When Monochrome cannot resolve a track, fall back to YouTube instead of failing. */
 val MonochromeFallbackToYouTubeKey = booleanPreferencesKey("monochromeFallbackToYouTube")

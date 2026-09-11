@@ -230,6 +230,14 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.settings.PlaybackDiagnosticsScreen(navController = navController)
     }
 
+    composable("musicfy_settings") {
+        com.example.musicfy.ui.screens.settings.MusicfySettingsScreen(navController = navController)
+    }
+
+    composable("other_settings") {
+        com.example.musicfy.ui.screens.settings.OtherSettingsScreen(navController = navController)
+    }
+
     composable("appearance_settings") {
         com.example.musicfy.ui.screens.settings.AppearanceSettingsScreen(navController = navController)
     }

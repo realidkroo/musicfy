@@ -2,7 +2,17 @@
 
 package com.example.musicfy.ui.screens.settings
 
-import androidx.compose.foundation.isSystemInDarkTheme
+import android.os.Build
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.CircleShape
 import com.example.musicfy.ui.component.AppSwitch
 import androidx.compose.material3.Text
@@ -31,6 +41,7 @@ import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.screens.DarkMode
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
+import androidx.compose.runtime.remember
 
 @Composable
 fun AppearanceSettingsScreen(navController: NavController) {
@@ -93,12 +104,49 @@ fun AppearanceSettingsScreen(navController: NavController) {
         title = "Appearance",
         onBack = { navController.navigateUp() },
     ) {
+        val unavailable = remember { unavailableEffects() }
+        if (unavailable.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Not available on Android ${Build.VERSION.RELEASE}",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Everything else works normally - these effects need a newer " +
+                            "Android and fall back to a flat version here.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    unavailable.forEach { effect ->
+                        Text(
+                            text = "\u2022  $effect",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp),
+                        )
+                    }
+                }
+            }
+        }
+
         SettingsGroup(
             style = SettingsGroupStyle.Grouped,
             items = buildList {
                 add(
                     SettingsItem(
                         title = { Text("Lyrics letter animation") },
+                        highlightKey = "Lyrics letter animation",
                         descriptionText = "Letters lift and bloom as they're sung",
                         icon = painterResource(R.drawable.lyrics),
                         iconShape = CircleShape,
@@ -114,6 +162,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("High quality bloom") },
+                        highlightKey = "High quality bloom",
                         descriptionText = "Rounder glow, more GPU work",
                         icon = painterResource(R.drawable.lyrics),
                         iconShape = CircleShape,
@@ -131,6 +180,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("Yt video background") },
+                        highlightKey = "Yt video background",
                         descriptionText = "Plays yt video on canvas",
                         icon = painterResource(R.drawable.slow_motion_video),
                         iconShape = CircleShape,
@@ -157,6 +207,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("Animated canvas") },
+                        highlightKey = "Animated canvas",
                         descriptionText = "Animated canvas ( not from youtube )",
                         icon = painterResource(R.drawable.sparks),
                         iconShape = CircleShape,
@@ -183,6 +234,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("Blur") },
+                        highlightKey = "Blur",
                         descriptionText = "Wide blur effects across the app",
                         icon = painterResource(R.drawable.gradient),
                         iconShape = CircleShape,
@@ -199,6 +251,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("Audio quality badge") },
+                        highlightKey = "Audio quality badge",
                         descriptionText = "Dev — we'll use this later",
                         icon = painterResource(R.drawable.graphic_eq),
                         iconShape = CircleShape,
@@ -211,6 +264,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("Player customization") },
+                        highlightKey = "Player customization",
                         descriptionText = "Cover style, disc options and background",
                         icon = painterResource(R.drawable.crop),
                         iconShape = CircleShape,
@@ -220,6 +274,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("Player bottom card") },
+                        highlightKey = "Player bottom card",
                         descriptionText = "Lyrics and queue card",
                         icon = painterResource(R.drawable.album),
                         iconShape = CircleShape,
@@ -279,5 +334,21 @@ fun AppearanceSettingsScreen(navController: NavController) {
                 )
             }
         )
+    }
+}
+
+/**
+ * Visual effects this device's Android version cannot render.
+ *
+ * Nothing is stripped from the build - these simply have no implementation below the API that
+ * introduced them, so they fall back to a flat equivalent. Surfaced in Appearance so an older
+ * phone looks deliberately plainer rather than broken.
+ */
+private fun unavailableEffects(): List<String> = buildList {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        add("Backdrop blur behind the navigation pill, mini player and sheets (needs Android 12)")
+    }
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        add("Liquid cover warp and the lyrics glow sweep (needs Android 13)")
     }
 }

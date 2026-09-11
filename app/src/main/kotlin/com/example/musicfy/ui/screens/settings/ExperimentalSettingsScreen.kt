@@ -63,6 +63,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Big disc cover styles") },
+                            highlightKey = "Big disc cover styles",
                             descriptionText = "Unfinished — oversized discs that bleed off screen",
                             icon = painterResource(R.drawable.album),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -78,6 +79,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Music haptics") },
+                            highlightKey = "Music haptics",
                             descriptionText = "Vibrate to the beat — uses battery",
                             icon = painterResource(R.drawable.music_note),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -144,6 +146,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Advanced audio settings") },
+                            highlightKey = "Advanced audio settings",
                             descriptionText = "Custom APIs, Hi-Res, Spatial Audio",
                             icon = painterResource(R.drawable.tune),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -153,6 +156,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Cipher") },
+                            highlightKey = "Cipher",
                             descriptionText = "Player script status, countdown and refresh",
                             icon = painterResource(R.drawable.key),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -162,6 +166,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Playback diagnostics") },
+                            highlightKey = "Playback diagnostics",
                             descriptionText = "Which client served each track, and PoToken state",
                             icon = painterResource(R.drawable.info),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
@@ -171,6 +176,7 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     add(
                         SettingsItem(
                             title = { Text("Repeat initial setup") },
+                            highlightKey = "Repeat initial setup",
                             descriptionText = "Re-run the setup wizard",
                             icon = painterResource(R.drawable.restore),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
