@@ -52,5 +52,5 @@
 ---
 
 <div align="center">
-  <sub>Built with care for open source music lovers everywhere.</sub>
+  <sub>2026</sub>
 </div>
