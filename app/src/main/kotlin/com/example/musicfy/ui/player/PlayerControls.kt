@@ -104,7 +104,7 @@ fun PlayerTransportRow(modifier: Modifier = Modifier) {
                     playerConnection.player.seekTo(0, 0)
                     playerConnection.player.playWhenReady = true
                 } else {
-                    playerConnection.togglePlayPause()
+                    s
                 }
             },
             onNext = playerConnection::seekToNext,
