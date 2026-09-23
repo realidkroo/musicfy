@@ -26,7 +26,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 70
-        versionName = "7.0.0 build#1018"
+        versionName = "7.0.0 build#1028"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -92,8 +92,8 @@ android {
 
     sourceSets {
         getByName("fdroid") {
-            java.srcDirs("src/foss/kotlin")
-            res.srcDirs("src/foss/res")
+            java.directories.add(file("src/foss/kotlin"))
+            res.directories.add(file("src/foss/res"))
         }
     }
 
@@ -391,5 +391,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation(libs.work.runtime.ktx)
     implementation(libs.androidx.core.splashscreen)
-}
 
+    testImplementation(libs.junit)
+}
