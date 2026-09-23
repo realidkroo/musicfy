@@ -9,11 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import com.example.musicfy.ui.component.AppSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -30,9 +25,6 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.AudioNormalizationKey
 import com.example.musicfy.constants.AudioQuality
 import com.example.musicfy.constants.AudioQualityKey
-import com.example.musicfy.constants.CrossfadeDurationKey
-import com.example.musicfy.constants.CrossfadeEnabledKey
-import com.example.musicfy.constants.CrossfadeGaplessKey
 import com.example.musicfy.constants.SkipSilenceInstantKey
 import com.example.musicfy.constants.SkipSilenceKey
 import com.example.musicfy.ui.component.SettingsGroup
@@ -45,9 +37,6 @@ import com.example.musicfy.utils.rememberPreference
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaybackSettingsScreen(navController: NavController) {
-    val (crossfadeEnabled, onCrossfadeEnabledChange) = rememberPreference(CrossfadeEnabledKey, defaultValue = false)
-    val (crossfadeDuration, onCrossfadeDurationChange) = rememberPreference(CrossfadeDurationKey, defaultValue = 5f)
-    val (crossfadeGapless, onCrossfadeGaplessChange) = rememberPreference(CrossfadeGaplessKey, defaultValue = true)
     val (audioQuality, onAudioQualityChange) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
     val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
     val (skipSilenceInstant, onSkipSilenceInstantChange) = rememberPreference(SkipSilenceInstantKey, defaultValue = false)
@@ -84,48 +73,14 @@ fun PlaybackSettingsScreen(navController: NavController) {
                 items = buildList {
                     add(
                         SettingsItem(
-                            title = { Text("Crossfade") },
-                            highlightKey = "Crossfade",
-                            descriptionText = "Blend one track into the next",
+                            title = { Text("Crossmix") },
+                            highlightKey = "Crossmix",
+                            descriptionText = "Choose how tracks blend together",
                             icon = painterResource(R.drawable.linear_scale),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { onCrossfadeEnabledChange(!crossfadeEnabled) },
-                            trailingContent = {
-                                AppSwitch(checked = crossfadeEnabled, onCheckedChange = onCrossfadeEnabledChange)
-                            }
+                            onClick = { navController.navigate("crossmix_settings") },
                         )
                     )
-                    if (crossfadeEnabled) {
-                        add(
-                            SettingsItem(
-                                title = { Text("Crossfade duration") },
-                                description = {
-                                    Column(modifier = Modifier.fillMaxWidth()) {
-                                        Text("${crossfadeDuration.toInt()}s")
-                                        Slider(
-                                            value = crossfadeDuration,
-                                            onValueChange = onCrossfadeDurationChange,
-                                            valueRange = 1f..15f,
-                                            steps = 13
-                                        )
-                                    }
-                                },
-                                icon = painterResource(R.drawable.linear_scale)
-                            )
-                        )
-                        add(
-                            SettingsItem(
-                                title = { Text("Disable for gapless albums") },
-                                descriptionText = "Skip within the same album",
-                                icon = painterResource(R.drawable.album),
-                                iconShape = androidx.compose.foundation.shape.CircleShape,
-                                onClick = { onCrossfadeGaplessChange(!crossfadeGapless) },
-                                trailingContent = {
-                                    AppSwitch(checked = crossfadeGapless, onCheckedChange = onCrossfadeGaplessChange)
-                                }
-                            )
-                        )
-                    }
                     add(
                         SettingsItem(
                             title = { Text("Equalizer") },

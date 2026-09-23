@@ -250,6 +250,10 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.settings.PlaybackSettingsScreen(navController = navController)
     }
 
+    composable("crossmix_settings") {
+        com.example.musicfy.ui.screens.settings.CrossmixSettingsScreen(navController = navController)
+    }
+
     composable("experimental_settings") {
         com.example.musicfy.ui.screens.settings.ExperimentalSettingsScreen(navController = navController)
     }
@@ -585,4 +589,3 @@ internal fun extractAudioMetadata(
         retriever.release()
     }
 }
-

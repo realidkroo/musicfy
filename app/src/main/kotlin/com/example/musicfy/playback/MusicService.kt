@@ -87,6 +87,11 @@ import com.example.musicfy.constants.AutoSkipNextOnErrorKey
 import com.example.musicfy.constants.CrossfadeDurationKey
 import com.example.musicfy.constants.CrossfadeEnabledKey
 import com.example.musicfy.constants.CrossfadeGaplessKey
+import com.example.musicfy.constants.CrossmixMode
+import com.example.musicfy.constants.CrossmixModeKey
+import com.example.musicfy.crossmix.CrossmixAnalysisRepository
+import com.example.musicfy.crossmix.CrossmixMixProfile
+import com.example.musicfy.crossmix.CrossmixTransitionPlanner
 import com.example.musicfy.constants.DisableLoadMoreWhenRepeatAllKey
 import android.os.Handler
 import android.os.Looper
@@ -165,6 +170,7 @@ import com.example.musicfy.models.PersistQueue
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.audio.SilenceDetectorAudioProcessor
 import com.example.musicfy.playback.audio.HapticAudioProcessor
+import com.example.musicfy.playback.audio.CrossmixTransitionAudioProcessor
 import com.example.musicfy.constants.MusicHapticsEnabledKey
 import com.example.musicfy.constants.MusicHapticsSensitivityKey
 import com.example.musicfy.constants.HapticSensitivity
@@ -265,6 +271,7 @@ class MusicService :
     private var crossfadeEnabled = false
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
+    private var crossmixMode = CrossmixMode.OFF
     private var crossfadeTriggerJob: Job? = null
 
     private val secondaryPlayerListener = object : Player.Listener {
@@ -353,6 +360,18 @@ class MusicService :
     private var fadingPlayer: ExoPlayer? = null
     private var isCrossfading = false
     private var crossfadeJob: Job? = null
+    private var crossmixBasePlaybackParameters: PlaybackParameters? = null
+    private var crossmixTempoRatio = 1f
+    private var activeCrossmixMixProfile: CrossmixMixProfile? = null
+    private var emphasizeIncomingCrossmix = false
+    private val crossmixAnalysisRepository by lazy { CrossmixAnalysisRepository(applicationContext) }
+
+    private data class CrossfadeConfig(
+        val mode: CrossmixMode,
+        val enabled: Boolean,
+        val durationSeconds: Float,
+        val disableForGaplessAlbums: Boolean,
+    )
 
     private lateinit var mediaSession: MediaLibrarySession
 
@@ -363,6 +382,28 @@ class MusicService :
     val playerFlow = _playerFlow.asStateFlow()
 
     private val playerSilenceProcessors = HashMap<Player, SilenceDetectorAudioProcessor>()
+    private val playerCrossmixProcessors = HashMap<Player, CrossmixTransitionAudioProcessor>()
+
+    private val OutgoingCrossmixEffects = setOf(
+        CrossmixTransitionAudioProcessor.Effect.PAN,
+        CrossmixTransitionAudioProcessor.Effect.STEREO_WIDTH,
+        CrossmixTransitionAudioProcessor.Effect.LOW_PASS,
+        CrossmixTransitionAudioProcessor.Effect.ECHO,
+        CrossmixTransitionAudioProcessor.Effect.TREMOLO,
+        CrossmixTransitionAudioProcessor.Effect.SATURATION,
+        CrossmixTransitionAudioProcessor.Effect.SOFT_CLIP,
+        CrossmixTransitionAudioProcessor.Effect.LIMITER,
+    )
+    private val IncomingCrossmixEffects = setOf(
+        CrossmixTransitionAudioProcessor.Effect.PAN,
+        CrossmixTransitionAudioProcessor.Effect.STEREO_WIDTH,
+        CrossmixTransitionAudioProcessor.Effect.HIGH_PASS,
+        CrossmixTransitionAudioProcessor.Effect.DELAY,
+        CrossmixTransitionAudioProcessor.Effect.TRANSIENT_BOOST,
+        CrossmixTransitionAudioProcessor.Effect.SATURATION,
+        CrossmixTransitionAudioProcessor.Effect.SOFT_CLIP,
+        CrossmixTransitionAudioProcessor.Effect.LIMITER,
+    )
 
     private val instantSilenceSkipEnabled = MutableStateFlow(false)
 
@@ -909,17 +950,25 @@ class MusicService :
             }
 
         dataStore.data.map { prefs ->
-            Triple(
-                prefs[CrossfadeEnabledKey] ?: false,
-                prefs[CrossfadeDurationKey] ?: 5f,
-                prefs[CrossfadeGaplessKey] ?: true
-            )
+            val legacyEnabled = prefs[CrossfadeEnabledKey] ?: false
+            val mode = prefs[CrossmixModeKey]
+                ?.let { value -> runCatching { CrossmixMode.valueOf(value) }.getOrNull() }
+                ?: if (legacyEnabled) CrossmixMode.MANUAL_CROSSFADE else CrossmixMode.AUTO_CROSSFADE
+            val enabled = mode != CrossmixMode.OFF
+            val duration = when (mode) {
+                CrossmixMode.AUTO_CROSSFADE -> 5f
+                CrossmixMode.MANUAL_CROSSFADE -> (prefs[CrossfadeDurationKey] ?: 5f).coerceIn(2f, 30f)
+                CrossmixMode.CROSSMIX -> (prefs[CrossfadeDurationKey] ?: 12f).coerceIn(8f, 20f)
+                CrossmixMode.OFF -> prefs[CrossfadeDurationKey] ?: 5f
+            }
+            CrossfadeConfig(mode, enabled, duration, prefs[CrossfadeGaplessKey] ?: true)
         }
             .distinctUntilChanged()
-            .collect(scope) { (enabled, duration, gapless) ->
-                crossfadeEnabled = enabled
-                crossfadeDuration = duration * 1000f
-                crossfadeGapless = gapless
+            .collect(scope) { config ->
+                crossmixMode = config.mode
+                crossfadeEnabled = config.enabled
+                crossfadeDuration = config.durationSeconds * 1000f
+                crossfadeGapless = config.disableForGaplessAlbums
             }
 
         if (dataStore.get(PersistentQueueKey, true)) {
@@ -1026,6 +1075,7 @@ class MusicService :
         equalizerService.addAudioProcessor(eqProcessor)
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
+        val crossmixProcessor = CrossmixTransitionAudioProcessor()
 
         val hapticVibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -1081,7 +1131,7 @@ class MusicService :
 
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(createMediaSourceFactory())
-            .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, hapticAudioProcessor))
+            .setRenderersFactory(createRenderersFactory(eqProcessor, silenceProcessor, hapticAudioProcessor, crossmixProcessor))
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setAudioAttributes(
@@ -1097,6 +1147,7 @@ class MusicService :
             .build()
 
         playerSilenceProcessors[player] = silenceProcessor
+        playerCrossmixProcessors[player] = crossmixProcessor
 
         player.apply {
                 runBlocking {
@@ -2949,7 +3000,8 @@ class MusicService :
     private fun createRenderersFactory(
         eqProcessor: CustomEqualizerAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
-        hapticProcessor: HapticAudioProcessor
+        hapticProcessor: HapticAudioProcessor,
+        crossmixProcessor: CrossmixTransitionAudioProcessor,
     ) =
         object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
@@ -2966,7 +3018,8 @@ class MusicService :
                         arrayOf(
                             eqProcessor,
                             silenceProcessor,
-                            hapticProcessor
+                            hapticProcessor,
+                            crossmixProcessor,
                         ),
                         SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                         SonicAudioProcessor(),
@@ -3259,7 +3312,8 @@ class MusicService :
         if (crossfadeGapless && isNextItemGapless()) return
         if (!player.hasNextMediaItem() && player.repeatMode != REPEAT_MODE_ONE) return
 
-        val triggerTime = player.duration - crossfadeDuration.toLong()
+        val duration = player.duration
+        val triggerTime = duration - crossfadeDuration.toLong()
         val delayMs = triggerTime - player.currentPosition
         if (delayMs <= 0) return
 
@@ -3269,6 +3323,63 @@ class MusicService :
             delay(delayMs)
             if (isActive && player.isPlaying && player.currentMediaItem?.mediaId == targetMediaId && !sleepTimer.pauseWhenSongEnd) {
                 startCrossfade()
+            }
+        }
+
+        if (crossmixMode == CrossmixMode.CROSSMIX) {
+            scheduleAdaptiveCrossmix(
+                targetMediaId = targetMediaId,
+                trackDurationMs = duration,
+            )
+        }
+    }
+
+    /**
+     * Analysis is best-effort and deliberately races the safe fixed-time schedule above. If a
+     * source cannot be decoded (expired stream URLs are normal), the regular crossfade still runs.
+     */
+    private fun scheduleAdaptiveCrossmix(targetMediaId: String?, trackDurationMs: Long) {
+        val currentItem = player.currentMediaItem ?: return
+        val nextIndex = if (player.repeatMode == REPEAT_MODE_ONE) player.currentMediaItemIndex else player.nextMediaItemIndex
+        if (nextIndex == C.INDEX_UNSET) return
+        val nextItem = player.getMediaItemAt(nextIndex)
+        val fadeDurationMs = crossfadeDuration.toLong()
+
+        scope.launch(Dispatchers.Default) {
+            val currentAnalysis = crossmixAnalysisRepository.analyze(currentItem)
+            val nextAnalysis = crossmixAnalysisRepository.analyze(nextItem)
+            val lyrics = targetMediaId?.let { database.lyrics(it).first()?.lyrics }
+            val plan = CrossmixTransitionPlanner.plan(
+                current = currentAnalysis,
+                next = nextAnalysis,
+                lyrics = lyrics,
+                trackDurationMs = trackDurationMs,
+                fadeDurationMs = fadeDurationMs,
+            )
+
+            withContext(Dispatchers.Main) {
+                val remaining = plan.startMs - player.currentPosition
+                if (
+                    !isCrossfading &&
+                    crossfadeEnabled &&
+                    crossmixMode == CrossmixMode.CROSSMIX &&
+                    remaining > 0L &&
+                    player.currentMediaItem?.mediaId == targetMediaId &&
+                    player.isPlaying
+                ) {
+                    crossfadeTriggerJob?.cancel()
+                    crossfadeTriggerJob = scope.launch {
+                        delay(remaining)
+                        if (isActive && player.isPlaying && player.currentMediaItem?.mediaId == targetMediaId && !sleepTimer.pauseWhenSongEnd) {
+                            startCrossfade(
+                                nextTrackSpeed = plan.nextTrackSpeed,
+                                nextTrackStartMs = plan.nextTrackStartMs,
+                                emphasizeIncoming = true,
+                                mixProfile = plan.mixProfile,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -3281,8 +3392,15 @@ class MusicService :
         return current.albumTitle != null && current.albumTitle == next.albumTitle
     }
 
-    private fun startCrossfade() {
+    private fun startCrossfade(
+        nextTrackSpeed: Float = 1f,
+        nextTrackStartMs: Long = 0L,
+        emphasizeIncoming: Boolean = false,
+        mixProfile: CrossmixMixProfile? = null,
+    ) {
         if (isCrossfading) return
+        emphasizeIncomingCrossmix = emphasizeIncoming
+        activeCrossmixMixProfile = mixProfile
 
         val savedRepeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
         val savedShuffleEnabled = runBlocking { dataStore.get(ShuffleModeKey, false) }
@@ -3307,7 +3425,18 @@ class MusicService :
 
         secPlayer.setMediaItems(items)
 
-        secPlayer.seekTo(targetIndex, 0)
+        crossmixBasePlaybackParameters = player.playbackParameters.takeIf {
+            nextTrackSpeed != 1f || emphasizeIncoming
+        }
+        crossmixTempoRatio = nextTrackSpeed
+        crossmixBasePlaybackParameters?.let { base ->
+            secPlayer.playbackParameters = PlaybackParameters(
+                (base.speed * nextTrackSpeed).coerceIn(0.25f, 4f),
+                base.pitch,
+            )
+        }
+
+        secPlayer.seekTo(targetIndex, nextTrackStartMs)
         secPlayer.volume = 0f
 
         secPlayer.repeatMode = savedRepeatMode
@@ -3333,6 +3462,15 @@ class MusicService :
         player = nextPlayer
         _playerFlow.value = player
         secondaryPlayer = null
+
+        if (emphasizeIncomingCrossmix) {
+            playerCrossmixProcessors[currentPlayer]?.state = crossmixProcessorState(
+                CrossmixTransitionAudioProcessor.Role.OUTGOING, 0f, OutgoingCrossmixEffects,
+            )
+            playerCrossmixProcessors[nextPlayer]?.state = crossmixProcessorState(
+                CrossmixTransitionAudioProcessor.Role.INCOMING, 0f, IncomingCrossmixEffects,
+            )
+        }
 
         fadingPlayer?.removeListener(this)
         fadingPlayer?.removeListener(sleepTimer)
@@ -3377,10 +3515,39 @@ class MusicService :
                 }
 
                 val progress = i / steps.toFloat()
-                val fadeIn = 1.0f - (1.0f - progress) * (1.0f - progress)
-                val fadeOut = (1.0f - progress) * (1.0f - progress)
+                // Crossmix lets the incoming intro claim space a little sooner. The two gains
+                // remain equal-power, so this changes emphasis without causing a loudness bump.
+                val mixProgress = if (emphasizeIncomingCrossmix) {
+                    Math.pow(progress.toDouble(), 0.65).toFloat()
+                } else {
+                    progress
+                }
+                val fadeIn = kotlin.math.sin(mixProgress * Math.PI / 2.0).toFloat()
+                val fadeOut = kotlin.math.cos(mixProgress * Math.PI / 2.0).toFloat()
 
                 try {
+                    if (emphasizeIncomingCrossmix) {
+                        fadingPlayer?.let { outgoingPlayer ->
+                            playerCrossmixProcessors[outgoingPlayer]?.state = crossmixProcessorState(
+                                CrossmixTransitionAudioProcessor.Role.OUTGOING, progress, OutgoingCrossmixEffects,
+                            )
+                        }
+                        playerCrossmixProcessors[player]?.state = crossmixProcessorState(
+                            CrossmixTransitionAudioProcessor.Role.INCOMING, progress, IncomingCrossmixEffects,
+                        )
+                        crossmixBasePlaybackParameters?.let { base ->
+                            // The tempo match relaxes back to the listener's normal speed while a
+                            // tiny pitch glide gives the hand-off movement without DJ-style warble.
+                            val speedRatio = crossmixTempoRatio + (1f - crossmixTempoRatio) * mixProgress * mixProgress
+                            val harmonicPitch = activeCrossmixMixProfile?.harmonicPitchRatio ?: 1f
+                            val harmonicRatio = harmonicPitch + (1f - harmonicPitch) * mixProgress * mixProgress
+                            val pitchRatio = harmonicRatio * (0.985f + 0.015f * mixProgress)
+                            player.playbackParameters = PlaybackParameters(
+                                (base.speed * speedRatio).coerceIn(0.25f, 4f),
+                                (base.pitch * pitchRatio).coerceIn(0.5f, 2f),
+                            )
+                        }
+                    }
                     player.volume = startVolume * fadeIn
                     fadingPlayer?.volume = startVolume * fadeOut
                 } catch (e: Exception) { break }
@@ -3397,12 +3564,39 @@ class MusicService :
     }
 
     private fun cleanupCrossfade() {
+        crossmixBasePlaybackParameters?.let { base ->
+            runCatching { player.playbackParameters = base }
+        }
+        crossmixBasePlaybackParameters = null
+        crossmixTempoRatio = 1f
+        activeCrossmixMixProfile = null
+        fadingPlayer?.let { outgoingPlayer -> playerCrossmixProcessors[outgoingPlayer]?.state = null }
+        playerCrossmixProcessors[player]?.state = null
+        emphasizeIncomingCrossmix = false
         fadingPlayer?.stop()
         fadingPlayer?.clearMediaItems()
         fadingPlayer?.release()
+        fadingPlayer?.let(playerCrossmixProcessors::remove)
         fadingPlayer = null
         isCrossfading = false
         sleepTimer.notifySongTransition()
+    }
+
+    private fun crossmixProcessorState(
+        role: CrossmixTransitionAudioProcessor.Role,
+        progress: Float,
+        effects: Set<CrossmixTransitionAudioProcessor.Effect>,
+    ): CrossmixTransitionAudioProcessor.State {
+        val profile = activeCrossmixMixProfile
+        return CrossmixTransitionAudioProcessor.State(
+            role = role,
+            progress = progress,
+            effects = effects,
+            delayMs = profile?.delayMs ?: 250,
+            tremoloHz = profile?.tremoloHz ?: 4f,
+            rhythmicDepth = profile?.rhythmicDepth ?: 0f,
+            filterDepth = profile?.filterDepth ?: 0.7f,
+        )
     }
 
     companion object {
