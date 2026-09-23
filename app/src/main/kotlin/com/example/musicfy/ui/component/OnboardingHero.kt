@@ -224,9 +224,7 @@ private fun TiltedCoverWall(
                 scaleY = 2.1f
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     val radius = 14f + blurPulse * 10f
-                    renderEffect = RenderEffect
-                        .createBlurEffect(radius, radius, Shader.TileMode.CLAMP)
-                        .asComposeRenderEffect()
+                    renderEffect = BlurEffectCache.get(radius, Shader.TileMode.CLAMP)
                 }
             },
         contentAlignment = Alignment.Center

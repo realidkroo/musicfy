@@ -3,6 +3,7 @@
 package com.example.musicfy.ui.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -97,35 +99,35 @@ fun MusicfySettingsScreen(navController: NavController) {
         title = "Settings",
         onBack = { navController.navigateUp() },
     ) {
-        BasicTextField(
-            value = query,
-            onValueChange = { query = it },
-            singleLine = true,
-            textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
-            cursorBrush = SolidColor(Color.White),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(52.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainer),
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    if (query.isEmpty()) {
-                        Text(
-                            text = "Search settings",
-                            color = Color.White.copy(alpha = 0.45f),
-                            fontSize = 16.sp,
-                        )
-                    }
-                    innerTextField()
+        com.example.musicfy.ui.screens.search.SearchField(
+            value = androidx.compose.ui.text.input.TextFieldValue(
+                text = query,
+                selection = androidx.compose.ui.text.TextRange(query.length)
+            ),
+            onValueChange = { query = it.text },
+            onSearch = { },
+            placeholder = "Search settings",
+            modifier = Modifier.padding(horizontal = 16.dp),
+            leading = {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(R.drawable.search),
+                    contentDescription = null,
+                    tint = com.example.musicfy.ui.screens.search.SearchColors.Secondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            },
+            trailing = if (query.isNotEmpty()) {
+                {
+                    androidx.compose.material3.Icon(
+                        painter = painterResource(R.drawable.close),
+                        contentDescription = "Clear",
+                        tint = com.example.musicfy.ui.screens.search.SearchColors.Secondary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { query = "" }
+                    )
                 }
-            }
+            } else null
         )
 
         Spacer(Modifier.height(12.dp))
@@ -166,7 +168,6 @@ fun MusicfySettingsScreen(navController: NavController) {
             items = listOf(
                 SettingsItem(
                     title = { Text("Import data") },
-                    descriptionText = "Import data from other music provider/musicfy backup",
                     icon = painterResource(R.drawable.backup),
                     iconShape = CircleShape,
                     onClick = { navController.navigate("other_settings") },

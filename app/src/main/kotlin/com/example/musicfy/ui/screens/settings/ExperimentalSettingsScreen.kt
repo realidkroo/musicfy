@@ -49,6 +49,10 @@ fun ExperimentalSettingsScreen(navController: NavController) {
         com.example.musicfy.constants.ShowBigDiscStylesKey,
         defaultValue = false,
     )
+    val (enable26Recap, onEnable26RecapChange) = rememberPreference(
+        com.example.musicfy.constants.Enable26RecapKey,
+        defaultValue = false,
+    )
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -60,6 +64,22 @@ fun ExperimentalSettingsScreen(navController: NavController) {
             SettingsGroup(
                 style = SettingsGroupStyle.Grouped,
                 items = buildList {
+                    add(
+                        SettingsItem(
+                            title = { Text("26 recap") },
+                            highlightKey = "26 recap",
+                            descriptionText = "Enable 2026 Recap placeholder",
+                            icon = painterResource(R.drawable.history),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { onEnable26RecapChange(!enable26Recap) },
+                            trailingContent = {
+                                AppSwitch(
+                                    checked = enable26Recap,
+                                    onCheckedChange = onEnable26RecapChange,
+                                )
+                            }
+                        )
+                    )
                     add(
                         SettingsItem(
                             title = { Text("Big disc cover styles") },

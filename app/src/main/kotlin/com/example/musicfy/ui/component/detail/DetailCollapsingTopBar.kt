@@ -254,13 +254,10 @@ fun DetailCollapsingTopBar(
                         )
                         .graphicsLayer {
                             compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && motionBlurRadius > 0.5f) {
-                                renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                                    motionBlurRadius, motionBlurRadius, android.graphics.Shader.TileMode.DECAL
-                                ).asComposeRenderEffect()
-                            } else {
-                                renderEffect = null
-                            }
+                            renderEffect = com.example.musicfy.ui.component.BlurEffectCache.get(
+                                motionBlurRadius,
+                                android.graphics.Shader.TileMode.DECAL
+                            )
                         }
                 )
             }

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
+import coil3.request.crossfade
 import coil3.request.transformations
 import coil3.size.Size as CoilSize
 import com.example.musicfy.ui.player.BackdropBlurTransformation
@@ -89,7 +90,7 @@ fun CoverGradientBackdrop(
                 .data(thumbnailUrl?.resize(48, 48))
                 .allowHardware(false)
                 .transformations(BackdropBlurTransformation(radiusPx = 4))
-
+                .crossfade(false)
                 .size(CoilSize(48, 48))
                 .build(),
             contentDescription = null,

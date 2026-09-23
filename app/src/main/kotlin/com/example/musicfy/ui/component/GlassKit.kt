@@ -140,22 +140,19 @@ fun GlassPillBackground(
     var position by remember { mutableStateOf(Offset.Zero) }
 
     val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
+    val (blurStrengthPx) = rememberPreference(com.example.musicfy.constants.BlurStrengthPxKey, defaultValue = 25f)
 
     androidx.compose.foundation.Canvas(
         modifier = modifier
             .onGloballyPositioned { position = it.positionInWindow() }
             .then(if (shape != null) Modifier.clip(shape) else Modifier)
             .graphicsLayer {
-                val currentBlur = if (disableBlur) 0f else blurRadius()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && currentBlur > 1f) {
-                    renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                        currentBlur,
-                        currentBlur,
-                        tileMode ?: android.graphics.Shader.TileMode.DECAL
-                    ).asComposeRenderEffect()
-                } else {
-                    renderEffect = null
-                }
+                val baseBlur = blurRadius()
+                val currentBlur = if (disableBlur) 0f else (baseBlur * (blurStrengthPx / 25f))
+                renderEffect = BlurEffectCache.get(
+                    currentBlur,
+                    tileMode ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) android.graphics.Shader.TileMode.DECAL else android.graphics.Shader.TileMode.CLAMP
+                )
                 clip = true
             }
     ) {

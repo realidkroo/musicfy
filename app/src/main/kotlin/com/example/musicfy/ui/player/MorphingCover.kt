@@ -2,10 +2,17 @@
 
 package com.example.musicfy.ui.player
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -14,6 +21,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -30,6 +39,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +55,8 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -54,6 +66,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -78,8 +91,10 @@ import com.example.musicfy.ui.player.models.TrackInfo
 import com.example.musicfy.ui.utils.resize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.example.musicfy.ui.component.BlurEffectCache
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
@@ -117,7 +132,8 @@ import androidx.core.content.getSystemService
 
 @Stable
 private class MorphEndpoints(
-    val miniArtSize: Dp,
+    val miniArtWidth: Dp,
+    val miniArtHeight: Dp,
     val miniArtX: Dp,
     val miniArtY: Dp,
     val miniPlayX: Dp,
@@ -146,7 +162,8 @@ private class MorphEndpoints(
 
 @Stable
 private class MorphEndpointsPx(
-    val miniArtSizePx: Float,
+    val miniArtWidthPx: Float,
+    val miniArtHeightPx: Float,
     val miniArtXPx: Float,
     val miniArtYPx: Float,
     val miniPlayXPx: Float,
@@ -215,8 +232,8 @@ private fun Modifier.morphLayout(
 
     val (x, y, w, h) = when (element) {
         MorphElement.ART -> {
-            val artW = lerpF(endpointsPx.miniArtSizePx, endpointsPx.fullArtWidthPx, p)
-            val artH = lerpF(endpointsPx.miniArtSizePx, endpointsPx.fullArtHeightPx, p)
+            val artW = lerpF(endpointsPx.miniArtWidthPx, endpointsPx.fullArtWidthPx, p)
+            val artH = lerpF(endpointsPx.miniArtHeightPx, endpointsPx.fullArtHeightPx, p)
             val artX = lerpF(endpointsPx.miniArtXPx, endpointsPx.fullArtXPx, p) + hOffset
             val artY = lerpF(endpointsPx.miniArtYPx, endpointsPx.fullArtYPx, p)
 
@@ -227,12 +244,13 @@ private fun Modifier.morphLayout(
 
                 val lyricsX = lerpF(endpointsPx.miniArtXPx, endpointsPx.lyricsArtXPx, p) + hOffset
                 val lyricsY = lerpF(endpointsPx.miniArtYPx, endpointsPx.lyricsArtYPx, p)
-                val lyricsSize = lerpF(endpointsPx.miniArtSizePx, endpointsPx.lyricsArtSizePx, p)
+                val lyricsW = lerpF(endpointsPx.miniArtWidthPx, endpointsPx.lyricsArtSizePx, p)
+                val lyricsH = lerpF(endpointsPx.miniArtHeightPx, endpointsPx.lyricsArtSizePx, p)
                 floatArrayOf(
                     lerpF(artX, lyricsX, lp),
                     lerpF(artY, lyricsY, lp),
-                    lerpF(artW, lyricsSize, lp),
-                    lerpF(artH, lyricsSize, lp),
+                    lerpF(artW, lyricsW, lp),
+                    lerpF(artH, lyricsH, lp),
                 )
             }
         }
@@ -288,6 +306,8 @@ fun MorphingCover(
 
     lyricsProgressProvider: () -> Float = { 0f },
 
+    forceVideoBackground: Boolean = false,
+
     coverStyle: PlayerCoverStyle = PlayerCoverStyle.EDGE_TO_EDGE,
 
     backgroundStyle: PlayerBackgroundStyle = PlayerBackgroundStyle.COVER_GRADIENT,
@@ -305,27 +325,81 @@ fun MorphingCover(
 
     val emptyQueue = remember { kotlinx.coroutines.flow.MutableStateFlow(com.example.musicfy.ui.player.models.QueueState()) }
     val queueState by (playerConnection?.uiState?.queueState ?: emptyQueue).collectAsState()
+    var previousQueueIndex by remember { mutableIntStateOf(queueState.currentIndex) }
+    var skipDirection by remember { mutableIntStateOf(1) }
+
+    LaunchedEffect(queueState.currentIndex) {
+        if (queueState.currentIndex != previousQueueIndex) {
+            skipDirection = if (queueState.currentIndex < previousQueueIndex) -1 else 1
+            previousQueueIndex = queueState.currentIndex
+        }
+    }
 
     if (playerConnection != null) {
         LaunchedEffect(queueState.currentIndex, queueState.items) {
             val nextUrl = queueState.items.getOrNull(queueState.currentIndex + 1)
                 ?.artworkUri?.toString()?.resize(1200, 1200)
-                ?: return@LaunchedEffect
+            val prevUrl = queueState.items.getOrNull(queueState.currentIndex - 1)
+                ?.artworkUri?.toString()?.resize(1200, 1200)
 
-            val request = ImageRequest.Builder(context)
-                .data(nextUrl)
-                .size(CoilSize(1200, 1200))
-                .precision(Precision.INEXACT)
-                .build()
-            SingletonImageLoader.get(context).enqueue(request)
+            val loader = SingletonImageLoader.get(context)
+            if (nextUrl != null) {
+                loader.enqueue(
+                    ImageRequest.Builder(context)
+                        .data(nextUrl)
+                        .size(CoilSize(1200, 1200))
+                        .precision(Precision.INEXACT)
+                        .build()
+                )
+            }
+            if (prevUrl != null) {
+                loader.enqueue(
+                    ImageRequest.Builder(context)
+                        .data(prevUrl)
+                        .size(CoilSize(1200, 1200))
+                        .precision(Precision.INEXACT)
+                        .build()
+                )
+            }
         }
     }
 
-    val endpoints = remember(maxWidth, maxHeight, statusBarTop, coverStyle, 2) {
+    val isDiscStyle = coverStyle.isDisc
+
+    val playVideoPref by rememberPreference(PlayVideoBackgroundKey, defaultValue = false)
+    val playVideoBackground = forceVideoBackground || playVideoPref
+    var videoInfo by remember(trackInfo.mediaId) { mutableStateOf<OfficialMusicVideo?>(null) }
+    LaunchedEffect(trackInfo.mediaId, trackInfo.title, trackInfo.artist, playVideoBackground) {
+        val mediaId = trackInfo.mediaId
+        val titleStr = trackInfo.title
+        val artistStr = trackInfo.artist
+        if (!playVideoBackground || mediaId.isBlank() || titleStr.isBlank() || artistStr.isBlank()) {
+            videoInfo = null
+            return@LaunchedEffect
+        }
+        if (YouTubeVideoUrlCache.contains(mediaId)) {
+            videoInfo = YouTubeVideoUrlCache.get(mediaId)
+            return@LaunchedEffect
+        }
+        val resolved = withContext(Dispatchers.IO) { findOfficialMusicVideo(titleStr, artistStr) }
+        YouTubeVideoUrlCache.put(mediaId, resolved)
+        videoInfo = resolved
+    }
+
+    val isVideoActive = !isDiscStyle && playVideoBackground && videoInfo != null
+    val targetMiniArtWidth = if (isVideoActive) (48.dp * 16f / 9f) else 48.dp
+    val animatedMiniArtWidth by animateDpAsState(
+        targetValue = targetMiniArtWidth,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        label = "miniArtWidth"
+    )
+
+    val endpoints = remember(maxWidth, maxHeight, statusBarTop, coverStyle, animatedMiniArtWidth) {
         val miniHeight = 64.dp
-        val miniArtSize = 48.dp
+        val miniArtWidth = animatedMiniArtWidth
+        val miniArtHeight = 48.dp
         val miniArtX = 36.dp
-        val miniArtY = (miniHeight - miniArtSize) / 2
+        val miniArtY = (miniHeight - miniArtHeight) / 2
 
         val miniPlaySize = 36.dp
         val miniSkipSize = 36.dp
@@ -334,13 +408,14 @@ fun MorphingCover(
         val miniPlayX = miniSkipX - 8.dp - miniPlaySize
         val miniPlayY = (miniHeight - miniPlaySize) / 2
 
-        val miniTextX = miniArtX + miniArtSize + 12.dp
+        val miniTextX = miniArtX + miniArtWidth + 12.dp
         val miniTextWidth = (miniPlayX - 10.dp - miniTextX).coerceAtLeast(0.dp)
 
         val artBox = coverArtBox(coverStyle, maxWidth, maxHeight, statusBarTop)
 
         MorphEndpoints(
-            miniArtSize = miniArtSize,
+            miniArtWidth = miniArtWidth,
+            miniArtHeight = miniArtHeight,
             miniArtX = miniArtX,
             miniArtY = miniArtY,
             miniPlayX = miniPlayX,
@@ -371,7 +446,8 @@ fun MorphingCover(
     val endpointsPx = remember(endpoints, density) {
         with(density) {
             MorphEndpointsPx(
-                miniArtSizePx = endpoints.miniArtSize.toPx(),
+                miniArtWidthPx = endpoints.miniArtWidth.toPx(),
+                miniArtHeightPx = endpoints.miniArtHeight.toPx(),
                 miniArtXPx = endpoints.miniArtX.toPx(),
                 miniArtYPx = endpoints.miniArtY.toPx(),
                 miniPlayXPx = endpoints.miniPlayX.toPx(),
@@ -400,8 +476,6 @@ fun MorphingCover(
     }
 
     val miniPlaySize = 36.dp
-
-    val isDiscStyle = coverStyle.isDisc
 
     val longPressEnabled by remember {
         derivedStateOf { progressProvider() > 0.9f && lyricsProgressProvider() < 0.1f }
@@ -454,24 +528,6 @@ fun MorphingCover(
         }
     }
 
-    val playVideoBackground by rememberPreference(PlayVideoBackgroundKey, defaultValue = false)
-    var videoInfo by remember(trackInfo.mediaId) { mutableStateOf<OfficialMusicVideo?>(null) }
-    LaunchedEffect(trackInfo.mediaId, trackInfo.title, trackInfo.artist, playVideoBackground) {
-        val mediaId = trackInfo.mediaId
-        val titleStr = trackInfo.title
-        val artistStr = trackInfo.artist
-        if (!playVideoBackground || mediaId.isBlank() || titleStr.isBlank() || artistStr.isBlank()) {
-            videoInfo = null
-            return@LaunchedEffect
-        }
-        if (YouTubeVideoUrlCache.contains(mediaId)) {
-            videoInfo = YouTubeVideoUrlCache.get(mediaId)
-            return@LaunchedEffect
-        }
-        val resolved = withContext(Dispatchers.IO) { findOfficialMusicVideo(titleStr, artistStr) }
-        YouTubeVideoUrlCache.put(mediaId, resolved)
-        videoInfo = resolved
-    }
 
     val lyricsSyncEnabled by rememberPreference(YtVideoBackgroundLyricsSyncKey, defaultValue = false)
     val currentLyrics by playerConnection?.currentLyrics?.collectAsState(initial = null)
@@ -570,42 +626,45 @@ fun MorphingCover(
                             element = MorphElement.BACKDROP,
                         )
                         .graphicsLayer {
-
-                            alpha = (progressProvider() / PILL_FADE_END).coerceIn(0f, 1f)
-
+                            val p = progressProvider()
+                            val bgP = ((p - 0.02f) / 0.38f).coerceIn(0f, 1f)
+                            alpha = androidx.compose.animation.core.FastOutSlowInEasing.transform(bgP)
                             clip = true
                         }
-
                         .background(containerColor)
                 ) {
-
-                    if (backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
-
-                        PlayerBackgroundContent(
-                            style = backgroundStyle,
-                            thumbnailUrl = trackInfo.thumbnailUrl,
-                            pureBlack = pureBlack,
-                            modifier = Modifier.requiredSize(maxWidth, maxHeight)
-                        )
-                    } else if (playVideoBackground && videoInfo != null) {
-                        VideoBackdropBlur(
-                            glassState = videoGlassState,
-                            modifier = Modifier.requiredSize(maxWidth, maxHeight)
-                        )
-                    } else {
-
-                        CoverGradientBackdrop(
-                            thumbnailUrl = trackInfo.thumbnailUrl,
-                            width = maxWidth,
-                            height = maxHeight,
-                            animate = warpClockActive,
-                            shader = warpShader,
-                            timeProvider = { warpTimeState.floatValue },
-                        )
-                    }
+                    PlayerBackdropCrossfade(
+                        trackInfo = trackInfo,
+                        backgroundStyle = backgroundStyle,
+                        pureBlack = pureBlack,
+                        playVideoBackground = playVideoBackground,
+                        videoInfo = videoInfo,
+                        videoGlassState = videoGlassState,
+                        maxWidth = maxWidth,
+                        maxHeight = maxHeight,
+                        warpClockActive = warpClockActive,
+                        warpShader = warpShader,
+                        warpTimeState = warpTimeState,
+                        lyricsProgressProvider = lyricsProgressProvider,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
         }
+
+        val isEdgeToEdge = coverStyle == PlayerCoverStyle.EDGE_TO_EDGE
+        val targetPauseScale = if (isPlaying) (if (isEdgeToEdge) 1.05f else 1.0f) else (if (isEdgeToEdge) 1.0f else 0.94f)
+        val animatedPauseScale by animateFloatAsState(
+            targetValue = targetPauseScale,
+            animationSpec = tween(400, easing = FastOutSlowInEasing),
+            label = "pauseScale"
+        )
+        val targetPauseSaturation = if (isPlaying) 1.0f else 0.80f
+        val animatedPauseSaturation by animateFloatAsState(
+            targetValue = targetPauseSaturation,
+            animationSpec = tween(400, easing = FastOutSlowInEasing),
+            label = "pauseSaturation"
+        )
 
         if (trackInfo.thumbnailUrl != null || isDiscStyle) {
             Box(
@@ -619,6 +678,10 @@ fun MorphingCover(
                     )
                     .graphicsLayer {
                         val p = progressProvider()
+
+                        scaleX = animatedPauseScale
+                        scaleY = animatedPauseScale
+                        colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(animatedPauseSaturation) })
 
                         clip = !isDiscStyle ||
                             discWeight(progressProvider, lyricsProgressProvider) < 0.5f
@@ -658,17 +721,10 @@ fun MorphingCover(
                         )
                 ) {
 
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(trackInfo.thumbnailUrl?.resize(1200, 1200))
-                        .allowHardware(true)
-                        .crossfade(300)
-
-                        .size(CoilSize(1200, 1200))
-                        .precision(Precision.INEXACT)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                CoverArtworkCrossfade(
+                    thumbnailUrl = trackInfo.thumbnailUrl,
+                    mediaId = trackInfo.mediaId,
+                    direction = skipDirection,
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -731,7 +787,11 @@ fun MorphingCover(
                         positionMsProvider = { playerConnection?.player?.currentPosition ?: 0L },
                         lyricVideoAnchors = lyricVideoAnchors,
                         glassState = videoGlassState,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = (1f - lyricsProgressProvider()).coerceIn(0f, 1f)
+                            }
                     )
                 }
                 }
@@ -777,32 +837,56 @@ fun MorphingCover(
                         drawContent()
                         drawRect(brush = fade, blendMode = BlendMode.DstIn)
                     }
-                }
+                },
+            contentAlignment = Alignment.CenterStart,
         ) {
-            Column(
-                modifier = Modifier.align(Alignment.CenterStart),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = trackInfo.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-
-                    softWrap = false,
-                )
-                val subtitle = listOf(trackInfo.artist, trackInfo.album)
-                    .filter { it.isNotBlank() }
-                    .joinToString(" — ")
-                if (subtitle.isNotBlank()) {
+            val miniSongDisplay = remember(trackInfo.mediaId, trackInfo.title, trackInfo.artist, trackInfo.album) {
+                trackInfo
+            }
+            AnimatedContent(
+                targetState = miniSongDisplay,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .align(Alignment.CenterStart),
+                contentAlignment = Alignment.CenterStart,
+                transitionSpec = {
+                    val isForward = skipDirection >= 0
+                    if (isForward) {
+                        (slideInHorizontally(tween(360, easing = FastOutSlowInEasing)) { (-it * 0.45f).toInt() } + fadeIn(tween(300)))
+                            .togetherWith(slideOutHorizontally(tween(360, easing = FastOutSlowInEasing)) { (it * 0.45f).toInt() } + fadeOut(tween(220)))
+                    } else {
+                        (slideInHorizontally(tween(360, easing = FastOutSlowInEasing)) { (it * 0.45f).toInt() } + fadeIn(tween(300)))
+                            .togetherWith(slideOutHorizontally(tween(360, easing = FastOutSlowInEasing)) { (-it * 0.45f).toInt() } + fadeOut(tween(220)))
+                    }.using(SizeTransform(clip = false))
+                },
+                label = "MiniSongInfoSlide"
+            ) { currentTrack ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(Alignment.CenterVertically),
+                    verticalArrangement = Arrangement.Center,
+                ) {
                     Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = currentTrack.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         softWrap = false,
                     )
+                    val subtitle = listOf(currentTrack.artist, currentTrack.album)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" — ")
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
                 }
             }
         }
@@ -867,6 +951,255 @@ fun MorphingCover(
     }
 }
 
+private data class CoverItem(
+    val mediaId: String,
+    val thumbnailUrl: String?,
+)
+
+@Composable
+private fun CoverArtworkCrossfade(
+    thumbnailUrl: String?,
+    mediaId: String,
+    direction: Int,
+    modifier: Modifier = Modifier,
+) {
+    var currentCover by remember { mutableStateOf(CoverItem(mediaId, thumbnailUrl)) }
+    var outgoingCover by remember { mutableStateOf<CoverItem?>(null) }
+    var transitionDirection by remember { mutableIntStateOf(direction) }
+
+    val animProgress = remember { androidx.compose.animation.core.Animatable(1f) }
+
+    LaunchedEffect(mediaId, thumbnailUrl) {
+        if (mediaId != currentCover.mediaId || thumbnailUrl != currentCover.thumbnailUrl) {
+            outgoingCover = currentCover
+            currentCover = CoverItem(mediaId, thumbnailUrl)
+            transitionDirection = if (direction != 0) direction else 1
+            animProgress.snapTo(0f)
+            animProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = 600,
+                    easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
+                )
+            )
+            outgoingCover = null
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        val p = animProgress.value
+        val isForward = transitionDirection >= 0
+
+        val outgoing = outgoingCover
+        if (outgoing != null && p < 0.999f) {
+            // 1. Outgoing cover underneath:
+            // Zooms dramatically and blurs whole frame as it fades out
+            val outgoingScale = if (isForward) 1f + 0.22f * p else 1f - 0.22f * p
+            val outgoingBlur = p * 20f
+            val outgoingAlpha = if (p < 0.30f) 1f else ((1f - p) / 0.70f).coerceIn(0f, 1f)
+            CoverImageLayer(
+                item = outgoing,
+                scale = outgoingScale,
+                alpha = outgoingAlpha,
+                blurPx = outgoingBlur,
+                isAnimating = true,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // 2. Incoming cover on top:
+            // Zooms dramatically from initial scale (0.78f or 1.22f) to 1.0f while unblurring whole frame
+            val incomingScale = if (isForward) 0.78f + 0.22f * p else 1.22f - 0.22f * p
+            val incomingBlur = (1f - p) * 20f
+            val incomingAlpha = p.coerceIn(0f, 1f)
+            CoverImageLayer(
+                item = currentCover,
+                scale = incomingScale,
+                alpha = incomingAlpha,
+                blurPx = incomingBlur,
+                isAnimating = true,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            CoverImageLayer(
+                item = currentCover,
+                scale = 1f,
+                alpha = 1f,
+                blurPx = 0f,
+                isAnimating = false,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@Composable
+private fun CoverImageLayer(
+    item: CoverItem,
+    scale: Float,
+    alpha: Float,
+    blurPx: Float,
+    isAnimating: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val imageRequest = remember(item.thumbnailUrl) {
+        ImageRequest.Builder(context)
+            .data(item.thumbnailUrl?.resize(1200, 1200))
+            .allowHardware(true)
+            .size(CoilSize(1200, 1200))
+            .precision(Precision.INEXACT)
+            .crossfade(false)
+            .build()
+    }
+
+    // Quantize blur to 0.5f steps to reuse GPU RenderEffect instances & prevent lag
+    val quantizedBlur = if (blurPx > 0.3f) (kotlin.math.round(blurPx * 2f) / 2f) else 0f
+
+    Box(
+        modifier = modifier
+            .graphicsLayer {
+                this.alpha = alpha.coerceIn(0f, 1f)
+                scaleX = scale
+                scaleY = scale
+                if (isAnimating) {
+                    compositingStrategy = CompositingStrategy.Offscreen
+                }
+                renderEffect = if (quantizedBlur > 0f) BlurEffectCache.get(quantizedBlur) else null
+                clip = true
+            }
+    ) {
+        AsyncImage(
+            model = imageRequest,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
+@Composable
+private fun PlayerBackdropCrossfade(
+    trackInfo: TrackInfo,
+    backgroundStyle: PlayerBackgroundStyle,
+    pureBlack: Boolean,
+    playVideoBackground: Boolean,
+    videoInfo: OfficialMusicVideo?,
+    videoGlassState: GlassState,
+    maxWidth: Dp,
+    maxHeight: Dp,
+    warpClockActive: Boolean,
+    warpShader: Any?,
+    warpTimeState: androidx.compose.runtime.MutableFloatState,
+    lyricsProgressProvider: () -> Float = { 0f },
+    modifier: Modifier = Modifier,
+) {
+    var currentThumb by remember { mutableStateOf(trackInfo.thumbnailUrl) }
+    var currentMediaId by remember { mutableStateOf(trackInfo.mediaId) }
+    var outgoingThumb by remember { mutableStateOf<String?>(null) }
+
+    val bgAnim = remember { androidx.compose.animation.core.Animatable(1f) }
+
+    LaunchedEffect(trackInfo.mediaId, trackInfo.thumbnailUrl) {
+        if (trackInfo.mediaId != currentMediaId || trackInfo.thumbnailUrl != currentThumb) {
+            outgoingThumb = currentThumb
+            currentThumb = trackInfo.thumbnailUrl
+            currentMediaId = trackInfo.mediaId
+            bgAnim.snapTo(0f)
+            bgAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = 750,
+                    easing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)
+                )
+            )
+            outgoingThumb = null
+        }
+    }
+
+    val isVideoActive = playVideoBackground && videoInfo != null
+    val videoAlpha by animateFloatAsState(
+        targetValue = if (isVideoActive) 1f else 0f,
+        animationSpec = tween(durationMillis = 650, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "videoBackdropAlphaFade"
+    )
+
+    val lp = lyricsProgressProvider()
+    val effectiveVideoAlpha = (videoAlpha * (1f - lp)).coerceIn(0f, 1f)
+
+    Box(modifier = modifier) {
+        val p = bgAnim.value
+        val outgoing = outgoingThumb
+
+        // 1. Outgoing background layer (fades out gently, staying solid for first 35% so no black bleed)
+        if (outgoing != null && p < 0.999f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val baseAlpha = if (p < 0.35f) 1f else ((1f - p) / 0.65f).coerceIn(0f, 1f)
+                        alpha = baseAlpha * (1f - effectiveVideoAlpha)
+                    }
+            ) {
+                if (backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
+                    PlayerBackgroundContent(
+                        style = backgroundStyle,
+                        thumbnailUrl = outgoing,
+                        pureBlack = pureBlack,
+                        modifier = Modifier.requiredSize(maxWidth, maxHeight)
+                    )
+                } else {
+                    CoverGradientBackdrop(
+                        thumbnailUrl = outgoing,
+                        width = maxWidth,
+                        height = maxHeight,
+                        animate = warpClockActive,
+                        shader = warpShader,
+                        timeProvider = { warpTimeState.floatValue },
+                    )
+                }
+            }
+        }
+
+        // 2. Incoming background layer (fades in from 0f to 1f, completely hidden when video is active)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val baseAlpha = if (outgoing != null && p < 0.999f) p.coerceIn(0f, 1f) else 1f
+                    alpha = baseAlpha * (1f - effectiveVideoAlpha)
+                }
+        ) {
+            if (backgroundStyle != PlayerBackgroundStyle.COVER_GRADIENT) {
+                PlayerBackgroundContent(
+                    style = backgroundStyle,
+                    thumbnailUrl = currentThumb,
+                    pureBlack = pureBlack,
+                    modifier = Modifier.requiredSize(maxWidth, maxHeight)
+                )
+            } else {
+                CoverGradientBackdrop(
+                    thumbnailUrl = currentThumb,
+                    width = maxWidth,
+                    height = maxHeight,
+                    animate = warpClockActive,
+                    shader = warpShader,
+                    timeProvider = { warpTimeState.floatValue },
+                )
+            }
+        }
+
+        // 3. Video backdrop layer (smoothly fades in on top when video is available, dissolves when lyrics open)
+        if (effectiveVideoAlpha > 0.005f) {
+            VideoBackdropBlur(
+                glassState = videoGlassState,
+                modifier = Modifier
+                    .requiredSize(maxWidth, maxHeight)
+                    .graphicsLayer { alpha = effectiveVideoAlpha }
+            )
+        }
+    }
+}
+
 @Composable
 private fun VideoBackdropBlur(
     glassState: GlassState,
@@ -875,62 +1208,57 @@ private fun VideoBackdropBlur(
     val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
     if (disableBlur) return
 
-    Box(modifier = modifier) {
+    var backdropPosInWindow by remember { mutableStateOf(Offset.Zero) }
 
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned {
+                backdropPosInWindow = it.positionInWindow()
+            }
+    ) {
         androidx.compose.foundation.Canvas(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    // createBlurEffect is API 31; this block runs on every device.
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                            90f, 90f, android.graphics.Shader.TileMode.CLAMP
-                        ).asComposeRenderEffect()
-                    }
+                    renderEffect = BlurEffectCache.get(
+                        300f, android.graphics.Shader.TileMode.CLAMP
+                    )
                 }
         ) {
-            drawFillScaledVideoNode(glassState, flip = false)
+            val node = glassState.renderNode
+            if (node == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return@Canvas
+            if (!glassNodeHasContent(node)) return@Canvas
+            val nodeWidth = glassNodeWidth(node).toFloat()
+            val nodeHeight = glassNodeHeight(node).toFloat()
+            if (nodeWidth <= 0f || nodeHeight <= 0f) return@Canvas
+
+            val videoWindowX = glassState.rootPosition.x
+            val videoWindowY = glassState.rootPosition.y
+            val hasValidRootPos = videoWindowX > 0f || videoWindowY > 0f
+
+            val videoLeft = if (hasValidRootPos) {
+                videoWindowX - backdropPosInWindow.x
+            } else {
+                (size.width - nodeWidth) / 2f
+            }
+            val videoTop = if (hasValidRootPos) {
+                videoWindowY - backdropPosInWindow.y
+            } else {
+                (size.height * 0.35f) - (nodeHeight / 2f)
+            }
+
+            // Positioned flush at the bottom of the main video frame with slight overlap to prevent any sub-pixel gap
+            val reflectionTop = videoTop + nodeHeight - 2f
+
+            // Flipped vertically and scaled slightly up to fill the background seamlessly with zero spacing or gap
+            withTransform({
+                translate(left = videoLeft, top = reflectionTop)
+                scale(scaleX = 1.04f, scaleY = -1.04f, pivot = Offset(nodeWidth / 2f, nodeHeight / 2f))
+            }) {
+                drawIntoCanvas { it.nativeCanvas.drawGlassNode(node) }
+            }
         }
-
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    alpha = 0.6f
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                            90f, 90f, android.graphics.Shader.TileMode.CLAMP
-                        ).asComposeRenderEffect()
-                    }
-                }
-        ) {
-            drawFillScaledVideoNode(glassState, flip = true)
-        }
-    }
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFillScaledVideoNode(
-    glassState: GlassState,
-    flip: Boolean,
-) {
-    val node = glassState.renderNode
-    if (node == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return
-    if (!glassNodeHasContent(node)) return
-    val nodeWidth = glassNodeWidth(node).toFloat()
-    val nodeHeight = glassNodeHeight(node).toFloat()
-    if (nodeWidth <= 0f || nodeHeight <= 0f) return
-
-    val fillScale = maxOf(size.width / nodeWidth, size.height / nodeHeight)
-    val scaledWidth = nodeWidth * fillScale
-    val scaledHeight = nodeHeight * fillScale
-    val offsetX = (size.width - scaledWidth) / 2f
-    val offsetY = (size.height - scaledHeight) / 2f
-
-    withTransform({
-        translate(left = offsetX, top = if (flip) offsetY + scaledHeight else offsetY)
-        scale(scaleX = fillScale, scaleY = if (flip) -fillScale else fillScale, pivot = Offset.Zero)
-    }) {
-        drawIntoCanvas { it.nativeCanvas.drawGlassNode(node) }
     }
 }
 

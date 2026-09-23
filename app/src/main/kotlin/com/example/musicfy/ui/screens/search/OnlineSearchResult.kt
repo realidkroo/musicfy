@@ -442,9 +442,10 @@ private fun TopResultCard(
                     .graphicsLayer {
                         alpha = 0.55f
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            renderEffect = android.graphics.RenderEffect
-                                .createBlurEffect(70f, 70f, android.graphics.Shader.TileMode.CLAMP)
-                                .asComposeRenderEffect()
+                            renderEffect = com.example.musicfy.ui.component.BlurEffectCache.get(
+                                70f,
+                                android.graphics.Shader.TileMode.CLAMP
+                            )
                         }
                     },
             )

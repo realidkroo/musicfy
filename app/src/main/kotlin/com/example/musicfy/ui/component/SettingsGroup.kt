@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.Arrangement
@@ -101,7 +102,7 @@ private fun ClassicItems(items: List<SettingsItem>) {
                         .padding(bottom = 8.dp),
                     shape = shape,
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF1C1C1E)
+                        containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
@@ -137,7 +138,7 @@ private fun GroupedItems(items: List<SettingsItem>) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+            containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -170,7 +171,8 @@ private fun ClusterRows(cluster: ItemCluster) {
         label = "pillInset"
     )
 
-    val pillColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f * pillAlpha)
+    // Expanded sub-menu background slightly brighter than accent surface
+    val pillColor = Color(0xFF282830).copy(alpha = pillAlpha)
 
     Box(
         modifier = Modifier
