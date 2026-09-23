@@ -138,6 +138,15 @@ val PreventDuplicateTracksInQueueKey = booleanPreferencesKey("preventDuplicateTr
 val CrossfadeEnabledKey = booleanPreferencesKey("crossfadeEnabled")
 val CrossfadeDurationKey = floatPreferencesKey("crossfadeDuration")
 val CrossfadeGaplessKey = booleanPreferencesKey("crossfadeGapless")
+val CrossmixModeKey = stringPreferencesKey("crossmixMode")
+
+/** The selected transition experience. Legacy crossfade keys remain the playback contract. */
+enum class CrossmixMode {
+    AUTO_CROSSFADE,
+    OFF,
+    MANUAL_CROSSFADE,
+    CROSSMIX,
+}
 
 val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")

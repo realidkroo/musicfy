@@ -41,13 +41,13 @@ import com.example.musicfy.ui.component.SettingsGroup
 import com.example.musicfy.ui.component.SettingsGroupStyle
 import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.ui.component.SubSettingsScaffold
+import com.example.musicfy.ui.component.DefaultPlayerSeekBarSlider
 import com.example.musicfy.ui.screens.DarkMode
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Slider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -327,7 +327,7 @@ fun AppearanceSettingsScreen(navController: NavController) {
                             }
                         },
                         description = {
-                            Slider(
+                            DefaultPlayerSeekBarSlider(
                                 value = blurStrengthPx,
                                 onValueChange = onBlurStrengthPxChange,
                                 valueRange = 0f..37.5f,

@@ -64,7 +64,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Audio quality badge", "Appearance", "appearance_settings", "badge quality indicator"),
     SettingsEntry("Player customization", "Appearance", "appearance_settings", "player customise cover style"),
     SettingsEntry("Player bottom card", "Appearance", "appearance_settings", "bottom card lyrics queue"),
-    SettingsEntry("Crossfade", "Playback", "playback_settings", "fade transition gapless"),
+    SettingsEntry("Crossmix", "Playback", "playback_settings", "automix crossfade transition gapless"),
     SettingsEntry("Equalizer", "Playback", "playback_settings", "eq bass treble"),
     SettingsEntry("Audio quality", "Playback", "playback_settings", "bitrate stream high low lossless"),
     SettingsEntry("Skip silence", "Playback", "playback_settings", "silence trim gap"),
