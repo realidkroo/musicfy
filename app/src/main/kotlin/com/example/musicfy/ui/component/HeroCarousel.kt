@@ -273,7 +273,6 @@ fun HeroCarousel(
             val realPage = page % carouselItems.size
             val item = carouselItems[realPage]
             val context = LocalContext.current
-            val heroBlurEffects = remember { mutableMapOf<Int, androidx.compose.ui.graphics.RenderEffect>() }
             var readyItem by remember { mutableStateOf(item) }
 
             LaunchedEffect(item) {
@@ -350,21 +349,8 @@ fun HeroCarousel(
                         translationY = scrollOffsetProvider() * 0.5f
                         val heroScrollProgress = heroScrollProgressProvider()
                         alpha = 1f - heroScrollProgress
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            val rawBlur = (heroScrollProgress * 30f) + ((1f - progress) * 80f)
-                            val blurRadius = rawBlur.toInt()
-                            if (blurRadius > 0) {
-                                renderEffect = heroBlurEffects.getOrPut(blurRadius) {
-                                    android.graphics.RenderEffect.createBlurEffect(
-                                        blurRadius.toFloat(),
-                                        blurRadius.toFloat(),
-                                        android.graphics.Shader.TileMode.CLAMP
-                                    ).asComposeRenderEffect()
-                                }
-                            } else {
-                                renderEffect = null
-                            }
-                        }
+                        val rawBlur = (heroScrollProgress * 30f) + ((1f - progress) * 80f)
+                        renderEffect = BlurEffectCache.get(rawBlur, android.graphics.Shader.TileMode.CLAMP)
                     }
 
                     AsyncImage(
@@ -408,7 +394,6 @@ fun HeroCarousel(
         Box(modifier = Modifier.fillMaxSize()) {
             val offsetFraction = pagerState.currentPageOffsetFraction
             val currentPage = pagerState.currentPage
-            val textBlurEffects = remember { mutableMapOf<Int, androidx.compose.ui.graphics.RenderEffect>() }
 
             val pagesToRender = buildList {
                 add(currentPage to offsetFraction)
@@ -468,20 +453,8 @@ fun HeroCarousel(
                         Column(
                             modifier = Modifier.graphicsLayer {
                                 alpha = 1f - absOffset
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    val blurRadius = (absOffset * 80f).toInt()
-                                    if (blurRadius > 0) {
-                                        renderEffect = textBlurEffects.getOrPut(blurRadius) {
-                                            android.graphics.RenderEffect.createBlurEffect(
-                                                blurRadius.toFloat(),
-                                                blurRadius.toFloat(),
-                                                android.graphics.Shader.TileMode.CLAMP
-                                            ).asComposeRenderEffect()
-                                        }
-                                    } else {
-                                        renderEffect = null
-                                    }
-                                }
+                                val blurRadius = absOffset * 80f
+                                renderEffect = BlurEffectCache.get(blurRadius, android.graphics.Shader.TileMode.CLAMP)
                             }
                         ) {
                             androidx.compose.animation.AnimatedContent(

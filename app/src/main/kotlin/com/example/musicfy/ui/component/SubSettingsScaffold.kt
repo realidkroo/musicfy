@@ -212,13 +212,7 @@ fun SubSettingsScaffold(
                         translationY = lerp(ExpandedTitleTop.toPx(), collapsedTop, p)
 
                         val blurPx = sin(p.coerceIn(0f, 1f) * PI.toFloat()) * TitleMorphMaxBlurPx
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurPx > 0.5f) {
-                            renderEffect = android.graphics.RenderEffect.createBlurEffect(
-                                blurPx, blurPx, android.graphics.Shader.TileMode.DECAL
-                            ).asComposeRenderEffect()
-                        } else {
-                            renderEffect = null
-                        }
+                        renderEffect = BlurEffectCache.get(blurPx, android.graphics.Shader.TileMode.DECAL)
                     }
             )
         }

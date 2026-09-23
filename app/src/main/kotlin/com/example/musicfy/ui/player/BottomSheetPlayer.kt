@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.player
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.media3.common.Player
 import com.example.musicfy.constants.PlayerHorizontalPadding
 import com.example.musicfy.extensions.toggleRepeatMode
+import com.example.musicfy.ui.component.BlurEffectCache
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -43,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -57,6 +60,8 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.joinAll
 import androidx.navigation.NavController
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
@@ -111,6 +116,10 @@ fun BottomSheetPlayer(
 
     var editPhase by remember { mutableStateOf(PlayerEditPhase.NONE) }
 
+    var showExpandMenu by remember { mutableStateOf(false) }
+    var seeVideo by remember { mutableStateOf(false) }
+    var showSleepTimer by remember { mutableStateOf(false) }
+
     var showActionMenu by remember { mutableStateOf(false) }
     // Which surface opened the menu. The lyrics tools only appear when it came from the lyrics
     // page, where they have something visible to act on.
@@ -159,6 +168,8 @@ fun BottomSheetPlayer(
 
             showActionMenu = false
             menuReveal.floatValue = 0f
+            showExpandMenu = false
+            showSleepTimer = false
         }
     }
 
@@ -173,6 +184,9 @@ fun BottomSheetPlayer(
     }
 
     var songInfoSourceRect by remember {
+        mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+    }
+    var chevronButtonRect by remember {
         mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
     }
     val statusBarTopInset = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -265,6 +279,7 @@ fun BottomSheetPlayer(
                     pureBlack = pureBlack,
                     glassState = morphingGlassState,
                     lyricsProgressProvider = { lyricsProgress },
+                    forceVideoBackground = seeVideo,
                     modifier = Modifier.fillMaxSize(),
                     coverStyle = coverStyle,
                     backgroundStyle = backgroundStyle,
@@ -404,32 +419,7 @@ fun BottomSheetPlayer(
             }
 
             if (lyricsButtonMounted && editPhase == PlayerEditPhase.NONE) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .statusBarsPadding()
-                        .padding(top = 12.dp, end = 20.dp)
-                        .size(40.dp)
-
-                        .graphicsLayer { alpha = (1f - lyricsProgress / 0.35f).coerceIn(0f, 1f) }
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.12f))
-                        .clickable {
-                            menuFromLyrics = false
-                            showActionMenu = true
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.more_vert),
-                        contentDescription = "Menu",
-                        tint = Color.White,
-
-                        modifier = Modifier
-                            .size(20.dp)
-                            .graphicsLayer { rotationZ = 90f }
-                    )
-                }
+                // Removed as per request
             }
 
             Column(
@@ -480,7 +470,12 @@ fun BottomSheetPlayer(
                     Box(
                         modifier = Modifier.graphicsLayer { alpha = 1f - lyricsProgress }
                     ) {
-                        SongInfoRow(onTitlePositioned = { songInfoSourceRect = it })
+                        SongInfoRow(
+                            onTitlePositioned = { songInfoSourceRect = it },
+                            onChevronPositioned = { chevronButtonRect = it },
+                            isExpandMenuOpen = showExpandMenu,
+                            onToggleExpandMenu = { showExpandMenu = !showExpandMenu }
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -500,20 +495,49 @@ fun BottomSheetPlayer(
                             verticalArrangement = Arrangement.spacedBy(7.dp),
                             horizontalAlignment = Alignment.End,
                         ) {
-                            val repeatMode = transportState.repeatMode
-                            PressScaleActionButton(
-                                icon = R.drawable.repeat,
-                                boldIcon = true,
-                                tint = if (repeatMode != Player.REPEAT_MODE_OFF) Color.White else Color.White.copy(alpha = 0.85f),
-                                containerColor = if (repeatMode != Player.REPEAT_MODE_OFF) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
-                                badgeText = if (repeatMode == Player.REPEAT_MODE_ONE) "1" else null,
-                                onClick = { playerConnection.player.toggleRepeatMode() },
-                            )
                             PressScaleActionButton(
                                 icon = if (trackInfo.liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
                                 tint = if (trackInfo.liked) Color.White else Color.White.copy(alpha = 0.85f),
                                 containerColor = if (trackInfo.liked) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
                                 onClick = playerConnection::toggleLike,
+                                hasShadow = false,
+                            )
+                            val arrowRotation by animateFloatAsState(
+                                targetValue = if (showExpandMenu) 180f else 0f, 
+                                label = "arrowRot",
+                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f)
+                            )
+                            val arrowScale by animateFloatAsState(
+                                targetValue = if (showExpandMenu) 0.86f else 1f, 
+                                label = "arrowScale",
+                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f)
+                            )
+                            val lyricsChevronBgColor by animateColorAsState(
+                                targetValue = if (showExpandMenu) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.15f),
+                                label = "lyricsChevronBgColor",
+                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                            )
+                            val lyricsChevronTint by animateColorAsState(
+                                targetValue = if (showExpandMenu) Color.White else Color.White.copy(alpha = 0.90f),
+                                label = "lyricsChevronTint",
+                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                            )
+                            PressScaleActionButton(
+                                icon = R.drawable.expand_less,
+                                tint = lyricsChevronTint,
+                                containerColor = lyricsChevronBgColor,
+                                onClick = { showExpandMenu = !showExpandMenu },
+                                hasShadow = false,
+                                modifier = Modifier
+                                    .onGloballyPositioned { coords ->
+                                        chevronButtonRect = coords.boundsInRoot()
+                                    }
+                                    .graphicsLayer { 
+                                        rotationZ = arrowRotation 
+                                        scaleX = arrowScale
+                                        scaleY = arrowScale
+                                        alpha = if (showExpandMenu) 0f else 1f
+                                    }
                             )
                         }
                     }
@@ -576,6 +600,30 @@ fun BottomSheetPlayer(
             }
         }
 
+        ExpandMenuOverlay(
+            visible = showExpandMenu,
+            onDismiss = { showExpandMenu = false },
+            onOtherMenuClick = {
+                menuFromLyrics = false
+                showActionMenu = true
+            },
+            onSleepTimerClick = { showSleepTimer = true },
+            sleepTimerActive = playerConnection.service.sleepTimer.isActive,
+            seeVideo = seeVideo,
+            onSeeVideoToggle = { seeVideo = !seeVideo },
+            onRepeatClick = { playerConnection.player.toggleRepeatMode() },
+            repeatMode = transportState.repeatMode,
+            chevronRect = chevronButtonRect,
+            screenHeight = screenHeight,
+            controlsDrawShift = controlsDrawShift,
+        )
+
+        if (showSleepTimer) {
+            com.example.musicfy.ui.player.menu.SleepTimerSheet(
+                onDismiss = { showSleepTimer = false }
+            )
+        }
+
         if (showActionMenu) {
             PlayerActionMenu(
                 fromLyrics = menuFromLyrics,
@@ -612,20 +660,220 @@ fun BottomSheetPlayer(
     }
 }
 
-private const val EnterBlurQuantPx = 6f
+private fun enterBlurEffect(radius: Float): androidx.compose.ui.graphics.RenderEffect? =
+    com.example.musicfy.ui.component.BlurEffectCache.get(radius, android.graphics.Shader.TileMode.CLAMP)
 
-private val EnterBlurCache = HashMap<Int, androidx.compose.ui.graphics.RenderEffect>()
-
-private fun enterBlurEffect(radius: Float): androidx.compose.ui.graphics.RenderEffect? {
-    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S || radius <= 0.5f) {
-        return null
+@Composable
+private fun ExpandMenuOverlay(
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    onOtherMenuClick: () -> Unit,
+    onSleepTimerClick: () -> Unit,
+    sleepTimerActive: Boolean,
+    seeVideo: Boolean,
+    onSeeVideoToggle: () -> Unit,
+    onRepeatClick: () -> Unit,
+    repeatMode: Int,
+    chevronRect: androidx.compose.ui.geometry.Rect?,
+    screenHeight: androidx.compose.ui.unit.Dp,
+    controlsDrawShift: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier
+) {
+    val menuItems = remember {
+        listOf(
+            "Other menu" to R.drawable.more_horiz,
+            "Sleep timer" to R.drawable.sleep_timer,
+            "See video" to R.drawable.slow_motion_video,
+            "Repeat" to R.drawable.repeat,
+        )
     }
-    val step = (radius / EnterBlurQuantPx).roundToInt().coerceAtLeast(1)
-    return EnterBlurCache.getOrPut(step) {
-        val r = step * EnterBlurQuantPx
-        android.graphics.RenderEffect
 
-            .createBlurEffect(r, r, android.graphics.Shader.TileMode.CLAMP)
-            .asComposeRenderEffect()
+    val density = LocalDensity.current
+    val itemProgress = remember { List(menuItems.size) { androidx.compose.animation.core.Animatable(0f) } }
+    val bgAlpha = remember { androidx.compose.animation.core.Animatable(0f) }
+    var isRendered by remember { mutableStateOf(false) }
+
+    LaunchedEffect(visible) {
+        if (visible) {
+            isRendered = true
+            launch {
+                bgAlpha.animateTo(
+                    targetValue = 0.62f,
+                    animationSpec = tween(durationMillis = 350, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f))
+                )
+            }
+            itemProgress.forEachIndexed { index, anim ->
+                launch {
+                    kotlinx.coroutines.delay((menuItems.size - 1 - index) * 40L)
+                    anim.animateTo(
+                        targetValue = 1f,
+                        animationSpec = androidx.compose.animation.core.spring(
+                            dampingRatio = 0.54f,
+                            stiffness = 320f
+                        )
+                    )
+                }
+            }
+        } else if (isRendered) {
+            val bgJob = launch {
+                bgAlpha.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(durationMillis = 260, easing = CubicBezierEasing(0.22f, 1f, 0.36f, 1f))
+                )
+            }
+            val itemsJob = launch {
+                val exitJobs = itemProgress.mapIndexed { index, anim ->
+                    launch {
+                        kotlinx.coroutines.delay(index * 25L)
+                        anim.animateTo(
+                            targetValue = 0f,
+                            animationSpec = tween(durationMillis = 180, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                        )
+                    }
+                }
+                exitJobs.forEach { it.join() }
+            }
+            bgJob.join()
+            itemsJob.join()
+            isRendered = false
+        }
+    }
+
+    if (isRendered) {
+        val chevronBottomDp = if (chevronRect != null) {
+            val screenHeightPx = with(density) { screenHeight.toPx() }
+            val bottomPx = (screenHeightPx - chevronRect.bottom).coerceAtLeast(0f)
+            with(density) { bottomPx.toDp() }
+        } else {
+            (screenHeight * 0.19f) + 93.dp - controlsDrawShift
+        }
+
+        val menuBottomDp = if (chevronRect != null) {
+            val screenHeightPx = with(density) { screenHeight.toPx() }
+            val topPx = (screenHeightPx - chevronRect.top).coerceAtLeast(0f)
+            with(density) { (topPx + 14.dp.toPx()).toDp() }
+        } else {
+            chevronBottomDp + 48.dp
+        }
+
+        val chevronRotation by animateFloatAsState(
+            targetValue = if (visible) 180f else 0f,
+            label = "overlayChevronRot",
+            animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f)
+        )
+        val chevronScale by animateFloatAsState(
+            targetValue = if (visible) 0.86f else 1f,
+            label = "overlayChevronScale",
+            animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f)
+        )
+        val overlayChevronBgColor by animateColorAsState(
+            targetValue = if (visible) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.15f),
+            label = "overlayChevronBgColor",
+            animationSpec = androidx.compose.animation.core.tween(durationMillis = 280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        )
+        val overlayChevronTint by animateColorAsState(
+            targetValue = if (visible) Color.White else Color.White.copy(alpha = 0.90f),
+            label = "overlayChevronTint",
+            animationSpec = androidx.compose.animation.core.tween(durationMillis = 280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = bgAlpha.value))
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { onDismiss() })
+                }
+        ) {
+            // Menu items placed directly ON TOP of the chevron:
+            Column(
+                modifier = modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = PlayerHorizontalPadding, bottom = menuBottomDp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                menuItems.forEachIndexed { index, item ->
+                    val p = itemProgress[index].value
+                    if (p > 0.005f) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    val progress = p.coerceIn(0f, 1.25f)
+                                    alpha = progress.coerceIn(0f, 1f)
+                                    translationY = (1f - progress) * 55f
+                                    val scale = (0.7f + 0.3f * progress).coerceAtLeast(0.01f)
+                                    scaleX = scale
+                                    scaleY = scale
+                                    val blurPx = (1f - progress.coerceIn(0f, 1f)) * 20f
+                                    renderEffect = BlurEffectCache.get(blurPx)
+                                }
+                        ) {
+                            androidx.compose.material3.Text(
+                                text = item.first,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    shadow = androidx.compose.ui.graphics.Shadow(
+                                        color = Color.Black.copy(alpha = 0.75f),
+                                        offset = androidx.compose.ui.geometry.Offset(0f, 2f),
+                                        blurRadius = 8f
+                                    )
+                                ),
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+
+                            val isToggled = when (index) {
+                                1 -> sleepTimerActive
+                                2 -> seeVideo
+                                3 -> repeatMode != Player.REPEAT_MODE_OFF
+                                else -> false
+                            }
+                            val iconTint = if (isToggled) Color.White else Color.White.copy(alpha = 0.85f)
+                            val containerColor = if (isToggled) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.16f)
+
+                            PressScaleActionButton(
+                                icon = item.second,
+                                tint = iconTint,
+                                containerColor = containerColor,
+                                hasShadow = false,
+                                badgeText = if (index == 3 && repeatMode == Player.REPEAT_MODE_ONE) "1" else null,
+                                onClick = {
+                                    when (index) {
+                                        0 -> { onDismiss(); onOtherMenuClick() }
+                                        1 -> { onDismiss(); onSleepTimerClick() }
+                                        2 -> { onSeeVideoToggle(); onDismiss() }
+                                        3 -> { onRepeatClick() }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Chevron rendered ON TOP of the dim background, directly tappable, zoomed out & rotated 180°:
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = PlayerHorizontalPadding, bottom = chevronBottomDp)
+            ) {
+                PressScaleActionButton(
+                    icon = R.drawable.expand_less,
+                    tint = overlayChevronTint,
+                    containerColor = overlayChevronBgColor,
+                    onClick = onDismiss,
+                    hasShadow = false,
+                    modifier = Modifier.graphicsLayer {
+                        rotationZ = chevronRotation
+                        scaleX = chevronScale
+                        scaleY = chevronScale
+                    }
+                )
+            }
+        }
     }
 }

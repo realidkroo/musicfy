@@ -254,18 +254,12 @@ fun CanvasArtworkPlayer(
         update = { view ->
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                val clampedBlur = if (blurRadiusPx > 0f) blurRadiusPx.coerceAtMost(96f) else 0f
-                if (blurRadiusPx > 0f) {
-                    view.setRenderEffect(
-                        android.graphics.RenderEffect.createBlurEffect(
-                            clampedBlur,
-                            clampedBlur,
-                            android.graphics.Shader.TileMode.CLAMP
-                        )
+                view.setRenderEffect(
+                    com.example.musicfy.ui.component.BlurEffectCache.getNative(
+                        blurRadiusPx,
+                        android.graphics.Shader.TileMode.CLAMP
                     )
-                } else {
-                    view.setRenderEffect(null)
-                }
+                )
             }
         },
         modifier = modifier.alpha(alpha),

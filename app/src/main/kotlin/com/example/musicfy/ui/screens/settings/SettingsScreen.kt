@@ -111,12 +111,40 @@ private fun randomGreetingWord(): String {
         "Hey",
         "Sup",
         "'Ello",
-        "Konnichiwa",
-        "Hallo",
+        "こんにちは (Konnichiwa)",
+        "やあ (Yā)",
+        "你好 (Nǐ hǎo)",
+        "嗨 (Hāi)",
+        "مرحبا (Marhaban)",
+        "أهلاً (Ahlan)",
+        "สวัสดี (Sawatdee)",
+        "หวัดดี (Watdee)",
+        "Selamat datang",
         "Halo",
-        "Ni hao",
-        "Sawadee",
+        "Apa kabar",
+        "Monggo",
         "Salut",
+        "Bonjour",
+        "Hola",
+        "Qué tal",
+        "Hallo",
+        "Willkommen",
+        "Ciao",
+        "Salve",
+        "안녕하세요 (Annyeong)",
+        "नमस्ते (Namaste)",
+        "Привет (Privet)",
+        "Kamusta",
+        "Aloha",
+        "Olá",
+        "Hoi",
+        "Xin chào",
+        "Merhaba",
+        "Tjänare",
+        "Γεια σου (Yassou)",
+        "Dia dhuit",
+        "Cześć",
+        "Jambo",
     )
     return variants.random()
 }
@@ -140,6 +168,7 @@ fun SettingsScreen(
     val (localUsername) = rememberPreference(UsernameKey, "")
     val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, "")
     val (profilePicUri) = rememberPreference(ProfilePicUriKey, "")
+    val (enable26Recap) = rememberPreference(com.example.musicfy.constants.Enable26RecapKey, false)
 
     var liveAccountName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(innerTubeCookie) {
@@ -156,7 +185,8 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val greeting = remember { randomGreetingWord() }
+    val currentEntry by navController.currentBackStackEntryFlow.collectAsState(initial = null)
+    val greeting = remember(currentEntry) { randomGreetingWord() }
 
     val database = com.example.musicfy.LocalDatabase.current
     val totalListeningMs by database.totalListeningTimeMs().collectAsState(initial = 0L)
@@ -240,11 +270,11 @@ fun SettingsScreen(
                 // Listening Time (Exact font size as Figma concept)
                 ListeningTimeRow(totalListeningMs = totalListeningMs)
 
-                // No separator line here - clean breathing space to Recap Card as in concept
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Modern Animated Recap Card
-                RecapCard(onClick = { showWip() })
+                // Modern Animated Recap Card (hidden by default, toggled via Experimental Settings)
+                if (enable26Recap) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    RecapCard(onClick = { showWip() })
+                }
 
                 Spacer(modifier = Modifier.height(28.dp))
 
@@ -282,52 +312,98 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 SectionHeading("Interconnectivity")
-                SettingsGroup(
-                    items = listOf(
-                        SettingsItem(
-                            title = {
-                                Text(
-                                    text = "My own device",
-                                    fontFamily = InterFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
-                            },
-                            description = {
-                                Text(
-                                    text = "make your device as a remote, or the player, and stream your local music at original quality",
-                                    fontFamily = InterFontFamily,
-                                    fontSize = 12.sp,
-                                    color = Color.White.copy(alpha = 0.65f)
-                                )
-                            },
-                            icon = painterResource(R.drawable.cast),
-                            iconShape = CircleShape,
-                            onClick = { restrictedFeatureName = "My own device" }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
+                ) {
+                    androidx.compose.material3.Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(104.dp)
+                            .clickable { restrictedFeatureName = "My own device" },
+                        shape = RoundedCornerShape(22.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                            containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field
                         ),
-                        SettingsItem(
-                            title = {
-                                Text(
-                                    text = "Party Mode",
-                                    fontFamily = InterFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                androidx.compose.material3.Icon(
+                                    painter = painterResource(R.drawable.cast),
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                            },
-                            description = {
-                                Text(
-                                    text = "invite your friend to listen to the same song at same party session.",
-                                    fontFamily = InterFontFamily,
-                                    fontSize = 12.sp,
-                                    color = Color.White.copy(alpha = 0.65f)
+                            }
+                            Text(
+                                text = "My own device",
+                                fontFamily = InterFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    androidx.compose.material3.Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(104.dp)
+                            .clickable { restrictedFeatureName = "Party Mode" },
+                        shape = RoundedCornerShape(22.dp),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                            containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field
+                        ),
+                        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                androidx.compose.material3.Icon(
+                                    painter = painterResource(R.drawable.person),
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                            },
-                            icon = painterResource(R.drawable.person),
-                            iconShape = CircleShape,
-                            onClick = { restrictedFeatureName = "Party Mode" }
-                        )
-                    )
-                )
+                            }
+                            Text(
+                                text = "Party Mode",
+                                fontFamily = InterFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -547,13 +623,13 @@ private fun ListeningTimeRow(totalListeningMs: Long) {
 @Composable
 private fun ListeningTimeValue(value: String, unit: String) {
     Row(verticalAlignment = Alignment.Bottom) {
-        Text(
-            text = value,
-            fontFamily = InterFontFamily,
+        com.example.musicfy.ui.component.OdometerNumber(
+            value = value,
             fontSize = 46.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = (-2.0).sp,
+            fontFamily = InterFontFamily,
             color = Color.White,
+            letterSpacing = (-2.0).sp,
         )
         Spacer(modifier = Modifier.width(3.dp))
         Text(

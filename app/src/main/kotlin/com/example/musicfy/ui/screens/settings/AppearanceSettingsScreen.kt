@@ -23,13 +23,16 @@ import androidx.navigation.NavController
 import com.example.musicfy.R
 import com.example.musicfy.constants.AppleMusicDarkChromeKey
 import com.example.musicfy.constants.AudioQualityBadgeDevKey
+import com.example.musicfy.constants.BlurStrengthPxKey
 import com.example.musicfy.constants.CanvasThumbnailAnimationKey
-import com.example.musicfy.constants.LyricsHighBloomKey
-import com.example.musicfy.constants.LyricsWaveAnimationKey
 import com.example.musicfy.constants.CanvasWifiOnlyKey
 import com.example.musicfy.constants.DisableBlurKey
+import com.example.musicfy.constants.EnableElementBlurAnimatorKey
+import com.example.musicfy.constants.EnableProgressiveBlurKey
 import com.example.musicfy.constants.HideAudioQualityBadgeKey
 import com.example.musicfy.constants.LocalSongAutoMetadataKey
+import com.example.musicfy.constants.LyricsHighBloomKey
+import com.example.musicfy.constants.LyricsWaveAnimationKey
 import com.example.musicfy.constants.PlayVideoBackgroundKey
 import com.example.musicfy.constants.ShowPlayerBottomCardKey
 import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
@@ -42,6 +45,15 @@ import com.example.musicfy.ui.screens.DarkMode
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Slider
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 
 @Composable
 fun AppearanceSettingsScreen(navController: NavController) {
@@ -69,6 +81,18 @@ fun AppearanceSettingsScreen(navController: NavController) {
     val (disableBlur, onDisableBlurChange) = rememberPreference(
         DisableBlurKey,
         defaultValue = false
+    )
+    val (progressiveBlur, onProgressiveBlurChange) = rememberPreference(
+        EnableProgressiveBlurKey,
+        defaultValue = true
+    )
+    val (elementBlurAnimator, onElementBlurAnimatorChange) = rememberPreference(
+        EnableElementBlurAnimatorKey,
+        defaultValue = true
+    )
+    val (blurStrengthPx, onBlurStrengthPxChange) = rememberPreference(
+        BlurStrengthPxKey,
+        defaultValue = 25f
     )
 
     val (showPlayerBottomCard, onShowPlayerBottomCardChange) = rememberPreference(
@@ -246,6 +270,76 @@ fun AppearanceSettingsScreen(navController: NavController) {
                                 onCheckedChange = { enabled -> onDisableBlurChange(!enabled) }
                             )
                         }
+                    )
+                )
+                add(
+                    SettingsItem(
+                        title = { Text("Progressive blur") },
+                        descriptionText = "disabled - use the native hard frosted blur",
+                        icon = painterResource(R.drawable.contrast),
+                        iconShape = CircleShape,
+                        isVisible = !disableBlur,
+                        isSubOption = true,
+                        onClick = { onProgressiveBlurChange(!progressiveBlur) },
+                        trailingContent = {
+                            AppSwitch(
+                                checked = progressiveBlur,
+                                onCheckedChange = onProgressiveBlurChange,
+                                enabled = !disableBlur
+                            )
+                        }
+                    )
+                )
+                add(
+                    SettingsItem(
+                        title = { Text("Element blur animator") },
+                        descriptionText = "disabled - only transition without blur - affecting all text and element transition blurs",
+                        icon = painterResource(R.drawable.sparks),
+                        iconShape = CircleShape,
+                        isVisible = !disableBlur,
+                        isSubOption = true,
+                        onClick = { onElementBlurAnimatorChange(!elementBlurAnimator) },
+                        trailingContent = {
+                            AppSwitch(
+                                checked = elementBlurAnimator,
+                                onCheckedChange = onElementBlurAnimatorChange,
+                                enabled = !disableBlur
+                            )
+                        }
+                    )
+                )
+                add(
+                    SettingsItem(
+                        title = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Blur strength")
+                                Text(
+                                    text = "${blurStrengthPx.roundToInt()}px",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color.White.copy(alpha = 0.70f)
+                                )
+                            }
+                        },
+                        description = {
+                            Slider(
+                                value = blurStrengthPx,
+                                onValueChange = onBlurStrengthPxChange,
+                                valueRange = 0f..37.5f,
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !disableBlur
+                            )
+                        },
+                        icon = painterResource(R.drawable.settings),
+                        iconShape = CircleShape,
+                        isVisible = !disableBlur,
+                        isSubOption = true,
+                        enabled = !disableBlur
                     )
                 )
                 add(
