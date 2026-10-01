@@ -2,16 +2,10 @@
 
 package com.example.musicfy.ui.screens.settings
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import com.example.musicfy.ui.component.AppSwitch
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,132 +16,80 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.R
-import com.example.musicfy.constants.AudioNormalizationKey
-import com.example.musicfy.constants.AudioQuality
-import com.example.musicfy.constants.AudioQualityKey
-import com.example.musicfy.constants.SkipSilenceInstantKey
-import com.example.musicfy.constants.SkipSilenceKey
+import com.example.musicfy.constants.PersistentQueueKey
+import com.example.musicfy.constants.StopPlaybackOnTaskRemovedKey
+import com.example.musicfy.ui.component.AppSwitch
 import com.example.musicfy.ui.component.SettingsGroup
 import com.example.musicfy.ui.component.SettingsGroupStyle
-import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.component.SettingsItem
-import com.example.musicfy.utils.rememberEnumPreference
+import com.example.musicfy.ui.component.SubSettingsScaffold
+import com.example.musicfy.ui.component.SubSettingsSearchBar
 import com.example.musicfy.utils.rememberPreference
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaybackSettingsScreen(navController: NavController) {
-    val (audioQuality, onAudioQualityChange) = rememberEnumPreference(AudioQualityKey, defaultValue = AudioQuality.AUTO)
-    val (skipSilence, onSkipSilenceChange) = rememberPreference(SkipSilenceKey, defaultValue = false)
-    val (skipSilenceInstant, onSkipSilenceInstantChange) = rememberPreference(SkipSilenceInstantKey, defaultValue = false)
-    val (audioNormalization, onAudioNormalizationChange) = rememberPreference(AudioNormalizationKey, defaultValue = true)
+    var query by remember { mutableStateOf("") }
 
-    var showAudioQualityRestriction by remember { mutableStateOf(false) }
+    val (stopPlaybackOnTaskRemoved, onStopPlaybackOnTaskRemovedChange) = rememberPreference(
+        StopPlaybackOnTaskRemovedKey,
+        defaultValue = false
+    )
+    val (persistentQueue, onPersistentQueueChange) = rememberPreference(
+        PersistentQueueKey,
+        defaultValue = true
+    )
 
-    fun qualityLabel(q: AudioQuality) = when (q) {
-        AudioQuality.AUTO -> "Auto"
-        AudioQuality.LOW -> "Low"
-        AudioQuality.MEDIUM -> "Medium"
-        AudioQuality.HIGH -> "High"
-        AudioQuality.LOSSLESS -> "Lossless"
-        AudioQuality.HI_RES_LOSSLESS -> "Hi-Res Lossless"
-        AudioQuality.DOLBY_ATMOS -> "Dolby Atmos"
-    }
-
-    fun nextQuality(q: AudioQuality) = when (q) {
-        AudioQuality.AUTO -> AudioQuality.LOW
-        AudioQuality.LOW -> AudioQuality.MEDIUM
-        AudioQuality.MEDIUM -> AudioQuality.HIGH
-        AudioQuality.HIGH -> AudioQuality.LOSSLESS
-        AudioQuality.LOSSLESS -> AudioQuality.HI_RES_LOSSLESS
-        AudioQuality.HI_RES_LOSSLESS -> AudioQuality.DOLBY_ATMOS
-        AudioQuality.DOLBY_ATMOS -> AudioQuality.AUTO
-    }
+    val keepPlaying = !stopPlaybackOnTaskRemoved
 
     SubSettingsScaffold(
         title = "Playback",
         onBack = { navController.navigateUp() },
     ) {
+        SubSettingsSearchBar(query = query, onQueryChange = { query = it })
+
+        Spacer(Modifier.height(16.dp))
+
+        val items = listOf(
+            SettingsItem(
+                title = { Text("Keep playing even when closed") },
+                highlightKey = "Keep playing even when closed",
+                descriptionText = "Continue playback in background when app is cleared from recents",
+                icon = painterResource(R.drawable.clear_all),
+                iconShape = CircleShape,
+                onClick = { onStopPlaybackOnTaskRemovedChange(!stopPlaybackOnTaskRemoved) },
+                trailingContent = {
+                    AppSwitch(
+                        checked = keepPlaying,
+                        onCheckedChange = { onStopPlaybackOnTaskRemovedChange(!it) },
+                    )
+                },
+            ),
+            SettingsItem(
+                title = { Text("Save Player's last state") },
+                highlightKey = "Save Player's last state",
+                descriptionText = "disabling this will removing previously played tracks when closing the app",
+                icon = painterResource(R.drawable.cached),
+                iconShape = CircleShape,
+                onClick = { onPersistentQueueChange(!persistentQueue) },
+                trailingContent = {
+                    AppSwitch(
+                        checked = persistentQueue,
+                        onCheckedChange = onPersistentQueueChange,
+                    )
+                },
+            ),
+        ).filter {
+            query.isBlank() || it.highlightKey?.contains(query, ignoreCase = true) == true ||
+                it.descriptionText?.contains(query, ignoreCase = true) == true
+        }
+
+        if (items.isNotEmpty()) {
             SettingsGroup(
                 style = SettingsGroupStyle.Grouped,
-                items = buildList {
-                    add(
-                        SettingsItem(
-                            title = { Text("Crossmix") },
-                            highlightKey = "Crossmix",
-                            descriptionText = "Choose how tracks blend together",
-                            icon = painterResource(R.drawable.linear_scale),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { navController.navigate("crossmix_settings") },
-                        )
-                    )
-                    add(
-                        SettingsItem(
-                            title = { Text("Equalizer") },
-                            highlightKey = "Equalizer",
-                            descriptionText = "10-band parametric EQ",
-                            icon = painterResource(R.drawable.equalizer),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { navController.navigate("equalizer") }
-                        )
-                    )
-                    add(
-                        SettingsItem(
-                            title = { Text("Audio quality") },
-                            highlightKey = "Audio quality",
-                            description = { Text(qualityLabel(audioQuality)) },
-                            icon = painterResource(R.drawable.graphic_eq),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { showAudioQualityRestriction = true }
-                        )
-                    )
-                    add(
-                        SettingsItem(
-                            title = { Text("Skip silence") },
-                            highlightKey = "Skip silence",
-                            descriptionText = "Skip silent parts",
-                            icon = painterResource(R.drawable.fast_forward),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { onSkipSilenceChange(!skipSilence) },
-                            trailingContent = {
-                                AppSwitch(checked = skipSilence, onCheckedChange = onSkipSilenceChange)
-                            }
-                        )
-                    )
-                    add(
-                        SettingsItem(
-                            title = { Text("Instantly skip silence") },
-                            descriptionText = "Jump instead of speeding up",
-                            icon = painterResource(R.drawable.skip_next),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            enabled = skipSilence,
-                            onClick = { onSkipSilenceInstantChange(!skipSilenceInstant) },
-                            trailingContent = {
-                                AppSwitch(checked = skipSilenceInstant, onCheckedChange = onSkipSilenceInstantChange, enabled = skipSilence)
-                            }
-                        )
-                    )
-                    add(
-                        SettingsItem(
-                            title = { Text("Audio normalization") },
-                            highlightKey = "Audio normalization",
-                            descriptionText = "Even out loudness between tracks",
-                            icon = painterResource(R.drawable.volume_up),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { onAudioNormalizationChange(!audioNormalization) },
-                            trailingContent = {
-                                AppSwitch(checked = audioNormalization, onCheckedChange = onAudioNormalizationChange)
-                            }
-                        )
-                    )
-                }
+                items = items,
             )
-    }
+        }
 
-    if (showAudioQualityRestriction) {
-        com.example.musicfy.ui.component.RestrictionPopup(
-            featureName = "Audio quality",
-            onDismiss = { showAudioQualityRestriction = false }
-        )
+        Spacer(Modifier.height(140.dp))
     }
 }

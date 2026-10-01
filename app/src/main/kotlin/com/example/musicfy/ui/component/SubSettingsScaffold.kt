@@ -50,6 +50,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.R
@@ -177,15 +178,15 @@ fun SubSettingsScaffold(
                     .padding(top = HeaderTopPadding)
                     .size(BackButtonSize)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), CircleShape)
+                    .background(Color(0xFF2C2C2E))
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     painter = painterResource(R.drawable.arrow_back_ios),
                     contentDescription = "Back",
-                    modifier = Modifier.size(20.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
                 )
             }
 
@@ -215,6 +216,66 @@ fun SubSettingsScaffold(
                         renderEffect = BlurEffectCache.get(blurPx, android.graphics.Shader.TileMode.DECAL)
                     }
             )
+        }
+    }
+}
+
+@Composable
+fun SubSettingsSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(26.dp))
+            .background(Color(0xFF1C1C1E))
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            androidx.compose.foundation.text.BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+                    fontSize = 16.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Normal
+                ),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
+                modifier = Modifier.weight(1f),
+                decorationBox = { innerTextField ->
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "Search any settings",
+                            fontFamily = com.example.musicfy.ui.theme.InterFontFamily,
+                            fontSize = 16.sp,
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
+                    }
+                    innerTextField()
+                }
+            )
+
+            if (query.isNotEmpty()) {
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+                Icon(
+                    painter = painterResource(R.drawable.close),
+                    contentDescription = "Clear",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .clickable { onQueryChange("") }
+                )
+            }
         }
     }
 }
