@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.android.build.api.dsl.ApplicationExtension
 import java.util.Properties
 import java.net.URL
 
@@ -16,7 +17,7 @@ plugins {
     alias(libs.plugins.protobufPlugin)
 }
 
-android {
+extensions.configure<ApplicationExtension> {
     namespace = "com.example.musicfy"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
@@ -26,7 +27,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 70
-        versionName = "7.0.0 build#1028"
+        versionName = "7.0.0 build#1031"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -92,8 +93,8 @@ android {
 
     sourceSets {
         getByName("fdroid") {
-            java.directories.add(file("src/foss/kotlin"))
-            res.directories.add(file("src/foss/res"))
+            java.directories.add("src/foss/kotlin")
+            res.directories.add("src/foss/res")
         }
     }
 
