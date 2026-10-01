@@ -22,7 +22,7 @@ coroutinesGuava = "1.10.2"
 concurrentFutures = "1.3.0"
 activity = "1.12.3"
 hiltNavigation = "1.3.0"
-datastore = "1.2.0"
+data'store = "1.2.0"
 composeReorderable = "3.0.0"
 shimmer = "1.3.3"
 palette = "1.0.0"
@@ -63,6 +63,7 @@ compose-reorderable = { module = "sh.calvin.reorderable:reorderable", version.re
 
 viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }
 
 material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
 androidx-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "adaptive" }

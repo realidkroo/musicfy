@@ -105,6 +105,7 @@ import com.example.musicfy.LocalGlassState
 import com.example.musicfy.constants.CanvasThumbnailAnimationKey
 import com.example.musicfy.constants.CanvasWifiOnlyKey
 import com.example.musicfy.constants.DisableBlurKey
+import com.example.musicfy.constants.ForceYtBackdropBlur1500Key
 import com.example.musicfy.constants.PlayVideoBackgroundKey
 import com.example.musicfy.constants.PlayerBackgroundStyle
 import com.example.musicfy.constants.PlayerCoverStyle
@@ -1206,6 +1207,7 @@ private fun VideoBackdropBlur(
     modifier: Modifier = Modifier,
 ) {
     val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = false)
+    val (force1500pxBlur) = rememberPreference(ForceYtBackdropBlur1500Key, defaultValue = false)
     if (disableBlur) return
 
     var backdropPosInWindow by remember { mutableStateOf(Offset.Zero) }
@@ -1222,7 +1224,9 @@ private fun VideoBackdropBlur(
                 .fillMaxSize()
                 .graphicsLayer {
                     renderEffect = BlurEffectCache.get(
-                        300f, android.graphics.Shader.TileMode.CLAMP
+                        if (force1500pxBlur) 1500f else 120f,
+                        android.graphics.Shader.TileMode.CLAMP,
+                        allowLargeRadius = true,
                     )
                 }
         ) {

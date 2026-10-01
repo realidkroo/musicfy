@@ -66,18 +66,18 @@ fun BetaNoticeContainer(
         val screenHeight = maxHeight
 
         val backgroundTopEdge = topInset + 8.dp
-        val foregroundTopEdge = backgroundTopEdge + 12.dp
+        val foregroundTopEdge = backgroundTopEdge + 56.dp
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    val scale = 1f - 0.08f * effectiveProgress
+                    val scale = 1f - 0.07f * effectiveProgress
                     scaleX = scale
                     scaleY = scale
 
-                    val targetTranslationY = topInset.toPx() + 8.dp.toPx() - (size.height * 0.04f)
-                    translationY = targetTranslationY * effectiveProgress
+                    val naturalTopOffset = size.height * (1f - scale) / 2f
+                    translationY = (backgroundTopEdge.toPx() - naturalTopOffset) * effectiveProgress
 
                     clip = true
                     val radius = (32f * effectiveProgress).coerceAtLeast(0f)
@@ -87,11 +87,15 @@ fun BetaNoticeContainer(
             content()
         }
 
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val dismissThreshold = with(density) { 80.dp.toPx() }
+
         if (effectiveProgress > 0f) {
+            val dragAlphaDim = (dragOffset.value / 400f).coerceIn(0f, 0.6f)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = effectiveProgress.coerceIn(0f, 1f) }
+                    .graphicsLayer { alpha = (effectiveProgress * (1f - dragAlphaDim)).coerceIn(0f, 1f) }
                     .background(Color.Black.copy(alpha = 0.7f * effectiveProgress))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -102,19 +106,27 @@ fun BetaNoticeContainer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-
                     .padding(top = foregroundTopEdge * effectiveProgress)
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onDragEnd = {
                                 coroutineScope.launch {
-                                    dragOffset.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessLow
+                                    if (dragOffset.value > dismissThreshold) {
+                                        dragOffset.animateTo(
+                                            targetValue = size.height.toFloat(),
+                                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
                                         )
-                                    )
+                                        dragOffset.snapTo(0f)
+                                        onDismiss(false)
+                                    } else {
+                                        dragOffset.animateTo(
+                                            targetValue = 0f,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMedium
+                                            )
+                                        )
+                                    }
                                 }
                             },
                             onDragCancel = {
@@ -123,7 +135,7 @@ fun BetaNoticeContainer(
                                         targetValue = 0f,
                                         animationSpec = spring(
                                             dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessLow
+                                            stiffness = Spring.StiffnessMedium
                                         )
                                     )
                                 }
@@ -131,16 +143,15 @@ fun BetaNoticeContainer(
                         ) { change, dragAmount ->
                             change.consume()
                             coroutineScope.launch {
-
-                                val resistance = if (dragOffset.value > 0) 0.3f else 0.1f
+                                val resistance = if (dragOffset.value < 0) 0.15f else 1.0f
                                 val newOffset = dragOffset.value + dragAmount * resistance
-                                dragOffset.snapTo(newOffset.coerceAtLeast(-30f))
+                                dragOffset.snapTo(newOffset.coerceAtLeast(-40f))
                             }
                         }
                     }
                     .graphicsLayer {
                         val inverseProgress = 1f - effectiveProgress
-                        translationY = size.height * inverseProgress + dragOffset.value
+                        translationY = size.height * inverseProgress + dragOffset.value.coerceAtLeast(-40f)
                     }
             ) {
                 BetaNoticeScreen(onDismiss = onDismiss)

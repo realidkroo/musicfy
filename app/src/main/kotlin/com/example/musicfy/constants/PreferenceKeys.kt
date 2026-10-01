@@ -852,7 +852,11 @@ val EnableElementBlurAnimatorKey = booleanPreferencesKey("enableElementBlurAnima
 val BlurStrengthPxKey = floatPreferencesKey("blurStrengthPx")
 val AudioQualityBadgeDevKey = booleanPreferencesKey("audioQualityBadgeDev")
 val YtVideoBackgroundLyricsSyncKey = booleanPreferencesKey("ytVideoBackgroundLyricsSync")
+val ForceYtBackdropBlur1500Key = booleanPreferencesKey("forceYtBackdropBlur1500")
 
 val OfflineModeKey = booleanPreferencesKey("offlineMode")
 val DisableAiFilterKey = booleanPreferencesKey("disableAiFilter")
 val SetupImportCompletedKey = booleanPreferencesKey("setupImportCompleted")
+
+val LastKnownVersionNameKey = stringPreferencesKey("lastKnownVersionName")
+val LastDonateShownTimeKey = longPreferencesKey("lastDonateShownTime")
