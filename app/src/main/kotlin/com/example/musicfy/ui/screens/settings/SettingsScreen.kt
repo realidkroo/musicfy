@@ -295,7 +295,7 @@ fun SettingsScreen(
                                     text = if (updateState is com.example.musicfy.core.updater.UpdateState.Available) {
                                         com.example.musicfy.ui.screens.update.UpdateHeadline
                                     } else {
-                                        "Made with <3 by roo! this app is still on DEV stage."
+                                        "Made with <3 by roo!"
                                     },
                                     fontFamily = InterFontFamily,
                                     fontSize = 12.sp,
