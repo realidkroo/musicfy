@@ -23,18 +23,6 @@
 
 ---
 
-## Priority Roadmap
-
-- [x] Revamped Search -- Supercharged search experience with fast, accurate indexing.
-- [x] Player Menu -- Enhanced menu options for direct playback and library actions.
-- [/] Multiple Player Styles -- Customizable player views (1 out of 3 completed).
-- [ ] AI Lyric Translation -- Real-time AI-powered translation for lyrics.
-- [ ] Revamped Albums View -- Fresh UI and rich layout for album exploration.
-- [ ] Revamped Artists View -- Immersive artist hub with top tracks and discography.
-- [ ] Bug Fixes & Polish -- Continuous stability improvements across affected features.
-
----
-
 ## Musicfy isn’t possible without these incredible projects
 
 - **ViviMusic** by [vividm](https://github.com/vividm) ([Repository](https://github.com/vividm/ViviMusic)) -- For the base app. This app is a fork from this project.
