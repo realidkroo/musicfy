@@ -17,7 +17,7 @@ import kotlin.math.roundToInt
  * arbitrary radii smoothly.
  *
  * This cache:
- * 1. Safely clamps extreme radii on API <= 34 to 54f to guarantee single-pass GPU execution.
+ * 1. Clamps extreme radii on API <= 34 to 54f by default to avoid multi-pass GPU stalls.
  * 2. Quantizes radii to prevent thousands of native SkImageFilter allocations.
  * 3. Returns null for radius <= 0.5f to immediately free offscreen layer overhead.
  */
@@ -27,19 +27,20 @@ object BlurEffectCache {
 
     /**
      * Retrieves or creates a cached Compose RenderEffect.
-     * On Android 12-14 (API <= 34), blurs > 54f cause multi-pass GPU FBO stalls.
-     * Clamping to 54f preserves 100% visual blur appearance while maintaining 60/120fps.
+     * On Android 12-14 (API <= 34), blurs > 54f can cause multi-pass GPU FBO stalls,
+     * so they are clamped unless [allowLargeRadius] is explicitly enabled.
      * On Android 15/16 (API 35+), full radius is preserved with HW pyramid downsampling.
      */
     fun get(
         radius: Float,
-        tileMode: Shader.TileMode = Shader.TileMode.CLAMP
+        tileMode: Shader.TileMode = Shader.TileMode.CLAMP,
+        allowLargeRadius: Boolean = false,
     ): RenderEffect? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || radius <= 0.5f) {
             return null
         }
 
-        val effectiveRadius = if (Build.VERSION.SDK_INT <= 34) {
+        val effectiveRadius = if (Build.VERSION.SDK_INT <= 34 && !allowLargeRadius) {
             radius.coerceAtMost(54f)
         } else {
             radius

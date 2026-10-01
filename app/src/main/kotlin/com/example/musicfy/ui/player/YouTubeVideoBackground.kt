@@ -64,7 +64,10 @@ fun YouTubeVideoBackground(
         val listener = object : Player.Listener {
             override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
                 if (videoSize.width > 0 && videoSize.height > 0) {
-                    aspectRatioFrameLayout.setAspectRatio(videoSize.width.toFloat() / videoSize.height)
+                    val pixelAspectRatio = videoSize.pixelWidthHeightRatio
+                    aspectRatioFrameLayout.setAspectRatio(
+                        videoSize.width * pixelAspectRatio / videoSize.height
+                    )
                 }
             }
             override fun onRenderedFirstFrame() {

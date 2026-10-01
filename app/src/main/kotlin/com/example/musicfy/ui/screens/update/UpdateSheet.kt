@@ -261,7 +261,15 @@ fun UpdateSheet(
                 LinkRow(R.drawable.link, "@realidkroo") { context.openUrl(InstagramUrl) }
                 Spacer(modifier = Modifier.height(8.dp))
 
-                LinkRow(R.drawable.heart, "Donate me!", enabled = false) {}
+                val zoomOutState = com.example.musicfy.ui.component.LocalZoomOutOverlayState.current
+                LinkRow(R.drawable.heart, "Donate me!", enabled = true) {
+                    onDismiss()
+                    zoomOutState.show {
+                        com.example.musicfy.ui.screens.donate.DonateSheet(
+                            onDismiss = { zoomOutState.dismiss() }
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(20.dp))

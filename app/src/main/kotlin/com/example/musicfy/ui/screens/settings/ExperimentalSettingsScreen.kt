@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.R
 import com.example.musicfy.constants.BetaNoticeDismissedKey
+import com.example.musicfy.constants.ForceYtBackdropBlur1500Key
 import com.example.musicfy.constants.HapticFocus
 import com.example.musicfy.constants.HapticFocusKey
 import com.example.musicfy.constants.HapticSensitivity
@@ -53,6 +54,10 @@ fun ExperimentalSettingsScreen(navController: NavController) {
         com.example.musicfy.constants.Enable26RecapKey,
         defaultValue = false,
     )
+    val (forceYtBackdropBlur1500, onForceYtBackdropBlur1500Change) = rememberPreference(
+        ForceYtBackdropBlur1500Key,
+        defaultValue = false,
+    )
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -64,6 +69,22 @@ fun ExperimentalSettingsScreen(navController: NavController) {
             SettingsGroup(
                 style = SettingsGroupStyle.Grouped,
                 items = buildList {
+                    add(
+                        SettingsItem(
+                            title = { Text("Force 1500 px YouTube blur") },
+                            highlightKey = "Force 1500 px YouTube blur",
+                            descriptionText = "Override the 120 px default; may increase GPU load",
+                            icon = painterResource(R.drawable.tune),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { onForceYtBackdropBlur1500Change(!forceYtBackdropBlur1500) },
+                            trailingContent = {
+                                AppSwitch(
+                                    checked = forceYtBackdropBlur1500,
+                                    onCheckedChange = onForceYtBackdropBlur1500Change,
+                                )
+                            }
+                        )
+                    )
                     add(
                         SettingsItem(
                             title = { Text("26 recap") },

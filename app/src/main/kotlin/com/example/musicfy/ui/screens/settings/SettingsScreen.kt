@@ -39,6 +39,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -87,7 +90,6 @@ import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.ui.theme.InterFontFamily
 import com.example.musicfy.utils.rememberPreference
 import kotlinx.coroutines.launch
-import java.time.LocalTime
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -99,54 +101,32 @@ private fun lerpFloat(start: Float, stop: Float, fraction: Float): Float =
     start + (stop - start) * fraction
 
 private fun randomGreetingWord(): String {
-    val hour = LocalTime.now().hour
-    val timeBased = when (hour) {
-        in 5..11 -> "Good morning"
-        in 12..16 -> "Good afternoon"
-        in 17..20 -> "Good evening"
-        else -> "Good night"
+    return listOf("Hey", "Hello", "Good morning", "Good afternoon", "Good evening").random()
+}
+
+private object MusicfyGreeting {
+    private val greetingState = mutableStateOf(randomGreetingWord())
+    private var wasBackgrounded = false
+
+    val current: String
+        get() = greetingState.value
+
+    init {
+        ProcessLifecycleOwner.get().lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_STOP -> wasBackgrounded = true
+                    Lifecycle.Event.ON_START -> {
+                        if (wasBackgrounded) {
+                            greetingState.value = randomGreetingWord()
+                            wasBackgrounded = false
+                        }
+                    }
+                    else -> Unit
+                }
+            }
+        )
     }
-    val variants = listOf(
-        timeBased,
-        "Hey",
-        "Sup",
-        "'Ello",
-        "こんにちは (Konnichiwa)",
-        "やあ (Yā)",
-        "你好 (Nǐ hǎo)",
-        "嗨 (Hāi)",
-        "مرحبا (Marhaban)",
-        "أهلاً (Ahlan)",
-        "สวัสดี (Sawatdee)",
-        "หวัดดี (Watdee)",
-        "Selamat datang",
-        "Halo",
-        "Apa kabar",
-        "Monggo",
-        "Salut",
-        "Bonjour",
-        "Hola",
-        "Qué tal",
-        "Hallo",
-        "Willkommen",
-        "Ciao",
-        "Salve",
-        "안녕하세요 (Annyeong)",
-        "नमस्ते (Namaste)",
-        "Привет (Privet)",
-        "Kamusta",
-        "Aloha",
-        "Olá",
-        "Hoi",
-        "Xin chào",
-        "Merhaba",
-        "Tjänare",
-        "Γεια σου (Yassou)",
-        "Dia dhuit",
-        "Cześć",
-        "Jambo",
-    )
-    return variants.random()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -185,8 +165,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val currentEntry by navController.currentBackStackEntryFlow.collectAsState(initial = null)
-    val greeting = remember(currentEntry) { randomGreetingWord() }
+    val greeting = MusicfyGreeting.current
 
     val database = com.example.musicfy.LocalDatabase.current
     val totalListeningMs by database.totalListeningTimeMs().collectAsState(initial = 0L)
