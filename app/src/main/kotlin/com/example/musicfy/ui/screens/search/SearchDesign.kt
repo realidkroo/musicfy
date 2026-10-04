@@ -106,6 +106,45 @@ val SearchCollapseEasing = CubicBezierEasing(0.57f, 0.53f, 0f, 1f)
 
 const val SearchCollapseDurationMs = 900
 
+/**
+ * Same latch-and-settle collapse mechanics as [rememberCollapseProgress] but for a plain
+ * [androidx.compose.foundation.ScrollState] (a `Column` + `verticalScroll`, e.g. the Settings
+ * screens) instead of a `LazyList`. Crossing the threshold flips a binary target that
+ * [animateFloatAsState] always eases all the way to 0 or 1, so the morph finishes smoothly even
+ * after the user's finger lifts and scrolling stops, instead of being pinned 1:1 to scroll offset.
+ */
+@Composable
+fun rememberScrollCollapseProgress(
+    scrollState: androidx.compose.foundation.ScrollState,
+    enterDp: Dp = 24.dp,
+    exitDp: Dp = 6.dp,
+): State<Float> {
+    val density = LocalDensity.current
+    val enterPx = with(density) { enterDp.toPx() }
+    val exitPx = with(density) { exitDp.toPx() }
+    val latch = remember(scrollState) { booleanArrayOf(false) }
+    val collapsed by remember(scrollState, enterPx, exitPx) {
+        derivedStateOf {
+            val offset = scrollState.value.toFloat()
+            val next = when {
+                offset > enterPx -> true
+                offset < exitPx -> false
+                else -> latch[0]
+            }
+            latch[0] = next
+            next
+        }
+    }
+    return animateFloatAsState(
+        targetValue = if (collapsed) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = SearchCollapseDurationMs,
+            easing = SearchCollapseEasing,
+        ),
+        label = "scrollCollapse",
+    )
+}
+
 @Composable
 fun rememberCollapseProgress(listState: LazyListState): State<Float> {
     val density = LocalDensity.current
@@ -160,6 +199,13 @@ fun SearchGlassTopBar(
 
     /** Small line under the title, e.g. "All songs on your library listed here." */
     subtitle: String? = null,
+
+    /**
+     * Overrides what renders inside the title block (e.g. a logo mark) while keeping the same
+     * collapse fade/scale/translate/blur the plain text title gets. [title] must still be
+     * non-null to reserve the block's height; [subtitle] is ignored when this is set.
+     */
+    titleContent: (@Composable () -> Unit)? = null,
 
     /**
      * Height of the title block. Defaults to the Search tab's title-only height; the Library
@@ -257,24 +303,28 @@ fun SearchGlassTopBar(
                         },
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    Column(verticalArrangement = Arrangement.Center) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.displaySmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 34.sp,
-                            ),
-                            color = SearchColors.Primary,
-                            maxLines = 1,
-                        )
-                        if (subtitle != null) {
+                    if (titleContent != null) {
+                        titleContent()
+                    } else {
+                        Column(verticalArrangement = Arrangement.Center) {
                             Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                color = SearchColors.Secondary,
+                                text = title,
+                                style = MaterialTheme.typography.displaySmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 34.sp,
+                                ),
+                                color = SearchColors.Primary,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
                             )
+                            if (subtitle != null) {
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                    color = SearchColors.Secondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     }
                 }

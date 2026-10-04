@@ -8,6 +8,7 @@ import com.music.innertube.models.SongItem
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.MediaMetadata
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 class YouTubePlaylistQueue(
@@ -19,8 +20,7 @@ class YouTubePlaylistQueue(
     override val preloadItem: MediaMetadata? = null,
 ) : Queue {
     private var continuation: String? = initialContinuation
-    private var retryCount = 0
-    private val maxRetries = 3
+    private var failedPageLoads = 0
 
     override suspend fun getInitialStatus(): Queue.Status {
         return withContext(IO) {
@@ -49,21 +49,27 @@ class YouTubePlaylistQueue(
             val currentContinuation = continuation ?: return@withContext emptyList()
             var lastException: Throwable? = null
 
-            for (attempt in 0..maxRetries) {
+            for (attempt in 0..MAX_RETRIES) {
                 try {
                     val continuationPage = YouTube.playlistContinuation(currentContinuation).getOrThrow()
                     continuation = continuationPage.continuation
-                    retryCount = 0
+                    failedPageLoads = 0
                     return@withContext continuationPage.songs.map { it.toMediaItem() }
                 } catch (e: Exception) {
                     lastException = e
-                    retryCount++
-                    if (retryCount >= maxRetries) {
-                        continuation = null
-                    }
+                    if (attempt < MAX_RETRIES) delay(RETRY_DELAY_MS * (attempt + 1))
                 }
+            }
+            if (++failedPageLoads >= MAX_FAILED_PAGE_LOADS) {
+                continuation = null
             }
             throw lastException ?: Exception("Failed to get next page")
         }
+    }
+
+    companion object {
+        private const val MAX_RETRIES = 2
+        private const val MAX_FAILED_PAGE_LOADS = 3
+        private const val RETRY_DELAY_MS = 750L
     }
 }

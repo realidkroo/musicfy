@@ -41,7 +41,7 @@ class YouTubeAlbumRadio(
         continuation = nextResult.continuation
         if (!firstTimeLoaded) {
             firstTimeLoaded = true
-            nextResult.items.subList(albumSongCount, nextResult.items.size).map { it.toMediaItem() }
+            nextResult.items.drop(albumSongCount).map { it.toMediaItem() }
         } else {
             nextResult.items.map { it.toMediaItem() }
         }

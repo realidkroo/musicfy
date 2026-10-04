@@ -119,6 +119,7 @@ import com.example.musicfy.constants.MediaSessionConstants.CommandToggleStartRad
 import com.example.musicfy.constants.PauseListenHistoryKey
 import com.example.musicfy.constants.PauseOnMute
 import com.example.musicfy.constants.PersistentQueueKey
+import com.example.musicfy.constants.InfiniteQueueKey
 import com.example.musicfy.constants.PersistentShuffleAcrossQueuesKey
 import com.example.musicfy.constants.PlayerVolumeKey
 import com.example.musicfy.constants.RememberShuffleAndRepeatKey
@@ -302,6 +303,15 @@ class MusicService :
 
     private var currentQueue: Queue = EmptyQueue
     var queueTitle: String? = null
+
+    // Bumped whenever the queue is replaced, so in-flight loads for an old queue don't append to the new one.
+    private var queueGeneration = 0
+    private var initialQueueLoading = false
+    private var runwayJob: Job? = null
+
+    // Radio source used to keep the queue going once the current queue runs out (infinite queue).
+    private var infiniteSource: Queue? = null
+    private val usedInfiniteSeeds = HashSet<String>()
 
     val currentMediaMetadata = MutableStateFlow<com.example.musicfy.models.MediaMetadata?>(null)
     private val currentSong =
@@ -1457,6 +1467,9 @@ class MusicService :
 
         currentQueue = queue
         queueTitle = null
+        resetQueueRunway()
+        val generation = queueGeneration
+        initialQueueLoading = true
         val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, false)
         val previousShuffleEnabled = player.shuffleModeEnabled
         if (!persistShuffleAcrossQueues) {
@@ -1470,50 +1483,208 @@ class MusicService :
             player.playWhenReady = playWhenReady
         }
         scope.launch(SilentHandler) {
-            val initialStatus =
-                withContext(Dispatchers.IO) {
-                    queue.getInitialStatus()
-                        .filterExplicit(dataStore.get(HideExplicitKey, false))
-                        .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+            try {
+                loadInitialQueue(queue, generation, playWhenReady)
+            } finally {
+                if (generation == queueGeneration) {
+                    initialQueueLoading = false
+                    // Even if the initial load failed or came back short, make sure there's something next.
+                    ensureQueueRunway()
                 }
-            if (queue.preloadItem != null && player.playbackState == STATE_IDLE) return@launch
-            if (initialStatus.title != null) {
-                queueTitle = initialStatus.title
             }
-            if (initialStatus.items.isEmpty()) return@launch
+        }
+    }
 
-            originalQueueSize = initialStatus.items.size
-            if (queue.preloadItem != null) {
-                player.addMediaItems(
-                    0,
-                    initialStatus.items.subList(0, initialStatus.mediaItemIndex)
-                )
-                player.addMediaItems(
-                    initialStatus.items.subList(
-                        initialStatus.mediaItemIndex + 1,
-                        initialStatus.items.size
-                    )
-                )
+    private suspend fun loadInitialQueue(
+        queue: Queue,
+        generation: Int,
+        playWhenReady: Boolean,
+    ) {
+        val initialStatus =
+            withContext(Dispatchers.IO) {
+                queue.getInitialStatus()
+                    .filterExplicit(dataStore.get(HideExplicitKey, false))
+                    .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+            }
+        if (generation != queueGeneration) return
+
+        val preloadId = queue.preloadItem?.id
+        // Only drop the result if the user has moved on from the preloaded song. Don't bail just because
+        // the player is idle: the first stream for a fresh install often errors once and retries, and
+        // bailing here used to leave the queue with only that one song.
+        if (preloadId != null && player.currentMediaItem?.mediaId != preloadId) return
+
+        if (initialStatus.title != null) {
+            queueTitle = initialStatus.title
+        }
+        if (initialStatus.items.isEmpty()) return
+
+        originalQueueSize = initialStatus.items.size
+        if (preloadId != null) {
+            val items = initialStatus.items
+            val preloadIndex = items.indexOfFirst { it.mediaId == preloadId }
+            if (preloadIndex >= 0) {
+                player.addMediaItems(0, items.subList(0, preloadIndex))
+                player.addMediaItems(items.subList(preloadIndex + 1, items.size))
             } else {
-                player.setMediaItems(
-                    initialStatus.items,
-                    if (initialStatus.mediaItemIndex >
-                        0
-                    ) {
-                        initialStatus.mediaItemIndex
-                    } else {
-                        0
-                    },
-                    initialStatus.position,
-                )
-                player.prepare()
-                player.playWhenReady = playWhenReady
+                // The result doesn't contain the playing song (e.g. it fell back to a radio mix), so
+                // queue all of it after the current song instead of dropping a track.
+                player.addMediaItems(items)
             }
+        } else {
+            player.setMediaItems(
+                initialStatus.items,
+                if (initialStatus.mediaItemIndex >
+                    0
+                ) {
+                    initialStatus.mediaItemIndex
+                } else {
+                    0
+                },
+                initialStatus.position,
+            )
+            player.prepare()
+            player.playWhenReady = playWhenReady
+        }
 
-            if (player.shuffleModeEnabled) {
-                val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-                applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+        if (player.shuffleModeEnabled) {
+            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+        }
+    }
+
+    private fun resetQueueRunway() {
+        queueGeneration++
+        runwayJob?.cancel()
+        runwayJob = null
+        infiniteSource = null
+        usedInfiniteSeeds.clear()
+    }
+
+    /** How many items the player will play after the current one (respecting shuffle), capped at [limit]. */
+    private fun upcomingItemCount(limit: Int): Int {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) return 0
+        var index = player.currentMediaItemIndex
+        var count = 0
+        while (count < limit) {
+            index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, player.shuffleModeEnabled)
+            if (index == C.INDEX_UNSET) break
+            count++
+        }
+        return count
+    }
+
+    /**
+     * Keeps a few songs queued ahead of the current one: first from the queue's own next pages, then, when
+     * the queue has run dry and infinite queue is on, from a radio seeded by the songs at the end of the queue.
+     * If playback already ended because nothing was left, it resumes on the newly added songs.
+     */
+    private fun ensureQueueRunway() {
+        if (!playerInitialized.value) return
+        if (initialQueueLoading || runwayJob?.isActive == true) return
+        if (player.mediaItemCount == 0) return
+        if (dataStore.get(DisableLoadMoreWhenRepeatAllKey, false) && player.repeatMode == REPEAT_MODE_ALL) return
+        if (upcomingItemCount(QUEUE_RUNWAY_SIZE + 1) > QUEUE_RUNWAY_SIZE) return
+
+        val generation = queueGeneration
+        runwayJob = scope.launch(SilentHandler) {
+            repeat(MAX_RUNWAY_ATTEMPTS) {
+                val (candidates, fromInfinite) = loadMoreQueueItems() ?: return@launch
+                if (generation != queueGeneration || player.mediaItemCount == 0) return@launch
+
+                val newItems = if (fromInfinite) {
+                    // Radio mixes repeat songs that are already queued (including their own seed).
+                    val queued = HashSet<String>()
+                    for (i in 0 until player.mediaItemCount) queued += player.getMediaItemAt(i).mediaId
+                    candidates.filter { queued.add(it.mediaId) }
+                } else {
+                    candidates
+                }
+                if (newItems.isEmpty()) return@repeat
+
+                val endedWithNothingNext = player.playbackState == Player.STATE_ENDED
+                player.addMediaItems(newItems)
+                if (player.shuffleModeEnabled) {
+                    val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                    applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+                }
+                if (endedWithNothingNext && player.playWhenReady) {
+                    val nextIndex = player.nextMediaItemIndex
+                    if (nextIndex != C.INDEX_UNSET) {
+                        player.seekTo(nextIndex, 0)
+                        player.prepare()
+                        player.play()
+                    }
+                }
+                return@launch
             }
+        }
+    }
+
+    /** Returns the next batch of songs and whether they came from the infinite queue, or null if there's nothing to add. */
+    private suspend fun loadMoreQueueItems(): Pair<List<MediaItem>, Boolean>? {
+        val hideExplicit = dataStore.get(HideExplicitKey, false)
+        val hideVideos = dataStore.get(HideVideoSongsKey, false)
+
+        val queue = currentQueue
+        if (dataStore.get(AutoLoadMoreKey, true) && queue.hasNextPage()) {
+            val page = runCatching { withContext(Dispatchers.IO) { queue.nextPage() } }
+                .onFailure { Timber.tag(TAG).w(it, "Failed to load next queue page") }
+                .getOrDefault(emptyList())
+                .filterExplicit(hideExplicit)
+                .filterVideoSongs(hideVideos)
+            if (page.isNotEmpty()) return page to false
+        }
+
+        if (!dataStore.get(InfiniteQueueKey, true) || player.repeatMode != REPEAT_MODE_OFF) return null
+
+        val infiniteItems = loadInfiniteQueueItems()
+            .filterExplicit(hideExplicit)
+            .filterVideoSongs(hideVideos)
+        return infiniteItems.takeIf { it.isNotEmpty() }?.let { it to true }
+    }
+
+    private suspend fun loadInfiniteQueueItems(): List<MediaItem> {
+        infiniteSource?.takeIf { it.hasNextPage() }?.let { source ->
+            runCatching { withContext(Dispatchers.IO) { source.nextPage() } }
+                .onFailure { Timber.tag(TAG).w(it, "Failed to load next infinite queue page") }
+                .getOrNull()
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
+
+        // Seed a fresh radio from the most recent online song we haven't seeded from yet, so the
+        // queue keeps drifting forward instead of looping on the same mix.
+        val seed = (player.mediaItemCount - 1 downTo 0)
+            .asSequence()
+            .map { player.getMediaItemAt(it).mediaId }
+            .firstOrNull { !it.startsWith("LOCAL_") && it !in usedInfiniteSeeds }
+            ?: return emptyList()
+        usedInfiniteSeeds += seed
+
+        val radio = YouTubeQueue(WatchEndpoint(videoId = seed, playlistId = "RDAMVM$seed"))
+        val radioItems = runCatching { withContext(Dispatchers.IO) { radio.getInitialStatus().items } }
+            .onFailure { Timber.tag(TAG).w(it, "Failed to start infinite queue radio for $seed") }
+            .getOrDefault(emptyList())
+        infiniteSource = radio
+        if (radioItems.isNotEmpty()) return radioItems
+
+        return runCatching {
+            withContext(Dispatchers.IO) {
+                val relatedEndpoint = YouTube.next(WatchEndpoint(videoId = seed)).getOrNull()?.relatedEndpoint
+                    ?: return@withContext emptyList()
+                YouTube.related(relatedEndpoint).getOrNull()?.songs.orEmpty().map { it.toMediaItem() }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun setInfiniteQueueEnabled(enabled: Boolean) {
+        scope.launch {
+            dataStore.edit { settings ->
+                settings[InfiniteQueueKey] = enabled
+            }
+            if (enabled) ensureQueueRunway()
         }
     }
 
@@ -1529,77 +1700,99 @@ class MusicService :
         val currentIndex = player.currentMediaItemIndex
         val currentMediaId = currentMediaMetadata.id
 
-        scope.launch(SilentHandler) {
+        resetQueueRunway()
+        val generation = queueGeneration
+        initialQueueLoading = true
 
-            val radioQueue = YouTubeQueue(
-                endpoint = WatchEndpoint(
-                    videoId = currentMediaId
-                )
+        scope.launch(SilentHandler) {
+            try {
+                loadSeamlessRadio(currentIndex, currentMediaId, generation)
+            } finally {
+                if (generation == queueGeneration) {
+                    initialQueueLoading = false
+                    ensureQueueRunway()
+                }
+            }
+        }
+    }
+
+    private suspend fun loadSeamlessRadio(
+        currentIndex: Int,
+        currentMediaId: String,
+        generation: Int,
+    ) {
+        val radioQueue = YouTubeQueue(
+            endpoint = WatchEndpoint(
+                videoId = currentMediaId
             )
+        )
+
+        try {
+            val initialStatus = withContext(Dispatchers.IO) {
+                radioQueue.getInitialStatus()
+                    .filterExplicit(dataStore.get(HideExplicitKey, false))
+                    .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+            }
+            if (generation != queueGeneration) return
+
+            if (initialStatus.title != null) {
+                queueTitle = initialStatus.title
+            }
+
+            val radioItems = initialStatus.items.filter { item ->
+                item.mediaId != currentMediaId
+            }
+
+            if (radioItems.isNotEmpty()) {
+                val itemCount = player.mediaItemCount
+
+                if (itemCount > currentIndex + 1) {
+                    player.removeMediaItems(currentIndex + 1, itemCount)
+                }
+
+                player.addMediaItems(currentIndex + 1, radioItems)
+                if (player.shuffleModeEnabled) {
+                    val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                    applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+                }
+            }
+
+            currentQueue = radioQueue
+        } catch (e: Exception) {
 
             try {
-                val initialStatus = withContext(Dispatchers.IO) {
-                    radioQueue.getInitialStatus()
-                        .filterExplicit(dataStore.get(HideExplicitKey, false))
-                        .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                val nextResult = withContext(Dispatchers.IO) {
+                    YouTube.next(WatchEndpoint(videoId = currentMediaId)).getOrNull()
                 }
-
-                if (initialStatus.title != null) {
-                    queueTitle = initialStatus.title
-                }
-
-                val radioItems = initialStatus.items.filter { item ->
-                    item.mediaId != currentMediaId
-                }
-
-                if (radioItems.isNotEmpty()) {
-                    val itemCount = player.mediaItemCount
-
-                    if (itemCount > currentIndex + 1) {
-                        player.removeMediaItems(currentIndex + 1, itemCount)
+                nextResult?.relatedEndpoint?.let { relatedEndpoint ->
+                    val relatedPage = withContext(Dispatchers.IO) {
+                        YouTube.related(relatedEndpoint).getOrNull()
                     }
+                    if (generation != queueGeneration) return
+                    relatedPage?.songs?.let { songs ->
+                        val radioItems = songs
+                            .filter { it.id != currentMediaId }
+                            .map { it.toMediaItem() }
+                            .filterExplicit(dataStore.get(HideExplicitKey, false))
+                            .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
 
-                    player.addMediaItems(currentIndex + 1, radioItems)
-                    if (player.shuffleModeEnabled) {
-                        val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-                        applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
-                    }
-                }
-
-                currentQueue = radioQueue
-            } catch (e: Exception) {
-
-                try {
-                    val nextResult = withContext(Dispatchers.IO) {
-                        YouTube.next(WatchEndpoint(videoId = currentMediaId)).getOrNull()
-                    }
-                    nextResult?.relatedEndpoint?.let { relatedEndpoint ->
-                        val relatedPage = withContext(Dispatchers.IO) {
-                            YouTube.related(relatedEndpoint).getOrNull()
-                        }
-                        relatedPage?.songs?.let { songs ->
-                            val radioItems = songs
-                                .filter { it.id != currentMediaId }
-                                .map { it.toMediaItem() }
-                                .filterExplicit(dataStore.get(HideExplicitKey, false))
-                                .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
-
-                            if (radioItems.isNotEmpty()) {
-                                val itemCount = player.mediaItemCount
-                                if (itemCount > currentIndex + 1) {
-                                    player.removeMediaItems(currentIndex + 1, itemCount)
-                                }
-                                player.addMediaItems(currentIndex + 1, radioItems)
-                                if (player.shuffleModeEnabled) {
-                                    val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-                                    applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
-                                }
+                        if (radioItems.isNotEmpty()) {
+                            val itemCount = player.mediaItemCount
+                            if (itemCount > currentIndex + 1) {
+                                player.removeMediaItems(currentIndex + 1, itemCount)
                             }
+                            player.addMediaItems(currentIndex + 1, radioItems)
+                            if (player.shuffleModeEnabled) {
+                                val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                                applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+                            }
+                            // The old queue's pages no longer follow these songs; let infinite queue extend them.
+                            currentQueue = EmptyQueue
                         }
                     }
-                } catch (_: Exception) {
-
                 }
+            } catch (_: Exception) {
+
             }
         }
     }
@@ -2018,26 +2211,8 @@ class MusicService :
             }
         }
 
-        if (dataStore.get(AutoLoadMoreKey, true) &&
-            reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT &&
-            player.mediaItemCount - player.currentMediaItemIndex <= 5 &&
-            currentQueue.hasNextPage() &&
-            !(dataStore.get(DisableLoadMoreWhenRepeatAllKey, false) && player.repeatMode == REPEAT_MODE_ALL)
-        ) {
-            scope.launch(SilentHandler) {
-                val mediaItems = withContext(Dispatchers.IO) {
-                    currentQueue.nextPage()
-                        .filterExplicit(dataStore.get(HideExplicitKey, false))
-                        .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
-                }
-                if (player.playbackState != STATE_IDLE && mediaItems.isNotEmpty()) {
-                    player.addMediaItems(mediaItems)
-                    if (player.shuffleModeEnabled) {
-                        val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-                        applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
-                    }
-                }
-            }
+        if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+            ensureQueueRunway()
         }
 
         if (dataStore.get(PersistentQueueKey, true)) {
@@ -2055,6 +2230,9 @@ class MusicService :
                 player.seekTo(0, 0)
                 player.prepare()
                 player.play()
+            } else {
+                // Ran out of songs (e.g. a page load failed earlier): try to extend and keep playing.
+                ensureQueueRunway()
             }
         }
 
@@ -3619,6 +3797,9 @@ class MusicService :
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"
         const val MAX_CONSECUTIVE_ERR = 5
+        // Keep at least this many songs queued after the current one.
+        private const val QUEUE_RUNWAY_SIZE = 5
+        private const val MAX_RUNWAY_ATTEMPTS = 3
         const val MAX_RETRY_COUNT = 10
 
         private const val MAX_GAIN_MB = 300

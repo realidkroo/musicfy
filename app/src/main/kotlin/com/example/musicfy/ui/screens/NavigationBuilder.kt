@@ -99,7 +99,7 @@ import com.example.musicfy.ui.screens.search.OnlineSearchResult
 import com.example.musicfy.ui.screens.search.SearchScreen
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.ui.screens.settings.SettingsScreen
+import com.example.musicfy.ui.screens.settings.ProfileScreen
 import com.example.musicfy.ui.screens.library.LibraryAlbumsScreen
 import com.example.musicfy.ui.screens.SectionDetailScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -215,7 +215,7 @@ fun NavGraphBuilder.navigationBuilder(
     }
 
     composable(Screens.Settings.route) {
-        SettingsScreen(navController = navController)
+        ProfileScreen(navController = navController)
     }
 
     composable("advanced_audio_settings") {

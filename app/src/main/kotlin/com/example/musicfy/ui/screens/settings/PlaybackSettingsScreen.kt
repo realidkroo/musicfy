@@ -44,11 +44,8 @@ fun PlaybackSettingsScreen(navController: NavController) {
     SubSettingsScaffold(
         title = "Playback",
         onBack = { navController.navigateUp() },
+        searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
-        SubSettingsSearchBar(query = query, onQueryChange = { query = it })
-
-        Spacer(Modifier.height(16.dp))
-
         val items = listOf(
             SettingsItem(
                 title = { Text("Keep playing even when closed") },
