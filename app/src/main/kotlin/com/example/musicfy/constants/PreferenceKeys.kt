@@ -125,6 +125,7 @@ val SkipSilenceInstantKey = booleanPreferencesKey("skipSilenceInstant")
 val AudioNormalizationKey = booleanPreferencesKey("audioNormalization")
 val AutoLoadMoreKey = booleanPreferencesKey("autoLoadMore")
 val DisableLoadMoreWhenRepeatAllKey = booleanPreferencesKey("disableLoadMoreWhenRepeatAll")
+val InfiniteQueueKey = booleanPreferencesKey("infiniteQueue")
 
 val SetupCompletedKey = booleanPreferencesKey("setupCompleted")
 val UsernameKey = stringPreferencesKey("username")

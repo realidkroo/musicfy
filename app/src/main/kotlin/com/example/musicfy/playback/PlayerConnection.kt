@@ -259,6 +259,8 @@ class PlayerConnection(
         }
     }
 
+    fun setInfiniteQueueEnabled(enabled: Boolean) = service.setInfiniteQueueEnabled(enabled)
+
     fun playNext(item: MediaItem) = playNext(listOf(item))
 
     fun playNext(items: List<MediaItem>) {

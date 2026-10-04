@@ -69,11 +69,8 @@ fun AudioSettingsScreen(navController: NavController) {
     SubSettingsScaffold(
         title = "Audio",
         onBack = { navController.navigateUp() },
+        searchBar = { SubSettingsSearchBar(query = query, onQueryChange = { query = it }) },
     ) {
-        SubSettingsSearchBar(query = query, onQueryChange = { query = it })
-
-        Spacer(Modifier.height(14.dp))
-
         val pageItems = listOf(
             SettingsItem(
                 title = { Text("CrossMix") },

@@ -1,7 +1,8 @@
-// SettingsScreen.kt
+// ProfileScreen.kt
 
 package com.example.musicfy.ui.screens.settings
 
+import com.example.musicfy.ui.screens.update.showUpdateSheet
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -30,7 +31,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -38,7 +38,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -131,19 +130,11 @@ private object MusicfyGreeting {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
+fun ProfileScreen(
     navController: NavController
 ) {
     val updateState by com.example.musicfy.ui.screens.update.rememberUpdateState()
-    var showUpdateSheet by remember { mutableStateOf(false) }
-
-    val updateReveal = remember { mutableFloatStateOf(0f) }
-
-    val hideAppChrome = com.example.musicfy.LocalHideAppChrome.current
-    androidx.compose.runtime.DisposableEffect(showUpdateSheet) {
-        hideAppChrome.value = showUpdateSheet
-        onDispose { hideAppChrome.value = false }
-    }
+    val zoomOutState = com.example.musicfy.ui.component.LocalZoomOutOverlayState.current
 
     val (localUsername) = rememberPreference(UsernameKey, "")
     val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, "")
@@ -176,31 +167,6 @@ fun SettingsScreen(
         }
     }
 
-    var showResetConfirm by remember { mutableStateOf(false) }
-    var restrictedFeatureName by remember { mutableStateOf<String?>(null) }
-
-    if (showResetConfirm) {
-        AlertDialog(
-            onDismissRequest = { showResetConfirm = false },
-            title = { Text("Reset app data?") },
-            text = { Text("This wipes all local data — your library, downloads, playlists, and settings — and closes the app. This can't be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showResetConfirm = false
-                    val activityManager = context.getSystemService(android.app.ActivityManager::class.java)
-                    activityManager?.clearApplicationUserData()
-                }) {
-                    Text("Reset", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetConfirm = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
     val scrollState = rememberScrollState()
     val glassState = remember { GlassState() }
 
@@ -219,16 +185,6 @@ fun SettingsScreen(
     val topBarHeight = statusBarTop + 86.dp
 
     Scaffold(
-        modifier = Modifier.graphicsLayer {
-            val r = updateReveal.floatValue
-            if (r > 0.001f) {
-                val scale = 1f - 0.08f * r
-                scaleX = scale
-                scaleY = scale
-                shape = RoundedCornerShape(28.dp * r)
-                clip = true
-            }
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
@@ -283,106 +239,10 @@ fun SettingsScreen(
                             },
                             icon = painterResource(R.drawable.ic_musicfy_mark),
                             iconShape = CircleShape,
-                            onClick = { showUpdateSheet = true }
+                            onClick = { zoomOutState.showUpdateSheet(updateState) }
                         )
                     )
                 )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                SectionHeading("Interconnectivity")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
-                ) {
-                    androidx.compose.material3.Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(104.dp)
-                            .clickable { restrictedFeatureName = "My own device" },
-                        shape = RoundedCornerShape(22.dp),
-                        colors = androidx.compose.material3.CardDefaults.cardColors(
-                            containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field
-                        ),
-                        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.12f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                androidx.compose.material3.Icon(
-                                    painter = painterResource(R.drawable.cast),
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Text(
-                                text = "My own device",
-                                fontFamily = InterFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    androidx.compose.material3.Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(104.dp)
-                            .clickable { restrictedFeatureName = "Party Mode" },
-                        shape = RoundedCornerShape(22.dp),
-                        colors = androidx.compose.material3.CardDefaults.cardColors(
-                            containerColor = com.example.musicfy.ui.screens.search.SearchColors.Field
-                        ),
-                        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 0.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.12f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                androidx.compose.material3.Icon(
-                                    painter = painterResource(R.drawable.person),
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Text(
-                                text = "Party Mode",
-                                fontFamily = InterFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -531,24 +391,6 @@ fun SettingsScreen(
         }
     }
 
-    if (showUpdateSheet) {
-        com.example.musicfy.ui.screens.update.UpdateSheet(
-            state = updateState,
-            onDismiss = {
-                showUpdateSheet = false
-                updateReveal.floatValue = 0f
-            },
-            onReveal = { updateReveal.floatValue = it },
-            modifier = Modifier.fillMaxSize(),
-        )
-    }
-
-    if (restrictedFeatureName != null) {
-        com.example.musicfy.ui.component.RestrictionPopup(
-            featureName = restrictedFeatureName!!,
-            onDismiss = { restrictedFeatureName = null }
-        )
-    }
 }
 
 @Composable

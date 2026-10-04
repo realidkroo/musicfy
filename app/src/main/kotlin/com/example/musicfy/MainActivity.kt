@@ -177,8 +177,6 @@ import com.example.musicfy.playback.PlayerConnection
 import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.AppNavigationBar
 import com.example.musicfy.ui.component.AppNavigationRail
-import com.example.musicfy.ui.component.BottomSheetMenu
-import com.example.musicfy.ui.component.BottomSheetPage
 import com.example.musicfy.ui.component.LocalBottomSheetPageState
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.rememberBottomSheetState
@@ -808,7 +806,6 @@ class MainActivity : ComponentActivity() {
 
                 val betaDismissed by rememberPreference(com.example.musicfy.constants.BetaNoticeDismissedKey, false)
                 var showBetaNotice by remember { mutableStateOf(!betaDismissed) }
-                val zoomOutOverlayState = remember { com.example.musicfy.ui.component.ZoomOutOverlayState() }
 
                 CompositionLocalProvider(
                     LocalDatabase provides database,
@@ -827,12 +824,13 @@ class MainActivity : ComponentActivity() {
                     LocalCropAlbumArt provides cropAlbumArt,
                     LocalGridItemSize provides gridItemSize,
                     LocalSwipeToSong provides swipeToSong,
-                    com.example.musicfy.ui.component.LocalZoomOutOverlayState provides zoomOutOverlayState,
                 ) {
-                    com.example.musicfy.ui.component.ZoomOutPopupContainer(
-                        isVisible = zoomOutOverlayState.isVisible,
-                        onDismissRequest = { zoomOutOverlayState.dismiss() },
-                        popupContent = { zoomOutOverlayState.content() },
+                    com.example.musicfy.ui.component.PopupSheetHost(
+                        states = listOf(
+                            com.example.musicfy.ui.component.LocalMenuState.current,
+                            com.example.musicfy.ui.component.LocalBottomSheetPageState.current,
+                            com.example.musicfy.ui.component.LocalZoomOutOverlayState.current,
+                        ),
                     ) {
                     com.example.musicfy.ui.screens.beta.BetaNoticeContainer(
                         isVisible = showBetaNotice,
@@ -1227,16 +1225,6 @@ class MainActivity : ComponentActivity() {
                     }
 
                     HomeUpdatePrompt(currentRoute = currentRoute)
-
-                    BottomSheetMenu(
-                        state = LocalMenuState.current,
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                    )
-
-                    BottomSheetPage(
-                        state = LocalBottomSheetPageState.current,
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                    )
 
                     sharedSong?.let { song ->
                         playerConnection?.let {

@@ -85,7 +85,9 @@ fun AdvancedAudioSettingsScreen(navController: NavController) {
 
     val zoomOutOverlayState = LocalZoomOutOverlayState.current
     val showMonochromeOnboarding = {
-        zoomOutOverlayState.show {
+        // fullBleed: this sheet draws its own chrome (pill, rounded top, background) and should
+        // stay exactly as it looks today - see docs/popup-sheet.skill.md for why this one is exempt.
+        zoomOutOverlayState.show(fullBleed = true) {
             MonochromeOnboardingContent(
                 onEnabled = { onEnableMonochromeBackendChange(true) },
                 onDismiss = { zoomOutOverlayState.dismiss() },

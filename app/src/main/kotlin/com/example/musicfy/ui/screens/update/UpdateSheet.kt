@@ -11,13 +11,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,12 +63,11 @@ import com.example.musicfy.core.updater.formatBytes
 import com.example.musicfy.core.updater.installApk
 import com.example.musicfy.core.updater.isDownloaded
 import com.example.musicfy.core.updater.isNewerThanInstalled
+import com.example.musicfy.ui.component.PopupSheetState
 import com.example.musicfy.ui.player.menu.MenuRowSurface
-import com.example.musicfy.ui.player.menu.MenuSheetSurface
+import com.example.musicfy.ui.player.menu.MenuSurface
+import com.example.musicfy.ui.screens.donate.showDonateSheet
 import kotlinx.coroutines.launch
-
-private val CardSurface = MenuRowSurface
-private val AccentGreen = Color(0xFF2E9E5B)
 
 @Composable
 fun rememberUpdateState(): androidx.compose.runtime.State<UpdateState> {
@@ -88,217 +88,202 @@ fun rememberUpdateState(): androidx.compose.runtime.State<UpdateState> {
     return state
 }
 
-@Composable
-fun UpdateSheet(
-    state: UpdateState,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-    onReveal: ((Float) -> Unit)? = null,
-) {
-    val context = LocalContext.current
-    var detailRelease by remember { mutableStateOf<GithubRelease?>(null) }
+/** Shows the "app version" sheet as a PopupSheet - see docs/popup-sheet.skill.md. */
+fun PopupSheetState.showUpdateSheet(updateState: UpdateState) {
+    val popup = this
+    show(buttonBar = { SheetPrimaryButton(text = "Got it!", onClick = popup::dismiss) }) {
+        UpdateSheetContent(updateState = updateState, popup = popup)
+    }
+}
 
-    MenuSheetSurface(
-        onDismiss = onDismiss,
-        modifier = modifier,
-        halfDetent = 0.78f,
-        fullDetent = 0.94f,
-        revealProvider = onReveal,
-    ) { _ ->
-        Column(
+private fun PopupSheetState.showUpdateDetailSheet(release: GithubRelease) {
+    val popup = this
+    popup.show {
+        UpdateDetailContent(
+            release = release,
+            // Pushed on top of the version sheet, so back just pops down to it again.
+            onBack = popup::dismiss,
+            // Locks this same sheet while a download is in flight. Re-showing the content locked
+            // instead would push a second copy of it with fresh, not-downloading state.
+            onLocked = popup::setLocked,
+        )
+    }
+}
+
+@Composable
+private fun SheetPrimaryButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(46.dp)
+            .clip(CircleShape)
+            .background(MenuRowSurface)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ColumnScope.UpdateSheetContent(updateState: UpdateState, popup: PopupSheetState) {
+    val context = LocalContext.current
+
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+
+    Spacer(modifier = Modifier.height(4.dp))
+
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MenuRowSurface),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_musicfy_mark),
+            contentDescription = null,
+            modifier = Modifier.size(30.dp),
+        )
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    Text(
+        text = "Musicfy ${BuildConfig.VERSION_NAME} by roo",
+        fontSize = 17.sp,
+        fontWeight = FontWeight.Bold,
+    )
+    Text(
+        text = when (updateState) {
+            is UpdateState.Available -> UpdateHeadline
+            UpdateState.Checking -> "Checking for updates…"
+            is UpdateState.Failed -> "Couldn't check for updates"
+            UpdateState.UpToDate -> "Latest version"
+        },
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+    )
+
+    if (updateState is UpdateState.Available) {
+        Spacer(modifier = Modifier.height(18.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 14.dp, bottom = 24.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(MenuRowSurface)
+                .padding(14.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(CardSurface),
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MenuSurface),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_musicfy_mark),
                     contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Musicfy ${BuildConfig.VERSION_NAME} by roo",
-                color = Color.White,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-
-                text = when (state) {
-                    is UpdateState.Available -> UpdateHeadline
-                    UpdateState.Checking -> "Checking for updates…"
-                    is UpdateState.Failed -> "Couldn't check for updates"
-                    UpdateState.UpToDate -> "Latest version"
-                },
-                color = Color(0xFF9A9A9A),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-            )
-
-            if (state is UpdateState.Available) {
-                Spacer(modifier = Modifier.height(18.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(CardSurface)
-                        .padding(14.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.9f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_musicfy_mark),
-                            contentDescription = null,
-                            tint = Color.Black.copy(alpha = 0.8f),
-                            modifier = Modifier.size(24.dp),
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = state.release.title,
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = state.release.body.lineSequence()
-                                .firstOrNull { it.isNotBlank() }
-                                ?.trim()
-                                ?.removePrefix("#")
-                                ?.trim()
-                                .orEmpty()
-                                .ifBlank { "No description" },
-                            color = Color(0xFF9A9A9A),
-                            fontSize = 11.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(AccentGreen)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { detailRelease = state.release },
-                            )
-                            .padding(horizontal = 16.dp, vertical = 7.dp)
-                    ) {
-                        Text(
-                            text = "Update",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = updateState.release.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = updateState.release.body.lineSequence()
+                        .firstOrNull { it.isNotBlank() }
+                        ?.trim()
+                        ?.removePrefix("#")
+                        ?.trim()
+                        .orEmpty()
+                        .ifBlank { "No description" },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(CardSurface)
-                    .padding(14.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(R.drawable.frame_51_3),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "Hello",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = "Im the main dev here",
-                            color = Color(0xFF9A9A9A),
-                            fontSize = 11.sp,
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                LinkRow(R.drawable.star, "Star the repo") { context.openUrl(GithubRepoUrl) }
-                Spacer(modifier = Modifier.height(8.dp))
-                LinkRow(R.drawable.github, "@realidkroo") { context.openUrl(GithubProfileUrl) }
-                Spacer(modifier = Modifier.height(8.dp))
-                LinkRow(R.drawable.link, "@realidkroo") { context.openUrl(InstagramUrl) }
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val zoomOutState = com.example.musicfy.ui.component.LocalZoomOutOverlayState.current
-                LinkRow(R.drawable.heart, "Donate me!", enabled = true) {
-                    onDismiss()
-                    zoomOutState.show {
-                        com.example.musicfy.ui.screens.donate.DonateSheet(
-                            onDismiss = { zoomOutState.dismiss() }
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
+            Spacer(modifier = Modifier.width(10.dp))
             Box(
-                contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .fillMaxWidth()
                     .clip(RoundedCornerShape(50))
-                    .background(CardSurface)
+                    .background(MaterialTheme.colorScheme.primary)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onDismiss,
+                        onClick = { popup.showUpdateDetailSheet(updateState.release) },
                     )
-                    .padding(vertical = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 7.dp)
             ) {
                 Text(
-                    text = "Got it!",
-                    color = Color.White,
-                    fontSize = 15.sp,
+                    text = "Update",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                 )
             }
         }
     }
 
-    detailRelease?.let { release ->
-        UpdateDetailSheet(release = release, onDismiss = { detailRelease = null })
+    Spacer(modifier = Modifier.height(18.dp))
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(MenuRowSurface)
+            .padding(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = painterResource(R.drawable.frame_51_3),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape),
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(text = "Hello", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Im the main dev here",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LinkRow(R.drawable.star, "Star the repo") { context.openUrl(GithubRepoUrl) }
+        Spacer(modifier = Modifier.height(8.dp))
+        LinkRow(R.drawable.github, "@realidkroo") { context.openUrl(GithubProfileUrl) }
+        Spacer(modifier = Modifier.height(8.dp))
+        LinkRow(R.drawable.link, "@realidkroo") { context.openUrl(InstagramUrl) }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LinkRow(R.drawable.heart, "Donate me!", enabled = true) {
+            // Same PopupSheetState, so this pushes Donate on top and this sheet recedes
+            // behind it instead of closing. See docs/popup-sheet.skill.md.
+            popup.showDonateSheet()
+        }
+    }
+
+    Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -317,7 +302,7 @@ private fun LinkRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(MenuSurface.copy(alpha = 0.6f))
             .clickable(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
@@ -343,7 +328,7 @@ private fun LinkRow(
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = label,
-            color = Color.White.copy(alpha = alpha),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = alpha),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -351,7 +336,11 @@ private fun LinkRow(
 }
 
 @Composable
-private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
+private fun ColumnScope.UpdateDetailContent(
+    release: GithubRelease,
+    onBack: () -> Unit,
+    onLocked: (Boolean) -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -359,203 +348,185 @@ private fun UpdateDetailSheet(release: GithubRelease, onDismiss: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val progress = remember { mutableFloatStateOf(0f) }
 
-    var needsPermission by remember { mutableStateOf(false) }
     val startInstall: (java.io.File) -> Unit = { file ->
-        if (installApk(context, file)) {
-            needsPermission = false
-        } else {
-            needsPermission = true
+        if (!installApk(context, file)) {
             error = "Allow \"Install unknown apps\" for musicfy, then tap Install here again."
         }
     }
 
-    MenuSheetSurface(
-        onDismiss = onDismiss,
-        wrapHeight = true,
-        fullDetent = 0.9f,
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
 
-        dismissEnabled = !downloading,
-    ) { _ ->
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 8.dp, bottom = 24.dp)
-                .animateContentSize()
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_musicfy_mark),
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp),
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = release.title,
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = !downloading,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onBack,
+            )
+            .padding(vertical = 4.dp),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.arrow_back),
+            contentDescription = "Back",
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Icon(
+            painter = painterResource(R.drawable.ic_musicfy_mark),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = release.title,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 
-            Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(16.dp))
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(CardSurface)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = "Changelog",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(MenuRowSurface)
+            .padding(16.dp)
+            .animateContentSize()
+    ) {
+        Text(text = "Changelog", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = release.body.trim().ifBlank { "No changelog for this release." },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+        )
+    }
 
-                    text = release.body.trim().ifBlank { "No changelog for this release." },
-                    color = Color(0xFF9A9A9A),
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                )
-            }
+    Spacer(modifier = Modifier.height(18.dp))
 
-            Spacer(modifier = Modifier.height(18.dp))
+    Text(
+        text = "To Be Installed -",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
 
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(MenuRowSurface)
+            .padding(14.dp)
+    ) {
+        AppIconImage(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "To Be Installed -",
-                color = Color(0xFF8A8A8A),
+                text = release.apkName ?: "musicfy.apk",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "${BuildConfig.APPLICATION_ID} · ${formatBytes(release.apkSizeBytes)}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(CardSurface)
-                    .padding(14.dp)
-            ) {
-                AppIconImage(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = release.apkName ?: "musicfy.apk",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = "${BuildConfig.APPLICATION_ID} · ${formatBytes(release.apkSizeBytes)}",
-                        color = Color(0xFF9A9A9A),
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-
-            error?.let {
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(text = it, color = Color(0xFFE0736B), fontSize = 12.sp)
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            val animatedProgress by animateFloatAsState(
-                targetValue = progress.floatValue,
-                animationSpec = tween(durationMillis = 120),
-                label = "downloadProgress",
-            )
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(CardSurface)
-                    .clickable(
-                        enabled = !downloading && release.apkUrl != null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {
-                            error = null
-                            if (isDownloaded(context, release)) {
-                                startInstall(apkFileFor(context, release))
-                            } else {
-                                downloading = true
-                                progress.floatValue = 0f
-                                scope.launch {
-                                    val result = downloadApk(context, release) { progress.floatValue = it }
-                                    downloading = false
-                                    result.fold(
-                                        onSuccess = { startInstall(it) },
-                                        onFailure = { error = it.message ?: "Download failed" },
-                                    )
-                                }
-                            }
-                        },
-                    )
-            ) {
-                Box(
-                    modifier = Modifier
-
-                        .align(Alignment.CenterStart)
-                        .fillMaxHeight()
-                        .fillMaxWidth(fraction = animatedProgress)
-                        .background(Color(0xFF444444))
-                )
-                Text(
-                    text = when {
-                        downloading -> "Downloading… ${(animatedProgress * 100).toInt()}%"
-                        release.apkUrl == null -> "No APK in this release"
-                        else -> "Install here"
-                    },
-                    color = Color.White.copy(alpha = if (release.apkUrl == null) 0.5f else 1f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(CardSurface)
-                    .clickable(
-                        enabled = !downloading,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { context.openUrl(release.htmlUrl) },
-                    )
-            ) {
-                Text(
-                    text = "Open the web",
-                    color = Color.White.copy(alpha = if (downloading) 0.5f else 1f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
         }
+    }
+
+    error?.let {
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(text = it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+    }
+
+    Spacer(modifier = Modifier.height(18.dp))
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.floatValue,
+        animationSpec = tween(durationMillis = 120),
+        label = "downloadProgress",
+    )
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(50))
+            .background(MenuRowSurface)
+            .clickable(
+                enabled = !downloading && release.apkUrl != null,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {
+                    error = null
+                    if (isDownloaded(context, release)) {
+                        startInstall(apkFileFor(context, release))
+                    } else {
+                        downloading = true
+                        onLocked(true)
+                        progress.floatValue = 0f
+                        scope.launch {
+                            val result = downloadApk(context, release) { progress.floatValue = it }
+                            downloading = false
+                            onLocked(false)
+                            result.fold(
+                                onSuccess = { startInstall(it) },
+                                onFailure = { error = it.message ?: "Download failed" },
+                            )
+                        }
+                    }
+                },
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxHeight()
+                .fillMaxWidth(fraction = animatedProgress)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+        )
+        Text(
+            text = when {
+                downloading -> "Downloading… ${(animatedProgress * 100).toInt()}%"
+                release.apkUrl == null -> "No APK in this release"
+                else -> "Install here"
+            },
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+
+    Spacer(modifier = Modifier.height(10.dp))
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(50))
+            .background(MenuRowSurface)
+            .clickable(
+                enabled = !downloading,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { context.openUrl(release.htmlUrl) },
+            )
+    ) {
+        Text(text = "Open the web", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    }
     }
 }
 
@@ -583,15 +554,13 @@ internal fun AppIconImage(modifier: Modifier = Modifier) {
     if (icon != null) {
         Image(bitmap = icon, contentDescription = null, modifier = modifier)
     } else {
-
         Box(
             contentAlignment = Alignment.Center,
-            modifier = modifier.background(CardSurface),
+            modifier = modifier.background(MenuSurface),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_musicfy_mark),
                 contentDescription = null,
-                tint = Color.White,
                 modifier = Modifier.fillMaxSize(0.6f),
             )
         }
