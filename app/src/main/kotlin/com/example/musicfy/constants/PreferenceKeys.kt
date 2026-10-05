@@ -861,3 +861,9 @@ val SetupImportCompletedKey = booleanPreferencesKey("setupImportCompleted")
 
 val LastKnownVersionNameKey = stringPreferencesKey("lastKnownVersionName")
 val LastDonateShownTimeKey = longPreferencesKey("lastDonateShownTime")
+
+// Donate auto-prompt (ui/screens/donate/DonatePrompt.kt)
+val DonateSongsPlayedKey = intPreferencesKey("donateSongsPlayed")
+val DonateFirstPromptShownKey = booleanPreferencesKey("donateFirstPromptShown")
+val DonatePromptWindowStartKey = longPreferencesKey("donatePromptWindowStart")
+val DonatePromptSlotsKey = stringPreferencesKey("donatePromptSlots")

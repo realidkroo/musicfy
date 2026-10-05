@@ -9,6 +9,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.example.musicfy.db.entities.FormatEntity
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -83,6 +84,10 @@ import com.example.musicfy.constants.PureBlackKey
 import com.example.musicfy.db.entities.ArtistEntity
 import com.example.musicfy.db.entities.SongArtistMap
 import com.example.musicfy.db.entities.SongEntity
+import com.example.musicfy.ui.component.ContainerCloseEasing
+import com.example.musicfy.ui.component.ContainerCloseMillis
+import com.example.musicfy.ui.component.ContainerOpenDamping
+import com.example.musicfy.ui.component.ContainerOpenStiffness
 import com.example.musicfy.ui.component.LocalNavAnimatedContentScope
 import com.example.musicfy.ui.component.NavigationTitle
 import com.example.musicfy.ui.screens.artist.ArtistAlbumsScreen
@@ -111,6 +116,19 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.util.UUID
 
+private val CoverRoutes = listOf("album/", "local_playlist/", "online_playlist/", "auto_playlist/")
+
+private fun String?.opensFromCover(): Boolean = this != null && CoverRoutes.any { startsWith(it) }
+
+// Home moves on the card's clocks: the open spring going out, the close ease coming back. the
+// tiny threshold keeps the spring from snapping the last 1% of the scale at the end.
+private val HomeRecedeSpring = spring(
+    dampingRatio = ContainerOpenDamping,
+    stiffness = ContainerOpenStiffness,
+    visibilityThreshold = 0.001f,
+)
+private val HomeReturnEase = tween<Float>(ContainerCloseMillis, easing = ContainerCloseEasing)
+
 @OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.navigationBuilder(
     navController: NavHostController,
@@ -120,8 +138,22 @@ fun NavGraphBuilder.navigationBuilder(
 ) {
     composable(
         route = Screens.Home.route,
-
-        popEnterTransition = { fadeIn(tween(150)) },
+        // opening a cover: Home sinks back and dims while the card grows toward you, then comes
+        // forward again on the way back, in step with the card so a back swipe scrubs both
+        exitTransition = {
+            if (targetState.destination.route.opensFromCover()) {
+                scaleOut(HomeRecedeSpring, targetScale = 0.92f) + fadeOut(HomeRecedeSpring, targetAlpha = 0.45f)
+            } else {
+                null
+            }
+        },
+        popEnterTransition = {
+            if (initialState.destination.route.opensFromCover()) {
+                scaleIn(HomeReturnEase, initialScale = 0.92f) + fadeIn(HomeReturnEase, initialAlpha = 0.45f)
+            } else {
+                fadeIn(tween(150))
+            }
+        },
     ) {
 
         CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {

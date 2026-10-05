@@ -11,8 +11,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -47,8 +45,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -86,7 +82,6 @@ import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
@@ -97,14 +92,11 @@ import com.example.musicfy.LocalDownloadUtil
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.LocalCropAlbumArt
 import com.example.musicfy.R
-import com.example.musicfy.constants.CropAlbumArtKey
 import com.example.musicfy.constants.GridItemSize
-import com.example.musicfy.constants.GridItemsSizeKey
 import com.example.musicfy.constants.GridThumbnailHeight
 import com.example.musicfy.constants.ListItemHeight
 import com.example.musicfy.constants.ListThumbnailSize
 import com.example.musicfy.constants.SmallGridThumbnailHeight
-import com.example.musicfy.constants.SwipeToSongKey
 import com.example.musicfy.constants.ThumbnailCornerRadius
 import com.example.musicfy.db.entities.Album
 import com.example.musicfy.db.entities.Artist
@@ -113,18 +105,11 @@ import com.example.musicfy.db.entities.Song
 import com.example.musicfy.constants.SongSortType
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.MediaMetadata
-import com.example.musicfy.playback.queues.LocalAlbumRadio
 import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.utils.joinByBullet
 import com.example.musicfy.utils.makeTimeString
-import com.example.musicfy.utils.rememberEnumPreference
-import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.utils.reportException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import androidx.compose.runtime.compositionLocalOf
 import kotlinx.coroutines.launch
@@ -425,9 +410,7 @@ fun SongListItem(
     backgroundColor: Color = Color.Unspecified,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
 ) {
-    val swipeEnabled = com.example.musicfy.LocalSwipeToSong.current
-
-    val content: @Composable () -> Unit = {
+    val content: @Composable (Modifier) -> Unit = { rowModifier ->
         ListItem(
             title = song.song.title,
             subtitle = joinByBullet(
@@ -447,7 +430,7 @@ fun SongListItem(
                 )
             },
             trailingContent = trailingContent,
-            modifier = modifier,
+            modifier = rowModifier,
             isSelected = isSelected,
             isActive = isActive,
             shape = shape,
@@ -457,15 +440,17 @@ fun SongListItem(
         )
     }
 
-    if (isSwipeable && swipeEnabled) {
-        SwipeToSongBox(
-            mediaItem = song.toMediaItem(),
-            modifier = Modifier.fillMaxWidth()
+    if (isSwipeable) {
+        // the caller's modifier (its click handler, its item animation) goes on the row's root
+        SwipeActionsBox(
+            modifier = modifier.fillMaxWidth(),
+            start = { librarySwipeAction(song.song) },
+            end = { queueSwipeAction { song.toMediaItem() } },
         ) {
-            content()
+            content(Modifier)
         }
     } else {
-        content()
+        content(modifier)
     }
 }
 
@@ -844,12 +829,16 @@ fun PlaylistGridItem(
     thumbnailContent = {
         val width = maxWidth
         if (playlist.playlist.name == stringResource(R.string.liked)) {
-            LikedSongsThumbnail(size = width, modifier = Modifier.homeSharedElement(sharedElementKey))
+            LikedSongsThumbnail(size = width, modifier = Modifier.homeSharedElement(sharedElementKey, ThumbnailCornerRadius))
         } else {
             PlaylistThumbnail(
                 thumbnails = playlist.thumbnails,
                 size = width,
-                modifier = Modifier.homeSharedElement(sharedElementKey),
+                modifier = Modifier.homeSharedElement(
+                    sharedElementKey,
+                    com.example.musicfy.constants.GridThumbnailCornerRadius,
+                    coverUrl = playlist.thumbnails.firstOrNull(),
+                ),
                 placeHolder = {
                 val painter = when (playlist.playlist.name) {
                     stringResource(R.string.liked) -> R.drawable.favorite_border
@@ -950,9 +939,7 @@ fun YouTubeListItem(
     drawHighlight: Boolean = true,
     backgroundColor: Color = Color.Unspecified,
 ) {
-    val swipeEnabled = com.example.musicfy.LocalSwipeToSong.current
-
-    val content: @Composable () -> Unit = {
+    val content: @Composable (Modifier) -> Unit = { rowModifier ->
         ListItem(
             title = item.title,
             subtitle = when (item) {
@@ -975,7 +962,7 @@ fun YouTubeListItem(
                 )
             },
             trailingContent = trailingContent,
-            modifier = modifier,
+            modifier = rowModifier,
             isSelected = isSelected,
             isActive = isActive,
             shape = shape,
@@ -984,15 +971,16 @@ fun YouTubeListItem(
         )
     }
 
-    if (item is SongItem && isSwipeable && swipeEnabled) {
-        SwipeToSongBox(
-            mediaItem = item.copy(thumbnail = item.thumbnail.resize(544,544)).toMediaItem(),
-            modifier = Modifier.fillMaxWidth()
+    if (item is SongItem && isSwipeable) {
+        SwipeActionsBox(
+            modifier = modifier.fillMaxWidth(),
+            start = { librarySwipeAction(item) },
+            end = { queueSwipeAction { item.copy(thumbnail = item.thumbnail.resize(544, 544)).toMediaItem() } },
         ) {
-            content()
+            content(Modifier)
         }
     } else {
-        content()
+        content(modifier)
     }
 }
 
@@ -1055,7 +1043,9 @@ fun YouTubeGridItem(
             isPlaying = isPlaying,
             shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(com.example.musicfy.constants.GridThumbnailCornerRadius),
             modifier = Modifier.homeSharedElement(
-                if (item is AlbumItem || item is PlaylistItem) sharedElementKey else null
+                if (item is AlbumItem || item is PlaylistItem) sharedElementKey else null,
+                com.example.musicfy.constants.GridThumbnailCornerRadius,
+                coverUrl = item.thumbnail,
             ),
         )
 
@@ -1171,11 +1161,6 @@ fun ItemThumbnail(
             .fillMaxSize()
             .aspectRatio(thumbnailRatio)
             .clip(shape)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                shape = shape
-            )
     ) {
         if (albumIndex == null) {
             AsyncImage(
@@ -1227,15 +1212,9 @@ fun ItemThumbnail(
             isActive = isActive,
             playWhenReady = isPlaying,
             color = if (albumIndex != null) MaterialTheme.colorScheme.onBackground else Color.White,
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    color = if (albumIndex != null)
-                        Color.Transparent
-                    else
-                        Color.Black.copy(alpha = ActiveBoxAlpha),
-                    shape = shape
-                )
+            dimColor = if (albumIndex != null) Color.Transparent else Color.Black,
+            shape = shape,
+            modifier = Modifier.fillMaxSize()
         )
     }
 }
@@ -1286,13 +1265,16 @@ fun LocalThumbnail(
                 if (isPlaying) {
                     PlayingIndicator(
                         color = Color.White,
-                        modifier = Modifier.height(24.dp)
+                        barWidth = 2.dp,
+                        spacing = 1.5.dp,
+                        modifier = Modifier.height(14.dp)
                     )
                 } else {
                     Icon(
-                        painter = painterResource(R.drawable.play),
+                        painter = painterResource(R.drawable.ic_untitled_play),
                         contentDescription = null,
-                        tint = Color.White
+                        tint = Color.White,
+                        modifier = Modifier.size(width = 12.dp, height = 13.dp)
                     )
                 }
             }
@@ -1511,109 +1493,6 @@ fun BoxScope.AlbumPlayButton(
         }
     }
 }
-
-@Composable
-fun SwipeToSongBox(
-    modifier: Modifier = Modifier,
-    mediaItem: MediaItem,
-    content: @Composable BoxScope.() -> Unit
-) {
-    val ctx = LocalContext.current
-    val player = LocalPlayerConnection.current
-    val scope = rememberCoroutineScope()
-    val offset = remember { mutableFloatStateOf(0f) }
-    val threshold = 300f
-
-    val dragState = rememberDraggableState { delta ->
-        offset.floatValue = (offset.floatValue + delta).coerceIn(-threshold, threshold)
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .draggable(
-                orientation = Orientation.Horizontal,
-                state = dragState,
-                onDragStopped = {
-                    when {
-                        offset.floatValue >= threshold -> {
-                            player?.playNext(listOf(mediaItem))
-                            Toast.makeText(ctx, R.string.play_next, Toast.LENGTH_SHORT).show()
-                            reset(offset, scope)
-                        }
-
-                        offset.floatValue <= -threshold -> {
-                            player?.addToQueue(listOf(mediaItem))
-                            Toast.makeText(ctx, R.string.add_to_queue, Toast.LENGTH_SHORT).show()
-                            reset(offset, scope)
-                        }
-
-                        else -> reset(offset, scope)
-                    }
-                }
-            )
-    ) {
-        if (offset.floatValue != 0f) {
-            val (iconRes, bg, tint, align) = if (offset.floatValue > 0)
-                Quadruple(
-                    R.drawable.playlist_play,
-                    MaterialTheme.colorScheme.secondary,
-                    MaterialTheme.colorScheme.onSecondary,
-                    Alignment.CenterStart
-                ) else
-                Quadruple(
-                    R.drawable.queue_music,
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.onPrimary,
-                    Alignment.CenterEnd
-                )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .align(Alignment.Center)
-                    .background(bg),
-                contentAlignment = align
-            ) {
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .size(30.dp)
-                        .alpha(0.9f),
-                    tint = tint
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(offset.floatValue.roundToInt(), 0) }
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface),
-            content = content
-        )
-    }
-}
-
-private fun reset(offset: MutableState<Float>, scope: CoroutineScope) {
-    scope.launch {
-        animate(
-            initialValue = offset.value,
-            targetValue = 0f,
-            animationSpec = tween(durationMillis = 300)
-        ) { value, _ -> offset.value = value }
-    }
-}
-
-data class Quadruple<A, B, C, D>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D
-)
 
 object Icon {
     @Composable

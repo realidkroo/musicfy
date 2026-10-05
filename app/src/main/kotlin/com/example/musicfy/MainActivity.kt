@@ -832,6 +832,9 @@ class MainActivity : ComponentActivity() {
                             com.example.musicfy.ui.component.LocalZoomOutOverlayState.current,
                         ),
                     ) {
+                    com.example.musicfy.ui.screens.donate.DonatePromptScheduler(
+                        enabled = setupCompleted && onboardedHere && !forceShowSetup && !showBetaNotice,
+                    )
                     com.example.musicfy.ui.screens.beta.BetaNoticeContainer(
                         isVisible = showBetaNotice,
                         onDismiss = { dontShowAgain ->

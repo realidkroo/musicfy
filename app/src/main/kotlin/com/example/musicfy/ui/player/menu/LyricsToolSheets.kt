@@ -97,6 +97,7 @@ fun LyricsEditorSheet(onDismiss: () -> Unit) {
     val drafts = remember(parsed) { mutableStateListOf<String>().apply { addAll(parsed.map { it.text }) } }
 
     MenuSheetSurface(onDismiss = onDismiss) { _ ->
+        val closeSheet = LocalMenuSheetClose.current
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
@@ -128,7 +129,7 @@ fun LyricsEditorSheet(onDismiss: () -> Unit) {
                                         lyrics = buildLrc(parsed.map { it.time }, drafts),
                                     )
                                 }
-                                onDismiss()
+                                closeSheet()
                             }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                     )
@@ -232,6 +233,7 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
     val active = lyricsEntity?.provider
 
     MenuSheetSurface(onDismiss = onDismiss, wrapHeight = true) { _ ->
+        val closeSheet = LocalMenuSheetClose.current
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
@@ -269,7 +271,7 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
                                 )
                             )
                             mediaMetadata?.let { viewModel.refetchLyrics(it, lyricsEntity) }
-                            onDismiss()
+                            closeSheet()
                         }
                         .padding(horizontal = 14.dp, vertical = 14.dp),
                 ) {
@@ -351,6 +353,7 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
     val isTranslating = status is LyricsTranslationHelper.TranslationStatus.Translating
 
     MenuSheetSurface(onDismiss = onDismiss, wrapHeight = true) { _ ->
+        val closeSheet = LocalMenuSheetClose.current
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
@@ -438,7 +441,7 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
                         }
                         // Close so the result is actually visible — the lyrics are behind this
                         // sheet, and the loading dots appear on the lines themselves.
-                        onDismiss()
+                        closeSheet()
                     }
             ) {
                 Text(
@@ -459,10 +462,8 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
     if (picking) {
         LanguagePickerSheet(
             selected = target,
-            onPick = {
-                setTarget(it)
-                picking = false
-            },
+            // The picker closes itself (animated) after a pick; onDismiss then drops it.
+            onPick = { setTarget(it) },
             onDismiss = { picking = false },
         )
     }
@@ -490,6 +491,7 @@ private fun LanguagePickerSheet(
     }
 
     MenuSheetSurface(onDismiss = onDismiss) { _ ->
+        val closeSheet = LocalMenuSheetClose.current
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
@@ -543,7 +545,10 @@ private fun LanguagePickerSheet(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                            ) { onPick(code) }
+                            ) {
+                                onPick(code)
+                                closeSheet()
+                            }
                             .padding(horizontal = 18.dp, vertical = 13.dp)
                     ) {
                         Text(

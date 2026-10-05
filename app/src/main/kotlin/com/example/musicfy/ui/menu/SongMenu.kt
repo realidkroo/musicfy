@@ -243,7 +243,7 @@ fun SongMenu(
             }
 
             items(listOf(song)) { song ->
-                SongListItem(song = song)
+                SongListItem(song = song, isSwipeable = false)
             }
         }
     }
@@ -300,6 +300,7 @@ fun SongMenu(
 
     SongListItem(
         song = song,
+        isSwipeable = false,
         badges = {},
         // Flat, like the player's own sheet header. ListItem paints surfaceContainer by default,
         // which put a grey card behind the track at the top of every menu while the rows beneath

@@ -75,6 +75,7 @@ fun SleepTimerSheet(onDismiss: () -> Unit) {
     var endAfterSong by remember { mutableStateOf(sleepTimer.pauseWhenSongEnd) }
 
     MenuSheetSurface(onDismiss = onDismiss, halfDetent = 0.62f, fullDetent = 0.86f) { _ ->
+        val closeSheet = LocalMenuSheetClose.current
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())
@@ -146,7 +147,7 @@ fun SleepTimerSheet(onDismiss: () -> Unit) {
                     enabled = timeState.hour > 0 || timeState.minute > 0,
                     onClick = {
                         sleepTimer.start((timeState.hour * 60 + timeState.minute).coerceAtLeast(1))
-                        onDismiss()
+                        closeSheet()
                     },
                 )
             }
@@ -196,7 +197,7 @@ fun SleepTimerSheet(onDismiss: () -> Unit) {
                 onClick = {
                     sleepTimer.clear()
                     endAfterSong = false
-                    onDismiss()
+                    closeSheet()
                 },
             )
         }

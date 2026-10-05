@@ -245,6 +245,24 @@ there was no way to dim/recede "the rest of the app" without it reading as "the 
 darkens" the moment you open a player menu, which is not what anyone wants. If you're tempted to
 reconnect the two, don't - it was tried and explicitly asked to be undone.
 
+**They do get the same stacking, natively.** `MenuSheet.kt` has its own `MenuSheetStack`
+(`rememberMenuSheetStack()` + `LocalMenuSheetStack`), provided by `PlayerActionMenu` around itself and
+every sheet it opens. A sheet opened over another (action menu -> "Change device output" / speed /
+sleep timer / a lyrics tool -> the language picker) gives the same result as `PopupSheet`. The
+covered sheet scales to 0.9, rises until a 32dp strip with its handle peeks out, and gets the row-gray
+tint. The new sheet opens at least as tall as the visible part of the one it covers (1:1), and it
+skips its own black scrim so the peek isn't blacked out. Sheets two deep fade out. The peek is
+32dp, not 24, because this sheet's handle pill sits lower. A new player sheet that can open another
+must be composed inside that provider.
+
+Inside a `MenuSheetSurface`'s content, a button that finishes the sheet's job ("Save", "Set timer",
+picking a language) must call `LocalMenuSheetClose.current()`, **not** the `onDismiss` it was handed.
+`onDismiss` drops the sheet from composition on the spot, with no slide-out. When that happens the
+stack only animates the sheet behind back into place as a fallback.
+
+On the lyrics page, the options button is the round button next to the seek bar where the chevron
+normally is (`BottomSheetPlayer`), not a button in the lyrics header.
+
 Hoisting these sheets to true root-level `PopupSheetState`s (so they'd get the same recede/stack
 treatment as Donate/the update sheet) would need restructuring how the player mounts them
 entirely, not a one-line registration call. Possible future work; don't attempt it as a drive-by.

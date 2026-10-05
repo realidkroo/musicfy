@@ -63,6 +63,8 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.ListThumbnailSize
 import com.example.musicfy.constants.ThumbnailCornerRadius
+import com.example.musicfy.db.MusicDatabase
+import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.SpeedDialItem
 import com.example.musicfy.db.entities.PlaylistEntity
 import com.example.musicfy.db.entities.PlaylistSongMap
@@ -86,6 +88,57 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.Color
+
+/**
+ * add a YouTube playlist to the library, or take it out again. the first save imports it, songs
+ * included; after that it only flips the saved flag (and keeps the stored copy in sync).
+ */
+fun MusicDatabase.toggleSavedPlaylist(
+    playlist: PlaylistItem,
+    dbPlaylist: Playlist?,
+    songs: List<SongItem>,
+    coroutineScope: CoroutineScope,
+) {
+    if (dbPlaylist?.playlist == null) {
+        transaction {
+            val playlistEntity = PlaylistEntity(
+                name = playlist.title,
+                browseId = playlist.id,
+                thumbnailUrl = playlist.thumbnail,
+                isEditable = playlist.isEditable,
+                remoteSongCount = playlist.songCountText?.let {
+                    Regex("""\d+""").find(it)?.value?.toIntOrNull()
+                },
+                playEndpointParams = playlist.playEndpoint?.params,
+                shuffleEndpointParams = playlist.shuffleEndpoint?.params,
+                radioEndpointParams = playlist.radioEndpoint?.params
+            ).toggleLike()
+            insert(playlistEntity)
+            coroutineScope.launch(Dispatchers.IO) {
+                songs.ifEmpty {
+                    YouTube.playlist(playlist.id).completed()
+                        .getOrNull()?.songs.orEmpty()
+                }.map { it.toMediaMetadata() }
+                    .onEach(::insert)
+                    .mapIndexed { index, song ->
+                        PlaylistSongMap(
+                            songId = song.id,
+                            playlistId = playlistEntity.id,
+                            position = index,
+                            setVideoId = song.setVideoId
+                        )
+                    }
+                    .forEach(::insert)
+            }
+        }
+    } else {
+        transaction {
+            val currentPlaylist = dbPlaylist.playlist
+            update(currentPlaylist, playlist)
+            update(currentPlaylist.toggleLike())
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MutableCollectionMutableState")
@@ -143,45 +196,7 @@ fun YouTubePlaylistMenu(
             if (playlist.id != "LM" && !playlist.isEditable) {
                 IconButton(
                     onClick = {
-                        if (dbPlaylist?.playlist == null) {
-                            database.transaction {
-                                val playlistEntity = PlaylistEntity(
-                                    name = playlist.title,
-                                    browseId = playlist.id,
-                                    thumbnailUrl = playlist.thumbnail,
-                                    isEditable = playlist.isEditable,
-                                    remoteSongCount = playlist.songCountText?.let {
-                                        Regex("""\d+""").find(it)?.value?.toIntOrNull()
-                                    },
-                                    playEndpointParams = playlist.playEndpoint?.params,
-                                    shuffleEndpointParams = playlist.shuffleEndpoint?.params,
-                                    radioEndpointParams = playlist.radioEndpoint?.params
-                                ).toggleLike()
-                                insert(playlistEntity)
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    songs.ifEmpty {
-                                        YouTube.playlist(playlist.id).completed()
-                                            .getOrNull()?.songs.orEmpty()
-                                    }.map { it.toMediaMetadata() }
-                                        .onEach(::insert)
-                                        .mapIndexed { index, song ->
-                                            PlaylistSongMap(
-                                                songId = song.id,
-                                                playlistId = playlistEntity.id,
-                                                position = index,
-                                                setVideoId = song.setVideoId
-                                            )
-                                        }
-                                        .forEach(::insert)
-                                }
-                            }
-                        } else {
-                            database.transaction {
-                                val currentPlaylist = dbPlaylist!!.playlist
-                                update(currentPlaylist, playlist)
-                                update(currentPlaylist.toggleLike())
-                            }
-                        }
+                        database.toggleSavedPlaylist(playlist, dbPlaylist, songs, coroutineScope)
                     }
                 ) {
                     Icon(

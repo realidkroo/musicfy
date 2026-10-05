@@ -151,7 +151,6 @@ fun LyricsScreen(
 
     isMorphing: Boolean = false,
 
-    onOpenMenu: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
@@ -547,29 +546,8 @@ fun LyricsScreen(
 
             Spacer(modifier = Modifier.width(18.dp))
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.15f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onOpenMenu,
-                    )
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.more_vert),
-                    contentDescription = "Menu",
-                    tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier
-                        .size(18.dp)
-                        .graphicsLayer { rotationZ = 90f },
-                )
-            }
+            // No menu button up here: on the lyrics page the options button takes the chevron's
+            // slot next to the seek bar (BottomSheetPlayer), within reach of the thumb.
         }
 
         BoxWithConstraints(

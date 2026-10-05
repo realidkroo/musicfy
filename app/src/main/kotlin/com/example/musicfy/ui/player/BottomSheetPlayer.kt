@@ -376,10 +376,6 @@ fun BottomSheetPlayer(
                     onImmersiveChange = { lyricsImmersive = it },
                     isSheetDragging = isSheetInTransition,
                     isMorphing = lyricsMorphing,
-                    onOpenMenu = {
-                        menuFromLyrics = true
-                        showActionMenu = true
-                    },
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
@@ -502,42 +498,19 @@ fun BottomSheetPlayer(
                                 onClick = playerConnection::toggleLike,
                                 hasShadow = false,
                             )
-                            val arrowRotation by animateFloatAsState(
-                                targetValue = if (showExpandMenu) 180f else 0f, 
-                                label = "arrowRot",
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f)
-                            )
-                            val arrowScale by animateFloatAsState(
-                                targetValue = if (showExpandMenu) 0.86f else 1f, 
-                                label = "arrowScale",
-                                animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 380f)
-                            )
-                            val lyricsChevronBgColor by animateColorAsState(
-                                targetValue = if (showExpandMenu) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = 0.15f),
-                                label = "lyricsChevronBgColor",
-                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                            )
-                            val lyricsChevronTint by animateColorAsState(
-                                targetValue = if (showExpandMenu) Color.White else Color.White.copy(alpha = 0.90f),
-                                label = "lyricsChevronTint",
-                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-                            )
+                            // On the lyrics page this slot is the options button, not the
+                            // chevron: the lyrics tools live in that menu, so it sits where the
+                            // thumb already is instead of up in the top-right corner. It fades in
+                            // with the lyrics, right where the chevron fades out.
                             PressScaleActionButton(
-                                icon = R.drawable.expand_less,
-                                tint = lyricsChevronTint,
-                                containerColor = lyricsChevronBgColor,
-                                onClick = { showExpandMenu = !showExpandMenu },
+                                icon = R.drawable.more_horiz,
+                                tint = Color.White.copy(alpha = 0.90f),
+                                containerColor = Color.White.copy(alpha = 0.15f),
+                                onClick = {
+                                    menuFromLyrics = true
+                                    showActionMenu = true
+                                },
                                 hasShadow = false,
-                                modifier = Modifier
-                                    .onGloballyPositioned { coords ->
-                                        chevronButtonRect = coords.boundsInRoot()
-                                    }
-                                    .graphicsLayer { 
-                                        rotationZ = arrowRotation 
-                                        scaleX = arrowScale
-                                        scaleY = arrowScale
-                                        alpha = if (showExpandMenu) 0f else 1f
-                                    }
                             )
                         }
                     }

@@ -6,7 +6,6 @@ import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -106,7 +104,6 @@ fun ArtistListCard(
         modifier = modifier
             .width(276.dp)
             .height(344.dp)
-            .border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
             .clip(RoundedCornerShape(20.dp))
             .clickable {
                 Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()

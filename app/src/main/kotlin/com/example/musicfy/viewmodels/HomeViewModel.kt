@@ -3,7 +3,6 @@
 package com.example.musicfy.viewmodels
 
 import android.content.Context
-import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.music.innertube.YouTube
@@ -52,10 +51,15 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import com.example.musicfy.constants.LastPlayedLikedSongsTimeKey
 import com.example.musicfy.R
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -64,7 +68,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 import javax.inject.Inject
 import kotlin.random.Random
 
@@ -297,26 +300,37 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private var lastProcessedCookie: String? = null
-
-    private var isProcessingAccountData = false
-
     private suspend fun getDailyDiscover() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
 
         val playEvents = database.events().first()
-        if (playEvents.size < 10) return
-
         val likedSongs = database.likedSongsByCreateDateAsc().first()
+        val recent = playEvents.map { it.song }.distinctBy { it.id }
+        if (recent.isEmpty() && likedSongs.isEmpty()) return
 
-        val eligibleSeeds = if (likedSongs.isNotEmpty()) {
-            (likedSongs + playEvents.map { it.song }).distinctBy { it.id }
-        } else {
-            playEvents.map { it.song }.distinctBy { it.id }
+        // seeds from three directions, so the cards don't all orbit one song: something you liked,
+        // something you play all the time, something you played just now. one seed per artist.
+        val playCounts = playEvents.groupingBy { it.song.id }.eachCount()
+        val mostPlayed = recent.sortedByDescending { playCounts[it.id] ?: 0 }
+        val seeds = buildList {
+            fun takeFrom(songs: List<Song>, count: Int) {
+                songs.shuffled()
+                    .filter { song ->
+                        none { it.id == song.id } &&
+                            none { it.artists.firstOrNull()?.id == song.artists.firstOrNull()?.id }
+                    }
+                    .take(count)
+                    .forEach { add(it) }
+            }
+            takeFrom(likedSongs, 2)
+            takeFrom(mostPlayed.take(20), 2)
+            takeFrom(recent.take(15), 2)
+            if (size < 5) takeFrom(recent, 5 - size)
         }
 
-        val seeds = eligibleSeeds.shuffled().take(5)
-
+        // anything you've already heard isn't much of a discovery
+        val heard = recent.mapTo(HashSet()) { it.id }
         val items = java.util.Collections.synchronizedList(mutableListOf<DailyDiscoverItem>())
 
         kotlinx.coroutines.coroutineScope {
@@ -325,17 +339,13 @@ class HomeViewModel @Inject constructor(
                     val endpoint = YouTube.next(WatchEndpoint(videoId = seed.id)).getOrNull()?.relatedEndpoint
                     if (endpoint != null) {
                         YouTube.related(endpoint).onSuccess { page ->
-                            val recommendations = page.songs
-                                .filter { item ->
-                                    if (hideVideoSongs && item.isVideoSong) return@filter false
-                                    if (item.explicit) return@filter false
-                                    true
-                                }
-                                .shuffled()
-
-                            val recommendation = recommendations.firstOrNull { rec ->
-                                rec.id != seed.id
+                            val candidates = page.songs.filter { item ->
+                                item.id != seed.id &&
+                                    !(hideVideoSongs && item.isVideoSong) &&
+                                    !(hideExplicit && item.explicit)
                             }
+                            val recommendation = candidates.filter { it.id !in heard }.shuffled().firstOrNull()
+                                ?: candidates.shuffled().firstOrNull()
 
                             if (recommendation != null) {
                                 items.add(
@@ -352,7 +362,12 @@ class HomeViewModel @Inject constructor(
             }.forEach { it.join() }
         }
 
-        dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
+        // an empty result means the requests failed, not that there is nothing to show. one card
+        // per artist, so a single act can't take over the hero.
+        val found = items.toList()
+            .distinctBy { it.recommendation.id }
+            .distinctBy { (it.recommendation as? SongItem)?.artists?.firstOrNull()?.name ?: it.recommendation.id }
+        if (found.isNotEmpty()) dailyDiscover.value = found.shuffled()
     }
 
     private suspend fun getQuickPicks() {
@@ -447,8 +462,13 @@ class HomeViewModel @Inject constructor(
             }.forEach { it.join() }
         }
 
-        communityPlaylists.value = playlists.shuffled()
-        homeFeedCache.saveCommunityPlaylists(communityPlaylists.value.orEmpty())
+        // a failed fetch used to overwrite the cached section (and the cache itself) with nothing,
+        // which is how "From the community" vanished until the next lucky refresh
+        if (playlists.isNotEmpty()) {
+            val fresh = playlists.shuffled()
+            communityPlaylists.value = fresh
+            homeFeedCache.saveCommunityPlaylists(fresh)
+        }
     }
 
     private suspend fun loadRecentlyPlayed() {
@@ -504,8 +524,11 @@ class HomeViewModel @Inject constructor(
             section = page?.sections?.firstOrNull { it.chartType == ChartsPage.ChartType.TOP }
                 ?: page?.sections?.firstOrNull { it.items.isNotEmpty() }
         }
-        allTimeHits.value = section?.items?.distinctBy { it.id }?.take(20)
-        allTimeHits.value?.let { homeFeedCache.saveAllTimeHits(it) }
+        val hits = section?.items?.distinctBy { it.id }?.take(20)
+        if (!hits.isNullOrEmpty()) {
+            allTimeHits.value = hits
+            homeFeedCache.saveAllTimeHits(hits)
+        }
     }
 
     private suspend fun loadLocalDataPhase() {
@@ -638,6 +661,8 @@ class HomeViewModel @Inject constructor(
 
             val results = (artistDeferreds + songDeferreds + albumDeferreds).awaitAll()
             val nonNullResults = results.filterNotNull()
+            // nothing came back: keep what the artist list already shows
+            if (nonNullResults.isEmpty()) return@coroutineScope
             similarRecommendations.value = nonNullResults.shuffled()
 
             data class GroupAccumulator(
@@ -700,11 +725,13 @@ class HomeViewModel @Inject constructor(
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
         val disableAiFilter = context.dataStore.get(DisableAiFilterKey, false)
 
-        coroutineScope {
-            launch(Dispatchers.IO) { getDailyDiscover() }
-            launch(Dispatchers.IO) { getCommunityPlaylists() }
-            launch(Dispatchers.IO) { loadSimilarRecommendations() }
-            launch(Dispatchers.IO) {
+        // each source on its own: one failing request must not cancel the others (that took whole
+        // sections down with it), and an unexpected throw shouldn't reach the crash handler
+        supervisorScope {
+            launchSafely { getDailyDiscover() }
+            launchSafely { getCommunityPlaylists() }
+            launchSafely { loadSimilarRecommendations() }
+            launchSafely {
                 YouTube.home().onSuccess { page ->
                     val filteredSections = page.sections.mapNotNull { section ->
                         if (isCommunityOrTrendingSection(section.title)) return@mapNotNull null
@@ -719,7 +746,7 @@ class HomeViewModel @Inject constructor(
                     homeFeedCache.saveHomePage(homePage.value!!)
                 }.onFailure { reportException(it) }
             }
-            launch(Dispatchers.IO) {
+            launchSafely {
                 YouTube.explore().onSuccess { page ->
                     explorePage.value = page.copy(
                         newReleaseAlbums = page.newReleaseAlbums.filterExplicit(hideExplicit)
@@ -727,9 +754,9 @@ class HomeViewModel @Inject constructor(
                     homeFeedCache.saveExplorePage(explorePage.value!!)
                 }.onFailure { reportException(it) }
             }
-            launch(Dispatchers.IO) { loadAllTimeHits() }
+            launchSafely { loadAllTimeHits() }
             if (YouTube.cookie != null) {
-                launch(Dispatchers.IO) { loadAccountPlaylists() }
+                launchSafely { loadAccountPlaylists() }
             }
         }
 
@@ -737,7 +764,41 @@ class HomeViewModel @Inject constructor(
                 homePage.value?.sections?.flatMap { it.items }.orEmpty()
     }
 
+    private fun CoroutineScope.launchSafely(block: suspend () -> Unit) = launch(Dispatchers.IO) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            reportException(e)
+        }
+    }
+
+    private val loadMutex = Mutex()
+
+    @Volatile
+    private var reloadRequested = false
+
+    /**
+     * init, pull-to-refresh and the network-back reload can all ask at once. overlapping runs used to
+     * race each other's writes, so a request that lands mid-load now just queues one more pass.
+     */
     private suspend fun load() {
+        if (!loadMutex.tryLock()) {
+            reloadRequested = true
+            return
+        }
+        try {
+            do {
+                reloadRequested = false
+                loadOnce()
+            } while (reloadRequested)
+        } finally {
+            loadMutex.unlock()
+        }
+    }
+
+    private suspend fun loadOnce() {
         isLoading.value = true
 
         selectedChip.value = null
@@ -748,11 +809,16 @@ class HomeViewModel @Inject constructor(
 
         val offlineMode = context.dataStore.get(OfflineModeKey, false)
         if (!offlineMode) {
+            // set the cookie here rather than trusting the account collector to have run first;
+            // when it lost that race the account playlists were silently skipped
+            context.dataStore.get(InnerTubeCookieKey, "").takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }
             loadNetworkDataPhase()
         }
     }
 
     private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
+
     fun loadMoreYouTubeItems(continuation: String?) {
         if (continuation == null || _isLoadingMore.value) return
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
@@ -855,34 +921,32 @@ class HomeViewModel @Inject constructor(
             syncUtils.tryAutoSync()
         }
 
+        // distinct, so any other preference write no longer re-fetches the account. collectLatest,
+        // so a cookie change mid-fetch wins instead of being dropped like it was before.
         viewModelScope.launch(Dispatchers.IO) {
+            var isFirstCookie = true
             context.dataStore.data
                 .map { it[InnerTubeCookieKey] }
-                .collect { cookie ->
+                .distinctUntilChanged()
+                .collectLatest { cookie ->
+                    val signedInLater = !isFirstCookie
+                    isFirstCookie = false
 
-                    if (isProcessingAccountData) return@collect
+                    if (!cookie.isNullOrEmpty()) {
+                        YouTube.cookie = cookie
 
-                    lastProcessedCookie = cookie
-                    isProcessingAccountData = true
-
-                    try {
-                        if (cookie != null && cookie.isNotEmpty()) {
-
-                            YouTube.cookie = cookie
-
-                            YouTube.accountInfo().onSuccess { info ->
-                                accountName.value = info.name
-                                accountImageUrl.value = info.thumbnailUrl
-                            }.onFailure {
-                                reportException(it)
-                            }
-                        } else {
-                            accountName.value = "Guest"
-                            accountImageUrl.value = null
-                            accountPlaylists.value = null
+                        YouTube.accountInfo().onSuccess { info ->
+                            accountName.value = info.name
+                            accountImageUrl.value = info.thumbnailUrl
+                        }.onFailure {
+                            reportException(it)
                         }
-                    } finally {
-                        isProcessingAccountData = false
+                        // the first load() fetches these itself, a later sign-in has to do it here
+                        if (signedInLater) loadAccountPlaylists()
+                    } else {
+                        accountName.value = "Guest"
+                        accountImageUrl.value = null
+                        accountPlaylists.value = null
                     }
                 }
         }

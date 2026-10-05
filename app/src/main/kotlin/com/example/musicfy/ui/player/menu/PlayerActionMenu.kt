@@ -33,6 +33,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -92,6 +93,11 @@ fun PlayerActionMenu(
     val lyricsMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
 
+    // Shared by this menu and every sheet it opens, so they stack: the menu shrinks back and
+    // peeks above "Change device output", a lyrics tool, etc. instead of being dimmed under it.
+    val sheetStack = rememberMenuSheetStack()
+
+    CompositionLocalProvider(LocalMenuSheetStack provides sheetStack) {
     MenuSheetSurface(
         onDismiss = onDismiss,
         modifier = modifier,
@@ -274,6 +280,7 @@ fun PlayerActionMenu(
     }
     if (showLyricsTranslation) {
         LyricsTranslationSheet(onDismiss = { showLyricsTranslation = false })
+    }
     }
 }
 
