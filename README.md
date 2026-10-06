@@ -9,6 +9,15 @@
 
   <sub>cool music player for android, open source, packed with features and doesn’t collect ur data >_<</sub>
 
+  <br/><br/>
+
+  <a href="https://github.com/realidkroo/musicfy/releases">
+    <img alt="Total downloads" src="https://img.shields.io/github/downloads/realidkroo/musicfy/total?style=for-the-badge&label=Total%20downloads" />
+  </a>
+  <a href="https://github.com/realidkroo/musicfy/releases/latest">
+    <img alt="Latest release" src="https://img.shields.io/github/v/release/realidkroo/musicfy?style=for-the-badge&label=Latest" />
+  </a>
+
 </div>
 
 ---
