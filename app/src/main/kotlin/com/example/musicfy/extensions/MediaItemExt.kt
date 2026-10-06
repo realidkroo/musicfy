@@ -1,0 +1,106 @@
+// MediaItemExt.kt
+
+package com.example.musicfy.extensions
+
+import android.os.Bundle
+import androidx.core.net.toUri
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata.MEDIA_TYPE_MUSIC
+import com.music.innertube.models.SongItem
+import com.example.musicfy.db.entities.Song
+import com.example.musicfy.models.MediaMetadata
+import com.example.musicfy.models.toMediaMetadata
+import com.example.musicfy.ui.utils.resize
+
+val MediaItem.metadata: MediaMetadata?
+    get() = localConfiguration?.tag as? MediaMetadata
+
+fun Song.toMediaItem() = MediaItem.Builder()
+    .setMediaId(song.id)
+    .setUri(if (song.isLocal && song.localUri != null) song.localUri else song.id)
+    .setCustomCacheKey(song.id)
+    .setTag(toMediaMetadata())
+    .setMediaMetadata(
+        androidx.media3.common.MediaMetadata.Builder()
+            .setTitle(song.title)
+            .setSubtitle(artists.joinToString { it.name })
+            .setArtist(artists.joinToString { it.name })
+            .setArtworkUri(song.thumbnailUrl?.toUri())
+            .setAlbumTitle(song.albumName)
+            .setAlbumArtist(artists.firstOrNull()?.name)
+            .setDisplayTitle(song.title)
+            .setMediaType(MEDIA_TYPE_MUSIC)
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .setExtras(Bundle().apply {
+                putString("artwork_uri", song.thumbnailUrl)
+            })
+            .build()
+    )
+    .build()
+
+fun SongItem.toMediaItem() = MediaItem.Builder()
+    .setMediaId(id)
+    .setUri(id)
+    .setCustomCacheKey(id)
+    .setTag(toMediaMetadata())
+    .setMediaMetadata(
+        androidx.media3.common.MediaMetadata.Builder()
+            .setTitle(title)
+            .setSubtitle(artists.joinToString { it.name })
+            .setArtist(artists.joinToString { it.name })
+            .setArtworkUri(thumbnail.resize(1200, 1200).toUri())
+            .setAlbumTitle(album?.name)
+            .setAlbumArtist(artists.firstOrNull()?.name)
+            .setDisplayTitle(title)
+            .setMediaType(MEDIA_TYPE_MUSIC)
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .setExtras(Bundle().apply {
+                putString("artwork_uri", thumbnail.resize(1200, 1200))
+            })
+            .build()
+    )
+    .build()
+
+fun MediaMetadata.toMediaItem() = MediaItem.Builder()
+    .setMediaId(id)
+    .setUri(localUri ?: id)
+    .setCustomCacheKey(id)
+    .setTag(this)
+    .setMediaMetadata(
+        androidx.media3.common.MediaMetadata.Builder()
+            .setTitle(title)
+            .setSubtitle(artists.joinToString { it.name })
+            .setArtist(artists.joinToString { it.name })
+            .setArtworkUri(thumbnailUrl?.toUri())
+            .setAlbumTitle(album?.title)
+            .setAlbumArtist(artists.firstOrNull()?.name)
+            .setDisplayTitle(title)
+            .setMediaType(MEDIA_TYPE_MUSIC)
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .setExtras(Bundle().apply {
+                thumbnailUrl?.let { putString("artwork_uri", it) }
+            })
+            .build()
+    )
+    .build()
+
+/**
+ * Flags a song the infinite queue lined up on its own (the queue's "Autoplay" section), as
+ * opposed to one the user queued. Kept in the media metadata extras so it travels with the item
+ * through the player's timeline.
+ */
+private const val AutoplayExtra = "musicfy.autoplay"
+
+val MediaItem.isAutoplay: Boolean
+    get() = mediaMetadata.extras?.getBoolean(AutoplayExtra, false) == true
+
+fun MediaItem.withAutoplay(autoplay: Boolean): MediaItem {
+    if (isAutoplay == autoplay) return this
+    val extras = Bundle(mediaMetadata.extras ?: Bundle()).apply { putBoolean(AutoplayExtra, autoplay) }
+    return buildUpon()
+        .setMediaMetadata(mediaMetadata.buildUpon().setExtras(extras).build())
+        .build()
+}

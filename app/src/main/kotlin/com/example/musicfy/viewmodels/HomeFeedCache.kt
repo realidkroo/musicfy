@@ -1,0 +1,63 @@
+// HomeFeedCache.kt
+
+package com.example.musicfy.viewmodels
+
+import android.content.Context
+import androidx.core.content.edit
+import com.example.musicfy.utils.HomeVideo
+import com.music.innertube.models.YTItem
+import com.music.innertube.pages.ExplorePage
+import com.music.innertube.pages.HomePage
+import kotlinx.serialization.json.Json
+
+class HomeFeedCache(context: Context) {
+    private val prefs = context.getSharedPreferences("home_feed_cache", Context.MODE_PRIVATE)
+    private val json = Json { ignoreUnknownKeys = true }
+
+    fun loadHomePage(): HomePage? = load(KEY_HOME_PAGE)
+    fun saveHomePage(value: HomePage) = save(KEY_HOME_PAGE, value)
+
+    fun loadCommunityPlaylists(): List<CommunityPlaylistItem>? = load(KEY_COMMUNITY_PLAYLISTS)
+    fun saveCommunityPlaylists(value: List<CommunityPlaylistItem>) = save(KEY_COMMUNITY_PLAYLISTS, value)
+
+    fun loadAllTimeHits(): List<YTItem>? = load(KEY_ALL_TIME_HITS)
+    fun saveAllTimeHits(value: List<YTItem>) = save(KEY_ALL_TIME_HITS, value)
+
+    fun loadExplorePage(): ExplorePage? = load(KEY_EXPLORE_PAGE)
+    fun saveExplorePage(value: ExplorePage) = save(KEY_EXPLORE_PAGE, value)
+
+    fun loadLiveShows(): List<HomeVideo>? = load(KEY_LIVE_SHOWS)
+    fun saveLiveShows(value: List<HomeVideo>) = save(KEY_LIVE_SHOWS, value)
+
+    fun loadMusicVideos(): List<HomeVideo>? = load(KEY_MUSIC_VIDEOS)
+    fun saveMusicVideos(value: List<HomeVideo>) = save(KEY_MUSIC_VIDEOS, value)
+
+    fun loadCategories(): List<HomeCategory>? = load(KEY_CATEGORIES)
+    fun saveCategories(value: List<HomeCategory>) = save(KEY_CATEGORIES, value)
+
+    private inline fun <reified T> load(key: String): T? {
+        val raw = prefs.getString(key, null) ?: return null
+        return try {
+            json.decodeFromString<T>(raw)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private inline fun <reified T> save(key: String, value: T) {
+        try {
+            prefs.edit { putString(key, json.encodeToString(value)) }
+        } catch (e: Exception) {
+        }
+    }
+
+    private companion object {
+        const val KEY_HOME_PAGE = "home_page"
+        const val KEY_COMMUNITY_PLAYLISTS = "community_playlists"
+        const val KEY_ALL_TIME_HITS = "all_time_hits"
+        const val KEY_EXPLORE_PAGE = "explore_page"
+        const val KEY_LIVE_SHOWS = "live_shows"
+        const val KEY_MUSIC_VIDEOS = "music_videos"
+        const val KEY_CATEGORIES = "categories"
+    }
+}

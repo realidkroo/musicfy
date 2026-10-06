@@ -1,0 +1,200 @@
+    val context = LocalContext.current
+    val database = LocalDatabase.current
+    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val menuState = LocalMenuState.current
+    val bottomSheetPageState = LocalBottomSheetPageState.current
+    val playerConnection = LocalPlayerConnection.current ?: return
+
+    val (useNewPlayerDesign, onUseNewPlayerDesignChange) = rememberPreference(
+        UseNewPlayerDesignKey,
+        defaultValue = true
+    )
+    val (showAudioQualityBadge) = rememberPreference(
+        ShowAudioQualityBadgeKey,
+        defaultValue = false
+    )
+    val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(HidePlayerThumbnailKey, false)
+    val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
+    val playerBackground by rememberEnumPreference(
+        key = PlayerBackgroundStyleKey,
+        defaultValue = PlayerBackgroundStyle.GRADIENT
+    )
+    val playerButtonsStyle by rememberEnumPreference(
+        key = PlayerButtonsStyleKey,
+        defaultValue = PlayerButtonsStyle.DEFAULT
+    )
+
+    val isSystemInDarkTheme = isSystemInDarkTheme()
+    val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+    val useDarkTheme = remember(darkTheme, isSystemInDarkTheme) {
+        if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+    }
+
+    val enableCanvas by rememberPreference(CanvasThumbnailAnimationKey, true)
+
+    val shouldUseDarkButtonColors = remember(playerBackground, useDarkTheme) {
+        when (playerBackground) {
+            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.GLOW_ANIMATED, PlayerBackgroundStyle.APPLE_MUSIC, PlayerBackgroundStyle.LIVE_MESH -> true
+            PlayerBackgroundStyle.DEFAULT -> useDarkTheme
+        }
+    }
+
+    val isPlaying by playerConnection.isPlaying.collectAsState()
+    val swipeLyrics by rememberPreference(SwipeLyricsKey, false)
+    val enableLyricsThumbnailPlayPause by rememberPreference(EnableLyricsThumbnailPlayPauseKey, false)
+    val isKeepScreenOn by rememberPreference(KeepScreenOn, false)
+    val keepScreenOn = isPlaying && isKeepScreenOn
+
+    DisposableEffect(playerBackground, state.isExpanded, useDarkTheme, keepScreenOn) {
+        val window = (context as? android.app.Activity)?.window
+        if (window != null && state.isExpanded) {
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+            
+            when (playerBackground) {
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.GLOW_ANIMATED, PlayerBackgroundStyle.APPLE_MUSIC, PlayerBackgroundStyle.LIVE_MESH -> {
+                    insetsController.isAppearanceLightStatusBars = false
+                }
+                PlayerBackgroundStyle.DEFAULT -> {
+                    insetsController.isAppearanceLightStatusBars = !useDarkTheme
+                }
+            }
+
+            if (keepScreenOn && state.isExpanded)
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        
+        onDispose {
+            if (window != null) {
+                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.isAppearanceLightStatusBars = !useDarkTheme
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
+    val onBackgroundColor = when (playerBackground) {
+        PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.secondary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val useBlackBackground =
+        remember(isSystemInDarkTheme, darkTheme, pureBlack) {
+            val useDarkTheme =
+                if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
+            useDarkTheme && pureBlack
+        }
+
+    val playbackState by playerConnection.playbackState.collectAsState()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val currentSong by playerConnection.currentSong.collectAsState(initial = null)
+    val automix by playerConnection.service.automixItems.collectAsState()
+    val repeatMode by playerConnection.repeatMode.collectAsState()
+    val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
+    val canSkipNext by playerConnection.canSkipNext.collectAsState()
+    val isMuted by playerConnection.isMuted.collectAsState()
+    val playerVolume by playerConnection.service.playerVolume.collectAsState()
+
+    val (audioQuality) = rememberEnumPreference(
+        AudioQualityKey,
+        defaultValue = AudioQuality.AUTO
+    )
+    val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.DEFAULT)
+    val squigglySlider by rememberPreference(SquigglySliderKey, defaultValue = false)
+    
+    // Listen Together state (reactive)
+    
+    // Cast state - safely access castConnectionHandler to prevent crashes during service lifecycle changes
+    val castHandler = remember(playerConnection) {
+        try {
+            playerConnection.service.castConnectionHandler
+        } catch (e: Exception) {
+            null
+        }
+    }
+    val isCasting by castHandler?.isCasting?.collectAsState() ?: remember { mutableStateOf(false) }
+    val castPosition by castHandler?.castPosition?.collectAsState() ?: remember { mutableLongStateOf(0L) }
+    val castDuration by castHandler?.castDuration?.collectAsState() ?: remember { mutableLongStateOf(0L) }
+    val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
+    val castVolume by castHandler?.castVolume?.collectAsState() ?: remember { mutableFloatStateOf(1f) }
+    
+    // Use Cast state when casting, otherwise local player
+    val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
+
+    // Use State objects for position/duration to pass to MiniPlayer without causing recomposition
+    // These states persist across playback state changes to ensure continuous progress updates
+    val positionState = remember { mutableLongStateOf(0L) }
+    val durationState = remember { mutableLongStateOf(0L) }
+    
+    // Convenience accessors for local use
+    var position by positionState
+    var duration by durationState
+    
+    val effectivePosition by remember {
+        derivedStateOf {
+            if (isCasting) {
+                castPosition
+            } else {
+                position
+            }
+        }
+    }
+    
+    var sliderPosition by remember {
+        mutableStateOf<Long?>(null)
+    }
+    // Track when we last manually set position to avoid Cast overwriting it
+    var lastManualSeekTime by remember { mutableLongStateOf(0L) }
+    
+    var gradientColors by remember {
+        mutableStateOf<List<Color>>(emptyList())
+    }
+    val gradientColorsCache = remember { mutableMapOf<String, List<Color>>() }
+
+    if (!canSkipNext && automix.isNotEmpty()) {
+        playerConnection.service.addToQueueAutomix(automix[0], 0)
+    }
+
+    val bluetoothDeviceName by produceState<String?>(initialValue = getConnectedBluetoothDeviceName(context)) {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                value = getConnectedBluetoothDeviceName(context)
+            }
+        }
+
+        val callback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            object : android.media.AudioDeviceCallback() {
+                override fun onAudioDevicesAdded(addedDevices: Array<out android.media.AudioDeviceInfo>?) {
+                    value = getConnectedBluetoothDeviceName(context)
+                }
+                override fun onAudioDevicesRemoved(removedDevices: Array<out android.media.AudioDeviceInfo>?) {
+                    value = getConnectedBluetoothDeviceName(context)
+                }
+            }
+        } else null
+
+        val filter = IntentFilter().apply {
+            addAction(AudioManager.ACTION_HEADSET_PLUG)
+            addAction("android.bluetooth.adapter.action.STATE_CHANGED")
+            addAction("android.bluetooth.device.action.ACL_CONNECTED")
+            addAction("android.bluetooth.device.action.ACL_DISCONNECTED")
+            addAction("android.media.AUDIO_BECOMING_NOISY")
+        }
+        
+        context.registerReceiver(receiver, filter)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && callback != null) {
+            audioManager.registerAudioDeviceCallback(callback, Handler(Looper.getMainLooper()))
+        }
+        
+        awaitDispose {
+            context.unregisterReceiver(receiver)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && callback != null) {
+                audioManager.unregisterAudioDeviceCallback(callback)
+            }
+        }
+    }
+
+    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val maxSystemVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).toFloat() }
+    val systemVolume by produceState(initialValue = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / maxSystemVolume) {

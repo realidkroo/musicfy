@@ -1,0 +1,51 @@
+# Built application & library files
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+app/release
+
+# Gradle files & caches
+.gradle/
+.gradle-home/
+.gradle-codex/
+build/
+local.properties
+
+# IDE & Editor files
+.idea/
+*.iml
+.navigation/
+captures/
+.vscode/
+.DS_Store
+
+# Tool & AI Caches
+.claude/
+.kotlin/
+assetscon/
+apk-generated/
+.build_number
+plan.md
+
+# Log & Keystore files
+*.log
+app/persistent-debug.keystore
+
+# Native & C++ build outputs
+.externalNativeBuild
+.cxx/
+*.so
+*.bin
+
+# Misc
+*.py
+.env
+output-metadata.json
+vcs.xml
+lint/
