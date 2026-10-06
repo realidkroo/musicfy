@@ -91,10 +91,13 @@ fun BottomSheet(
     isExpandable: Boolean = true,
     isPillTransition: Boolean = false,
     pureBlack: Boolean = false,
+    /** Takes upward swipes on the fully expanded sheet (pill transition only). */
+    expandedSwipeUp: ExpandedSwipeUp? = null,
     sharedContent: @Composable (BoxScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
+    val currentSwipeUp by androidx.compose.runtime.rememberUpdatedState(expandedSwipeUp)
 
     if (!isPillTransition) {
         Box(
@@ -282,17 +285,31 @@ fun BottomSheet(
                         .pointerInput(state, isExpandable) {
                             if (!isExpandable) return@pointerInput
                             val velocityTracker = VelocityTracker()
+                            // Set once an upward swipe on the expanded sheet has been handed over;
+                            // from then on the whole drag, down included, goes to that handler.
+                            var swipeUp: ExpandedSwipeUp? = null
 
                             detectDragGestures(
                                 onDragStart = {
                                     dragStartTime = System.currentTimeMillis()
                                     totalHorizontalDrag = 0f
                                     velocityTracker.resetTracking()
+                                    swipeUp = null
                                 },
                                 onDrag = { change, dragAmount ->
                                     velocityTracker.addPointerInputChange(change)
 
-                                    if (kotlin.math.abs(dragAmount.x) > kotlin.math.abs(dragAmount.y) && state.isCollapsed) {
+                                    val claimed = swipeUp ?: currentSwipeUp?.takeIf { handler ->
+                                        state.isExpanded &&
+                                            dragAmount.y < 0f &&
+                                            kotlin.math.abs(dragAmount.y) > kotlin.math.abs(dragAmount.x) &&
+                                            handler.onStart()
+                                    }?.also { swipeUp = it }
+
+                                    if (claimed != null) {
+                                        claimed.onDrag(dragAmount.y)
+                                        change.consume()
+                                    } else if (kotlin.math.abs(dragAmount.x) > kotlin.math.abs(dragAmount.y) && state.isCollapsed) {
                                         totalHorizontalDrag += dragAmount.x
                                         val resistance = 1f - (kotlin.math.abs(state.horizontalOffset) / (size.width / 2f)).coerceIn(0f, 0.8f)
                                         state.horizontalOffset += dragAmount.x * resistance
@@ -312,11 +329,19 @@ fun BottomSheet(
                                 },
                                 onDragCancel = {
                                     velocityTracker.resetTracking()
+                                    swipeUp?.onEnd(0f)
+                                    swipeUp = null
                                     coroutineScope.launch {
                                         state.animateHorizontalOffsetTo(0f)
                                     }
                                 },
                                 onDragEnd = {
+                                    swipeUp?.let { handler ->
+                                        handler.onEnd(velocityTracker.calculateVelocity().y)
+                                        velocityTracker.resetTracking()
+                                        swipeUp = null
+                                        return@detectDragGestures
+                                    }
                                     velocityTracker.resetTracking()
 
                                     if (state.isCollapsed || state.progress < 0.2f) {
@@ -534,6 +559,12 @@ class BottomSheetState(
         }
     }
 
+    /**
+     * Whether a list scrolled past its top drags the sheet closed. The player turns this off while
+     * its queue is open, so pulling down at the top of the queue only stretches the list.
+     */
+    var collapseOnNestedOverscroll: Boolean = true
+
     val preUpPostDownNestedScrollConnection
         get() = object : NestedScrollConnection {
             var isTopReached = false
@@ -554,7 +585,10 @@ class BottomSheetState(
                     isTopReached = consumed.y == 0f && available.y > 0
                 }
 
-                return if (isTopReached && source == NestedScrollSource.UserInput && available.y > 3f) {
+                return if (
+                    collapseOnNestedOverscroll && isTopReached &&
+                    source == NestedScrollSource.UserInput && available.y > 3f
+                ) {
                     collapseSoft()
                     available
                 } else {
@@ -563,7 +597,7 @@ class BottomSheetState(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                return if (isTopReached && available.y > 100f) {
+                return if (collapseOnNestedOverscroll && isTopReached && available.y > 100f) {
                     collapseSoft()
                     available
                 } else {
@@ -625,4 +659,20 @@ fun rememberBottomSheetState(
             collapsedBound = collapsedBound
         )
     }
+}
+
+/**
+ * Receives an upward swipe on the fully expanded sheet - the player uses it to pull a page up out
+ * of its bottom card. Children that handle their own vertical drags (the card's flip, a list)
+ * consume them first, so only the free parts of the sheet get here.
+ */
+interface ExpandedSwipeUp {
+    /** A swipe up has begun. Return false to leave it alone. */
+    fun onStart(): Boolean
+
+    /** [dy] in px, negative going up. */
+    fun onDrag(dy: Float)
+
+    /** [velocityY] in px/s, negative going up; 0 when the gesture was cancelled. */
+    fun onEnd(velocityY: Float)
 }

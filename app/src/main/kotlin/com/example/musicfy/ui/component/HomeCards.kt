@@ -24,10 +24,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +47,7 @@ import com.example.musicfy.LocalGridItemSize
 import com.example.musicfy.R
 import com.example.musicfy.constants.GridItemSize
 import com.example.musicfy.ui.theme.InterFontFamily
+import coil3.compose.AsyncImage
 
 // spacing and type straight from the Figma home frames (13:11 / 14:212)
 val HomeContentInset = 36.dp
@@ -256,6 +263,98 @@ fun HomeCoverCard(
                     text = subtitle,
                     style = HomeCardSubtitleStyle,
                     color = Color.White.copy(alpha = 0.5f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+// the Figma "Concert" card (20:195) is 314 x 247 on a 402 wide frame
+const val HomeVideoCardAspect = 314f / 247f
+
+private val HomeVideoTitleStyle = TextStyle(
+    fontFamily = InterFontFamily,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 15.sp,
+    lineHeight = 18.sp,
+    letterSpacing = (-0.03).em,
+)
+
+private val HomeVideoSubtitleStyle = TextStyle(
+    fontFamily = InterFontFamily,
+    fontWeight = FontWeight.Medium,
+    fontSize = 13.sp,
+    lineHeight = 16.sp,
+    letterSpacing = (-0.02).em,
+)
+
+// dark at the top where the text sits, clear by the middle so the frame itself shows
+private val HomeVideoScrim = Brush.verticalGradient(
+    0f to Color.Black.copy(alpha = 0.62f),
+    0.24f to Color.Black.copy(alpha = 0.34f),
+    0.52f to Color.Transparent,
+)
+
+/**
+ * the wide banner for Live Shows and Music Videos: the video's frame fills the card and the title
+ * sits over its top-left corner. the 1280px still goes on first; a video without one falls back to
+ * the smaller still YouTube listed it with.
+ */
+@Composable
+fun HomeVideoCard(
+    title: String,
+    subtitle: String?,
+    videoId: String,
+    fallbackThumbnailUrl: String?,
+    width: Dp,
+    isActive: Boolean,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(HomeCardCornerRadius)
+    var useFallback by remember(videoId) { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier
+            .width(width)
+            .height(width / HomeVideoCardAspect)
+            .clip(shape)
+            .background(BoneColor),
+    ) {
+        AsyncImage(
+            model = if (useFallback) fallbackThumbnailUrl else "https://i.ytimg.com/vi/$videoId/hq720.jpg",
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            onError = { if (!useFallback) useFallback = true },
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(HomeVideoScrim),
+        )
+        PlayingIndicatorBox(
+            isActive = isActive,
+            playWhenReady = isPlaying,
+            shape = shape,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Column(modifier = Modifier.padding(start = 18.dp, top = 16.dp, end = 18.dp)) {
+            Text(
+                text = title,
+                style = HomeVideoTitleStyle,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!subtitle.isNullOrEmpty()) {
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    text = subtitle,
+                    style = HomeVideoSubtitleStyle,
+                    color = Color.White.copy(alpha = 0.72f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

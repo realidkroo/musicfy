@@ -13,11 +13,15 @@ import androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
 import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
+import androidx.media3.common.C
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.extensions.currentMetadata
 import com.example.musicfy.extensions.getCurrentQueueIndex
 import com.example.musicfy.extensions.getQueueWindows
+import com.example.musicfy.extensions.isAutoplay
+import com.example.musicfy.extensions.withAutoplay
 import com.example.musicfy.extensions.metadata
 import com.example.musicfy.extensions.togglePlayPause
 import com.example.musicfy.playback.MusicService.MusicBinder
@@ -139,18 +143,45 @@ class PlayerConnection(
     val currentWindowIndex = MutableStateFlow(-1)
 
     val queueItems: kotlinx.coroutines.flow.StateFlow<List<com.example.musicfy.ui.player.models.QueueItemData>> = queueWindows.map { windows ->
-        windows.map { window ->
-            val mediaItem = window.mediaItem
-            com.example.musicfy.ui.player.models.QueueItemData(
-                uid = window.uid.hashCode(),
-                mediaId = mediaItem.mediaId,
-                title = mediaItem.mediaMetadata.title?.toString() ?: "",
-                artist = mediaItem.mediaMetadata.artist?.toString() ?: "",
-                artworkUri = mediaItem.mediaMetadata.artworkUri,
-                duration = window.durationMs
-            )
-        }
+        windows.map(::toQueueItem)
     }.distinctUntilChanged().stateIn(scope, SharingStarted.Lazily, emptyList())
+
+    /**
+     * The queue's items and the current song's position in them, published as one value from the
+     * same player callback. queueItems and currentWindowIndex arrive separately (one goes through
+     * a map on another dispatcher), so a reader pairing them saw the new index against the old
+     * list for a frame whenever both changed at once - clearing history, toggling shuffle.
+     */
+    val queueSnapshot = MutableStateFlow(com.example.musicfy.ui.player.models.QueueState())
+    private var snapshotWindows: List<Timeline.Window>? = null
+    private var snapshotItems: List<com.example.musicfy.ui.player.models.QueueItemData> = emptyList()
+
+    private fun toQueueItem(window: Timeline.Window): com.example.musicfy.ui.player.models.QueueItemData {
+        val mediaItem = window.mediaItem
+        return com.example.musicfy.ui.player.models.QueueItemData(
+            uid = window.uid.hashCode(),
+            mediaId = mediaItem.mediaId,
+            title = mediaItem.mediaMetadata.title?.toString() ?: "",
+            artist = mediaItem.mediaMetadata.artist?.toString() ?: "",
+            artworkUri = mediaItem.mediaMetadata.artworkUri,
+            duration = window.durationMs,
+            isAutoplay = mediaItem.isAutoplay,
+        )
+    }
+
+    private fun publishQueueSnapshot() {
+        val windows = queueWindows.value
+        // A song change moves the index but not the list: only remap when the windows changed.
+        if (windows !== snapshotWindows) {
+            snapshotItems = windows.map(::toQueueItem)
+            snapshotWindows = windows
+        }
+        queueSnapshot.value = com.example.musicfy.ui.player.models.QueueState(
+            items = snapshotItems,
+            currentIndex = currentWindowIndex.value,
+            title = queueTitle.value.orEmpty(),
+        )
+    }
 
     val progressState: kotlinx.coroutines.flow.StateFlow<com.example.musicfy.ui.player.models.ProgressState> =
         kotlinx.coroutines.flow.callbackFlow {
@@ -230,6 +261,7 @@ class PlayerConnection(
         currentMediaItemIndex.value = newPlayer.currentMediaItemIndex
         shuffleModeEnabled.value = newPlayer.shuffleModeEnabled
         repeatMode.value = newPlayer.repeatMode
+        publishQueueSnapshot()
 
         Timber.tag(TAG).d("Attached to new player instance: $newPlayer")
     }
@@ -282,6 +314,107 @@ class PlayerConnection(
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in addToQueue")
             throw e
+        }
+    }
+
+    // Queue page operations. Items are addressed by the uid the queue list was built from
+    // (QueueItemData.uid) and looked up again at call time, so a timeline change between the
+    // tap and the call can't land the action on the wrong song.
+
+    private fun mediaIndexOf(uid: Int): Int {
+        val timeline = player.currentTimeline
+        val window = Timeline.Window()
+        for (i in 0 until timeline.windowCount) {
+            if (timeline.getWindow(i, window).uid.hashCode() == uid) return i
+        }
+        return C.INDEX_UNSET
+    }
+
+    /** Media item indices in the order they will play, shuffle included. */
+    private fun playOrder(): MutableList<Int> {
+        val timeline = player.currentTimeline
+        val order = ArrayList<Int>(timeline.windowCount)
+        if (timeline.isEmpty) return order
+        val shuffle = player.shuffleModeEnabled
+        var index = timeline.getFirstWindowIndex(shuffle)
+        while (index != C.INDEX_UNSET && order.size < timeline.windowCount) {
+            order += index
+            index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, shuffle)
+        }
+        return order
+    }
+
+    fun playQueueItem(uid: Int) {
+        val index = mediaIndexOf(uid)
+        if (index == C.INDEX_UNSET) return
+        try {
+            player.seekToDefaultPosition(index)
+            if (player.playbackState == Player.STATE_IDLE || player.playbackState == STATE_ENDED) {
+                player.prepare()
+            }
+            player.playWhenReady = true
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in playQueueItem")
+        }
+    }
+
+    /** Moves a song to play straight after [afterUid]. */
+    fun moveQueueItem(uid: Int, afterUid: Int) {
+        val from = mediaIndexOf(uid)
+        val after = mediaIndexOf(afterUid)
+        if (from == C.INDEX_UNSET || after == C.INDEX_UNSET || from == after) return
+        try {
+            if (!player.shuffleModeEnabled) {
+                // moveMediaItem takes the final index, counted once the song is out of the way.
+                val to = if (from < after) after else after + 1
+                if (to != from) player.moveMediaItem(from, to)
+            } else {
+                // Shuffled, the play order is the shuffle order, not the item order: reorder that.
+                val order = playOrder()
+                order.remove(from)
+                order.add(order.indexOf(after) + 1, from)
+                player.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), System.currentTimeMillis()))
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in moveQueueItem")
+        }
+    }
+
+    /** Takes a song out of wherever it is in the queue and puts it next, as one the user queued. */
+    fun playQueueItemNext(uid: Int) {
+        val index = mediaIndexOf(uid)
+        if (index == C.INDEX_UNSET || index == player.currentMediaItemIndex) return
+        try {
+            val item = player.getMediaItemAt(index).withAutoplay(false)
+            player.removeMediaItem(index)
+            service.playNext(listOf(item))
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in playQueueItemNext")
+        }
+    }
+
+    /** Removes songs from the queue. The one playing is never removed. */
+    fun removeQueueItems(uids: Collection<Int>) {
+        if (uids.isEmpty()) return
+        val wanted = uids.toHashSet()
+        val timeline = player.currentTimeline
+        val window = Timeline.Window()
+        val current = player.currentMediaItemIndex
+        val indices = (0 until timeline.windowCount).filter {
+            it != current && timeline.getWindow(it, window).uid.hashCode() in wanted
+        }
+        try {
+            // Back to front in contiguous runs: one timeline change per run instead of per song,
+            // and earlier indices stay valid while later ones go.
+            var end = indices.size - 1
+            while (end >= 0) {
+                var start = end
+                while (start > 0 && indices[start - 1] == indices[start] - 1) start--
+                player.removeMediaItems(indices[start], indices[end] + 1)
+                end = start - 1
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error in removeQueueItems")
         }
     }
 
@@ -438,6 +571,7 @@ class PlayerConnection(
         mediaMetadata.value = mediaItem?.metadata
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
+        publishQueueSnapshot()
         updateCanSkipPreviousAndNext()
     }
 
@@ -510,6 +644,7 @@ class PlayerConnection(
         queueTitle.value = service.queueTitle
         currentMediaItemIndex.value = player.currentMediaItemIndex
         currentWindowIndex.value = player.getCurrentQueueIndex()
+        publishQueueSnapshot()
         updateCanSkipPreviousAndNext()
     }
 
@@ -517,6 +652,7 @@ class PlayerConnection(
         shuffleModeEnabled.value = enabled
         queueWindows.value = player.getQueueWindows()
         currentWindowIndex.value = player.getCurrentQueueIndex()
+        publishQueueSnapshot()
         updateCanSkipPreviousAndNext()
     }
 

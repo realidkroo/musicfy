@@ -3,6 +3,11 @@
 package com.example.musicfy.ui.screens.settings
 
 import android.os.Build
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +42,8 @@ import com.example.musicfy.constants.DisableBlurKey
 import com.example.musicfy.constants.EnableElementBlurAnimatorKey
 import com.example.musicfy.constants.EnableProgressiveBlurKey
 import com.example.musicfy.constants.LyricsHighBloomKey
+import com.example.musicfy.constants.LyricsMotionStyle
+import com.example.musicfy.constants.LyricsMotionStyleKey
 import com.example.musicfy.constants.LyricsWaveAnimationKey
 import com.example.musicfy.constants.PlayVideoBackgroundKey
 import com.example.musicfy.constants.YtVideoBackgroundLyricsSyncKey
@@ -48,6 +55,7 @@ import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.ui.component.SubSettingsScaffold
 import com.example.musicfy.ui.component.SubSettingsSearchBar
 import com.example.musicfy.ui.theme.InterFontFamily
+import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
 import kotlin.math.roundToInt
 
@@ -94,6 +102,10 @@ fun AppearanceSettingsScreen(navController: NavController) {
     val (lyricsHighBloom, onLyricsHighBloomChange) = rememberPreference(
         LyricsHighBloomKey,
         defaultValue = true
+    )
+    val (lyricsMotionStyle, onLyricsMotionStyleChange) = rememberEnumPreference(
+        LyricsMotionStyleKey,
+        defaultValue = LyricsMotionStyle.MOTION,
     )
 
     SubSettingsScaffold(
@@ -145,9 +157,25 @@ fun AppearanceSettingsScreen(navController: NavController) {
         // Card 2: Player appearance toggles
         val playerToggleItems = listOf(
             SettingsItem(
+                title = { Text("Lyrics animation") },
+                highlightKey = "Lyrics animation style",
+                descriptionText = lyricsMotionStyle.description,
+                icon = painterResource(R.drawable.lyrics),
+                iconShape = CircleShape,
+                onClick = {
+                    onLyricsMotionStyleChange(
+                        if (lyricsMotionStyle == LyricsMotionStyle.MOTION) LyricsMotionStyle.LEGACY else LyricsMotionStyle.MOTION
+                    )
+                },
+                trailingContent = {
+                    LyricsStyleToggle(selected = lyricsMotionStyle, onSelect = onLyricsMotionStyleChange)
+                },
+            ),
+            SettingsItem(
                 title = { Text("Lyrics Shader") },
                 highlightKey = "Lyrics letter animation",
-                descriptionText = "Bloom and waveform wave for lyrics text",
+                // Style 1's rise is drawn, not shaded, so it keeps working with this off.
+                descriptionText = "Glow on sung lyrics (and Style 2's letter wave)",
                 icon = painterResource(R.drawable.biotech),
                 iconShape = CircleShape,
                 onClick = { onLyricsWaveAnimationChange(!lyricsWaveAnimation) },
@@ -347,5 +375,47 @@ fun AppearanceSettingsScreen(navController: NavController) {
         }
 
         Spacer(Modifier.height(140.dp))
+    }
+}
+
+/** Two-option pill for the lyrics animation style: "1" is the new motion, "2" the legacy wave. */
+@Composable
+private fun LyricsStyleToggle(
+    selected: LyricsMotionStyle,
+    onSelect: (LyricsMotionStyle) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.08f))
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        LyricsMotionStyle.entries.forEach { style ->
+            val isSelected = style == selected
+            val background by animateColorAsState(
+                targetValue = if (isSelected) Color.White else Color.Transparent,
+                label = "lyricsStyleChip",
+            )
+            val content by animateColorAsState(
+                targetValue = if (isSelected) Color.Black else Color.White.copy(alpha = 0.7f),
+                label = "lyricsStyleChipText",
+            )
+            Text(
+                text = style.displayName,
+                color = content,
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(background)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { onSelect(style) }
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            )
+        }
     }
 }

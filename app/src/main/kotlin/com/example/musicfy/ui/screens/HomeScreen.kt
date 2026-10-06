@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.screens
 
+import com.example.musicfy.ui.utils.stableSystemBars
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -66,9 +67,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
@@ -131,7 +129,6 @@ import com.example.musicfy.db.entities.LocalItem
 import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.Song
 import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.LocalDownloadUtil
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.models.toMediaMetadata
@@ -151,6 +148,14 @@ import com.example.musicfy.ui.component.HomeRowHeight
 import com.example.musicfy.ui.component.HomeSectionBones
 import com.example.musicfy.ui.component.HomeSectionTitle
 import com.example.musicfy.ui.component.HomeTrackRow
+import com.example.musicfy.ui.component.HomeVideoCard
+import com.example.musicfy.utils.ArtistVideos
+import com.example.musicfy.utils.FeedVideoKind
+import com.example.musicfy.utils.HomeVideo
+import com.example.musicfy.viewmodels.HomeCategory
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import kotlinx.coroutines.flow.drop
 import com.example.musicfy.ui.component.LikedSongsThumbnail
 import com.example.musicfy.ui.component.LocalBottomSheetPageState
 import com.example.musicfy.ui.component.LocalMenuState
@@ -190,6 +195,9 @@ sealed class HomeSection(val id: String) {
     data object FromTheCommunity : HomeSection("from_the_community")
     data object ArtistList : HomeSection("artist_list")
     data object AllTimeHits : HomeSection("all_time_hits")
+    data object LiveShows : HomeSection("live_shows")
+    data object MusicVideos : HomeSection("music_videos")
+    data class Category(val categoryId: String) : HomeSection("category_$categoryId")
 
     data class HomePageSection(val index: Int, val title: String) : HomeSection("home_page_section_${index}_$title")
 }
@@ -525,6 +533,10 @@ fun HomeScreen(
     val recentHistorySongs by viewModel.recentHistorySongs.collectAsState()
     val artistListItems by viewModel.artistListItems.collectAsState()
     val allTimeHits by viewModel.allTimeHits.collectAsState()
+    val liveRow by viewModel.liveRow.collectAsState()
+    val musicVideoRow by viewModel.musicVideoRow.collectAsState()
+    val feedVideoKinds by viewModel.feedVideoKinds.collectAsState()
+    val homeCategories by viewModel.homeCategories.collectAsState()
 
     val speedDialItems by viewModel.speedDialItems.collectAsState()
     val lastPlayedSong by viewModel.lastPlayedSong.collectAsState()
@@ -554,9 +566,6 @@ fun HomeScreen(
             .filter { !it.thumbnailUrl.isNullOrEmpty() }
             .distinctBy { it.id }
     }
-
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val pullRefreshState = rememberPullToRefreshState()
 
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
@@ -659,7 +668,18 @@ fun HomeScreen(
         onReload = viewModel::refresh
     )
 
-    val allDownloads by LocalDownloadUtil.current.downloads.collectAsState()
+    // no pull to refresh: Home refreshes itself from what you play. the view model follows the
+    // player for skips, and decides whether a refresh is due when the player is closed or Home
+    // comes back into view
+    LaunchedEffect(playerConnection) { viewModel.attachPlayer(playerConnection) }
+    LaunchedEffect(playerBottomSheetState) {
+        val sheet = playerBottomSheetState ?: return@LaunchedEffect
+        snapshotFlow { sheet.isExpanded }
+            .distinctUntilChanged()
+            .drop(1)
+            .collect { expanded -> if (!expanded) viewModel.onListeningBreak() }
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onListeningBreak() }
 
     val playSong: (Song) -> Unit = { song ->
         if (song.id == mediaMetadata?.id) {
@@ -827,24 +847,90 @@ fun HomeScreen(
         )
     }
 
+    // the wide banner for every video row: Live Shows, Music Videos and YouTube's other video shelves.
+    // a video plays as a video; the player shows it unless that's switched off in General settings
+    val videoCard: @Composable (HomeVideo, Dp) -> Unit = { video, width ->
+        HomeVideoCard(
+            title = video.title,
+            subtitle = video.subtitle,
+            videoId = video.item.id,
+            fallbackThumbnailUrl = video.item.thumbnail,
+            width = width,
+            isActive = video.item.id == mediaMetadata?.id,
+            isPlaying = isPlaying,
+            modifier = Modifier.combinedClickable(
+                interactionSource = null,
+                indication = HomeCardHighlight,
+                onClick = {
+                    if (video.item.id == mediaMetadata?.id) {
+                        playerConnection.togglePlayPause()
+                    } else {
+                        playerConnection.playQueue(
+                            YouTubeQueue(
+                                video.item.endpoint ?: WatchEndpoint(videoId = video.item.id),
+                                video.item.toMediaMetadata()
+                            )
+                        )
+                    }
+                },
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    menuState.show {
+                        YouTubeSongMenu(
+                            song = video.item,
+                            navController = navController,
+                            onDismiss = menuState::dismiss
+                        )
+                    }
+                },
+            ),
+        )
+    }
+
     val homeSections by remember {
         derivedStateOf {
             val list = mutableListOf<HomeSection>()
 
+            // the recommendation rows are dealt out between Home's own rows, the way Apple Music
+            // and Spotify mix "because you like" shelves in with your history
+            val categories = homeCategories.orEmpty()
+            var nextCategory = 0
+            fun addCategories(count: Int = 1) = repeat(count) {
+                categories.getOrNull(nextCategory)?.let {
+                    list.add(HomeSection.Category(it.id))
+                    nextCategory++
+                }
+            }
+
             if (recentlyPlayed?.isNotEmpty() == true) list.add(HomeSection.RecentlyPlayed)
             if (mostPlayedSongsForHome?.isNotEmpty() == true) list.add(HomeSection.MostPlayed)
+            addCategories()
             if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
             if (speedDialItems.isNotEmpty()) list.add(HomeSection.SpeedDial)
             if (recentHistorySongs?.isNotEmpty() == true) list.add(HomeSection.History)
+            addCategories()
+            // the two video banners sit apart, so the big frames break the feed up instead of piling up
+            if (liveRow?.isNotEmpty() == true) list.add(HomeSection.LiveShows)
+            addCategories()
             if (artistListItems?.isNotEmpty() == true) list.add(HomeSection.ArtistList)
+            addCategories()
             if (accountPlaylists?.isNotEmpty() == true || localPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
+            addCategories()
             if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.DontForgetTheseSongs)
+            addCategories()
+            if (musicVideoRow?.isNotEmpty() == true) list.add(HomeSection.MusicVideos)
+            addCategories(categories.size)
 
+            // YouTube's live and music video shelves already sit inside the rows above
             val homePageSections = homePage?.sections.orEmpty()
-            homePageSections.firstOrNull()?.let { list.add(HomeSection.HomePageSection(0, it.title)) }
+                .mapIndexed { index, section -> index to section }
+                .filter { (index, _) ->
+                    feedVideoKinds[index] != FeedVideoKind.Live && feedVideoKinds[index] != FeedVideoKind.MusicVideos
+                }
+            homePageSections.firstOrNull()?.let { (index, section) -> list.add(HomeSection.HomePageSection(index, section.title)) }
             if (allTimeHits?.isNotEmpty() == true) list.add(HomeSection.AllTimeHits)
-            homePageSections.drop(1).forEachIndexed { i, section ->
-                list.add(HomeSection.HomePageSection(i + 1, section.title))
+            homePageSections.drop(1).forEach { (index, section) ->
+                list.add(HomeSection.HomePageSection(index, section.title))
             }
 
             list
@@ -882,26 +968,15 @@ fun HomeScreen(
         shapes = MaterialTheme.shapes,
         typography = homeTypography,
     ) {
-    PullToRefreshBox(
-        state = pullRefreshState,
-        isRefreshing = isRefreshing,
-        onRefresh = viewModel::refresh,
-        indicator = {
-            PullToRefreshDefaults.LoadingIndicator(
-                state = pullRefreshState,
-                isRefreshing = isRefreshing,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(LocalPlayerAwareWindowInsets.current.asPaddingValues()),
-            )
-        }
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.TopStart
         ) {
             // a song column is 304 of 401 in the Figma, so the next one peeks in from the edge
             val trackColumnWidth = if (maxWidth * 0.475f >= 320.dp) maxWidth * 0.475f else maxWidth * 0.76f
+            // a video banner is 314 of 402, so the next one peeks in the same way
+            val videoCardWidth = minOf(maxWidth * 0.78f, 340.dp)
 
             val homeGlassState = remember { GlassState() }
 
@@ -1124,6 +1199,83 @@ fun HomeScreen(
                                 }
                             }
                         }
+                        HomeSection.LiveShows, HomeSection.MusicVideos -> {
+                            val isLive = section == HomeSection.LiveShows
+                            (if (isLive) liveRow else musicVideoRow)?.takeIf { it.isNotEmpty() }?.let { videos ->
+                                homeItem("${section.id}_title", revealSeen) {
+                                    HomeSectionTitle(
+                                        title = stringResource(if (isLive) R.string.live_shows else R.string.music_videos_for_you),
+                                        onClick = { navController.navigate("section_detail/${section.id}") }
+                                    )
+                                }
+                                homeItem("${section.id}_list", revealSeen) {
+                                    HomeCardRow(section.id, videos, revealSeen, key = { it.item.id }) { video ->
+                                        videoCard(video, videoCardWidth)
+                                    }
+                                }
+                            }
+                        }
+                        is HomeSection.Category -> {
+                            homeCategories?.firstOrNull { it.id == section.categoryId }?.let { category ->
+                                homeItem("${section.id}_title", revealSeen) {
+                                    val categorySongs = category.items.filterIsInstance<SongItem>()
+                                    val title = when (category.kind) {
+                                        HomeCategory.Kind.NewFromArtists -> stringResource(R.string.home_new_from_your_artists)
+                                        else -> category.title
+                                    }
+                                    HomeSectionTitle(
+                                        label = when (category.kind) {
+                                            HomeCategory.Kind.BecauseYouLike -> stringResource(R.string.home_because_you_like)
+                                            HomeCategory.Kind.MoreLikeArtist -> stringResource(R.string.home_more_like)
+                                            HomeCategory.Kind.YourGenre -> stringResource(R.string.home_because_you_listen_to)
+                                            HomeCategory.Kind.NewGenre -> stringResource(R.string.home_try_something_new)
+                                            HomeCategory.Kind.NewFromArtists -> null
+                                        },
+                                        title = title,
+                                        thumbnail = category.thumbnailUrl?.let { thumbnailUrl ->
+                                            {
+                                                AsyncImage(
+                                                    model = thumbnailUrl.resize(90, 90),
+                                                    contentDescription = null,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .size(30.dp)
+                                                        .clip(
+                                                            if (category.kind == HomeCategory.Kind.MoreLikeArtist) {
+                                                                CircleShape
+                                                            } else {
+                                                                RoundedCornerShape(ThumbnailCornerRadius)
+                                                            }
+                                                        )
+                                                )
+                                            }
+                                        },
+                                        onClick = category.endpoint?.let { endpoint ->
+                                            {
+                                                if (category.kind == HomeCategory.Kind.MoreLikeArtist) {
+                                                    navController.navigate("artist/${endpoint.browseId}")
+                                                } else {
+                                                    navController.navigate("genre/${endpoint.browseId}?params=${endpoint.params}")
+                                                }
+                                            }
+                                        },
+                                        onPlayAllClick = if (categorySongs.size >= 2) {
+                                            {
+                                                playerConnection.playQueue(
+                                                    ListQueue(
+                                                        title = title,
+                                                        items = categorySongs.map { it.toMediaMetadata().toMediaItem() }
+                                                    )
+                                                )
+                                            }
+                                        } else null,
+                                    )
+                                }
+                                homeItem("${section.id}_list", revealSeen) {
+                                    HomeCardRow(section.id, category.items, revealSeen, key = { it.id }) { ytItemCard(it) }
+                                }
+                            }
+                        }
                         HomeSection.AccountPlaylists -> {
                             if (!localPlaylists.isNullOrEmpty() || !accountPlaylists.isNullOrEmpty()) {
                                 homeItem("account_playlists_title", revealSeen) {
@@ -1299,8 +1451,17 @@ fun HomeScreen(
                                 }
 
                                 homeItem("home_section_list_${section.id}", revealSeen) {
-                                    HomeCardRow("home_section_${section.id}", sectionData.items, revealSeen, key = { it.id }) {
-                                        ytItemCard(it)
+                                    if (feedVideoKinds[section.index] == FeedVideoKind.Other) {
+                                        HomeCardRow(
+                                            "home_section_${section.id}",
+                                            sectionSongs.map(ArtistVideos::feedVideo),
+                                            revealSeen,
+                                            key = { it.item.id },
+                                        ) { video -> videoCard(video, videoCardWidth) }
+                                    } else {
+                                        HomeCardRow("home_section_${section.id}", sectionData.items, revealSeen, key = { it.id }) {
+                                            ytItemCard(it)
+                                        }
                                     }
                                 }
                             }
@@ -1385,7 +1546,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            top = WindowInsets.systemBars.asPaddingValues().calculateTopPadding() + 14.dp,
+                            top = WindowInsets.stableSystemBars.asPaddingValues().calculateTopPadding() + 14.dp,
                             bottom = 16.dp,
                             start = HomeContentInset,
                             end = 30.dp

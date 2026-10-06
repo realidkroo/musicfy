@@ -41,11 +41,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -53,7 +53,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -111,7 +110,6 @@ import com.example.musicfy.constants.PlaylistSongSortTypeKey
 import com.example.musicfy.constants.PlaylistSortType
 import com.example.musicfy.constants.ProfilePicUriKey
 import com.example.musicfy.constants.SongSortType
-import com.example.musicfy.constants.SwipeToRemoveSongKey
 import com.example.musicfy.db.entities.PlaylistEvent
 import com.example.musicfy.db.entities.PlaylistSongMap
 import com.example.musicfy.extensions.move
@@ -124,7 +122,11 @@ import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.DraggableScrollbar
 import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.SwipeActionsBox
 import com.example.musicfy.ui.component.TextFieldDialog
+import com.example.musicfy.ui.component.librarySwipeAction
+import com.example.musicfy.ui.component.queueSwipeAction
+import com.example.musicfy.ui.component.removeFromPlaylistSwipeAction
 import com.example.musicfy.ui.component.detail.CreatorUi
 import com.example.musicfy.ui.component.detail.featuredArtistsOf
 import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
@@ -643,23 +645,26 @@ fun LocalPlaylistScreen(
                     }
                 }
 
-                val swipeRemoveEnabled by rememberPreference(SwipeToRemoveSongKey, defaultValue = false)
-                val dismissBoxState = rememberSwipeToDismissBoxState(
-                    positionalThreshold = { totalDistance -> totalDistance }
-                )
-                var processedDismiss by remember { mutableStateOf(false) }
-                LaunchedEffect(dismissBoxState.currentValue) {
-                    val dv = dismissBoxState.currentValue
-                    if (swipeRemoveEnabled && !processedDismiss && (
-                            dv == SwipeToDismissBoxValue.StartToEnd ||
-                                dv == SwipeToDismissBoxValue.EndToStart
-                            )
-                    ) {
-                        processedDismiss = true
-                        deleteFromPlaylist()
-                    }
-                    if (dv == SwipeToDismissBoxValue.Settled) {
-                        processedDismiss = false
+                // takes the song out, with a few seconds to put it back exactly where it was
+                fun removeWithUndo() {
+                    val removed = currentItem
+                    deleteFromPlaylist()
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = context.getString(R.string.removed_song_from_playlist, removed.song.song.title),
+                            actionLabel = context.getString(R.string.undo),
+                            duration = SnackbarDuration.Short,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            database.transaction {
+                                insert(removed.map.copy(position = Int.MAX_VALUE))
+                                move(removed.map.playlistId, Int.MAX_VALUE, removed.map.position)
+                            }
+                            // a synced playlist gets it back on YouTube too (at the end there)
+                            playlist?.playlist?.browseId?.let { browseId ->
+                                launch(Dispatchers.IO) { YouTube.addToPlaylist(browseId, removed.map.songId) }
+                            }
+                        }
                     }
                 }
 
@@ -750,18 +755,21 @@ fun LocalPlaylistScreen(
                     )
                 }
 
-                if (locked || inSelectMode || !swipeRemoveEnabled) {
-                    Box(modifier = Modifier.animateItem()) {
-                        content()
-                    }
-                } else {
-                    SwipeToDismissBox(
-                        state = dismissBoxState,
-                        backgroundContent = {},
-                        modifier = Modifier.animateItem()
-                    ) {
-                        content()
-                    }
+                SwipeActionsBox(
+                    modifier = Modifier.animateItem(),
+                    enabled = !inSelectMode,
+                    // in your own playlist sliding right takes the song out; a saved one you can't
+                    // edit adds it to your library instead. sliding left always queues it.
+                    start = {
+                        if (editable) {
+                            removeFromPlaylistSwipeAction { removeWithUndo() }
+                        } else {
+                            librarySwipeAction(song.song.song)
+                        }
+                    },
+                    end = { queueSwipeAction { song.song.toMediaItem() } },
+                ) {
+                    content()
                 }
             }
         }

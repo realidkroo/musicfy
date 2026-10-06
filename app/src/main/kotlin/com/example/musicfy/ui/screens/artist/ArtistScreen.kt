@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.screens.artist
 
+import com.example.musicfy.ui.utils.stableSystemBars
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -177,7 +178,7 @@ fun ArtistScreen(
     var showLocal by rememberSaveable { mutableStateOf(false) }
     val density = LocalDensity.current
 
-    val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val systemBarsTopPadding = WindowInsets.stableSystemBars.asPaddingValues().calculateTopPadding()
     val headerOffset = with(density) {
         -(systemBarsTopPadding + AppBarHeight).roundToPx()
     }

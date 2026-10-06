@@ -299,7 +299,7 @@ object Paxsenix {
 
         if (!hasWordLevel) {
             val plain = response.content
-                .map { line -> line.text.joinToString(" ") { it.text } }
+                .map { line -> line.text.joinedLineText() }
                 .filter { it.isNotBlank() }
                 .joinToString("\n")
             return@runCatching plain
@@ -318,7 +318,7 @@ object Paxsenix {
                     else -> "{agent:v1}"
                 }
 
-                val lineText = line.text.joinToString(" ") { it.text }
+                val lineText = line.text.joinedLineText()
 
                 if (lineText.isNotBlank()) {
                     appendLine(String.format(Locale.US, "[%02d:%02d.%02d]%s%s", minutes, seconds, centiseconds, agent, lineText))
@@ -402,4 +402,24 @@ object Paxsenix {
             ""
         }
     }
+}
+
+/**
+ * A line's text from its timed pieces. On "Syllable" lyrics each piece is a syllable, and joining
+ * them all with spaces split words apart ("wa nt yo u"). Word boundaries come from the pieces
+ * themselves: a trailing space when the API includes one, otherwise the `part` flag, which marks a
+ * syllable that runs on into the next one without a break.
+ */
+private fun List<com.music.paxsenix.models.LyricText>.joinedLineText(): String {
+    if (isEmpty()) return ""
+    val spacedByApi = dropLast(1).any { it.text.lastOrNull()?.isWhitespace() == true }
+    return buildString {
+        this@joinedLineText.forEachIndexed { index, piece ->
+            append(piece.text)
+            val last = index == this@joinedLineText.lastIndex
+            if (!spacedByApi && !last && !piece.part && piece.text.lastOrNull()?.isWhitespace() != true) {
+                append(' ')
+            }
+        }
+    }.replace(Regex("\\s+"), " ").trim()
 }

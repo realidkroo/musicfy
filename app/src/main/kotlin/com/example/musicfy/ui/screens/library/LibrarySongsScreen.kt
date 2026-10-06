@@ -12,6 +12,9 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.librarySwipeAction
+import com.example.musicfy.ui.component.queueSwipeAction
 import com.example.musicfy.ui.menu.SongMenu
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
 
@@ -59,5 +62,15 @@ fun LibrarySongsScreen(
         },
         modifier = modifier,
         pureBlack = pureBlack,
+        // left queues the song, right takes it out of the library (it's already in it)
+        rowWrapper = { song, row ->
+            SwipeActionsBox(
+                slab = false,
+                start = { librarySwipeAction(song.song) },
+                end = { queueSwipeAction { song.toMediaItem() } },
+            ) {
+                row()
+            }
+        },
     )
 }

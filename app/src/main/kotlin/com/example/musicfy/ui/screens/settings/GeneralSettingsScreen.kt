@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.musicfy.R
+import com.example.musicfy.constants.DisableVideoAutoplayKey
 import com.example.musicfy.constants.LocalSongAutoMetadataKey
 import com.example.musicfy.constants.OfflineModeKey
 import com.example.musicfy.ui.component.AppSwitch
@@ -42,6 +43,10 @@ fun GeneralSettingsScreen(navController: NavController) {
     val (localSongAutoMetadata, onLocalSongAutoMetadataChange) = rememberPreference(
         LocalSongAutoMetadataKey,
         defaultValue = true
+    )
+    val (disableVideoAutoplay, onDisableVideoAutoplayChange) = rememberPreference(
+        DisableVideoAutoplayKey,
+        defaultValue = false
     )
 
     SubSettingsScaffold(
@@ -131,6 +136,20 @@ fun GeneralSettingsScreen(navController: NavController) {
                     AppSwitch(
                         checked = localSongAutoMetadata,
                         onCheckedChange = onLocalSongAutoMetadataChange,
+                    )
+                },
+            ),
+            SettingsItem(
+                title = { Text("Disable auto-playing YouTube video") },
+                highlightKey = "Disable auto-playing YouTube video",
+                descriptionText = "Music videos and live shows play with their cover instead of the video",
+                icon = painterResource(R.drawable.slow_motion_video),
+                iconShape = CircleShape,
+                onClick = { onDisableVideoAutoplayChange(!disableVideoAutoplay) },
+                trailingContent = {
+                    AppSwitch(
+                        checked = disableVideoAutoplay,
+                        onCheckedChange = onDisableVideoAutoplayChange,
                     )
                 },
             ),

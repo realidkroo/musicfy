@@ -80,11 +80,16 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.PauseSearchHistoryKey
 import com.example.musicfy.constants.ProfilePicUriKey
 import com.example.musicfy.db.entities.SearchHistory
+import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.extensions.togglePlayPause
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.RoundedHighlight
+import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.librarySwipeAction
+import com.example.musicfy.ui.component.queueSwipeAction
 import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.ui.menu.YouTubeAlbumMenu
 import com.example.musicfy.ui.menu.YouTubeArtistMenu
@@ -541,11 +546,16 @@ private fun ResultRow(
         is PlaylistItem -> listOfNotNull("Playlist", item.author?.name).joinToString("  •  ")
     }
 
-    Column {
+    val row: @Composable () -> Unit = {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .combinedClickable(
+                    interactionSource = null,
+                    indication = ResultRowHighlight,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
                 .padding(horizontal = SearchHorizontalPadding, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -578,9 +588,26 @@ private fun ResultRow(
             Spacer(modifier = Modifier.width(8.dp))
             SearchOverflowDots(onClick = onMenu)
         }
+    }
+
+    Column {
+        // songs slide: left to queue, right to save to the library
+        if (item is SongItem) {
+            SwipeActionsBox(
+                start = { librarySwipeAction(item) },
+                end = { queueSwipeAction { item.toMediaItem() } },
+            ) {
+                row()
+            }
+        } else {
+            row()
+        }
         SearchRule()
     }
 }
+
+// pressing a result lights a pill from one side of the screen to the other
+private val ResultRowHighlight = RoundedHighlight(cornerRadius = 100.dp, spillX = (-10).dp)
 
 private fun formatDuration(seconds: Int): String {
     val minutes = seconds / 60

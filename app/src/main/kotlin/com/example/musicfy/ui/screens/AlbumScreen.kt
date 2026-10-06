@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.screens
 
+import com.example.musicfy.ui.utils.stableSystemBars
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -258,7 +259,7 @@ fun AlbumScreen(
         val albumWithSongs = albumWithSongs
         if (albumWithSongs != null && albumWithSongs.songs.isNotEmpty()) {
              item(key = "album_header") {
-                val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+                val systemBarsTopPadding = WindowInsets.stableSystemBars.asPaddingValues().calculateTopPadding()
                 val density = LocalDensity.current
                 val headerOffset = with(density) {
                     -(systemBarsTopPadding + AppBarHeight).roundToPx()

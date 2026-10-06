@@ -75,8 +75,12 @@ import com.example.musicfy.R
 import com.example.musicfy.playback.queues.YouTubePlaylistQueue
 import com.example.musicfy.playback.queues.YouTubeQueue
 import androidx.compose.material3.IconButton
+import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.SwipeActionsBox
 import com.example.musicfy.ui.component.YouTubeGridItem
+import com.example.musicfy.ui.component.librarySwipeAction
+import com.example.musicfy.ui.component.queueSwipeAction
 import com.example.musicfy.ui.component.detail.CreatorUi
 import com.example.musicfy.ui.component.detail.featuredArtistsOf
 import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
@@ -339,52 +343,57 @@ fun OnlinePlaylistScreen(
                 if (it) selection.add(songItem.id) else selection.remove(songItem.id)
             }
 
-            PlaylistTrackRow(
-                thumbnailUrl = songItem.thumbnail,
-                title = songItem.title,
-                subtitle = "${songItem.artists.joinToString { it.name }} • ${makeTimeString(songItem.duration?.times(1000L))}",
-                isActive = mediaMetadata?.id == songItem.id,
-                isPlaying = isPlaying,
-                modifier = Modifier
-                    .animateItem()
-                    .revealOnAppear(
+            SwipeActionsBox(
+                modifier = Modifier.animateItem(),
+                enabled = !inSelectMode,
+                start = { librarySwipeAction(songItem) },
+                end = { queueSwipeAction { songItem.toMediaItem() } },
+            ) {
+                PlaylistTrackRow(
+                    thumbnailUrl = songItem.thumbnail,
+                    title = songItem.title,
+                    subtitle = "${songItem.artists.joinToString { it.name }} • ${makeTimeString(songItem.duration?.times(1000L))}",
+                    isActive = mediaMetadata?.id == songItem.id,
+                    isPlaying = isPlaying,
+                    modifier = Modifier.revealOnAppear(
                         key = "track_${songItem.id}",
                         seenState = revealSeen,
                         delayMillis = minOf(position, 8) * 28,
                     ),
-                onClick = {
-                    if (inSelectMode) {
-                        onCheckedChange(songItem.id !in selection)
-                    } else if (songItem.id == mediaMetadata?.id) {
-                        playerConnection.togglePlayPause()
-                    } else {
-                        playerConnection.playQueue(
-                            YouTubePlaylistQueue(
-                                playlistId = currentPlaylist.id,
-                                playlistTitle = currentPlaylist.title,
-                                initialSongs = filteredSongs.map { it.second },
-                                initialContinuation = viewModel.continuation,
-                                startIndex = position
+                    onClick = {
+                        if (inSelectMode) {
+                            onCheckedChange(songItem.id !in selection)
+                        } else if (songItem.id == mediaMetadata?.id) {
+                            playerConnection.togglePlayPause()
+                        } else {
+                            playerConnection.playQueue(
+                                YouTubePlaylistQueue(
+                                    playlistId = currentPlaylist.id,
+                                    playlistTitle = currentPlaylist.title,
+                                    initialSongs = filteredSongs.map { it.second },
+                                    initialContinuation = viewModel.continuation,
+                                    startIndex = position
+                                )
                             )
-                        )
-                    }
-                },
-                onLongClick = {
-                    if (!inSelectMode) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        inSelectMode = true
-                        onCheckedChange(true)
-                    }
-                },
-                onMenuClick = {
-                    menuState.show {
-                        YouTubeSongMenu(songItem, navController, menuState::dismiss)
-                    }
-                },
-                trailing = if (inSelectMode) {
-                    { Checkbox(checked = songItem.id in selection, onCheckedChange = onCheckedChange) }
-                } else null,
-            )
+                        }
+                    },
+                    onLongClick = {
+                        if (!inSelectMode) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            inSelectMode = true
+                            onCheckedChange(true)
+                        }
+                    },
+                    onMenuClick = {
+                        menuState.show {
+                            YouTubeSongMenu(songItem, navController, menuState::dismiss)
+                        }
+                    },
+                    trailing = if (inSelectMode) {
+                        { Checkbox(checked = songItem.id in selection, onCheckedChange = onCheckedChange) }
+                    } else null,
+                )
+            }
         }
 
         if (isLoadingMore) {

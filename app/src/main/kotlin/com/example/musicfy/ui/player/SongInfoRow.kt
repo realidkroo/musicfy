@@ -70,9 +70,13 @@ private data class SongDisplayInfo(
 fun SongInfoRow(
     modifier: Modifier = Modifier,
     isExpandMenuOpen: Boolean = false,
+    /** Hides this row's chevron while the lyrics page's chevron (the same control, moved) is up. */
+    hideChevron: Boolean = false,
     onToggleExpandMenu: () -> Unit = {},
     onTitlePositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
     onChevronPositioned: (androidx.compose.ui.geometry.Rect) -> Unit = {},
+    /** Sends a heart flying when the like button likes the song. */
+    likeBurst: LikeBurstState? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val trackInfo by playerConnection.uiState.trackInfo.collectAsState()
@@ -185,8 +189,15 @@ fun SongInfoRow(
                 icon = if (trackInfo.liked) R.drawable.ic_untitled_heart else R.drawable.ic_untitled_heart_unfill,
                 tint = if (trackInfo.liked) Color.White else Color.White.copy(alpha = 0.85f),
                 containerColor = if (trackInfo.liked) Color.White.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.15f),
-                onClick = playerConnection::toggleLike,
-                hasShadow = false
+                onClick = {
+                    if (likeBurst != null) {
+                        likeBurst.likeFromButton(LikeSlot.PLAYER, trackInfo.liked, playerConnection::toggleLike)
+                    } else {
+                        playerConnection.toggleLike()
+                    }
+                },
+                hasShadow = false,
+                modifier = Modifier.likeButtonTarget(likeBurst, LikeSlot.PLAYER),
             )
             val arrowRotation by animateFloatAsState(
                 targetValue = if (isExpandMenuOpen) 180f else 0f, 
@@ -222,7 +233,7 @@ fun SongInfoRow(
                         rotationZ = arrowRotation
                         scaleX = arrowScale
                         scaleY = arrowScale
-                        alpha = if (isExpandMenuOpen) 0f else 1f
+                        alpha = if (isExpandMenuOpen || hideChevron) 0f else 1f
                     }
             )
         }

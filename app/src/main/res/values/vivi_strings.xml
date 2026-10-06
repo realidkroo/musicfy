@@ -933,7 +933,13 @@
     <string name="uploaded">Uploaded</string>
     <string name="dont_forget_these_songs">Don\'t forget these songs</string>
     <string name="artist_list">Artist List</string>
-    <string name="music_videos_for_you">Music videos for you</string>
+    <string name="music_videos_for_you">Music Videos for You</string>
+    <string name="live_shows">Live Shows</string>
+    <string name="home_because_you_like">Because you like</string>
+    <string name="home_more_like">More like</string>
+    <string name="home_because_you_listen_to">Because you listen to</string>
+    <string name="home_try_something_new">Try something new</string>
+    <string name="home_new_from_your_artists">New from your artists</string>
     <string name="all_time_hits">All Time Hits</string>
     <string name="most_played_genre">Most played %1$s</string>
     <string name="add_music">Add Music</string>

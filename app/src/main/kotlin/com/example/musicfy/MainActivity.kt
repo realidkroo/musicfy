@@ -44,6 +44,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -151,12 +153,10 @@ import com.example.musicfy.constants.SlimNavBarHeight
 import com.example.musicfy.constants.SlimNavBarKey
 import com.example.musicfy.constants.StopMusicOnTaskClearKey
 
-import com.example.musicfy.core.updater.checkForUpdate
 import com.example.musicfy.core.updater.getAutoUpdateCheckSetting
 import com.example.musicfy.core.updater.isNewerVersion
 import com.example.musicfy.core.updater.saveUpdateAvailableState
 import com.example.musicfy.core.updater.getUpdateNotificationsSetting
-import com.example.musicfy.core.UpdateNotificationHelper
 import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 import com.example.musicfy.ui.component.GlassState
@@ -279,6 +279,9 @@ class MainActivity : ComponentActivity() {
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
 
+    /** Bumped when launched from an update notification; the composition opens the version sheet. */
+    private var openUpdateRequests by mutableStateOf(0)
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (service is MusicBinder) {
@@ -341,6 +344,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (intent.action == com.example.musicfy.ui.screens.update.ActionOpenUpdate) {
+            openUpdateRequests++
+            return
+        }
         if (::navController.isInitialized) {
             handleDeepLinkIntent(intent, navController)
         } else {
@@ -353,6 +360,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().setZoomFadeExitAnimation()
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null && intent?.action == com.example.musicfy.ui.screens.update.ActionOpenUpdate) {
+            openUpdateRequests++
+        }
 
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -408,23 +418,18 @@ class MainActivity : ComponentActivity() {
             if (getAutoUpdateCheckSetting(context)) {
 
                 delay(2000L)
-                checkForUpdate(
-                    context = context,
-                    onSuccess = { latestVersion, isAvailable, _, _, _, _, _, _ ->
-                        val currentVersion = BuildConfig.VERSION_NAME
-                        Log.d("UpdateCheck", "Startup check success. Latest: $latestVersion, Current: $currentVersion, isAvailable: $isAvailable")
-                        saveUpdateAvailableState(context, isAvailable)
+                // Same cached lookup the version sheet and home prompt use (this app's own
+                // releases - the old checker here queried another project's repo). Launch-time
+                // only: nothing about updates runs in the background.
+                val release = com.example.musicfy.core.updater.getLatestRelease().getOrNull()
+                val isAvailable = release != null &&
+                    com.example.musicfy.core.updater.isNewerThanInstalled(release.version)
+                saveUpdateAvailableState(context, isAvailable)
 
-                        if (isAvailable && getUpdateNotificationsSetting(context)) {
-                            Log.d("UpdateCheck", "Posting update notification for $latestVersion")
-                            UpdateNotificationHelper.showUpdateNotification(context, latestVersion)
-                        }
-                    },
-                    onError = {
-                        Log.e("UpdateCheck", "Startup check failed")
-
-                    }
-                )
+                if (release != null && isAvailable && getUpdateNotificationsSetting(context)) {
+                    // At most three reminders per release (now, +2 weeks, +3 months).
+                    com.example.musicfy.ui.screens.update.maybeNotifyUpdate(context, release)
+                }
             }
         }
 
@@ -530,9 +535,15 @@ class MainActivity : ComponentActivity() {
                 val density = LocalDensity.current
                 val configuration = LocalWindowInfo.current
                 val cutoutInsets = WindowInsets.displayCutout
-                val windowsInsets = WindowInsets.systemBars
+                // The space the system bars take when shown, not what they take right now. The
+                // player hides the navigation bar while it's expanded, and laying the app out
+                // against the bars' current size turned that hide - and the show at the start of
+                // every close - into an inset animation the whole app recomposed and re-laid out
+                // for, frame by frame. It also moved the player sheet's collapsed bound mid-close,
+                // which rebuilt the sheet's state and restarted its spring on every frame of it.
+                @OptIn(ExperimentalLayoutApi::class)
+                val windowsInsets = WindowInsets.systemBarsIgnoringVisibility
                 val bottomInset = with(density) { windowsInsets.getBottom(density).toDp() }
-                val bottomInsetDp = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
 
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -832,6 +843,9 @@ class MainActivity : ComponentActivity() {
                             com.example.musicfy.ui.component.LocalZoomOutOverlayState.current,
                         ),
                     ) {
+                    com.example.musicfy.ui.screens.update.UpdateNotificationOpener(
+                        requests = openUpdateRequests,
+                    )
                     com.example.musicfy.ui.screens.donate.DonatePromptScheduler(
                         enabled = setupCompleted && onboardedHere && !forceShowSetup && !showBetaNotice,
                     )
@@ -1137,13 +1151,29 @@ class MainActivity : ComponentActivity() {
                                                 scaleY = scale
 
                                                 alpha = ((1f - p) / 0.25f).coerceIn(0f, 1f)
+                                                // While the player slides over it the app behind
+                                                // doesn't change, but the zoom made it redraw in
+                                                // full every frame - every image, every text glyph
+                                                // re-rasterised at the new scale, its own glass
+                                                // blurs. Kept in a layer, it is drawn once and the
+                                                // zoom and fade move that. Not once the player is
+                                                // fully open: at alpha 0 it isn't drawn at all.
+                                                if (p < 0.999f) {
+                                                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                                                }
                                             }
 
                                         }
                                 ) {
 
+                                    val appContentObscured = remember(playerBottomSheetState) {
+                                        derivedStateOf { playerBottomSheetState.isExpanded }
+                                    }
                                     SharedTransitionLayout {
-                                    CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                                    CompositionLocalProvider(
+                                        LocalSharedTransitionScope provides this,
+                                        LocalAppContentObscured provides appContentObscured,
+                                    ) {
                                     NavHost(
                                         navController = navController,
                                         startDestination = when (tabOpenedFromShortcut ?: defaultOpenTab) {
@@ -1371,6 +1401,18 @@ val SubSettingsRoutes = setOf(
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
 val LocalPlayerConnection = staticCompositionLocalOf<PlayerConnection?> { error("No PlayerConnection provided") }
 val LocalGlassState = staticCompositionLocalOf<GlassState?> { null }
+
+/**
+ * True while the app's screens are entirely covered (the player fully open). Animations that run
+ * on their own forever - a playing indicator's bars, Home's hero video and gacha drift - wait it
+ * out instead of drawing frames nobody can see. Only provided around the app's screens; the player
+ * itself never sees it set.
+ */
+val LocalAppContentObscured = staticCompositionLocalOf<androidx.compose.runtime.State<Boolean>> { AppContentNeverObscured }
+
+private object AppContentNeverObscured : androidx.compose.runtime.State<Boolean> {
+    override val value: Boolean get() = false
+}
 
 val LocalHideAppChrome = staticCompositionLocalOf { mutableStateOf(false) }
 

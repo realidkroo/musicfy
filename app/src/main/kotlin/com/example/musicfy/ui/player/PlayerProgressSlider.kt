@@ -2,8 +2,18 @@
 
 package com.example.musicfy.ui.player
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -21,9 +31,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextStyle
+import androidx.media3.common.Player
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,9 +51,21 @@ import com.example.musicfy.ui.component.PlayerSliderTrack
 import com.example.musicfy.utils.makeTimeString
 
 @Composable
-fun PlayerProgressSlider(modifier: Modifier = Modifier) {
+fun PlayerProgressSlider(
+    modifier: Modifier = Modifier,
+    /**
+     * Whether the bar is on screen. The player stays composed while it's collapsed, and this used
+     * to follow the playback position (15 times a second) all the same - recomposing the slider
+     * and asking for a new frame each time, behind whatever screen was open. While inactive it
+     * holds the last position and does nothing.
+     */
+    active: Boolean = true,
+) {
     val playerConnection = LocalPlayerConnection.current ?: return
-    val progress by playerConnection.uiState.progressState.collectAsState()
+    val progressFlow = playerConnection.uiState.progressState
+    val progress by produceState(initialValue = progressFlow.value, active) {
+        if (active) progressFlow.collect { value = it }
+    }
     val transportState by playerConnection.uiState.transportState.collectAsState()
     val seekBarStyle by com.example.musicfy.utils.rememberEnumPreference(
         com.example.musicfy.constants.SeekBarStyleKey,
@@ -58,6 +85,15 @@ fun PlayerProgressSlider(modifier: Modifier = Modifier) {
 
     var sliderPosition by remember { mutableStateOf<Long?>(null) }
     val displayedPosition = sliderPosition ?: progress.position
+
+    val durationKnown = progress.duration != C.TIME_UNSET && progress.duration > 0L
+    val buffering = transportState.playbackState == Player.STATE_BUFFERING
+    // Loading the track itself (not a rebuffer mid-song): no length yet, or still at the start.
+    // That's when the time read a meaningless 00:00 with nothing on the right.
+    val loadingTrack = buffering && (!durationKnown || progress.position < LoadingStartWindowMs)
+    // Held back a moment, so a short rebuffer after a seek doesn't flash the bar.
+    val showBuffering by rememberSettled(buffering)
+    val showLoading by rememberSettled(loadingTrack)
 
     val trackInteractionSource = remember { MutableInteractionSource() }
     val isTrackDragged by trackInteractionSource.collectIsDraggedAsState()
@@ -94,6 +130,7 @@ fun PlayerProgressSlider(modifier: Modifier = Modifier) {
                     inactiveColor = Color.White.copy(alpha = 0.24f),
                     animateWave = transportState.isPlaying,
                     active = isTrackDragged || isTrackPressed,
+                    loading = showBuffering,
                 )
             },
             modifier = Modifier
@@ -110,19 +147,76 @@ fun PlayerProgressSlider(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .padding(horizontal = PlayerHorizontalPadding + 4.dp)
     ) {
+        val timeStyle = MaterialTheme.typography.labelMedium
+        val timeColor = Color.White.copy(alpha = 0.85f)
+        AnimatedContent(
+            targetState = showLoading,
+            transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+            label = "seekTimeLoading",
+        ) { loading ->
+            if (loading) {
+                LoadingLabel(style = timeStyle, color = timeColor)
+            } else {
+                Text(
+                    text = makeTimeString(displayedPosition),
+                    style = timeStyle,
+                    color = timeColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
         Text(
-            text = makeTimeString(displayedPosition),
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.85f),
+            text = if (durationKnown && !showLoading) makeTimeString(progress.duration) else "",
+            style = timeStyle,
+            color = timeColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            text = if (progress.duration != C.TIME_UNSET && progress.duration > 0L) makeTimeString(progress.duration) else "",
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.85f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+    }
+}
+
+/** Buffering this close to the start of a track counts as the track loading. */
+private const val LoadingStartWindowMs = 1_500L
+
+/** How long a loading state has to last before it shows. */
+private const val LoadingShowDelayMs = 200L
+
+/** [value], except a true only shows once it has held for [LoadingShowDelayMs]. False is instant. */
+@Composable
+private fun rememberSettled(value: Boolean): State<Boolean> = produceState(initialValue = false, value) {
+    if (value) {
+        kotlinx.coroutines.delay(LoadingShowDelayMs)
+        this.value = true
+    } else {
+        this.value = false
+    }
+}
+
+/** "Loading" with its three dots lighting one after another. */
+@Composable
+private fun LoadingLabel(style: TextStyle, color: Color) {
+    val transition = rememberInfiniteTransition(label = "loadingLabel")
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(text = "Loading", style = style, color = color, maxLines = 1)
+        repeat(3) { index ->
+            val lit by transition.animateFloat(
+                initialValue = 0.15f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 520),
+                    repeatMode = RepeatMode.Reverse,
+                    initialStartOffset = StartOffset(index * 170),
+                ),
+                label = "loadingDot$index",
+            )
+            Text(
+                text = ".",
+                style = style,
+                color = color,
+                maxLines = 1,
+                modifier = Modifier.graphicsLayer { alpha = lit },
+            )
+        }
     }
 }

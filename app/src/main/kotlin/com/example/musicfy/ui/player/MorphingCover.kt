@@ -107,6 +107,8 @@ import com.example.musicfy.constants.CanvasWifiOnlyKey
 import com.example.musicfy.constants.DisableBlurKey
 import com.example.musicfy.constants.ForceYtBackdropBlur1500Key
 import com.example.musicfy.constants.PlayVideoBackgroundKey
+import com.example.musicfy.constants.DisableVideoAutoplayKey
+import com.example.musicfy.utils.YTPlayerUtils
 import com.example.musicfy.constants.PlayerBackgroundStyle
 import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.constants.YtVideoBackgroundLyricsSyncKey
@@ -317,6 +319,9 @@ fun MorphingCover(
 
     onLongPressCover: (() -> Unit)? = null,
 
+    /** Double tap on the full-size cover, with where it landed in root coordinates (the like heart starts there). */
+    onDoubleTapCover: ((androidx.compose.ui.geometry.Offset) -> Unit)? = null,
+
     onArtBoundsChanged: ((androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -368,13 +373,39 @@ fun MorphingCover(
     val isDiscStyle = coverStyle.isDisc
 
     val playVideoPref by rememberPreference(PlayVideoBackgroundKey, defaultValue = false)
-    val playVideoBackground = forceVideoBackground || playVideoPref
+    val disableVideoAutoplay by rememberPreference(DisableVideoAutoplayKey, defaultValue = false)
+    val currentMetadata by (playerConnection?.mediaMetadata ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) })
+        .collectAsState()
+    // a track that is a video itself (a music video or live row, the Videos search tab) plays that
+    // video here on its own; songs only get one when the video background setting asks for it
+    val trackIsVideo = !disableVideoAutoplay &&
+        currentMetadata?.id == trackInfo.mediaId &&
+        currentMetadata?.isVideoSong == true
+    val playVideoBackground = forceVideoBackground || playVideoPref || trackIsVideo
     var videoInfo by remember(trackInfo.mediaId) { mutableStateOf<OfficialMusicVideo?>(null) }
-    LaunchedEffect(trackInfo.mediaId, trackInfo.title, trackInfo.artist, playVideoBackground) {
+    LaunchedEffect(trackInfo.mediaId, trackInfo.title, trackInfo.artist, playVideoBackground, trackIsVideo) {
         val mediaId = trackInfo.mediaId
         val titleStr = trackInfo.title
         val artistStr = trackInfo.artist
-        if (!playVideoBackground || mediaId.isBlank() || titleStr.isBlank() || artistStr.isBlank()) {
+        if (!playVideoBackground || mediaId.isBlank()) {
+            videoInfo = null
+            return@LaunchedEffect
+        }
+        if (trackIsVideo) {
+            // the audio is this very video, so its own stream lines up exactly and needs no search
+            val key = "self:$mediaId"
+            if (YouTubeVideoUrlCache.contains(key)) {
+                videoInfo = YouTubeVideoUrlCache.get(key)
+                return@LaunchedEffect
+            }
+            val own = withContext(Dispatchers.IO) {
+                YTPlayerUtils.resolveVideoStreamUrl(mediaId).getOrNull()?.let { OfficialMusicVideo(mediaId, it) }
+            }
+            YouTubeVideoUrlCache.put(key, own)
+            videoInfo = own
+            return@LaunchedEffect
+        }
+        if (titleStr.isBlank() || artistStr.isBlank()) {
             videoInfo = null
             return@LaunchedEffect
         }
@@ -481,6 +512,12 @@ fun MorphingCover(
     val longPressEnabled by remember {
         derivedStateOf { progressProvider() > 0.9f && lyricsProgressProvider() < 0.1f }
     }
+    // Read through these inside the gesture detector, which is keyed on nothing: the callers pass
+    // fresh lambdas on every recomposition, and restarting the detector for each one would drop
+    // the second tap of a double tap.
+    val currentOnLongPress by androidx.compose.runtime.rememberUpdatedState(onLongPressCover)
+    val currentOnDoubleTap by androidx.compose.runtime.rememberUpdatedState(onDoubleTapCover)
+    val artCoordinates = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
 
     val discSpinActive by remember(editMode) {
         derivedStateOf { !editMode && progressProvider() > 0.9f && lyricsProgressProvider() < 0.6f }
@@ -539,7 +576,8 @@ fun MorphingCover(
         val videoId = videoInfo?.videoId
         val lyricsRaw = currentLyrics?.lyrics
             ?.takeIf { it.isNotBlank() && it != com.example.musicfy.db.entities.LyricsEntity.LYRICS_NOT_FOUND }
-        if (!lyricsSyncEnabled || videoId == null || lyricsRaw == null) {
+        // the track's own video is already in step with it; anchors are for lining up a separate one
+        if (!lyricsSyncEnabled || videoId == null || videoId == mediaId || lyricsRaw == null) {
             lyricVideoAnchors = null
             return@LaunchedEffect
         }
@@ -682,7 +720,15 @@ fun MorphingCover(
 
                         scaleX = animatedPauseScale
                         scaleY = animatedPauseScale
-                        colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(animatedPauseSaturation) })
+                        // A colour filter on a layer forces it offscreen - the whole cover rendered
+                        // into a buffer of its own every frame of the morph. While playing the
+                        // matrix is the identity anyway, so it's only set while the cover is
+                        // (or is turning) grey.
+                        colorFilter = if (animatedPauseSaturation < 0.999f) {
+                            ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(animatedPauseSaturation) })
+                        } else {
+                            null
+                        }
 
                         clip = !isDiscStyle ||
                             discWeight(progressProvider, lyricsProgressProvider) < 0.5f
@@ -697,10 +743,22 @@ fun MorphingCover(
                     }
                     .then(
 
-                        if (longPressEnabled && onLongPressCover != null) {
-                            Modifier.pointerInput(onLongPressCover) {
-                                detectTapGestures(onLongPress = { onLongPressCover() })
-                            }
+                        if (longPressEnabled && (onLongPressCover != null || onDoubleTapCover != null)) {
+                            Modifier
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onLongPress = { currentOnLongPress?.invoke() },
+                                        onDoubleTap = { position ->
+                                            val coordinates = artCoordinates[0]
+                                            val onDoubleTap = currentOnDoubleTap
+                                            if (coordinates != null && coordinates.isAttached && onDoubleTap != null) {
+                                                onDoubleTap(coordinates.localToRoot(position))
+                                            }
+                                        },
+                                    )
+                                }
+                                // Same layer as the detector, so its tap positions convert exactly.
+                                .onGloballyPositioned { artCoordinates[0] = it }
                         } else Modifier
                     )
                     .then(
@@ -814,7 +872,11 @@ fun MorphingCover(
             }
         }
 
-        Box(
+        // The mini player's title is fully faded once the sheet is halfway open, yet it was still
+        // measured at a new width (re-laying its text out) and drawn through its offscreen fade
+        // layer on every frame of the rest of the open and close.
+        val miniTextShown by remember { derivedStateOf { progressProvider() < 0.5f } }
+        if (miniTextShown) Box(
             modifier = Modifier
                 .morphLayout(
                     progressProvider = progressProvider,

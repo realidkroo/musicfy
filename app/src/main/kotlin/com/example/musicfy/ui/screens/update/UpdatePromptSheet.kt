@@ -147,12 +147,7 @@ fun UpdatePromptSheet(
                     fontWeight = FontWeight.Bold,
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = release.body.trim().ifBlank { "No changelog for this release." },
-                    color = Color(0xFF9A9A9A),
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                )
+                ChangelogMarkdown(markdown = release.body)
             }
 
             Spacer(modifier = Modifier.height(18.dp))

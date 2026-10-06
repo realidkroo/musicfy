@@ -153,12 +153,18 @@ object YouLyPlus {
             if (!syllabus.isNullOrEmpty()) {
                 val sb = StringBuilder(lineTimestamp)
                 sb.append(marker)
-                syllabus.forEach { syl ->
+                // The API times SYLLABLES and carries word boundaries in the text itself: a
+                // syllable that ends a word ends with a space ("Ta", "hun ", "CAS", "KET "). Adding
+                // a space after every syllable without one split words apart - "Ta hun", "CAS KET",
+                // "wa nt". Only when a line carries no spacing at all (one entry per word, no
+                // trailing spaces) do the gaps have to be supplied here.
+                val spacedByApi = syllabus.dropLast(1).any { it.text?.lastOrNull()?.isWhitespace() == true }
+                syllabus.forEachIndexed { index, syl ->
                     val sylTime = syl.time ?: 0L
                     sb.append(formatTime(sylTime, isSyllable = true))
                     sb.append(syl.text ?: "")
 
-                    if (syl.text?.endsWith(" ") == false) {
+                    if (!spacedByApi && index < syllabus.lastIndex && syl.text?.lastOrNull()?.isWhitespace() != true) {
                         sb.append(" ")
                     }
                 }

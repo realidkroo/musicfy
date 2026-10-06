@@ -1447,6 +1447,10 @@ interface DatabaseDao {
         return deleteTimestampArtists()
     }
 
+    /** every fetched lyric (and every saved "not found") goes, so they're looked up again; ones from [keepProviders] stay */
+    @Query("DELETE FROM lyrics WHERE provider NOT IN (:keepProviders)")
+    fun clearFetchedLyrics(keepProviders: List<String>): Int
+
     @Transaction
     fun insert(
         mediaMetadata: MediaMetadata,

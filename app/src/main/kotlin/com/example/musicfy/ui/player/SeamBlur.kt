@@ -16,11 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
@@ -85,6 +82,13 @@ fun SeamBlur(
         }
     }
 
+    // The band is invisible (alpha 0) for the first half of every open and close, and whenever a
+    // page is up - but its three layers (the fade, the masked blur and the blur itself) were still
+    // drawn then, blur passes and all. Only draw it while it can show. The colour above stays
+    // composed either way, so it isn't extracted again each time the band comes back.
+    val drawn by remember { derivedStateOf { progressProvider() > 0.5f && fadeProvider() > 0f } }
+    if (!drawn) return
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -100,22 +104,12 @@ fun SeamBlur(
             state = glassState,
             blurRadius = { 130f },
             tileMode = android.graphics.Shader.TileMode.CLAMP,
+            // Faded top and bottom by the blur effect itself, rather than by DstIn-ing a gradient
+            // over the glass in an offscreen layer of its own.
+            mask = SeamMask,
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .drawWithContent {
-                    drawContent()
-                    drawRect(
-                        brush = Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            0.25f to Color.Black,
-                            0.8f to Color.Black,
-                            1f to Color.Transparent,
-                        ),
-                        blendMode = BlendMode.DstIn,
-                    )
-                }
         )
 
         Box(
@@ -132,3 +126,10 @@ fun SeamBlur(
         )
     }
 }
+
+private val SeamMask = Brush.verticalGradient(
+    0f to Color.Transparent,
+    0.25f to Color.Black,
+    0.8f to Color.Black,
+    1f to Color.Transparent,
+)

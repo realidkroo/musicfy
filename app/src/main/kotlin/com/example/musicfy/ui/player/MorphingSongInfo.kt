@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -39,17 +42,32 @@ fun MorphingSongInfo(
     sourceRectProvider: () -> Rect?,
     targetY: Dp,
     modifier: Modifier = Modifier,
+    /**
+     * The player sheet's progress. With a page left open, the header title stays up while the
+     * player closes and opens, and fades with the rest of the page then.
+     */
+    sheetProgressProvider: () -> Float = { 1f },
 ) {
-    val source = sourceRectProvider() ?: return
+    // Whether it can be seen at all. Decided in a derived state so the providers aren't read here:
+    // the source rect moves with every frame of a sheet slide, and reading it in composition
+    // recomposed this on every one of those frames.
+    val shown by remember {
+        derivedStateOf {
+            lyricsProgressProvider() > 0f &&
+                sheetFade(sheetProgressProvider()) > 0f &&
+                sourceRectProvider() != null
+        }
+    }
+    if (!shown) return
+    val sourceWidth by remember { derivedStateOf { sourceRectProvider()?.width ?: 0f } }
 
     val lp = lyricsProgressProvider()
-    if (lp <= 0f) return
 
     val density = LocalDensity.current
     val targetXPx = with(density) { TargetX.toPx() }
     val targetYPx = with(density) { targetY.toPx() }
 
-    val widthDp = with(density) { source.width.toDp() }
+    val widthDp = with(density) { sourceWidth.toDp() }
 
     val titleSize = lerp(MaterialTheme.typography.titleLarge.fontSize, CollapsedTitleSize, lp)
     val artistSize = lerp(MaterialTheme.typography.titleMedium.fontSize, CollapsedArtistSize, lp)
@@ -58,11 +76,12 @@ fun MorphingSongInfo(
         modifier = modifier
             .width(widthDp)
             .graphicsLayer {
-
-                alpha = (lp / 0.35f).coerceIn(0f, 1f)
+                val source = sourceRectProvider() ?: return@graphicsLayer
+                val progress = lyricsProgressProvider()
+                alpha = (progress / 0.35f).coerceIn(0f, 1f) * sheetFade(sheetProgressProvider())
                 transformOrigin = TransformOrigin(0f, 0f)
-                translationX = androidx.compose.ui.util.lerp(source.left, targetXPx, lp)
-                translationY = androidx.compose.ui.util.lerp(source.top, targetYPx, lp)
+                translationX = androidx.compose.ui.util.lerp(source.left, targetXPx, progress)
+                translationY = androidx.compose.ui.util.lerp(source.top, targetYPx, progress)
             },
     ) {
 
@@ -120,6 +139,9 @@ fun MorphingSongInfo(
         }
     }
 }
+
+/** The player sheet's own content fade (BottomSheet's pill branch), so the title goes with it. */
+private fun sheetFade(sheetProgress: Float): Float = ((sheetProgress.coerceIn(0f, 1f) - 0.25f) / 0.60f).coerceIn(0f, 1f)
 
 private val maxTextWidth = 210.dp
 

@@ -31,7 +31,13 @@ constructor(
 
         viewModelScope.launch(Dispatchers.IO) {
             val existing = database.lyrics(id).first()
-            if (existing != null) return@launch
+            // YouLyPlus and Paxsenix used to join syllables with spaces ("wa nt yo u"). Their
+            // converters are fixed, but lyrics cached before that keep the split text forever, so
+            // a cached copy from either that still reads as syllable-split is fetched again once.
+            val staleSyllableSplit = existing != null &&
+                existing.provider in SyllableFixedProviders &&
+                com.example.musicfy.lyrics.LyricsUtils.isSyllableSplit(existing.lyrics)
+            if (existing != null && !staleSyllableSplit) return@launch
 
             val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
             database.query {
@@ -46,3 +52,5 @@ constructor(
         }
     }
 }
+
+private val SyllableFixedProviders = setOf("YouLyPlus", "Paxsenix")

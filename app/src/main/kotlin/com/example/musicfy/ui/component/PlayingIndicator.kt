@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.flow.first
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,11 +57,15 @@ fun PlayingIndicator(
     spacing: Dp = 2.dp,
 ) {
     val levels = remember(bars) { List(bars) { Animatable(0.3f + 0.4f * Random.nextFloat()) } }
+    // Holds still while the player covers the app: the bars bounce forever otherwise, drawing a
+    // frame every few milliseconds behind it.
+    val obscured = com.example.musicfy.LocalAppContentObscured.current
 
     LaunchedEffect(levels) {
         levels.forEach { level ->
             launch {
                 while (true) {
+                    if (obscured.value) snapshotFlow { obscured.value }.first { !it }
                     level.animateTo(
                         targetValue = 0.22f + Random.nextFloat() * 0.78f,
                         animationSpec = tween(
@@ -119,15 +125,21 @@ fun PlayingIndicatorBox(
             }
             if (large) {
                 if (playWhenReady) {
-                    PlayingIndicator(
-                        color = color,
-                        barWidth = 3.dp,
-                        spacing = 2.5.dp,
+                    // the same bottom-right slot as the play glyph, so playing and paused swap in place
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(start = 14.dp)
-                            .height(20.dp),
-                    )
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 10.dp, bottom = 9.dp)
+                            .size(28.dp),
+                    ) {
+                        PlayingIndicator(
+                            color = color,
+                            barWidth = 3.dp,
+                            spacing = 2.5.dp,
+                            modifier = Modifier.height(18.dp),
+                        )
+                    }
                 } else {
                     CoverPlayGlyph(
                         modifier = Modifier

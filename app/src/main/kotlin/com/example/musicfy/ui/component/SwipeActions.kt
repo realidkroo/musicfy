@@ -4,22 +4,32 @@ package com.example.musicfy.ui.component
 
 import android.widget.Toast
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -42,6 +52,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -51,14 +63,21 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.media3.common.MediaItem
 import com.example.musicfy.LocalDatabase
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.db.entities.SongEntity
 import com.example.musicfy.models.toMediaMetadata
+import com.example.musicfy.ui.theme.InterFontFamily
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
 import kotlinx.coroutines.CoroutineScope
@@ -70,6 +89,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.sign
 
 /** one side of a swipeable row: what it shows while you drag, and what it does once you let go past the line */
@@ -97,14 +117,31 @@ private const val SwipeResistance = 0.35f
 // library and playlist writes outlive the row: the pill that started them is gone a moment later
 private val SwipeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+// the pill lives in the gap the swipe opens: this far in from the screen edge, this far from the row
+private val PillEdgeInset = 10.dp
+private val PillGap = 8.dp
+private val SlabInset = 10.dp
+private val PillPadding = 13.dp
+private val PillIconSize = 18.dp
+private val PillLabelSpacing = 6.dp
+
+private val SwipeLabelStyle = TextStyle(
+    fontFamily = InterFontFamily,
+    fontWeight = FontWeight.SemiBold,
+    fontSize = 12.5.sp,
+    letterSpacing = (-0.02).em,
+)
+
 /**
  * a row you can drag sideways, like Frame 117: the row slides on a dark rounded slab, and the
- * action for that side pops out of the edge with a little spring. past the line it fills with the
- * action's colour (with a tick you can feel), and letting go there fires it while the row springs back.
+ * action for that side grows out of the edge into the gap it leaves, a dot first, then a circle,
+ * then a pill that keeps pace with your finger. past the line it fills with the action's colour
+ * (with a tick you can feel) and says what it will do; letting go there does it while the row
+ * springs back.
  *
  * [start] is revealed on the left by sliding right, [end] on the right by sliding left. both are
  * only composed while their side is showing, so an action can look things up without every row
- * in a list paying for it.
+ * in a list paying for it. rows that are already a pill of their own turn the [slab] off.
  */
 @Composable
 fun SwipeActionsBox(
@@ -112,6 +149,7 @@ fun SwipeActionsBox(
     start: (@Composable () -> SwipeAction)? = null,
     end: (@Composable () -> SwipeAction)? = null,
     enabled: Boolean = true,
+    slab: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -129,24 +167,36 @@ fun SwipeActionsBox(
     val startAction = remember { mutableStateOf<SwipeAction?>(null) }
     val endAction = remember { mutableStateOf<SwipeAction?>(null) }
 
-    val threshold = with(density) { (rowSize.width * 0.26f).coerceIn(84.dp.toPx(), 150.dp.toPx()) }
+    // how wide each side's pill is with its label showing; that side's line moves out to fit it
+    var startNeed by remember { mutableFloatStateOf(0f) }
+    var endNeed by remember { mutableFloatStateOf(0f) }
+
+    val baseThreshold = with(density) { (rowSize.width * 0.3f).coerceIn(100.dp.toPx(), 150.dp.toPx()) }
+    // the pill's width is the travel less this: its gap to the row and to the screen edge
+    val pillRoom = with(density) { (PillEdgeInset + PillGap - SlabInset).toPx() }
     val deadSideLimit = with(density) { 22.dp.toPx() }
+    val hysteresis = with(density) { 4.dp.toPx() }
+
+    fun thresholdFor(direction: Float): Float =
+        maxOf(baseThreshold, (if (direction > 0f) startNeed else endNeed) + pillRoom)
 
     fun resisted(raw: Float): Float {
         val allowed = if (raw > 0f) start != null else end != null
         val distance = abs(raw)
+        val line = thresholdFor(raw)
         val shown = when {
             // a side with nothing on it only gives a little, so the row doesn't feel stuck
             !allowed -> minOf(distance * 0.2f, deadSideLimit)
-            distance <= threshold -> distance
-            else -> threshold + (distance - threshold) * SwipeResistance
+            distance <= line -> distance
+            else -> line + (distance - line) * SwipeResistance
         }
         return sign(raw) * shown
     }
 
     fun unresisted(shown: Float): Float {
         val distance = abs(shown)
-        return if (distance <= threshold) shown else sign(shown) * (threshold + (distance - threshold) / SwipeResistance)
+        val line = thresholdFor(shown)
+        return if (distance <= line) shown else sign(shown) * (line + (distance - line) / SwipeResistance)
     }
 
     LaunchedEffect(enabled) {
@@ -161,10 +211,11 @@ fun SwipeActionsBox(
         travel += delta
         offset = resisted(travel)
         val side = when {
-            offset >= threshold && start != null -> 1
-            offset <= -threshold && end != null -> -1
-            // a little hysteresis, so hovering right on the line doesn't buzz
-            armed != 0 && abs(offset) >= threshold * 0.92f -> armed
+            offset > 0f && start != null && offset >= thresholdFor(1f) -> 1
+            offset < 0f && end != null && -offset >= thresholdFor(-1f) -> -1
+            // a few dp of hysteresis, so hovering right on the line doesn't buzz (small enough
+            // that the pill never gets narrower than its label while the label is out)
+            armed != 0 && sign(offset) == armed.toFloat() && abs(offset) >= thresholdFor(offset) - hysteresis -> armed
             else -> 0
         }
         if (side != armed) {
@@ -235,10 +286,11 @@ fun SwipeActionsBox(
                 SwipePill(
                     action = action,
                     atStart = true,
-                    offset = { offset },
-                    active = armed == 1 || fired == 1,
-                    fired = fired == 1,
+                    room = { (offset - pillRoom).coerceAtLeast(0f) },
                     rowHeight = rowSize.height,
+                    armed = armed == 1,
+                    fired = fired == 1,
+                    onNeed = { startNeed = it },
                 )
             }
             if (showEnd && end != null) {
@@ -247,10 +299,11 @@ fun SwipeActionsBox(
                 SwipePill(
                     action = action,
                     atStart = false,
-                    offset = { offset },
-                    active = armed == -1 || fired == -1,
-                    fired = fired == -1,
+                    room = { (-offset - pillRoom).coerceAtLeast(0f) },
                     rowHeight = rowSize.height,
+                    armed = armed == -1,
+                    fired = fired == -1,
+                    onNeed = { endNeed = it },
                 )
             }
 
@@ -259,9 +312,9 @@ fun SwipeActionsBox(
                     .graphicsLayer { translationX = offset }
                     .drawBehind {
                         // the row rides on its own rounded slab while it's moving, side to side
-                        val strength = (abs(offset) / 20.dp.toPx()).coerceIn(0f, 1f)
+                        val strength = if (slab) (abs(offset) / 20.dp.toPx()).coerceIn(0f, 1f) else 0f
                         if (strength > 0f) {
-                            val inset = 10.dp.toPx()
+                            val inset = SlabInset.toPx()
                             drawRoundRect(
                                 color = HighlightColor.copy(alpha = HighlightColor.alpha * strength),
                                 topLeft = Offset(inset, 0f),
@@ -277,70 +330,102 @@ fun SwipeActionsBox(
     }
 }
 
-/** the action's pill, pinned to its edge: pops out with a spring, fills with colour once armed */
+/**
+ * the action's pill. it only ever fills the gap the swipe has opened ([room]), so it never slides
+ * under the row: a dot at first, a circle once there's room for one, then it stretches with the
+ * finger through a stiff spring until it's as wide as its label needs. armed, it takes the
+ * action's colour and the label slides out beside the icon.
+ */
 @Composable
 private fun BoxScope.SwipePill(
     action: SwipeAction,
     atStart: Boolean,
-    offset: () -> Float,
-    active: Boolean,
-    fired: Boolean,
+    room: () -> Float,
     rowHeight: Int,
+    armed: Boolean,
+    fired: Boolean,
+    onNeed: (Float) -> Unit,
 ) {
     val density = LocalDensity.current
-    val popDistance = with(density) { 18.dp.toPx() }
-    val shown by remember { derivedStateOf { abs(offset()) > popDistance } }
-    val pop = animateFloatAsState(
-        targetValue = if (shown) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.5f, stiffness = 520f),
-        label = "swipePillPop",
+    val measurer = rememberTextMeasurer()
+    val pillHeight = with(density) { (rowHeight.toDp() * 0.6f).coerceIn(32.dp, 38.dp).toPx() }
+    val labelWidth = remember(action.label, density) {
+        measurer.measure(action.label, SwipeLabelStyle).size.width.toFloat()
+    }
+    val need = with(density) { (PillPadding * 2 + PillIconSize + PillLabelSpacing).toPx() } + labelWidth
+    SideEffect { onNeed(need) }
+
+    val width by animateFloatAsState(
+        targetValue = room().coerceIn(0f, need),
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 1100f),
+        label = "swipePillWidth",
     )
     val fill by animateColorAsState(
-        targetValue = if (active) action.color else SwipePillIdle,
+        targetValue = if (armed || fired) action.color else SwipePillIdle,
         animationSpec = spring(stiffness = 700f),
         label = "swipePillFill",
     )
     val bump = remember { Animatable(1f) }
-    LaunchedEffect(active, fired) {
-        if (active) {
-            bump.animateTo(if (fired) 1.38f else 1.28f, tween(85))
+    LaunchedEffect(armed, fired) {
+        if (armed || fired) {
+            bump.animateTo(if (fired) 1.3f else 1.2f, tween(85))
             bump.animateTo(1f, spring(dampingRatio = 0.38f, stiffness = 560f))
         }
     }
-
-    // proportions from Frame 117: 1.3 x 0.6 of the row's height, a sixth of it in from the edge
-    val heightDp = with(density) { rowHeight.toDp() }
-    val pillHeight = (heightDp * 0.6f).coerceIn(30.dp, 40.dp)
-    val pillWidth = (heightDp * 1.3f).coerceIn(64.dp, 84.dp)
-    val edgeInset = (heightDp * 0.16f).coerceIn(8.dp, 12.dp)
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .align(if (atStart) Alignment.CenterStart else Alignment.CenterEnd)
-            .padding(horizontal = edgeInset)
-            .size(width = pillWidth, height = pillHeight)
-            .graphicsLayer {
-                // the spring overshoots a little past full size, so it lands with some give
-                val p = pop.value
-                scaleX = p
-                scaleY = p
-                alpha = p.coerceIn(0f, 1f)
-                translationX = (1f - p) * 16.dp.toPx() * if (atStart) -1f else 1f
+            .padding(horizontal = PillEdgeInset)
+            .layout { measurable, _ ->
+                // the spring may lag or overshoot, but the pill is never wider than the gap
+                // that's actually open right now, so it can't overlap the row
+                val w = minOf(width, room()).coerceAtLeast(0f)
+                val h = minOf(w, pillHeight)
+                val placeable = measurable.measure(Constraints.fixed(w.roundToInt(), h.roundToInt()))
+                layout(placeable.width, placeable.height) { placeable.place(0, 0) }
             }
-            .background(fill, RoundedCornerShape(50)),
+            .clip(RoundedCornerShape(50))
+            .background(fill),
     ) {
-        Icon(
-            painter = painterResource(action.icon),
-            contentDescription = action.label,
-            tint = Color.White,
-            modifier = Modifier
-                .size(20.dp)
-                .graphicsLayer {
-                    scaleX = bump.value
-                    scaleY = bump.value
-                },
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.wrapContentWidth(unbounded = true),
+        ) {
+            Icon(
+                painter = painterResource(action.icon),
+                contentDescription = action.label,
+                tint = Color.White,
+                modifier = Modifier
+                    .size(PillIconSize)
+                    .graphicsLayer {
+                        // grows with the pill: tiny in the dot, full size once it's a circle
+                        val grown = (minOf(width, room()) / pillHeight).coerceIn(0f, 1f)
+                        val scale = (0.35f + 0.65f * grown) * bump.value
+                        scaleX = scale
+                        scaleY = scale
+                        alpha = grown
+                    },
+            )
+            AnimatedVisibility(
+                visible = armed,
+                enter = expandHorizontally(spring(dampingRatio = 0.8f, stiffness = 700f), expandFrom = Alignment.Start) +
+                    fadeIn(tween(160)),
+                exit = shrinkHorizontally(tween(140), shrinkTowards = Alignment.Start) + fadeOut(tween(100)),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.width(PillLabelSpacing))
+                    Text(
+                        text = action.label,
+                        style = SwipeLabelStyle,
+                        color = Color.White,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
     }
 }
 

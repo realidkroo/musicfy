@@ -260,8 +260,10 @@ picking a language) must call `LocalMenuSheetClose.current()`, **not** the `onDi
 `onDismiss` drops the sheet from composition on the spot, with no slide-out. When that happens the
 stack only animates the sheet behind back into place as a fallback.
 
-On the lyrics page, the options button is the round button next to the seek bar where the chevron
-normally is (`BottomSheetPlayer`), not a button in the lyrics header.
+On the lyrics page there's no options button in the header: the lyrics tools are reached through
+the chevron menu's "Other menu" item, which opens this menu with `fromLyrics = true` whenever the
+lyrics are up. The lyrics-page chevron is the same control as the song-info row's, gliding between
+the two spots with the lyrics transition, with its own rect (`lyricsChevronRect`) for anchoring the menu.
 
 Hoisting these sheets to true root-level `PopupSheetState`s (so they'd get the same recede/stack
 treatment as Donate/the update sheet) would need restructuring how the player mounts them

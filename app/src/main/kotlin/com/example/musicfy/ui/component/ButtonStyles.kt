@@ -19,9 +19,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +72,75 @@ data class TransportColors(
     val onContainer: Color = Color.White,
 )
 
+/**
+ * A button that taps, or - held - does something for as long as it's held: [onHoldStart] when the
+ * long press lands, [onHoldEnd] when the finger lifts (or the gesture is cancelled). A tap never
+ * fires after a hold. Without [onHoldStart] a long press is just a tap, like `clickable`.
+ *
+ * Feeds [interactionSource] the same press/release a `clickable` would, so press scaling keeps
+ * working, and keeps the button's semantics.
+ */
+@Composable
+fun Modifier.tapOrHold(
+    enabled: Boolean,
+    onTap: () -> Unit,
+    onHoldStart: (() -> Unit)? = null,
+    onHoldEnd: (() -> Unit)? = null,
+    interactionSource: MutableInteractionSource? = null,
+): Modifier {
+    val tap by rememberUpdatedState(onTap)
+    val holdStart by rememberUpdatedState(onHoldStart)
+    val holdEnd by rememberUpdatedState(onHoldEnd)
+    val haptic = LocalHapticFeedback.current
+    val holdable = onHoldStart != null
+    return this
+        .semantics {
+            role = Role.Button
+            if (enabled) {
+                onClick { tap(); true }
+                if (holdable) onLongClick { true }
+            } else {
+                disabled()
+            }
+        }
+        .pointerInput(enabled, holdable, interactionSource) {
+            if (!enabled) return@pointerInput
+            var holding = false
+            detectTapGestures(
+                onPress = { offset ->
+                    val press = PressInteraction.Press(offset)
+                    interactionSource?.emit(press)
+                    val released = tryAwaitRelease()
+                    interactionSource?.emit(
+                        if (released) PressInteraction.Release(press) else PressInteraction.Cancel(press)
+                    )
+                    if (holding) {
+                        holding = false
+                        haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                        holdEnd?.invoke()
+                    }
+                },
+                onLongPress = if (holdable) {
+                    {
+                        holding = true
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        holdStart?.invoke()
+                    }
+                } else {
+                    null
+                },
+                onTap = { tap() },
+            )
+        }
+}
+
+/** Hold callbacks for the skip buttons: next plays faster while held, previous slower. */
+class TransportHold(
+    val onPreviousHoldStart: () -> Unit,
+    val onNextHoldStart: () -> Unit,
+    val onHoldEnd: () -> Unit,
+)
+
 @Composable
 fun PlayerTransportButtons(
     style: ButtonStyle,
@@ -74,6 +155,7 @@ fun PlayerTransportButtons(
     buttonSize: Dp = 74.dp,
     iconSize: Dp = 54.dp,
     gap: Dp = 30.dp,
+    hold: TransportHold? = null,
 ) {
     when (style) {
         ButtonStyle.M3_EXPRESSIVE, ButtonStyle.M3_EXPRESSIVE_PLAIN, ButtonStyle.M3_TONAL ->
@@ -87,6 +169,7 @@ fun PlayerTransportButtons(
                 onNext = onNext,
                 colors = colors,
                 modifier = modifier,
+                hold = hold,
             )
 
         ButtonStyle.LEGACY -> LegacyTransport(
@@ -98,6 +181,7 @@ fun PlayerTransportButtons(
             onNext = onNext,
             colors = colors,
             modifier = modifier,
+            hold = hold,
         )
 
         ButtonStyle.DEFAULT -> Unit // Drawn by the caller's existing animated glyphs.
@@ -115,6 +199,7 @@ private fun M3Transport(
     onNext: () -> Unit,
     colors: TransportColors,
     modifier: Modifier = Modifier,
+    hold: TransportHold? = null,
 ) {
     val showLabel = style == ButtonStyle.M3_EXPRESSIVE
     val tonal = style == ButtonStyle.M3_TONAL
@@ -130,6 +215,8 @@ private fun M3Transport(
             onClick = onPrevious,
             container = colors.container,
             content = colors.onContainer,
+            onHoldStart = hold?.onPreviousHoldStart,
+            onHoldEnd = hold?.onHoldEnd,
         )
 
         // The play control is a pill rather than a circle - the shape difference is what makes it
@@ -175,6 +262,8 @@ private fun M3Transport(
             onClick = onNext,
             container = colors.container,
             content = colors.onContainer,
+            onHoldStart = hold?.onNextHoldStart,
+            onHoldEnd = hold?.onHoldEnd,
         )
     }
 }
@@ -186,13 +275,15 @@ private fun M3RoundButton(
     onClick: () -> Unit,
     container: Color,
     content: Color,
+    onHoldStart: (() -> Unit)? = null,
+    onHoldEnd: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
             .size(48.dp)
             .clip(CircleShape)
             .background(container)
-            .clickable(enabled = enabled, onClick = onClick),
+            .tapOrHold(enabled = enabled, onTap = onClick, onHoldStart = onHoldStart, onHoldEnd = onHoldEnd),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -215,13 +306,17 @@ private fun LegacyTransport(
     onNext: () -> Unit,
     colors: TransportColors,
     modifier: Modifier = Modifier,
+    hold: TransportHold? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(36.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LegacyGlyph(R.drawable.skip_previous, canSkipPrevious, onPrevious, colors.onContainer, 34.dp)
+        LegacyGlyph(
+            R.drawable.skip_previous, canSkipPrevious, onPrevious, colors.onContainer, 34.dp,
+            onHoldStart = hold?.onPreviousHoldStart, onHoldEnd = hold?.onHoldEnd,
+        )
         LegacyGlyph(
             icon = if (isPlaying) R.drawable.pause else R.drawable.play,
             enabled = true,
@@ -229,12 +324,23 @@ private fun LegacyTransport(
             tint = colors.onContainer,
             size = 44.dp,
         )
-        LegacyGlyph(R.drawable.skip_next, canSkipNext, onNext, colors.onContainer, 34.dp)
+        LegacyGlyph(
+            R.drawable.skip_next, canSkipNext, onNext, colors.onContainer, 34.dp,
+            onHoldStart = hold?.onNextHoldStart, onHoldEnd = hold?.onHoldEnd,
+        )
     }
 }
 
 @Composable
-private fun LegacyGlyph(icon: Int, enabled: Boolean, onClick: () -> Unit, tint: Color, size: Dp) {
+private fun LegacyGlyph(
+    icon: Int,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    tint: Color,
+    size: Dp,
+    onHoldStart: (() -> Unit)? = null,
+    onHoldEnd: (() -> Unit)? = null,
+) {
     Icon(
         painter = painterResource(icon),
         contentDescription = null,
@@ -242,6 +348,6 @@ private fun LegacyGlyph(icon: Int, enabled: Boolean, onClick: () -> Unit, tint: 
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .clickable(enabled = enabled, onClick = onClick),
+            .tapOrHold(enabled = enabled, onTap = onClick, onHoldStart = onHoldStart, onHoldEnd = onHoldEnd),
     )
 }

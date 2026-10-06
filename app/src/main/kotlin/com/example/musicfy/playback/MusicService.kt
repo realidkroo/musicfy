@@ -158,6 +158,8 @@ import com.example.musicfy.extensions.collect
 import com.example.musicfy.extensions.collectLatest
 import com.example.musicfy.extensions.currentMetadata
 import com.example.musicfy.extensions.findNextMediaItemById
+import com.example.musicfy.extensions.isAutoplay
+import com.example.musicfy.extensions.withAutoplay
 import com.example.musicfy.extensions.mediaItems
 import com.example.musicfy.extensions.metadata
 import com.example.musicfy.extensions.setOffloadEnabled
@@ -312,6 +314,10 @@ class MusicService :
     // Radio source used to keep the queue going once the current queue runs out (infinite queue).
     private var infiniteSource: Queue? = null
     private val usedInfiniteSeeds = HashSet<String>()
+
+    // Lining up Autoplay ahead of time is a nicety, so after an attempt that found nothing (offline,
+    // only local songs) it waits a while instead of retrying on every song change.
+    private var autoplayPreviewRetryAt = 0L
 
     val currentMediaMetadata = MutableStateFlow<com.example.musicfy.models.MediaMetadata?>(null)
     private val currentSong =
@@ -1559,6 +1565,49 @@ class MusicService :
         runwayJob = null
         infiniteSource = null
         usedInfiniteSeeds.clear()
+        autoplayPreviewRetryAt = 0L
+    }
+
+    /**
+     * Where the upcoming Autoplay songs start, or the end of the queue if there are none. Autoplay
+     * songs are only ever appended, so they form the tail; anything the user queues goes in front.
+     */
+    private fun upcomingAutoplayStart(): Int {
+        val count = player.mediaItemCount
+        for (i in player.currentMediaItemIndex + 1 until count) {
+            if (player.getMediaItemAt(i).isAutoplay) return i
+        }
+        return count
+    }
+
+    /**
+     * Whether to line up Autoplay songs now, before the queue runs low, so the queue page can show
+     * what plays after it. Only once the queue itself is finite: while it still has pages to load,
+     * those come first and are what keeps it going.
+     */
+    private fun wantsAutoplayPreview(): Boolean {
+        if (!dataStore.get(InfiniteQueueKey, true) || player.repeatMode != REPEAT_MODE_OFF) return false
+        if (android.os.SystemClock.elapsedRealtime() < autoplayPreviewRetryAt) return false
+        if (dataStore.get(AutoLoadMoreKey, true) && currentQueue.hasNextPage()) return false
+        return upcomingAutoplayStart() == player.mediaItemCount
+    }
+
+    /** Drops the Autoplay songs still to come, e.g. when infinite queue is switched off. */
+    private fun removeUpcomingAutoplay() {
+        runwayJob?.cancel()
+        val current = player.currentMediaItemIndex
+        var end = player.mediaItemCount - 1
+        // Back to front in runs, one timeline change per run rather than per song.
+        while (end > current) {
+            if (!player.getMediaItemAt(end).isAutoplay) {
+                end--
+                continue
+            }
+            var start = end
+            while (start - 1 > current && player.getMediaItemAt(start - 1).isAutoplay) start--
+            player.removeMediaItems(start, end + 1)
+            end = start - 1
+        }
     }
 
     /** How many items the player will play after the current one (respecting shuffle), capped at [limit]. */
@@ -1585,29 +1634,37 @@ class MusicService :
         if (initialQueueLoading || runwayJob?.isActive == true) return
         if (player.mediaItemCount == 0) return
         if (dataStore.get(DisableLoadMoreWhenRepeatAllKey, false) && player.repeatMode == REPEAT_MODE_ALL) return
-        if (upcomingItemCount(QUEUE_RUNWAY_SIZE + 1) > QUEUE_RUNWAY_SIZE) return
+        val lowOnSongs = upcomingItemCount(QUEUE_RUNWAY_SIZE + 1) <= QUEUE_RUNWAY_SIZE
+        val previewOnly = !lowOnSongs && wantsAutoplayPreview()
+        if (!lowOnSongs && !previewOnly) return
 
         val generation = queueGeneration
         runwayJob = scope.launch(SilentHandler) {
             repeat(MAX_RUNWAY_ATTEMPTS) {
-                val (candidates, fromInfinite) = loadMoreQueueItems() ?: return@launch
+                val (candidates, fromInfinite) = loadMoreQueueItems() ?: run {
+                    if (previewOnly) autoplayPreviewRetryAt = android.os.SystemClock.elapsedRealtime() + AUTOPLAY_PREVIEW_RETRY_MS
+                    return@launch
+                }
                 if (generation != queueGeneration || player.mediaItemCount == 0) return@launch
 
                 val newItems = if (fromInfinite) {
                     // Radio mixes repeat songs that are already queued (including their own seed).
                     val queued = HashSet<String>()
                     for (i in 0 until player.mediaItemCount) queued += player.getMediaItemAt(i).mediaId
-                    candidates.filter { queued.add(it.mediaId) }
+                    candidates.filter { queued.add(it.mediaId) }.map { it.withAutoplay(true) }
                 } else {
                     candidates
                 }
                 if (newItems.isEmpty()) return@repeat
 
                 val endedWithNothingNext = player.playbackState == Player.STATE_ENDED
-                player.addMediaItems(newItems)
+                // Autoplay goes on the end; the queue's own pages go in front of it, so the songs
+                // the user picked still play before the similar ones.
+                val insertAt = if (fromInfinite) player.mediaItemCount else upcomingAutoplayStart()
+                player.addMediaItems(insertAt, newItems)
                 if (player.shuffleModeEnabled) {
-                    val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-                    applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+                    // A new page of the queue is shuffled in itself; Autoplay keeps the radio's order.
+                    placeAddedInShuffleOrder(insertAt until insertAt + newItems.size, shuffleThem = !fromInfinite)
                 }
                 if (endedWithNothingNext && player.playWhenReady) {
                     val nextIndex = player.nextMediaItemIndex
@@ -1617,8 +1674,11 @@ class MusicService :
                         player.play()
                     }
                 }
+                // That may have been the queue's last page, which is when Autoplay lines up.
+                if (!fromInfinite) scope.launch(SilentHandler) { ensureQueueRunway() }
                 return@launch
             }
+            if (previewOnly) autoplayPreviewRetryAt = android.os.SystemClock.elapsedRealtime() + AUTOPLAY_PREVIEW_RETRY_MS
         }
     }
 
@@ -1684,7 +1744,12 @@ class MusicService :
             dataStore.edit { settings ->
                 settings[InfiniteQueueKey] = enabled
             }
-            if (enabled) ensureQueueRunway()
+            if (enabled) {
+                autoplayPreviewRetryAt = 0L
+                ensureQueueRunway()
+            } else {
+                removeUpcomingAutoplay()
+            }
         }
     }
 
@@ -1953,14 +2018,18 @@ class MusicService :
                 }
                 prevList.reverse()
 
-                val existingOrder = (prevList + orderAfter).filter { it != currentIndex && it !in newIndices }
+                // History stays in front of the current song. It used to be moved after the new
+                // block, so everything already played came round again.
+                val history = prevList.filter { it != currentIndex && it !in newIndices }
+                val upcoming = orderAfter.filter { it != currentIndex && it !in newIndices }
 
                 val nextBlock = (insertIndex until (insertIndex + items.size)).toList()
                 val finalOrder = IntArray(size)
                 var pos = 0
-                finalOrder[pos++] = currentIndex
-                nextBlock.forEach { if (it in 0 until size) finalOrder[pos++] = it }
-                existingOrder.forEach { if (pos < size) finalOrder[pos++] = it }
+                history.forEach { if (pos < size) finalOrder[pos++] = it }
+                if (pos < size) finalOrder[pos++] = currentIndex
+                nextBlock.forEach { if (it in 0 until size && pos < size) finalOrder[pos++] = it }
+                upcoming.forEach { if (pos < size) finalOrder[pos++] = it }
 
                 if (pos < size) {
                     for (i in 0 until size) {
@@ -1994,12 +2063,42 @@ class MusicService :
             }
         }
 
-        player.addMediaItems(items)
+        // The end of what the user queued, which is in front of any Autoplay songs.
+        val insertAt = upcomingAutoplayStart()
+        player.addMediaItems(insertAt, items)
         if (player.shuffleModeEnabled) {
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
-            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+            placeAddedInShuffleOrder(insertAt until insertAt + items.size, shuffleThem = false)
         }
         player.prepare()
+    }
+
+    /**
+     * Fits songs just added while shuffled into the shuffle order without reshuffling the rest.
+     * Reshuffling everything on each addition (as before) rearranged the whole upcoming queue
+     * every time a page loaded or a song was queued, and threw History back into it. Now history
+     * and what's lined up keep their order; the new songs go after the user's songs and before
+     * Autoplay - or at the very end, if they are Autoplay.
+     */
+    private fun placeAddedInShuffleOrder(added: IntRange, shuffleThem: Boolean) {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty || added.isEmpty()) return
+        val order = ArrayList<Int>(timeline.windowCount)
+        var index = timeline.getFirstWindowIndex(true)
+        while (index != C.INDEX_UNSET && order.size < timeline.windowCount) {
+            if (index !in added) order += index
+            index = timeline.getNextWindowIndex(index, REPEAT_MODE_OFF, true)
+        }
+        val block = added.toMutableList()
+        if (shuffleThem) block.shuffle()
+        val insertAt = if (player.getMediaItemAt(block.first()).isAutoplay) {
+            order.size
+        } else {
+            val currentPos = order.indexOf(player.currentMediaItemIndex)
+            (currentPos + 1 until order.size).firstOrNull { player.getMediaItemAt(order[it]).isAutoplay } ?: order.size
+        }
+        order.addAll(insertAt, block)
+        if (order.size != timeline.windowCount) return
+        player.setShuffleOrder(DefaultShuffleOrder(order.toIntArray(), System.currentTimeMillis()))
     }
 
     fun toggleLibrary() {
@@ -2347,7 +2446,7 @@ class MusicService :
             val currentIndex = player.currentMediaItemIndex
             val totalCount = player.mediaItemCount
 
-            applyShuffleOrder(currentIndex, totalCount, shufflePlaylistFirst)
+            applyShuffleOrder(currentIndex, totalCount, shufflePlaylistFirst, keepHistory = true)
         }
 
         if (dataStore.get(RememberShuffleAndRepeatKey, true)) {
@@ -2379,7 +2478,13 @@ class MusicService :
     private fun applyShuffleOrder(
         currentIndex: Int,
         totalCount: Int,
-        shufflePlaylistFirst: Boolean
+        shufflePlaylistFirst: Boolean,
+        /**
+         * Songs before the current one already played: keep them, in order, as history rather than
+         * shuffling them back in. True when shuffle is switched on mid-queue; false when a queue
+         * starts shuffled partway in, where those songs haven't played yet.
+         */
+        keepHistory: Boolean = false,
     ) {
         if (totalCount == 0) return
 
@@ -2402,7 +2507,7 @@ class MusicService :
                 (0 until originalQueueSize).shuffled().forEach { shuffledIndices[pos++] = it }
                 addedIndices.forEach { shuffledIndices[pos++] = it }
             }
-            player.setShuffleOrder(DefaultShuffleOrder(shuffledIndices, System.currentTimeMillis()))
+            player.setShuffleOrder(DefaultShuffleOrder(shapeShuffleOrder(shuffledIndices, currentIndex, keepHistory), System.currentTimeMillis()))
         } else {
             val shuffledIndices = IntArray(totalCount) { it }
             shuffledIndices.shuffle()
@@ -2413,8 +2518,36 @@ class MusicService :
                 shuffledIndices[0] = shuffledIndices[currentItemIndexInShuffled]
                 shuffledIndices[currentItemIndexInShuffled] = temp
             }
-            player.setShuffleOrder(DefaultShuffleOrder(shuffledIndices, System.currentTimeMillis()))
+            player.setShuffleOrder(DefaultShuffleOrder(shapeShuffleOrder(shuffledIndices, currentIndex, keepHistory), System.currentTimeMillis()))
         }
+    }
+
+    /** Autoplay to the back; with [keepHistory], the songs before [currentIndex] to the front, in order. */
+    private fun shapeShuffleOrder(order: IntArray, currentIndex: Int, keepHistory: Boolean): IntArray {
+        val shaped = autoplayLast(order)
+        if (!keepHistory || currentIndex <= 0) return shaped
+        val result = IntArray(shaped.size)
+        var pos = 0
+        for (i in 0 until currentIndex) result[pos++] = i
+        for (i in shaped) if (i >= currentIndex) result[pos++] = i
+        return result
+    }
+
+    /**
+     * Shuffle mixes what the user queued, not Autoplay: those songs stay after everything else, in
+     * the order the radio gave them. The song playing keeps its place at the front.
+     */
+    private fun autoplayLast(order: IntArray): IntArray {
+        if (order.isEmpty()) return order
+        val autoplay = (0 until player.mediaItemCount)
+            .filter { it != order[0] && player.getMediaItemAt(it).isAutoplay }
+        if (autoplay.isEmpty()) return order
+        val isAutoplay = autoplay.toHashSet()
+        val result = IntArray(order.size)
+        var pos = 0
+        for (index in order) if (index !in isAutoplay) result[pos++] = index
+        for (index in autoplay) result[pos++] = index
+        return result
     }
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -3800,6 +3933,7 @@ class MusicService :
         // Keep at least this many songs queued after the current one.
         private const val QUEUE_RUNWAY_SIZE = 5
         private const val MAX_RUNWAY_ATTEMPTS = 3
+        private const val AUTOPLAY_PREVIEW_RETRY_MS = 60_000L
         const val MAX_RETRY_COUNT = 10
 
         private const val MAX_GAIN_MB = 300

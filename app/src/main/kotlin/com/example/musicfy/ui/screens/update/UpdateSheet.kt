@@ -203,13 +203,9 @@ private fun ColumnScope.UpdateSheetContent(updateState: UpdateState, popup: Popu
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = updateState.release.body.lineSequence()
-                        .firstOrNull { it.isNotBlank() }
-                        ?.trim()
-                        ?.removePrefix("#")
-                        ?.trim()
-                        .orEmpty()
-                        .ifBlank { "No description" },
+                    text = remember(updateState.release.body) {
+                        changelogSummaryLine(updateState.release.body)
+                    }.ifBlank { "No description" },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     maxLines = 1,
@@ -401,11 +397,10 @@ private fun ColumnScope.UpdateDetailContent(
     ) {
         Text(text = "Changelog", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = release.body.trim().ifBlank { "No changelog for this release." },
+        ChangelogMarkdown(
+            markdown = release.body,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 12.sp,
-            lineHeight = 17.sp,
+            strongColor = MaterialTheme.colorScheme.onSurface,
         )
     }
 

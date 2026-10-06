@@ -81,6 +81,25 @@ class App : Application(), SingletonImageLoader.Factory {
             }
         }
 
+        applicationScope.launch(Dispatchers.IO) {
+            // lyrics saved by older versions are cleared once, the first time 7.1.0 runs, so every
+            // song fetches them fresh. only the lyrics table is touched (songs, playlists, the
+            // library and the profile stay), and lyrics someone typed in or edited by hand are kept.
+            try {
+                if ((dataStore.data.first()[LyricsCacheWipeKey] ?: 0) < LyricsCacheWipeGeneration) {
+                    musicDatabase.clearFetchedLyrics(
+                        keepProviders = listOf(
+                            com.example.musicfy.viewmodels.LyricsMenuViewModel.USER_EDITED,
+                            "Manual",
+                        ),
+                    )
+                    dataStore.edit { it[LyricsCacheWipeKey] = LyricsCacheWipeGeneration }
+                }
+            } catch (e: Exception) {
+                reportException(e)
+            }
+        }
+
         applicationScope.launch {
             initializeSettings()
             observeSettingsChanges()

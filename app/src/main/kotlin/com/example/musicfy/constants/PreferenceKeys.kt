@@ -247,6 +247,8 @@ val ShowAudioQualityBadgeKey = booleanPreferencesKey("show_audio_quality_badge")
 val ShowCommentButtonKey = booleanPreferencesKey("show_comment_button")
 val ShowPlayerBottomCardKey = booleanPreferencesKey("showPlayerBottomCard")
 val PlayVideoBackgroundKey = booleanPreferencesKey("playVideoBackground")
+// a track that is a YouTube video (from a video row or the Videos search tab) shows that video in the player
+val DisableVideoAutoplayKey = booleanPreferencesKey("disableVideoAutoplay")
 val LocalSongAutoMetadataKey = booleanPreferencesKey("local_song_auto_metadata")
 
 enum class LibraryViewType {
@@ -520,6 +522,20 @@ val DeeplFormalityKey = stringPreferencesKey("deeplFormality")
 val LyricsGlowEffectKey = booleanPreferencesKey("lyricsGlowEffect")
 val AppleMusicLyricsBlurKey = booleanPreferencesKey("appleMusicLyricsBlur")
 val LyricsStandardBlurKey = booleanPreferencesKey("lyricsStandardBlur")
+
+/**
+ * How the active lyric line animates. A new key rather than [LyricsAnimationStyleKey]: that one
+ * belonged to renderers that no longer exist and may still hold their old values on upgrade.
+ */
+val LyricsMotionStyleKey = stringPreferencesKey("lyricsMotionStyle")
+
+enum class LyricsMotionStyle(val displayName: String, val description: String) {
+    /** Style 1: words rise into place as they're sung, held notes swell and glow, lines cascade. */
+    MOTION("Style 1", "Words rise as they're sung, long notes swell, lines cascade"),
+
+    /** Style 2: the original - a wave across the sung letters, the list scrolls as one piece. */
+    LEGACY("Style 2", "The original wave across the sung letters"),
+}
 
 val LyricsAnimationStyleKey = stringPreferencesKey("lyricsAnimationStyle")
 enum class LyricsAnimationStyle {
@@ -867,3 +883,7 @@ val DonateSongsPlayedKey = intPreferencesKey("donateSongsPlayed")
 val DonateFirstPromptShownKey = booleanPreferencesKey("donateFirstPromptShown")
 val DonatePromptWindowStartKey = longPreferencesKey("donatePromptWindowStart")
 val DonatePromptSlotsKey = stringPreferencesKey("donatePromptSlots")
+
+// one-off lyrics cache clears (App.kt). raise LyricsCacheWipeGeneration to clear it again in a later release
+val LyricsCacheWipeKey = intPreferencesKey("lyricsCacheWipe")
+const val LyricsCacheWipeGeneration = 1

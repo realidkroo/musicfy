@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Infinity: the queue's "keep playing similar music" toggle. -->
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M12,12C10.2,9.3 8.4,8 6.6,8C4.6,8 3,9.8 3,12C3,14.2 4.6,16 6.6,16C8.4,16 10.2,14.7 12,12C13.8,9.3 15.6,8 17.4,8C19.4,8 21,9.8 21,12C21,14.2 19.4,16 17.4,16C15.6,16 13.8,14.7 12,12Z" />
+</vector>

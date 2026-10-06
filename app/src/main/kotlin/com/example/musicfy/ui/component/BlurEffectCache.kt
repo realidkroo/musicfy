@@ -63,6 +63,21 @@ object BlurEffectCache {
         }
     }
 
+    /** The radius [get] actually blurs by: clamped on API <= 34 unless [allowLargeRadius]. */
+    fun effectiveRadius(radius: Float, allowLargeRadius: Boolean = false): Float =
+        if (Build.VERSION.SDK_INT <= 34 && !allowLargeRadius) radius.coerceAtMost(54f) else radius
+
+    /** [radius] rounded to the step [get] caches by, so a cache keyed on it matches [get]'s. */
+    fun quantize(radius: Float): Float {
+        val quant = when {
+            radius <= 16f -> 0.5f
+            radius <= 32f -> 1.0f
+            radius <= 64f -> 2.0f
+            else -> 4.0f
+        }
+        return (radius / quant).roundToInt().coerceAtLeast(1) * quant
+    }
+
     /**
      * Retrieves or creates a cached android.graphics.RenderEffect for View/TextureView.
      */

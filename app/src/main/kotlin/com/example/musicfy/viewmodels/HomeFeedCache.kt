@@ -4,6 +4,7 @@ package com.example.musicfy.viewmodels
 
 import android.content.Context
 import androidx.core.content.edit
+import com.example.musicfy.utils.HomeVideo
 import com.music.innertube.models.YTItem
 import com.music.innertube.pages.ExplorePage
 import com.music.innertube.pages.HomePage
@@ -24,6 +25,15 @@ class HomeFeedCache(context: Context) {
 
     fun loadExplorePage(): ExplorePage? = load(KEY_EXPLORE_PAGE)
     fun saveExplorePage(value: ExplorePage) = save(KEY_EXPLORE_PAGE, value)
+
+    fun loadLiveShows(): List<HomeVideo>? = load(KEY_LIVE_SHOWS)
+    fun saveLiveShows(value: List<HomeVideo>) = save(KEY_LIVE_SHOWS, value)
+
+    fun loadMusicVideos(): List<HomeVideo>? = load(KEY_MUSIC_VIDEOS)
+    fun saveMusicVideos(value: List<HomeVideo>) = save(KEY_MUSIC_VIDEOS, value)
+
+    fun loadCategories(): List<HomeCategory>? = load(KEY_CATEGORIES)
+    fun saveCategories(value: List<HomeCategory>) = save(KEY_CATEGORIES, value)
 
     private inline fun <reified T> load(key: String): T? {
         val raw = prefs.getString(key, null) ?: return null
@@ -46,5 +56,8 @@ class HomeFeedCache(context: Context) {
         const val KEY_COMMUNITY_PLAYLISTS = "community_playlists"
         const val KEY_ALL_TIME_HITS = "all_time_hits"
         const val KEY_EXPLORE_PAGE = "explore_page"
+        const val KEY_LIVE_SHOWS = "live_shows"
+        const val KEY_MUSIC_VIDEOS = "music_videos"
+        const val KEY_CATEGORIES = "categories"
     }
 }

@@ -33,6 +33,8 @@ data class QueueItemData(
     val artist: String,
     val artworkUri: Uri?,
     val duration: Long = 0L,
+    /** Lined up by the infinite queue rather than by the user - the queue's Autoplay section. */
+    val isAutoplay: Boolean = false,
 )
 
 @Immutable

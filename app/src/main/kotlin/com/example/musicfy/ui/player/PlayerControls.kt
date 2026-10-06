@@ -52,6 +52,7 @@ import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.constants.PlayerHorizontalPadding
 import com.example.musicfy.extensions.togglePlayPause
+import com.example.musicfy.ui.component.tapOrHold
 
 @Composable
 fun PlayerControls(
@@ -78,10 +79,47 @@ fun PlayerControls(
     }
 }
 
+/** Holding next plays this much faster, holding previous this much slower, until let go. */
+private const val HoldFastFactor = 2f
+private const val HoldSlowFactor = 0.5f
+
+/**
+ * Temporary speed while a skip button is held. Relative to the speed the user set (and keeping
+ * their pitch), and always put back exactly as it was on release.
+ */
+private class HoldSpeed(private val player: androidx.media3.exoplayer.ExoPlayer) {
+    private var saved: androidx.media3.common.PlaybackParameters? = null
+
+    fun start(factor: Float) {
+        val base = saved ?: player.playbackParameters.also { saved = it }
+        player.playbackParameters = androidx.media3.common.PlaybackParameters(
+            (base.speed * factor).coerceIn(0.25f, 4f),
+            base.pitch,
+        )
+    }
+
+    fun end() {
+        val base = saved ?: return
+        saved = null
+        player.playbackParameters = base
+    }
+}
+
 @Composable
 fun PlayerTransportRow(modifier: Modifier = Modifier) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val transportState by playerConnection.uiState.transportState.collectAsState()
+
+    val holdSpeed = remember(playerConnection) { HoldSpeed(playerConnection.player) }
+    // A hold that outlives the row (the player closed under the finger) still lets go.
+    androidx.compose.runtime.DisposableEffect(holdSpeed) { onDispose { holdSpeed.end() } }
+    val hold = remember(holdSpeed) {
+        com.example.musicfy.ui.component.TransportHold(
+            onPreviousHoldStart = { holdSpeed.start(HoldSlowFactor) },
+            onNextHoldStart = { holdSpeed.start(HoldFastFactor) },
+            onHoldEnd = holdSpeed::end,
+        )
+    }
 
     val buttonStyle by com.example.musicfy.utils.rememberEnumPreference(
         com.example.musicfy.constants.ButtonStyleKey,
@@ -108,6 +146,7 @@ fun PlayerTransportRow(modifier: Modifier = Modifier) {
                 }
             },
             onNext = playerConnection::seekToNext,
+            hold = hold,
             colors = com.example.musicfy.ui.component.TransportColors(
                 accent = palette.accent,
                 onAccent = palette.onAccent,
@@ -143,6 +182,10 @@ fun PlayerTransportRow(modifier: Modifier = Modifier) {
                 enabled = transportState.canSkipPrevious,
                 tint = Color.White,
                 iconSize = iconSize,
+                onHoldStart = hold.onPreviousHoldStart,
+                onHoldEnd = hold.onHoldEnd,
+                holdLabel = "0.5\u00D7",
+                holdPulseMs = 900L,
                 modifier = Modifier.size(buttonSize)
             )
 
@@ -168,6 +211,10 @@ fun PlayerTransportRow(modifier: Modifier = Modifier) {
                 enabled = transportState.canSkipNext,
                 tint = Color.White,
                 iconSize = iconSize,
+                onHoldStart = hold.onNextHoldStart,
+                onHoldEnd = hold.onHoldEnd,
+                holdLabel = "2\u00D7",
+                holdPulseMs = 420L,
                 modifier = Modifier.size(buttonSize)
             )
         }
@@ -184,14 +231,34 @@ internal fun AnimatedPressScaleSkipButton(
     iconSize: Dp = 28.dp,
     containerColor: Color = Color.Transparent,
     enabled: Boolean = true,
+    /** Held: runs from the long press until the finger lifts. A tap still skips. */
+    onHoldStart: (() -> Unit)? = null,
+    onHoldEnd: (() -> Unit)? = null,
+    /** Shown over the button while it's held, e.g. "2x". */
+    holdLabel: String? = null,
+    /** How often the arrow replays while held - quicker for faster. */
+    holdPulseMs: Long = 600L,
 ) {
     var trigger by remember { mutableIntStateOf(0) }
+    var holding by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.86f else 1f,
         animationSpec = spring(dampingRatio = 0.54f, stiffness = 720f),
         label = "pressScaleIconButton"
+    )
+    // The arrow keeps playing while held, so the button itself shows it's fast-forwarding.
+    LaunchedEffect(holding) {
+        while (holding) {
+            trigger++
+            kotlinx.coroutines.delay(holdPulseMs)
+        }
+    }
+    val badge by animateFloatAsState(
+        targetValue = if (holding) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 520f),
+        label = "holdBadge",
     )
 
     Box(
@@ -210,16 +277,45 @@ internal fun AnimatedPressScaleSkipButton(
                     Modifier.clip(RoundedCornerShape(50)).background(containerColor)
                 }
             )
-            .clickable(
+            .tapOrHold(
                 enabled = enabled,
-                indication = null,
-                interactionSource = interactionSource,
-                onClick = {
+                onTap = {
                     trigger++
                     onClick()
-                }
+                },
+                onHoldStart = onHoldStart?.let { start ->
+                    {
+                        holding = true
+                        start()
+                    }
+                },
+                onHoldEnd = {
+                    holding = false
+                    onHoldEnd?.invoke()
+                },
+                interactionSource = interactionSource,
             )
     ) {
+        if (holdLabel != null && badge > 0.01f) {
+            androidx.compose.material3.Text(
+                text = holdLabel,
+                color = Color.Black,
+                fontSize = androidx.compose.ui.unit.TextUnit(13f, androidx.compose.ui.unit.TextUnitType.Sp),
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .graphicsLayer {
+                        alpha = badge.coerceIn(0f, 1f)
+                        val s = 0.6f + 0.4f * badge
+                        scaleX = s
+                        scaleY = s
+                        translationY = -(10.dp.toPx() + 12.dp.toPx() * badge)
+                    }
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.White.copy(alpha = 0.92f))
+                    .padding(horizontal = 9.dp, vertical = 2.dp),
+            )
+        }
         val avd = AnimatedImageVector.animatedVectorResource(icon)
         key(trigger) {
             var atEnd by remember { mutableStateOf(false) }

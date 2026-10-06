@@ -46,6 +46,8 @@ fun <T> LibraryEntityListScreen(
     modifier: Modifier = Modifier,
     largeRows: Boolean = false,
     pureBlack: Boolean = false,
+    // wraps each entry's row, e.g. to let songs slide to the queue or the library
+    rowWrapper: @Composable (item: T, row: @Composable () -> Unit) -> Unit = { _, row -> row() },
 ) {
     var query by remember { mutableStateOf(TextFieldValue()) }
     val listState = rememberLazyListState()
@@ -111,14 +113,16 @@ fun <T> LibraryEntityListScreen(
             ) { _, row ->
                 when (row) {
                     is IndexedRow.Header -> LibraryLetterHeader(row.letter)
-                    is IndexedRow.Entry -> LibraryListRow(
-                        title = nameOf(row.item),
-                        subtitle = subtitleOf(row.item),
-                        thumbnailUrl = thumbnailOf(row.item),
-                        large = largeRows,
-                        onClick = { onClick(row.item) },
-                        onLongClick = { onLongClick(row.item) },
-                    )
+                    is IndexedRow.Entry -> rowWrapper(row.item) {
+                        LibraryListRow(
+                            title = nameOf(row.item),
+                            subtitle = subtitleOf(row.item),
+                            thumbnailUrl = thumbnailOf(row.item),
+                            large = largeRows,
+                            onClick = { onClick(row.item) },
+                            onLongClick = { onLongClick(row.item) },
+                        )
+                    }
                 }
             }
         }

@@ -1,5 +1,6 @@
 package com.example.musicfy.ui.screens
 
+import com.example.musicfy.ui.utils.stableSystemBars
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -87,6 +88,8 @@ fun SectionDetailScreen(
     val mostPlayedSongsForHome by homeViewModel.mostPlayedSongsForHome.collectAsState()
     val communityPlaylists by homeViewModel.communityPlaylists.collectAsState()
     val allTimeHits by homeViewModel.allTimeHits.collectAsState()
+    val liveShows by homeViewModel.liveRow.collectAsState()
+    val musicVideos by homeViewModel.musicVideoRow.collectAsState()
 
     val title = when (sectionId) {
         "speed_dial" -> stringResource(R.string.speed_dial)
@@ -97,6 +100,8 @@ fun SectionDetailScreen(
         "most_played" -> stringResource(R.string.vivi_quick_picks)
         "from_the_community" -> stringResource(R.string.from_the_community)
         "all_time_hits" -> stringResource(R.string.all_time_hits)
+        "live_shows" -> stringResource(R.string.live_shows)
+        "music_videos" -> stringResource(R.string.music_videos_for_you)
         else -> ""
     }
 
@@ -115,7 +120,7 @@ fun SectionDetailScreen(
     val items = remember(
         sectionId, speedDialItems, quickPicks, forgottenFavorites, keepListening,
         recentlyPlayed, mostPlayedSongsForHome, communityPlaylists,
-        allTimeHits,
+        allTimeHits, liveShows, musicVideos,
     ) {
         when (sectionId) {
             "speed_dial" -> speedDialItems.filterIsInstance<SongItem>()
@@ -126,6 +131,8 @@ fun SectionDetailScreen(
             "most_played" -> mostPlayedSongsForHome ?: emptyList()
             "from_the_community" -> communityPlaylists?.map { it.playlist } ?: emptyList()
             "all_time_hits" -> allTimeHits ?: emptyList()
+            "live_shows" -> liveShows?.map { it.item } ?: emptyList()
+            "music_videos" -> musicVideos?.map { it.item } ?: emptyList()
             else -> emptyList()
         }
     }
@@ -165,7 +172,7 @@ fun SectionDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    top = WindowInsets.systemBars.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding(),
+                    top = WindowInsets.stableSystemBars.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding(),
                     bottom = 8.dp
                 )
                 .padding(horizontal = 4.dp, vertical = 8.dp)

@@ -135,6 +135,22 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
+import androidx.palette.graphics.Palette
+import coil3.request.allowHardware
+import coil3.toBitmap
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
+import kotlin.math.PI
+import kotlin.math.exp
+import kotlin.math.floor
+import kotlin.math.sin
 
 /** the hero takes this share of the screen height (527 of 874 in the Figma frame) */
 const val HeroHeightFraction = 0.6f
@@ -318,14 +334,15 @@ fun HeroCarousel(
         buildList {
             lastPlayedSong?.let { add(KeepListeningItem(it, isLastPlayed = true)) }
 
-            // the first two recommendations, then the gacha, then the rest
+            // the gacha comes straight after the first card, so the first auto-advance shows it;
+            // buried behind the recommendations, most people never got that far
+            if (showGacha) add(GachaItem)
+
             val discover = dailyDiscover?.take(5).orEmpty()
             val reasons = discoverReasons(discover)
             discover.forEachIndexed { index, item ->
                 add(DiscoverItem(item, reasons[index]))
-                if (index == 1 && showGacha) add(GachaItem)
             }
-            if (showGacha && discover.size < 2) add(GachaItem)
 
             val regular = count { it !is GachaItem }
             if (regular < 5) {
@@ -478,6 +495,11 @@ private fun HeroPager(
                     gacha.landPop.snapTo(1f)
                     gacha.landPop.animateTo(1.1f, tween(120))
                     gacha.landPop.animateTo(1f, spring(dampingRatio = 0.35f, stiffness = 320f))
+                }
+                launch {
+                    gacha.burst.snapTo(0.001f)
+                    gacha.burst.animateTo(1f, tween(1100, easing = CubicBezierEasing(0.2f, 0.7f, 0.3f, 1f)))
+                    gacha.burst.snapTo(0f)
                 }
                 playerConnection.playQueue(YouTubeQueue.radio(won))
             } finally {
@@ -724,7 +746,10 @@ private fun HeroMedia(
                 CanvasArtworkPlayer(
                     primaryUrl = canvasArtwork?.preferredAnimationUrl,
                     fallbackUrl = null,
-                    isPlaying = canvasMayPlay && heroAtRest && !isPagerMoving(),
+                    // also held while the open player covers Home: it kept decoding and drawing
+                    // frames under it. It picks up where it was once Home shows again.
+                    isPlaying = canvasMayPlay && heroAtRest && !isPagerMoving() &&
+                        !com.example.musicfy.LocalAppContentObscured.current.value,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -755,29 +780,20 @@ private fun BoxScope.HeroBlurBand(
             Brush.verticalGradient(0f to Color.Transparent, 0.55f to Color.Black.copy(alpha = 0.85f), 1f to Color.Black)
         }
     }
-    Box(
+    // One layer per band, at the resolution DownscaledBlur picks for the radius: the mask runs in
+    // the blur's own effect instead of an offscreen layer around it, and the media is blurred from
+    // a half-size copy. Both bands redraw with every frame of the hero's video, so it adds up.
+    DownscaledBlur(
+        radius = { BlurEffectCache.effectiveRadius(radius) },
+        tileMode = Shader.TileMode.CLAMP,
+        mask = mask,
         modifier = Modifier
             .align(if (atTop) Alignment.TopCenter else Alignment.BottomCenter)
             .fillMaxWidth()
-            .fillMaxHeight(heightFraction)
-            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-            .drawWithContent {
-                drawContent()
-                drawRect(brush = mask, blendMode = BlendMode.DstIn)
-            }
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    renderEffect = BlurEffectCache.get(radius, Shader.TileMode.CLAMP)
-                    clip = true
-                }
-                .drawBehind {
-                    val dy = if (atTop) 0f else size.height - mediaLayer.size.height.toFloat()
-                    translate(top = dy) { drawLayer(mediaLayer) }
-                }
-        )
+            .fillMaxHeight(heightFraction),
+    ) { fullSize ->
+        val dy = if (atTop) 0f else fullSize.height - mediaLayer.size.height.toFloat()
+        translate(top = dy) { drawLayer(mediaLayer) }
     }
 }
 
@@ -1028,30 +1044,52 @@ private val GachaRollEasing = CubicBezierEasing(0.15f, 0.45f, 0.2f, 1f)
 private val GachaPointerColor = Color(0xFFF0908D)
 private val GachaPipColor = Color(0xFF3C3C3C)
 
-// the pink-to-lavender behind the reel, before the hero's top and bottom shading
-private val GachaBackground = Brush.verticalGradient(
-    0f to Color(0xFFDEA0AC),
-    0.27f to Color(0xFFD9A7B6),
-    0.41f to Color(0xFFCEA9BF),
-    0.52f to Color(0xFFC9AFC8),
-    0.63f to Color(0xFFC0B1D0),
-    0.77f to Color(0xFFB9B7DD),
-    1f to Color(0xFFACB9DF),
-)
-private val GachaTopShade = Brush.verticalGradient(
-    0f to Color.Black.copy(alpha = 0.85f),
-    0.17f to Color.Black.copy(alpha = 0.6f),
-    0.23f to Color.Black.copy(alpha = 0.47f),
-    0.4f to Color.Transparent,
-)
-private val GachaBottomShade = Brush.verticalGradient(
-    0.655f to Color.Transparent,
-    0.695f to Color.Black.copy(alpha = 0.17f),
-    0.787f to Color.Black.copy(alpha = 0.5f),
-    0.882f to Color.Black.copy(alpha = 0.73f),
-    0.975f to Color.Black.copy(alpha = 0.93f),
-    1f to Color.Black,
-)
+/** the two colours the card takes from a cover: a lit one for the glow and a deep one for the wash */
+@Immutable
+private class GachaTint(val light: Color, val deep: Color)
+
+// the Figma pink and lavender, until the covers' own colours are known
+private val GachaDefaultTint = GachaTint(light = Color(0xFFDEA0AC), deep = Color(0xFF7C82B4))
+
+/**
+ * the lit and deep colours of a cover, from a tiny copy of it. the lit one is pushed bright and the
+ * deep one dark, so even a grey cover gives the card something to glow with.
+ */
+private suspend fun gachaTint(context: Context, url: String): GachaTint? = withContext(Dispatchers.IO) {
+    val request = ImageRequest.Builder(context)
+        .data(url)
+        .size(64)
+        .allowHardware(false)
+        .build()
+    val bitmap = context.imageLoader.execute(request).image?.toBitmap() ?: return@withContext null
+    val palette = Palette.from(bitmap).maximumColorCount(12).generate()
+    val lit = palette.vibrantSwatch ?: palette.lightVibrantSwatch ?: palette.dominantSwatch ?: return@withContext null
+    val deep = palette.darkVibrantSwatch ?: palette.darkMutedSwatch ?: palette.mutedSwatch ?: lit
+    GachaTint(
+        light = shiftBrightness(lit.rgb, minValue = 0.78f, maxValue = 1f, maxSaturation = 0.8f),
+        deep = shiftBrightness(deep.rgb, minValue = 0.28f, maxValue = 0.5f, maxSaturation = 0.85f),
+    )
+}
+
+private fun shiftBrightness(rgb: Int, minValue: Float, maxValue: Float, maxSaturation: Float): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(rgb, hsv)
+    hsv[1] = hsv[1].coerceAtMost(maxSaturation)
+    hsv[2] = hsv[2].coerceIn(minValue, maxValue)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/**
+ * a black shade as a gradient whose alpha follows [alphaAt] across many stops. the old few-stop
+ * shades bent sharply where a stop sat, which read as a visible edge; an eased curve has no corner
+ * to see, and the paint is dithered so it doesn't band either.
+ */
+private fun easedShade(height: Float, alphaAt: (Float) -> Float): android.graphics.LinearGradient {
+    val steps = 24
+    val positions = FloatArray(steps + 1) { it / steps.toFloat() }
+    val colors = IntArray(steps + 1) { android.graphics.Color.argb((alphaAt(positions[it]) * 255f).roundToInt(), 0, 0, 0) }
+    return android.graphics.LinearGradient(0f, 0f, 0f, height, colors, positions, Shader.TileMode.CLAMP)
+}
 
 private enum class GachaPhase { Idle, Rolling, Landed }
 
@@ -1065,6 +1103,12 @@ private class GachaState {
     val reel = Animatable(0f)
     val pointerKick = Animatable(0f)
     val landPop = Animatable(1f)
+
+    /** a ring and a flare from the winning cover; runs 0 to 1 once per win */
+    val burst = Animatable(0f)
+
+    /** song id -> the colours of its cover */
+    val tints = mutableStateMapOf<String, GachaTint>()
 }
 
 private fun pickGachaCandidates(pool: List<MediaMetadata>): List<MediaMetadata> =
@@ -1136,8 +1180,13 @@ private class GachaSounds(private val context: Context) {
 
 /**
  * the gacha card: a column of covers running down the right edge with the coral pointer aimed at
- * the big one in the middle. roll (or tap that cover) and the reel spins, ticking past the pointer,
- * slows right down, and lands on a song that starts playing.
+ * the big one in the middle. roll (or tap that cover) and the reel spins like a slot machine drum,
+ * ticking past the pointer, slows right down, and lands on a song that starts playing.
+ *
+ * the card is coloured by whichever cover is under the pointer: its colours wash through the
+ * background as the reel turns, a glow behind the big cover breathes while it waits and flares with
+ * the speed, and a win sends a ring out from the winner. it all runs in the draw phase off a frame
+ * clock that only ticks while the card is on screen.
  */
 @Composable
 private fun GachaPage(
@@ -1147,11 +1196,75 @@ private fun GachaPage(
     onShown: () -> Unit,
     onRoll: () -> Unit,
 ) {
+    val context = LocalContext.current
     val rolling = state.phase == GachaPhase.Rolling
     val result = state.result
 
     // the sounds load when the card is first seen, so the very first roll already clicks
     LaunchedEffect(Unit) { onShown() }
+
+    // every cover's colours, worked out once from a tiny copy
+    val candidates = state.candidates
+    LaunchedEffect(candidates) {
+        candidates.forEach { song ->
+            if (song.id in state.tints) return@forEach
+            val url = song.thumbnailUrl ?: return@forEach
+            gachaTint(context, url)?.let { state.tints[song.id] = it }
+        }
+    }
+
+    // read only while drawing, so a new frame redraws the card without recomposing it
+    val light = remember { mutableStateOf(GachaDefaultTint.light) }
+    val deep = remember { mutableStateOf(GachaDefaultTint.deep) }
+    val clock = remember { mutableFloatStateOf(0f) }
+    val speed = remember { mutableFloatStateOf(0f) }
+
+    // nor does one hidden under the open player
+    val obscured = com.example.musicfy.LocalAppContentObscured.current
+    LaunchedEffect(state) {
+        var lastNanos = 0L
+        var lastReel = state.reel.value
+        var frame = 0
+        while (isActive) {
+            // the pager keeps its neighbours composed; a card off to the side doesn't need frames
+            if (abs(pageOffset()) >= 0.999f || obscured.value) {
+                lastNanos = 0L
+                snapshotFlow { abs(pageOffset()) < 0.999f && !obscured.value }.first { it }
+                continue
+            }
+            withFrameNanos { now ->
+                val dt = if (lastNanos == 0L) 1f / 60f else ((now - lastNanos) / 1e9f).coerceIn(0f, 0.1f)
+                lastNanos = now
+                val reel = state.reel.value
+                val count = state.candidates.size
+                // covers per second, smoothed so the stretch and flare ease in and out with the spin
+                val instant = abs(reel - lastReel) / dt.coerceAtLeast(1e-3f)
+                speed.floatValue += (instant - speed.floatValue) * (1f - exp(-dt / 0.12f))
+                lastReel = reel
+
+                // the colours under the pointer, blended between the two covers either side of it.
+                // the background trails them a little, so a fast spin washes rather than flashes
+                val target = if (count == 0) {
+                    GachaDefaultTint
+                } else {
+                    val base = floor(reel).toInt()
+                    val between = reel - base
+                    val from = state.tints[state.candidates[base.mod(count)].id] ?: GachaDefaultTint
+                    val to = state.tints[state.candidates[(base + 1).mod(count)].id] ?: from
+                    GachaTint(lerp(from.light, to.light, between), lerp(from.deep, to.deep, between))
+                }
+                val follow = 1f - exp(-dt / 0.22f)
+                val busy = speed.floatValue > 0.05f || state.burst.value > 0f
+                // at rest the slow drift only needs every other frame
+                frame++
+                if (busy || frame % 2 == 0) {
+                    light.value = lerp(light.value, target.light, follow)
+                    deep.value = lerp(deep.value, target.deep, follow)
+                    clock.floatValue += if (busy) dt else dt * 2f
+                }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -1163,13 +1276,86 @@ private fun GachaPage(
             val unit = maxHeight / GachaDesignHeight
             val focus = unit * GachaFocusSize
             val coverShape = RoundedCornerShape(unit * GachaCornerRadius)
-            val candidates = state.candidates
             val count = candidates.size
 
+            // the wash, the glows and the win ring
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(GachaBackground)
+                    .drawWithCache {
+                        val w = size.width
+                        val h = size.height
+                        val focusPx = focus.toPx()
+                        val overhangPx = (unit * GachaOverhang).toPx()
+                        val glowX = w + overhangPx - focusPx / 2f
+                        val glowY = (unit * GachaCenterY).toPx()
+                        val washPaint = android.graphics.Paint().apply { isDither = true }
+                        val glowPaint = android.graphics.Paint().apply { isDither = true }
+                        val ringPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+                        onDrawBehind {
+                            val lit = light.value
+                            val dark = deep.value
+                            val t = clock.floatValue
+                            val rush = (speed.floatValue / 30f).coerceIn(0f, 1f)
+                            val win = state.burst.value
+                            drawIntoCanvas { canvas ->
+                                val native = canvas.nativeCanvas
+                                // the deep colour fills the card and lightens towards the top right,
+                                // the light swaying slowly so the card never sits still
+                                val sway = sin(t * 0.35f) * w * 0.12f
+                                washPaint.shader = android.graphics.LinearGradient(
+                                    w * 0.85f + sway, 0f, w * 0.15f - sway, h,
+                                    intArrayOf(
+                                        lerp(dark, lit, 0.55f).toArgb(),
+                                        lerp(dark, lit, 0.22f).toArgb(),
+                                        dark.toArgb(),
+                                    ),
+                                    floatArrayOf(0f, 0.5f, 1f),
+                                    Shader.TileMode.CLAMP,
+                                )
+                                native.drawRect(0f, 0f, w, h, washPaint)
+
+                                // a second light wandering on the left, under the text
+                                val wanderX = w * (0.18f + 0.08f * sin(t * 0.23f))
+                                val wanderY = h * (0.55f + 0.1f * sin(t * 0.31f + 1.3f))
+                                val wanderR = w * 0.7f
+                                glowPaint.shader = android.graphics.RadialGradient(
+                                    wanderX, wanderY, wanderR,
+                                    intArrayOf(lit.copy(alpha = 0.32f).toArgb(), lit.copy(alpha = 0.1f).toArgb(), Color.Transparent.toArgb()),
+                                    floatArrayOf(0f, 0.5f, 1f),
+                                    Shader.TileMode.CLAMP,
+                                )
+                                native.drawCircle(wanderX, wanderY, wanderR, glowPaint)
+
+                                // the glow behind the big cover: breathing at rest, swelling with the
+                                // spin, flaring on a win
+                                val breathe = 0.05f * sin(t * 1.4f)
+                                val flare = if (win > 0f) sin(win * PI.toFloat()) * 0.55f else 0f
+                                val glowR = focusPx * (1.05f + breathe + rush * 0.35f + flare)
+                                val glowY2 = glowY + sin(t * 0.8f) * focusPx * 0.04f
+                                glowPaint.shader = android.graphics.RadialGradient(
+                                    glowX, glowY2, glowR,
+                                    intArrayOf(
+                                        lit.copy(alpha = (0.75f + rush * 0.2f).coerceAtMost(1f)).toArgb(),
+                                        lit.copy(alpha = 0.32f).toArgb(),
+                                        Color.Transparent.toArgb(),
+                                    ),
+                                    floatArrayOf(0f, 0.45f, 1f),
+                                    Shader.TileMode.CLAMP,
+                                )
+                                native.drawCircle(glowX, glowY2, glowR, glowPaint)
+
+                                // the win: a ring that leaves the winner and fades as it grows
+                                if (win > 0f && win < 1f) {
+                                    ringPaint.color = lerp(lit, Color.White, 0.5f).copy(alpha = (1f - win) * 0.9f).toArgb()
+                                    ringPaint.strokeWidth = (1f - win) * 10.dp.toPx() + 1.dp.toPx()
+                                    native.drawCircle(glowX, glowY, focusPx * (0.55f + win * 1.1f), ringPaint)
+                                }
+                            }
+                        }
+                    }
             )
 
             candidates.forEachIndexed { index, song ->
@@ -1187,13 +1373,19 @@ private fun GachaPage(
                                 val near = (1f - abs(d)).coerceIn(0f, 1f)
                                 val landed = if (near > 0.5f) state.landPop.value else 1f
                                 val scale = (GachaItemSize + (GachaFocusSize - GachaItemSize) * near) / GachaFocusSize * landed
+                                // a fast reel stretches its covers a touch along the spin
+                                val stretch = 1f + (speed.floatValue / 120f).coerceAtMost(0.1f)
                                 scaleX = scale
-                                scaleY = scale
+                                scaleY = scale * stretch
                                 // anchored on the right edge, like the Figma, so the covers grow leftwards
                                 transformOrigin = TransformOrigin(1f, 0.5f)
                                 val slots = d * GachaPitch + GachaFocusGap * d.coerceIn(-1f, 1f)
                                 translationY = slots * unit.toPx()
-                                alpha = if (abs(d) > 2.7f) 0f else 1f
+                                // a drum: covers tip away as they leave the middle
+                                rotationX = (-d * 18f).coerceIn(-50f, 50f)
+                                cameraDistance = 14f * density
+                                // fade out towards the ends instead of popping out of sight
+                                alpha = (2.7f - abs(d)).coerceIn(0f, 1f)
                                 shape = coverShape
                                 clip = true
                             }
@@ -1206,9 +1398,19 @@ private fun GachaPage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .drawBehind {
-                        drawRect(GachaTopShade)
-                        drawRect(GachaBottomShade)
+                    .drawWithCache {
+                        val h = size.height
+                        val shadePaint = android.graphics.Paint().apply { isDither = true }
+                        val top = easedShade(h) { y -> 0.85f * (1f - smoothstep(0f, 0.44f, y)).let { it * it } }
+                        val bottom = easedShade(h) { y -> smoothstep(0.56f, 1f, y) }
+                        onDrawBehind {
+                            drawIntoCanvas { canvas ->
+                                shadePaint.shader = top
+                                canvas.nativeCanvas.drawRect(0f, 0f, size.width, h, shadePaint)
+                                shadePaint.shader = bottom
+                                canvas.nativeCanvas.drawRect(0f, 0f, size.width, h, shadePaint)
+                            }
+                        }
                     }
             )
 
@@ -1227,6 +1429,11 @@ private fun GachaPage(
                         val kick = state.pointerKick.value
                         translationX = -kick * 7.dp.toPx()
                         rotationZ = -kick * 9f
+                        // a little pulse when it lands
+                        val win = state.burst.value
+                        val pop = if (win > 0f) 1f + 0.18f * sin(win * PI.toFloat()) else 1f
+                        scaleX = pop
+                        scaleY = pop
                     }
             )
 

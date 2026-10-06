@@ -751,9 +751,11 @@ object YouTube {
                     content.musicCarouselShelfRenderer != null -> {
                         BrowseResult.Item(
                             title = content.musicCarouselShelfRenderer.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.firstOrNull()?.text,
-                            items = content.musicCarouselShelfRenderer.contents
-                                .mapNotNull(MusicCarouselShelfRenderer.Content::musicTwoRowItemRenderer)
-                                .mapNotNull(RelatedPage.Companion::fromMusicTwoRowItemRenderer)
+                            // genre pages list their "Songs" shelf as rows, not cards
+                            items = content.musicCarouselShelfRenderer.contents.mapNotNull { item ->
+                                item.musicTwoRowItemRenderer?.let(RelatedPage.Companion::fromMusicTwoRowItemRenderer)
+                                    ?: item.musicResponsiveListItemRenderer?.let(RelatedPage.Companion::fromMusicResponsiveListItemRenderer)
+                            }
                         )
                     }
 

@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.screens
 
+import com.example.musicfy.ui.utils.stableSystemBars
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -64,7 +65,7 @@ fun ArtistListDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    top = WindowInsets.systemBars.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding(),
+                    top = WindowInsets.stableSystemBars.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding(),
                     bottom = 8.dp
                 )
                 .padding(horizontal = 4.dp, vertical = 8.dp)

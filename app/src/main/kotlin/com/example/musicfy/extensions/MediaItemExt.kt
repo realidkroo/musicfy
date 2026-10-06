@@ -86,3 +86,21 @@ fun MediaMetadata.toMediaItem() = MediaItem.Builder()
             .build()
     )
     .build()
+
+/**
+ * Flags a song the infinite queue lined up on its own (the queue's "Autoplay" section), as
+ * opposed to one the user queued. Kept in the media metadata extras so it travels with the item
+ * through the player's timeline.
+ */
+private const val AutoplayExtra = "musicfy.autoplay"
+
+val MediaItem.isAutoplay: Boolean
+    get() = mediaMetadata.extras?.getBoolean(AutoplayExtra, false) == true
+
+fun MediaItem.withAutoplay(autoplay: Boolean): MediaItem {
+    if (isAutoplay == autoplay) return this
+    val extras = Bundle(mediaMetadata.extras ?: Bundle()).apply { putBoolean(AutoplayExtra, autoplay) }
+    return buildUpon()
+        .setMediaMetadata(mediaMetadata.buildUpon().setExtras(extras).build())
+        .build()
+}

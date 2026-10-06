@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +62,8 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -128,14 +131,48 @@ private const val ImmersiveDelayMs = 3_500L
 
 private const val RecenterDurationMs = 950
 
+/** Shared with LyricsInterludeDots, whose collapse has to run in step with the recenter scroll. */
+internal const val LyricsRecenterDurationMs = RecenterDurationMs
+
+/** Style 2's recenter curve (the original). */
+internal val LyricsRecenterEasing = CubicBezierEasing(0.5f, 0.45f, 0f, 1f)
+
+/**
+ * Style 1's recenter curve: eases in instead of starting at speed, so the list never gets a kick
+ * at the start of a line change.
+ */
+internal val LyricsSmoothRecenterEasing = CubicBezierEasing(0.42f, 0f, 0.16f, 1f)
+
+internal fun recenterEasingFor(style: com.example.musicfy.constants.LyricsMotionStyle) =
+    if (style == com.example.musicfy.constants.LyricsMotionStyle.MOTION) LyricsSmoothRecenterEasing else LyricsRecenterEasing
+
+/**
+ * Style 1 follow-through on an auto-scroll, like Apple Music: each line below the active one trails
+ * the scroll a little more than the one above, so the list settles in a visible cascade instead of
+ * moving as one rigid sheet. Each row chases its place on a critically damped spring - it eases out
+ * and eases in, never jerks - with this much more lag per row of distance below the active line.
+ */
+private const val StaggerLagPerRowMs = 55f
+private const val StaggerMaxRows = 9
+
 private const val ScrollDirectionThresholdPx = 6L
 
 private const val IdleRecenterDelayMs = 3_500L
 
 private const val TopFadeFraction = 0.10f
+
+/**
+ * Where a start-aligned line's text begins inside its row, and the middle of its first line: the
+ * point the card's lyric grows from. (The row's padding and tap inset put the text at the artwork's
+ * left edge, 16dp down; a lyric line is 40sp tall.)
+ */
+private val LineAnchorX = LyricsHeaderArtX
+private val LineAnchorY = 16.dp + 20.dp
+
+private fun androidx.compose.ui.unit.Dp.toPx(density: androidx.compose.ui.unit.Density) =
+    with(density) { this@toPx.toPx() }
 private const val BottomFadeStart = 0.62f
 
-private val HeaderOverlapAllowance = 28.dp
 
 @Composable
 fun LyricsScreen(
@@ -150,6 +187,14 @@ fun LyricsScreen(
     isSheetDragging: Boolean = false,
 
     isMorphing: Boolean = false,
+
+    /**
+     * How far the page has grown out of the bottom card (unclamped); 1 when it isn't growing from
+     * it. Drives the rows rising into place and the card's line flying to its own.
+     */
+    enterProgressProvider: () -> Float = { 1f },
+
+    morph: CardMorphState? = null,
 
     modifier: Modifier = Modifier,
 ) {
@@ -391,8 +436,81 @@ fun LyricsScreen(
         }
     }
 
-    val listState = rememberLazyListState()
+    // Every instrumental gap in the song, as its own list row. Building these up front — rather
+    // than conditionally rendering dots inside the next line's item, as before — is what stops the
+    // list jumping. A gap's row grows in when the gap starts and collapses, in step with the
+    // recenter scroll, when the next line takes over (see the recenter effect below).
+    val rows = remember(lines) { buildLyricRows(lines) }
+
+    /** Lyric line index -> its row in [rows]. Gap rows sit between lines, so the two differ. */
+    val rowOfLine = remember(rows, lines) {
+        IntArray(lines.size).also { map ->
+            rows.forEachIndexed { rowIndex, row -> if (row is LyricRow.Line) map[row.index] = rowIndex }
+        }
+    }
+
+    val (motionStyle) = com.example.musicfy.utils.rememberEnumPreference(
+        com.example.musicfy.constants.LyricsMotionStyleKey,
+        defaultValue = com.example.musicfy.constants.LyricsMotionStyle.MOTION,
+    )
+    val cascade = motionStyle == com.example.musicfy.constants.LyricsMotionStyle.MOTION
+
+    // Opens already on the playing line. Starting at the top and scrolling down to it fought the
+    // open transition - the line the card grows into would still be moving.
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = rowOfLine.getOrNull(anchorIndex.coerceIn(0, (lines.size - 1).coerceAtLeast(0))) ?: 0,
+    )
     var followPlayback by remember { mutableStateOf(true) }
+
+    // The line the card is showing: the page's copy of it is what the card's line grows into.
+    val cardLine by remember(lines) { derivedStateOf { cardLyricLineIndex(lines, progress.position) } }
+    val cardLineRow = rowOfLine.getOrNull(cardLine) ?: -1
+    if (morph != null) {
+        LaunchedEffect(cardLine) {
+            if (cardLine < 0) morph.pageLyricAnchor = androidx.compose.ui.geometry.Offset.Unspecified
+        }
+    }
+
+    /** Per-row trailing offset (px) of the cascade - see [StaggerTauPerRowMs]. Read in layers only. */
+    val staggerLags = remember(lines) { androidx.compose.runtime.mutableStateMapOf<Int, Float>() }
+    var staggerAnchorRow by remember(lines) { androidx.compose.runtime.mutableIntStateOf(-1) }
+
+    val staggerVelocities = remember(lines) { HashMap<Int, Float>() }
+
+    LaunchedEffect(staggerLags) {
+        while (true) {
+            snapshotFlow { staggerLags.isNotEmpty() }.first { it }
+            var lastNanos = 0L
+            while (staggerLags.isNotEmpty()) {
+                androidx.compose.runtime.withFrameNanos { now ->
+                    val dt = if (lastNanos == 0L) 0.016f else ((now - lastNanos) / 1_000_000_000f).coerceIn(0f, 0.064f)
+                    lastNanos = now
+                    val anchor = staggerAnchorRow
+                    val done = ArrayList<Int>()
+                    for ((row, lag) in staggerLags.toMap()) {
+                        val k = (row - anchor).coerceIn(1, StaggerMaxRows)
+                        // Critically damped toward 0, solved exactly (stable at any frame time).
+                        val omega = 1000f / (StaggerLagPerRowMs * k)
+                        val v = staggerVelocities[row] ?: 0f
+                        val e = kotlin.math.exp(-omega * dt)
+                        val tmp = (v + omega * lag) * dt
+                        val nextLag = (lag + tmp) * e
+                        val nextV = (v - omega * tmp) * e
+                        if (kotlin.math.abs(nextLag) < 0.3f && kotlin.math.abs(nextV) < 4f) {
+                            done += row
+                        } else {
+                            staggerLags[row] = nextLag
+                            staggerVelocities[row] = nextV
+                        }
+                    }
+                    done.forEach {
+                        staggerLags.remove(it)
+                        staggerVelocities.remove(it)
+                    }
+                }
+            }
+        }
+    }
 
     var isAutoScrolling by remember { mutableStateOf(false) }
 
@@ -446,9 +564,10 @@ fun LyricsScreen(
         label = "lyricsImmersion",
     )
 
-    LaunchedEffect(anchorIndex, followPlayback, lines) {
+    LaunchedEffect(anchorIndex, followPlayback, lines, motionStyle) {
         val target = anchorIndex
         if (!followPlayback || target !in lines.indices) return@LaunchedEffect
+        val targetRow = rowOfLine[target]
 
         val viewportHeight = snapshotFlow { listState.layoutInfo.viewportSize.height }
             .first { it > 0 }
@@ -459,40 +578,69 @@ fun LyricsScreen(
         try {
         isAutoScrolling = true
 
-        val visible = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == target }
+        // The sheet itself on the move - the page reopening with the player, the list just built
+        // and still at its top: put the line straight where it rests. Animating it there stacked
+        // a long scroll, composing every row it passed, on top of the sheet's own open.
+        if (isSheetDragging) {
+            listState.scrollToItem(targetRow, 0)
+            return@LaunchedEffect
+        }
+
+        // Compared by ROW index. This used to compare the line index against the list's item
+        // index, and every gap row before the target shifted the two apart - after the first
+        // instrumental break it measured the wrong item and scrolled to the wrong place.
+        val layoutInfo = listState.layoutInfo
+        val visible = layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetRow }
         if (visible != null) {
 
-            val current = visible.offset - listState.layoutInfo.viewportStartOffset
-            listState.animateScrollBy(
-                (current - restingOffset).toFloat(),
-                animationSpec = tween(
-                    durationMillis = RecenterDurationMs,
-                    easing = CubicBezierEasing(0.5f, 0.45f, 0f, 1f),
-                ),
-            )
+            val current = visible.offset - layoutInfo.viewportStartOffset
+            // A gap row above the target that's on its way out collapses during this same scroll
+            // (same duration and easing), and that collapse alone lifts the target by its height.
+            // Scroll only the rest, or the line would overshoot its resting place.
+            val collapsing = layoutInfo.visibleItemsInfo
+                .filter { it.index < targetRow && rows.getOrNull(it.index) is LyricRow.Interlude }
+                .sumOf { it.size }
+            val distance = (current - restingOffset - collapsing).toFloat()
+
+            staggerAnchorRow = targetRow
+            listState.scroll {
+                var previous = 0f
+                androidx.compose.animation.core.animate(
+                    initialValue = 0f,
+                    targetValue = distance,
+                    animationSpec = tween(durationMillis = RecenterDurationMs, easing = recenterEasingFor(motionStyle)),
+                ) { value, _ ->
+                    val consumed = scrollBy(value - previous)
+                    previous += consumed
+                    if (cascade && consumed != 0f) {
+                        // Rows below the active line hold back by what just scrolled, then catch
+                        // up on their own (decay above) - the further down, the later.
+                        for (item in listState.layoutInfo.visibleItemsInfo) {
+                            if (item.index > targetRow) {
+                                staggerLags[item.index] = (staggerLags[item.index] ?: 0f) + consumed
+                            }
+                        }
+                    }
+                }
+            }
         } else {
 
-            listState.animateScrollToItem(target, 0)
+            listState.animateScrollToItem(targetRow, 0)
         }
         } finally {
             isAutoScrolling = false
         }
     }
 
-    // Every instrumental gap in the song, as its own list row. Building these up front — rather
-    // than conditionally rendering dots inside the next line's item, as before — is what stops the
-    // list jumping: an item that grows a 56dp dot row the instant a gap begins changes its own
-    // height mid-scroll, and the auto-scroll animation is already in flight against the old
-    // measurement. Now every row's height is fixed for the life of the song and only opacity
-    // changes.
-    val rows = remember(lines) { buildLyricRows(lines) }
-
     /** Which gap, if any, is happening right now. [NoInterlude] when a line is being sung. */
     val activeInterlude by remember(lines, rows) {
         derivedStateOf {
             val position = progress.position
+            // Ends with the same lead-in the next line starts with, so the dots collapse on the
+            // very frame that line takes over and the recenter scroll can account for it.
             rows.firstOrNull {
-                it is LyricRow.Interlude && position >= it.startMs && position < it.endMs
+                it is LyricRow.Interlude && position >= it.startMs &&
+                    position + LyricsUtils.LineLeadInMs < it.endMs
             }?.let { (it as LyricRow.Interlude).afterIndex } ?: NoInterlude
         }
     }
@@ -553,10 +701,9 @@ fun LyricsScreen(
         BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
-                .padding(
-                    bottom = ((contentBottomInset - HeaderOverlapAllowance) * (1f - immersion))
-                        .coerceAtLeast(0.dp)
-                )
+                // Ends at the top of the seek bar (contentBottomInset). It used to reach 28dp past
+                // its bottom, so lines scrolled behind the bar and the timestamps.
+                .padding(bottom = (contentBottomInset * (1f - immersion)).coerceAtLeast(0.dp))
         ) {
             val listHeight = maxHeight
             if (lines.isEmpty()) {
@@ -599,13 +746,17 @@ fun LyricsScreen(
                             }
                         },
                 ) {
-                    items(
+                    itemsIndexed(
                         items = rows,
-                        key = { it.key },
-                        contentType = { if (it is LyricRow.Interlude) "interlude" else "lyric" },
-                    ) { row ->
+                        key = { _, row -> row.key },
+                        contentType = { _, row -> if (row is LyricRow.Interlude) "interlude" else "lyric" },
+                    ) { listIndex, row ->
                         when (row) {
                             is LyricRow.Interlude -> LyricsInterludeDots(
+                                modifier = Modifier.graphicsLayer {
+                                    translationY = staggerLags[listIndex] ?: 0f
+                                    applyPageRowEnter(enterProgressProvider(), listIndex - cardLineRow.coerceAtLeast(0))
+                                },
                                 startMs = row.startMs,
                                 endMs = row.endMs,
                                 // A provider, not the position itself: passing the value would
@@ -613,6 +764,7 @@ fun LyricsScreen(
                                 positionProvider = positionProvider,
                                 accentColor = accent,
                                 visible = activeInterlude == row.afterIndex,
+                                collapseEasing = recenterEasingFor(motionStyle),
                                 // The gap belongs to whoever sings next, so it waits on that
                                 // singer's side rather than always sitting down the middle.
                                 alignment = lines.getOrNull(row.afterIndex + 1)
@@ -649,7 +801,46 @@ fun LyricsScreen(
                                 val romanized by entry.romanizedTextFlow.collectAsState()
                                 val ruby by entry.rubyFlow.collectAsState()
                                 val translated by entry.translatedTextFlow.collectAsState()
+                                val rowIndex = rowOfLine[index]
+                                val lineAlignment = alignmentFor(entry, useAgentAlignment)
+                                // Only a start-aligned line has its text where the card's starts.
+                                val growsFromCard = morph != null && index == cardLine &&
+                                    lineAlignment == LyricsAlignment.START
                                 LyricsGlowLine(
+                                    modifier = Modifier
+                                        .then(
+                                            if (growsFromCard) {
+                                                Modifier.onGloballyPositioned { coords ->
+                                                    // Before this row's own layer, so the flight
+                                                    // below doesn't move the point it flies to.
+                                                    val origin = coords.positionInRoot()
+                                                    morph!!.pageLyricAnchor = androidx.compose.ui.geometry.Offset(
+                                                        origin.x + LineAnchorX.toPx(density),
+                                                        origin.y + LineAnchorY.toPx(density),
+                                                    )
+                                                }
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .graphicsLayer {
+                                            translationY = staggerLags[rowIndex] ?: 0f
+                                            val e = enterProgressProvider()
+                                            val flew = growsFromCard && applyCardFlight(
+                                                e = e,
+                                                cardAnchor = morph!!.cardLyricAnchor.let {
+                                                    if (it == androidx.compose.ui.geometry.Offset.Unspecified) it
+                                                    else androidx.compose.ui.geometry.Offset(it.x - morph.cardLyricScroll, it.y)
+                                                },
+                                                pageAnchor = morph.pageLyricAnchor,
+                                                localAnchor = androidx.compose.ui.geometry.Offset(
+                                                    LineAnchorX.toPx(),
+                                                    LineAnchorY.toPx(),
+                                                ),
+                                                cardToPage = CardToPageLyricScale,
+                                            )
+                                            if (!flew) applyPageRowEnter(e, rowIndex - cardLineRow.coerceAtLeast(0))
+                                        },
                                     entry = entry,
                                     state = state,
                                     blurStage = blurStage,
@@ -672,8 +863,9 @@ fun LyricsScreen(
                                     },
                                     translationLoading = isTranslating && translated.isNullOrBlank(),
                                     translation = translated,
-                                    alignment = alignmentFor(entry, useAgentAlignment),
+                                    alignment = lineAlignment,
                                     waveEnabled = lyricsWaveAnimation && !suppressEffects,
+                                    motionStyle = motionStyle,
                                     highBloom = lyricsHighBloom,
                                     onClick = {
                                         playerConnection.player.seekTo(entry.time)
@@ -752,11 +944,15 @@ private fun alignmentFor(entry: LyricsEntry, useAgentAlignment: Boolean): Lyrics
 }
 
 @Composable
-private fun LyricsLoadingDots(modifier: Modifier = Modifier) {
+internal fun LyricsLoadingDots(
+    modifier: Modifier = Modifier,
+    /** Start-aligned with a little air between the dots for the bottom card; centred on the page. */
+    alignStart: Boolean = false,
+) {
     val transition = rememberInfiniteTransition(label = "lyricsLoading")
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = if (alignStart) Arrangement.spacedBy(5.dp) else Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         repeat(3) { index ->

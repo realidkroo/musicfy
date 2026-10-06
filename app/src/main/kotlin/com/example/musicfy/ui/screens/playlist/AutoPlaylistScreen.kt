@@ -82,6 +82,9 @@ import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.DraggableScrollbar
 import com.example.musicfy.ui.component.EmptyPlaceholder
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.librarySwipeAction
+import com.example.musicfy.ui.component.queueSwipeAction
 import com.example.musicfy.ui.component.detail.featuredArtistsOf
 import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
 import com.example.musicfy.ui.component.detail.PlaylistDetailScaffold
@@ -464,48 +467,53 @@ fun AutoPlaylistScreen(
                 if (it) selection.add(song.id) else selection.remove(song.id)
             }
 
-            PlaylistTrackRow(
-                thumbnailUrl = song.song.thumbnailUrl,
-                title = song.song.title,
-                subtitle = "${song.artists.joinToString { it.name }} • ${makeTimeString(song.song.duration * 1000L)}",
-                isActive = song.song.id == mediaMetadata?.id,
-                isPlaying = isPlaying,
-                modifier = Modifier
-                    .animateItem()
-                    .revealOnAppear(
+            SwipeActionsBox(
+                modifier = Modifier.animateItem(),
+                enabled = !inSelectMode,
+                start = { librarySwipeAction(song.song) },
+                end = { queueSwipeAction { song.toMediaItem() } },
+            ) {
+                PlaylistTrackRow(
+                    thumbnailUrl = song.song.thumbnailUrl,
+                    title = song.song.title,
+                    subtitle = "${song.artists.joinToString { it.name }} • ${makeTimeString(song.song.duration * 1000L)}",
+                    isActive = song.song.id == mediaMetadata?.id,
+                    isPlaying = isPlaying,
+                    modifier = Modifier.revealOnAppear(
                         key = "track_${song.id}",
                         seenState = revealSeen,
                         delayMillis = minOf(index, 8) * 28,
                     ),
-                onClick = {
-                    if (inSelectMode) {
-                        onCheckedChange(song.id !in selection)
-                    } else if (song.song.id == mediaMetadata?.id) {
-                        playerConnection.togglePlayPause()
-                    } else {
-                        playAll(current, startIndex = current.indexOfFirst { it.id == song.id })
-                    }
-                },
-                onLongClick = {
-                    if (!inSelectMode) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        inSelectMode = true
-                        onCheckedChange(true)
-                    }
-                },
-                onMenuClick = {
-                    menuState.show {
-                        SongMenu(
-                            originalSong = song,
-                            navController = navController,
-                            onDismiss = menuState::dismiss,
-                        )
-                    }
-                },
-                trailing = if (inSelectMode) {
-                    { Checkbox(checked = song.id in selection, onCheckedChange = onCheckedChange) }
-                } else null,
-            )
+                    onClick = {
+                        if (inSelectMode) {
+                            onCheckedChange(song.id !in selection)
+                        } else if (song.song.id == mediaMetadata?.id) {
+                            playerConnection.togglePlayPause()
+                        } else {
+                            playAll(current, startIndex = current.indexOfFirst { it.id == song.id })
+                        }
+                    },
+                    onLongClick = {
+                        if (!inSelectMode) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            inSelectMode = true
+                            onCheckedChange(true)
+                        }
+                    },
+                    onMenuClick = {
+                        menuState.show {
+                            SongMenu(
+                                originalSong = song,
+                                navController = navController,
+                                onDismiss = menuState::dismiss,
+                            )
+                        }
+                    },
+                    trailing = if (inSelectMode) {
+                        { Checkbox(checked = song.id in selection, onCheckedChange = onCheckedChange) }
+                    } else null,
+                )
+            }
         }
 
         if (!isSearching) {
