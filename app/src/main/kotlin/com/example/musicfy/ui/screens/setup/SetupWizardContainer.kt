@@ -33,8 +33,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.musicfy.utils.dataStore
 import com.example.musicfy.constants.SetupCompletedKey
+import com.example.musicfy.ui.launch.LaunchGate
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+// a beat with the bones settled before the sheet slides over them
+private const val SheetAfterIntroMillis = 120L
+
 @Composable
 fun SetupWizardContainer(
     isVisible: Boolean,
@@ -53,7 +58,10 @@ fun SetupWizardContainer(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             if (isFirstLaunch) {
-                kotlinx.coroutines.delay(1000)
+                // on a first launch: the splash mark flies into Home, its bones rise, and only
+                // then does onboarding come up over them
+                LaunchGate.awaitIntro()
+                kotlinx.coroutines.delay(SheetAfterIntroMillis)
                 isFirstLaunch = false
             }
             overlayProgress.animateTo(1f, smoothMotion)

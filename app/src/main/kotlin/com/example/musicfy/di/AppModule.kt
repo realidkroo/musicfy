@@ -48,13 +48,9 @@ object AppModule {
         @ApplicationContext context: Context,
     ): InternalDatabase = Room
         .databaseBuilder(context, InternalDatabase::class.java, InternalDatabase.DB_NAME)
-        .addMigrations(
-            com.example.musicfy.db.MIGRATION_1_2,
-            com.example.musicfy.db.MIGRATION_21_24,
-            com.example.musicfy.db.MIGRATION_22_24,
-            com.example.musicfy.db.MIGRATION_24_25,
-            com.example.musicfy.db.MIGRATION_35_36,
-        )
+        // The one list in MusicDatabase.kt. This copy used to be its own, stopped at 35 -> 36, and
+        // every later version reached the phone as "no migration path" -> all tables dropped.
+        .addMigrations(*com.example.musicfy.db.AllMigrations)
         .fallbackToDestructiveMigration(dropAllTables = true)
         .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
         .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))

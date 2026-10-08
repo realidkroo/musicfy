@@ -2,6 +2,9 @@
 
 package com.example.musicfy.ui.menu
 
+import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderButton
+import com.example.musicfy.ui.component.SheetHeader
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
@@ -182,46 +185,19 @@ fun YouTubeSongMenu(
         }
     }
 
-    ListItem(
-        // This one is Material3's ListItem, which takes colors rather than a background — same
-        // goal as the other menu headers: no grey card behind the item at the top of the sheet.
-        colors = androidx.compose.material3.ListItemDefaults.colors(
-            containerColor = Color.Transparent,
+    // The sheet's header, as in the song-menu mock: cover, title, the artists, and like.
+    SheetHeader(
+        thumbnailUrl = song.thumbnail,
+        title = song.title,
+        subtitle = joinByBullet(
+            song.artists.joinToString { it.name },
+            song.duration?.let { makeTimeString(it * 1000L) },
         ),
-        headlineContent = {
-            Text(
-                text = song.title,
-                modifier = Modifier.basicMarquee(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        supportingContent = {
-            Text(
-                text = joinByBullet(
-                    song.artists.joinToString { it.name },
-                    song.duration?.let { makeTimeString(it * 1000L) },
-                )
-            )
-        },
-        leadingContent = {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(ListThumbnailSize)
-                    .clip(RoundedCornerShape(ThumbnailCornerRadius))
-            ) {
-                AsyncImage(
-                    model = song.thumbnail,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(ThumbnailCornerRadius))
-                )
-            }
-        },
-        trailingContent = {
-            IconButton(
+        trailing = {
+            SheetHeaderButton(
+                icon = if (librarySong?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border,
+                active = librarySong?.song?.liked == true,
+                tint = if (librarySong?.song?.liked == true) MaterialTheme.colorScheme.error else Color.White,
                 onClick = {
                     database.transaction {
                         librarySong.let { librarySong ->
@@ -237,19 +213,11 @@ fun YouTubeSongMenu(
                         }
                     }
                 },
-            ) {
-                Icon(
-                    painter = painterResource(if (librarySong?.song?.liked == true) R.drawable.favorite else R.drawable.favorite_border),
-                    tint = if (librarySong?.song?.liked == true) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                    contentDescription = null,
-                )
-            }
+            )
         },
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    SheetDivider()
 
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val configuration = LocalConfiguration.current
@@ -266,23 +234,6 @@ fun YouTubeSongMenu(
         item {
             NewActionGrid(
                 actions = listOfNotNull(
-                    if (true) {
-                        NewAction(
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.playlist_play),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(28.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            text = stringResource(R.string.play_next),
-                            onClick = {
-                                playerConnection.playNext(song.copy(thumbnail = song.thumbnail.resize(1200, 1200)).toMediaItem())
-                                onDismiss()
-                            }
-                        )
-                    } else null,
                     NewAction(
                         icon = {
                             Icon(
@@ -316,10 +267,61 @@ fun YouTubeSongMenu(
                             context.startActivity(Intent.createChooser(intent, null))
                             onDismiss()
                         }
-                    )
+                    ),
+                    song.album?.let { album ->
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.album),
+                                    contentDescription = null,
+                                )
+                            },
+                            text = stringResource(R.string.view_album),
+                            onClick = {
+                                navController.navigate("album/${album.id}")
+                                onDismiss()
+                            }
+                        )
+                    },
+                    if (artists.isNotEmpty()) {
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.artist),
+                                    contentDescription = null,
+                                )
+                            },
+                            text = stringResource(R.string.view_artist),
+                            onClick = {
+                                if (artists.size == 1) {
+                                    navController.navigate("artist/${artists[0].id}")
+                                    onDismiss()
+                                } else {
+                                    showSelectArtistDialog = true
+                                }
+                            }
+                        )
+                    } else null,
+                    if (true) {
+                        NewAction(
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.playlist_play),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            text = stringResource(R.string.play_next),
+                            onClick = {
+                                playerConnection.playNext(song.copy(thumbnail = song.thumbnail.resize(1200, 1200)).toMediaItem())
+                                onDismiss()
+                            }
+                        )
+                    } else null,
                 ),
                 columns = if (false) 2 else 3,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
+                modifier = Modifier.padding(bottom = 12.dp)
             )
         }
 
@@ -541,46 +543,6 @@ fun YouTubeSongMenu(
         item {
             Material3MenuGroup(
                 items = buildList {
-                    if (artists.isNotEmpty()) {
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.view_artist)) },
-                                description = { Text(text = song.artists.joinToString { it.name }) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.artist),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    if (artists.size == 1) {
-                                        navController.navigate("artist/${artists[0].id}")
-                                        onDismiss()
-                                    } else {
-                                        showSelectArtistDialog = true
-                                    }
-                                }
-                            )
-                        )
-                    }
-                    song.album?.let { album ->
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.view_album)) },
-                                description = { Text(text = album.name) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.album),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    navController.navigate("album/${album.id}")
-                                    onDismiss()
-                                }
-                            )
-                        )
-                    }
                     add(
                         Material3MenuItemData(
                             title = { Text(text = stringResource(R.string.details)) },

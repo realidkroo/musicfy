@@ -48,6 +48,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -108,7 +109,6 @@ import com.example.musicfy.canvas.MonochromeApiCanvas
 import com.example.musicfy.constants.CanvasThumbnailAnimationKey
 import com.example.musicfy.constants.CanvasWifiOnlyKey
 import com.example.musicfy.constants.DisableBlurKey
-import com.example.musicfy.constants.UsernameKey
 import com.example.musicfy.db.entities.LocalItem
 import com.example.musicfy.models.MediaMetadata
 import com.example.musicfy.models.toMediaMetadata
@@ -118,7 +118,6 @@ import com.example.musicfy.ui.player.CanvasArtworkPlaybackCache
 import com.example.musicfy.ui.player.CanvasArtworkPlayer
 import com.example.musicfy.ui.player.normalizeCanvasArtistName
 import com.example.musicfy.ui.player.normalizeCanvasSongTitle
-import com.example.musicfy.ui.screens.Screens
 import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.DailyDiscoverItem
@@ -181,6 +180,8 @@ data class HeroLabel(
     val text: String,
     val coverUrl: String? = null,
     val subject: String? = null,
+    /** the subject is an artist: its tiny picture is round */
+    val roundCover: Boolean = false,
 )
 
 sealed interface HeroCarouselItem {
@@ -337,6 +338,28 @@ data class StarterItem(
     }
 }
 
+/** a new install's hero card: a song by one of the artists picked in onboarding; the pill plays it */
+data class StarterSongItem(
+    val song: SongItem,
+    val pickedArtist: String,
+    val pickedArtistThumbnail: String?,
+) : HeroCarouselItem {
+    override fun label(isPlaying: Boolean): HeroLabel =
+        if (isPlaying) HeroLabel("Now playing")
+        else HeroLabel("Recommended from", pickedArtistThumbnail, pickedArtist, roundCover = true)
+    override val mainText: String = song.title
+    override val subText: String = song.artists.joinToString(", ") { it.name }
+    override val thumbnailUrl: String? = song.thumbnail
+    override val mediaId: String? = song.id
+    override val songTitle: String? = song.title
+    override val artistName: String? = song.artists.joinToString { it.name }
+    override val albumTitle: String? = song.album?.name
+
+    override fun onPlay(playerConnection: PlayerConnection, navController: NavController) {
+        playerConnection.playQueue(YouTubeQueue(song.endpoint ?: WatchEndpoint(videoId = song.id), song.toMediaMetadata()))
+    }
+}
+
 /** an artist the recommendation shares with the song it came from, if there is one */
 private fun sharedArtist(item: DailyDiscoverItem): String? {
     val rec = item.recommendation as? SongItem ?: return null
@@ -380,8 +403,10 @@ fun HeroCarousel(
     heroScrollProgressProvider: () -> Float = { 0f },
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
+    /** keep the bones up whatever has loaded (Home's launch intro is still playing) */
+    hold: Boolean = false,
     gachaPool: List<MediaMetadata> = emptyList(),
-    starterItems: List<StarterItem> = emptyList(),
+    starterItems: List<HeroCarouselItem> = emptyList(),
     playlistPicks: List<PlaylistPickItem> = emptyList(),
 ) {
     val showGacha = gachaPool.size >= GachaMinPool
@@ -412,7 +437,7 @@ fun HeroCarousel(
                     }
             }
 
-            // nothing played yet: start from the imported playlists or the picked artists
+            // nothing played yet: start from the imported playlists or the picked artists' songs
             if (none { it !is GachaItem }) addAll(starterItems.take(5))
         }
     }
@@ -426,35 +451,19 @@ fun HeroCarousel(
         follow = 0.2f,
         softFrom = HeroStillFrom,
         modifier = modifier
-            .layout { measurable, constraints ->
-                // drawn full height, but the list only makes room for all but the tuck
-                val placeable = measurable.measure(constraints)
-                val tuck = HeroSectionTuck.roundToPx()
-                layout(placeable.width, (placeable.height - tuck).coerceAtLeast(0)) {
-                    placeable.place(0, 0)
-                }
-            }
+            .heroTuck()
             .fillMaxWidth()
             .height(heroHeight),
     ) {
         // null while the first load is still out, so the bones get their reveal; an empty list
-        // after loading means a fresh install, which gets the onboarding hero instead
+        // after loading means there's nothing at all to put forward yet
         RevealWhenLoaded(
-            data = carouselItems.takeIf { it.isNotEmpty() || !isLoading },
+            data = if (hold) null else carouselItems.takeIf { it.isNotEmpty() || !isLoading },
             modifier = Modifier.fillMaxSize(),
             bones = { HeroBones() },
         ) { items ->
             if (items.isEmpty()) {
-                val (username) = rememberPreference(UsernameKey, defaultValue = "")
-                OnboardingHero(
-                    username = username,
-                    onGetStarted = {
-                        navController.navigate(Screens.Search.route) {
-                            launchSingleTop = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
+                QuietHero(modifier = Modifier.fillMaxSize())
             } else {
                 HeroPager(
                     items = items,
@@ -942,7 +951,7 @@ private fun HeroLabelLine(label: HeroLabel) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(18.dp)
-                    .clip(RoundedCornerShape(5.dp))
+                    .clip(if (label.roundCover) CircleShape else RoundedCornerShape(5.dp))
                     .background(BoneColor),
             )
         }
@@ -1052,6 +1061,57 @@ private fun <S> AnimatedContentTransitionScope<S>.heroLabelSwap(): ContentTransf
     (slideInVertically(spring(dampingRatio = 0.8f, stiffness = 420f)) { it / 3 } + fadeIn(tween(220)))
         .togetherWith(slideOutVertically(tween(160)) { -it / 3 } + fadeOut(tween(140)))
         .using(SizeTransform(clip = false))
+
+/** drawn full height, but the list only makes room for all but the tuck */
+private fun Modifier.heroTuck(): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val tuck = HeroSectionTuck.roundToPx()
+    layout(placeable.width, (placeable.height - tuck).coerceAtLeast(0)) {
+        placeable.place(0, 0)
+    }
+}
+
+/** the hero's loading look on its own, sized and placed exactly like [HeroCarousel] (Home's shell) */
+@Composable
+fun HeroCarouselBones(modifier: Modifier = Modifier) {
+    val heroHeight = (LocalConfiguration.current.screenHeightDp * HeroHeightFraction).dp
+    Box(
+        modifier = modifier
+            .heroTuck()
+            .fillMaxWidth()
+            .height(heroHeight),
+    ) {
+        HeroBones()
+    }
+}
+
+/**
+ * Nothing to put forward at all: no history, no import, no picked artists' songs (offline on a
+ * brand-new install, say). A quiet card where the label and title would be, never an empty hole.
+ */
+@Composable
+private fun QuietHero(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.background(
+            Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent))
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = HomeContentInset, end = HomeContentInset, bottom = 64.dp)
+        ) {
+            Text(text = "Nothing here yet", style = HomeLabelStyle, color = HeroLabelColor, maxLines = 1)
+            Text(
+                text = "Play something and it shows up here",
+                style = HomeTitleStyle,
+                color = Color.White,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
 
 /** what the hero looks like while the first load is still out */
 @Composable

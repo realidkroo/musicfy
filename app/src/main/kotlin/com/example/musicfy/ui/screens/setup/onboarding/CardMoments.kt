@@ -6,6 +6,7 @@
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
+import com.example.musicfy.ui.component.rememberDeviceTilt
 import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -89,6 +90,8 @@ internal fun HelloCardStep(
     var time by remember { mutableFloatStateOf(0f) }
     val tiltX = remember { Animatable(0f) }
     val tiltY = remember { Animatable(0f) }
+    // the card leans with the phone as well as with the finger
+    val deviceTilt = rememberDeviceTilt()
     val confetti = remember { Confetti.burst(count = 90, seed = card.cardNumber.hashCode()) }
 
     LaunchedEffect(Unit) {
@@ -176,7 +179,7 @@ internal fun HelloCardStep(
             cardNumber = card.cardNumber,
             joinedText = card.joinedText,
             silver = true,
-            sheen = { 0.5f + (tiltY.value + cos(time * 1.4f) * 7f) / 45f },
+            sheen = { 0.5f + (tiltY.value + deviceTilt.rotationY + cos(time * 1.4f) * 7f) / 45f },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = (maxHeight * cardCenterFromTop - (cardWidth / IdCardAspect) / 2).coerceAtLeast(0.dp))
@@ -188,8 +191,8 @@ internal fun HelloCardStep(
                     scaleY = s
                     alpha = (time / 0.25f).coerceIn(0f, 1f)
                     rotationZ = -8f * enter
-                    rotationY = (1f - enter) * -55f + tiltY.value + cos(time * 1.4f) * 7f
-                    rotationX = tiltX.value + sin(time * 1.1f) * 4f
+                    rotationY = (1f - enter) * -55f + tiltY.value + deviceTilt.rotationY + cos(time * 1.4f) * 7f
+                    rotationX = tiltX.value + deviceTilt.rotationX + sin(time * 1.1f) * 4f
                     cameraDistance = 14f * this.density
                 },
         )
@@ -214,6 +217,7 @@ internal fun HelloCardStep(
 @Composable
 internal fun DoneStep(card: CardInfo, onFinished: () -> Unit) {
     var time by remember { mutableFloatStateOf(0f) }
+    val deviceTilt = rememberDeviceTilt()
     val currentOnFinished by rememberUpdatedState(onFinished)
     LaunchedEffect(Unit) {
         var start = 0L
@@ -275,7 +279,7 @@ internal fun DoneStep(card: CardInfo, onFinished: () -> Unit) {
                 cardNumber = card.cardNumber,
                 joinedText = card.joinedText,
                 silver = true,
-                sheen = { 0.3f + time / 3f },
+                sheen = { 0.3f + time / 3f + deviceTilt.rotationY / 45f },
                 modifier = Modifier
                     .width(cardWidth)
                     .graphicsLayer {
@@ -283,7 +287,8 @@ internal fun DoneStep(card: CardInfo, onFinished: () -> Unit) {
                         translationY = (1f - p) * size.height * 1.4f
                         alpha = ((time - 0.15f) / 0.3f).coerceIn(0f, 1f)
                         rotationZ = -6f + (1f - p) * 10f
-                        rotationY = sin(time * 1.2f) * 6f
+                        rotationY = sin(time * 1.2f) * 6f + deviceTilt.rotationY
+                        rotationX = deviceTilt.rotationX
                         cameraDistance = 14f * this.density
                     },
             )

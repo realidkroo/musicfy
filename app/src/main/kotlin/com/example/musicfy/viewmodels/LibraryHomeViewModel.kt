@@ -109,6 +109,13 @@ constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
+        // Imports made before library songs had their own place left them in a playlist, or out of
+        // the Library entirely; put them where they belong (once - it finds nothing to do after).
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { importService.repairEarlierImports() }
+                .onFailure { timber.log.Timber.w(it, "Repairing earlier imports failed") }
+        }
+
         // Artist rows have no picture until something goes and fetches one: the artist table only
         // stores a thumbnail once it has been resolved, and nothing resolves it as a side effect of
         // reading the table. LibraryArtistsViewModel already did this, but the rebuilt Library

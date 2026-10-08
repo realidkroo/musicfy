@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.component
 
+import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.min
 
 private val RevealEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 private const val BonesFadeOutMs = 280
@@ -45,6 +47,11 @@ private const val RevealGapMs = 120
 private const val RevealFadeInMs = 520
 private val RevealSlideDistance = 20.dp
 private const val BonesWaveMs = 2000
+
+// reveals that start together (a whole page of rows landing at once) go one after another
+private const val BurstWindowMs = 120L
+private const val BurstStepMs = 60
+private const val BurstMaxSteps = 6
 
 /** colour of a loading bone, before the wave modulates it */
 val BoneColor = Color(0xFFD9D9D9).copy(alpha = 0.22f)
@@ -59,6 +66,19 @@ class RevealSeenState(initial: Collection<String> = emptyList()) {
     fun hasSeen(key: String) = key in seen
     fun markSeen(key: String) {
         seen.add(key)
+    }
+
+    private var burstStartedAt = 0L
+    private var burstCount = 0
+
+    /** how long this reveal waits for the ones that started with it */
+    internal fun nextBurstDelay(): Int {
+        val now = SystemClock.uptimeMillis()
+        if (now - burstStartedAt > BurstWindowMs) {
+            burstStartedAt = now
+            burstCount = 0
+        }
+        return min(burstCount++, BurstMaxSteps) * BurstStepMs
     }
 
     companion object {
@@ -113,6 +133,7 @@ fun <T : Any> RevealWhenLoaded(
 /**
  * fades and slides an item up the first time it shows for [key]. [enabled] holds it hidden until
  * something else is ready (a screen transition settling, say) without losing the only-once part.
+ * with [cascade], items that appear together take turns instead of all moving at once.
  */
 @Composable
 fun Modifier.revealOnAppear(
@@ -120,6 +141,7 @@ fun Modifier.revealOnAppear(
     seenState: RevealSeenState,
     enabled: Boolean = true,
     delayMillis: Int = 0,
+    cascade: Boolean = false,
 ): Modifier {
     val alreadySeen = remember(key) { seenState.hasSeen(key) }
     if (alreadySeen) return this
@@ -129,7 +151,8 @@ fun Modifier.revealOnAppear(
         if (!enabled) return@LaunchedEffect
         // marked up front: a fast fling that disposes the row mid-animation shouldn't replay it later
         seenState.markSeen(key)
-        progress.animateTo(1f, tween(RevealFadeInMs, delayMillis = delayMillis, easing = RevealEasing))
+        val wait = delayMillis + if (cascade) seenState.nextBurstDelay() else 0
+        progress.animateTo(1f, tween(RevealFadeInMs, delayMillis = wait, easing = RevealEasing))
     }
 
     val slidePx = with(LocalDensity.current) { RevealSlideDistance.toPx() }

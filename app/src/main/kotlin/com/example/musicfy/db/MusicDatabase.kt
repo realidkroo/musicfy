@@ -146,16 +146,7 @@ abstract class InternalDatabase : RoomDatabase() {
                 delegate =
                 Room
                     .databaseBuilder(context, InternalDatabase::class.java, DB_NAME)
-                    .addMigrations(
-                        MIGRATION_1_2,
-                        MIGRATION_21_24,
-                        MIGRATION_22_24,
-                        MIGRATION_24_25,
-                        MIGRATION_35_36,
-                        MIGRATION_36_37,
-                        MIGRATION_37_38,
-                        MIGRATION_38_39,
-                    )
+                    .addMigrations(*AllMigrations)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                     .setTransactionExecutor(java.util.concurrent.Executors.newFixedThreadPool(4))
@@ -177,6 +168,24 @@ abstract class InternalDatabase : RoomDatabase() {
             )
     }
 }
+
+/**
+ * Every hand-written migration, for every place the database is built (here and the Hilt module).
+ * The app opens it through the Hilt module; when that copy of the list fell behind this one, an
+ * upgrade found no path to the new version and `fallbackToDestructiveMigration` emptied the whole
+ * library. Add new migrations here and nowhere else.
+ */
+val AllMigrations: Array<Migration>
+    get() = arrayOf(
+        MIGRATION_1_2,
+        MIGRATION_21_24,
+        MIGRATION_22_24,
+        MIGRATION_24_25,
+        MIGRATION_35_36,
+        MIGRATION_36_37,
+        MIGRATION_37_38,
+        MIGRATION_38_39,
+    )
 
 val MIGRATION_1_2 =
     object : Migration(1, 2) {

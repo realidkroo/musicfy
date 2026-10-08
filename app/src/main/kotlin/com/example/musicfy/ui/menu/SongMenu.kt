@@ -339,26 +339,18 @@ fun SongMenu(
         ),
     ) {
         item {
-            // The four everyone reaches for first, then the rest of the options as they were.
+            // The song-menu mock's four first - add to playlist, share, album, artist - then the rest.
             Material3MenuGroup(
                 items = listOfNotNull(
                     Material3MenuItemData(
-                        title = { Text(text = stringResource(R.string.play)) },
+                        title = { Text(text = stringResource(R.string.add_to_an_playlist)) },
                         icon = {
                             Icon(
-                                painter = painterResource(R.drawable.play),
+                                painter = painterResource(R.drawable.playlist_add),
                                 contentDescription = null,
                             )
                         },
-                        onClick = {
-                            onDismiss()
-                            playerConnection.playQueue(
-                                ListQueue(
-                                    title = song.song.title,
-                                    items = listOf(song.toMediaItem()),
-                                )
-                            )
-                        }
+                        onClick = { showChoosePlaylistDialog = true }
                     ),
                     Material3MenuItemData(
                         title = { Text(text = stringResource(R.string.share)) },
@@ -430,14 +422,22 @@ fun SongMenu(
                         onClick = { showEditDialog = true }
                     ),
                     Material3MenuItemData(
-                        title = { Text(text = stringResource(R.string.add_to_an_playlist)) },
+                        title = { Text(text = stringResource(R.string.play)) },
                         icon = {
                             Icon(
-                                painter = painterResource(R.drawable.playlist_add),
+                                painter = painterResource(R.drawable.play),
                                 contentDescription = null,
                             )
                         },
-                        onClick = { showChoosePlaylistDialog = true }
+                        onClick = {
+                            onDismiss()
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = song.song.title,
+                                    items = listOf(song.toMediaItem()),
+                                )
+                            )
+                        }
                     ),
                 )
             )

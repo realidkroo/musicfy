@@ -298,9 +298,10 @@ fun SetupWizardScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) { current ->
                     when (current) {
-                        // black like the welcome page itself, so no grey strip shows above it
+                        // the welcome page runs all the way to the top of the sheet, under the handle;
+                        // pushed down, the strip above it showed as a bar
                         Step.Welcome -> Box(Modifier.fillMaxSize().background(Color.Black)) {
-                            Box(Modifier.fillMaxSize().padding(top = 56.dp)) { WelcomeStep(isHiding = isLeavingWelcome) }
+                            WelcomeStep(isHiding = isLeavingWelcome)
                             OnbButton(
                                 text = "Next",
                                 onClick = {

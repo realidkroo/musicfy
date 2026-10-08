@@ -10,6 +10,8 @@
 
 package com.example.musicfy.ui.screens.library
 
+import com.example.musicfy.ui.component.containerTransformSource
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -63,7 +65,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.musicfy.R
-import com.example.musicfy.ui.component.SmoothCornerShape
+import com.example.musicfy.ui.component.HomeTrackRow
+import com.example.musicfy.ui.theme.InterFontFamily
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.em
 import com.example.musicfy.ui.screens.search.SearchColors
 import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
 import com.example.musicfy.ui.screens.search.SearchTitleBlockHeight
@@ -116,10 +121,11 @@ fun LibraryGridArtwork(
     url: String?,
     modifier: Modifier = Modifier,
     corner: Dp = 12.dp,
+    round: Boolean = false,
 ) {
     Box(
         modifier = modifier
-            .clip(SmoothCornerShape(corner))
+            .clip(if (round) CircleShape else RoundedCornerShape(corner))
             .background(SearchColors.TileHigh),
         contentAlignment = Alignment.Center,
     ) {
@@ -160,7 +166,7 @@ fun LibraryPinnedTile(
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(SmoothCornerShape(18.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(SearchColors.TileHigh)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -209,6 +215,7 @@ private fun LibraryCoverStack(
     covers: List<String?>,
     modifier: Modifier = Modifier,
     tile: Dp = 34.dp,
+    round: Boolean = false,
 ) {
     val shown = remember(covers) { covers.filterNotNull().take(2) }
     if (shown.isEmpty()) return
@@ -222,7 +229,7 @@ private fun LibraryCoverStack(
                     .size(tile)
                     .graphicsLayer { alpha = 0.55f },
             ) {
-                LibraryGridArtwork(url = back, corner = 8.dp, modifier = Modifier.fillMaxSize())
+                LibraryGridArtwork(url = back, corner = 8.dp, round = round, modifier = Modifier.fillMaxSize())
             }
         }
         Box(
@@ -230,7 +237,7 @@ private fun LibraryCoverStack(
                 .align(Alignment.CenterEnd)
                 .size(tile),
         ) {
-            LibraryGridArtwork(url = shown[0], corner = 8.dp, modifier = Modifier.fillMaxSize())
+            LibraryGridArtwork(url = shown[0], corner = 8.dp, round = round, modifier = Modifier.fillMaxSize())
         }
     }
 }
@@ -294,7 +301,10 @@ fun LibraryEmptyState(modifier: Modifier = Modifier) {
     }
 }
 
-/** One of the four small cards: Songs / Albums / Artist / Playlist. */
+/**
+ * One of the small category cards: Songs / Albums / Artist / Playlist, and one per service music
+ * was imported from, which carries that service's [icon] before its name.
+ */
 @Composable
 fun LibraryCategoryCard(
     title: String,
@@ -302,11 +312,14 @@ fun LibraryCategoryCard(
     covers: List<String?>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    icon: (@Composable () -> Unit)? = null,
+    /** Artists: their covers are circles. */
+    roundCovers: Boolean = false,
 ) {
     Box(
         modifier = modifier
             .height(74.dp)
-            .clip(SmoothCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(SearchColors.Tile)
             .clickable(onClick = onClick),
     ) {
@@ -315,6 +328,7 @@ fun LibraryCategoryCard(
         // thumbnail with padding around it.
         LibraryCoverStack(
             covers = covers,
+            round = roundCovers,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .offset(x = 8.dp, y = 8.dp),
@@ -334,14 +348,20 @@ fun LibraryCategoryCard(
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
             )
-            Text(
-                text = title,
-                color = SearchColors.Primary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) {
+                    icon()
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    text = title,
+                    color = SearchColors.Primary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -359,7 +379,7 @@ fun LibraryWideCard(
         modifier = modifier
             .fillMaxWidth()
             .height(112.dp)
-            .clip(SmoothCornerShape(18.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(SearchColors.Tile)
             .clickable(onClick = onClick),
     ) {
@@ -399,8 +419,11 @@ fun LibraryWideCard(
 // List rows
 // ---------------------------------------------------------------------------------------------
 
-/** A pill row in the A-Z lists. [large] gives Playlists their taller thumbnail from the mockup. */
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * A row in the A-Z lists, drawn exactly like Home's track rows: the same 54dp cover and corners,
+ * the same type, no pill behind it - only the soft highlight while pressed - and no "more" button,
+ * since a long press already opens the menu. The playing song gets Home's playing indicator.
+ */
 @Composable
 fun LibraryListRow(
     title: String,
@@ -409,64 +432,51 @@ fun LibraryListRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
-    large: Boolean = false,
+    isActive: Boolean = false,
+    isPlaying: Boolean = false,
+    /** Artists: a round picture. */
+    round: Boolean = false,
+    /** A playlist's "playlist-<id>": its page opens growing out of this cover, as from Home. */
+    sharedElementKey: String? = null,
 ) {
-    val art = if (large) 52.dp else 34.dp
-    val inset = if (large) 10.dp else 8.dp
-    val coverCorner = if (large) 11.dp else 8.dp
-    Row(
+    HomeTrackRow(
+        thumbnailUrl = thumbnailUrl,
+        title = title,
+        subtitle = subtitle,
+        isActive = isActive,
+        isPlaying = isPlaying,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        onMoreClick = null,
+        coverShape = if (round) CircleShape else LibraryRowCoverShape,
+        coverModifier = Modifier.containerTransformSource(
+            key = sharedElementKey,
+            cornerRadius = if (round) LibraryRowCoverSize / 2 else LibraryRowCoverCorner,
+            coverUrl = thumbnailUrl,
+        ),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = SearchHorizontalPadding, vertical = 4.dp)
-            // The cover's corner plus the padding around it: the pill's curve runs parallel to the
-            // cover's instead of being a capsule that the square sits awkwardly inside.
-            .clip(SmoothCornerShape(coverCorner + inset))
-            .background(SearchColors.Tile)
-            .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-                onLongClick = onLongClick,
-            )
-            .padding(horizontal = 10.dp, vertical = inset),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LibraryGridArtwork(
-            url = thumbnailUrl,
-            corner = coverCorner,
-            modifier = Modifier.size(art),
-        )
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = SearchColors.Primary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!subtitle.isNullOrBlank()) {
-                Text(
-                    text = subtitle,
-                    color = SearchColors.Secondary,
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
+            .padding(horizontal = SearchHorizontalPadding, vertical = 3.dp),
+    )
 }
 
-/** Letter divider above each alphabetical section. */
+/** Home's row cover, so the Library's rows match it exactly. */
+private val LibraryRowCoverCorner = 14.dp
+private val LibraryRowCoverSize = 54.dp
+private val LibraryRowCoverShape = RoundedCornerShape(LibraryRowCoverCorner)
+
+/** The header above each section of an A-Z list: its letter, kana row, initial... */
 @Composable
-fun LibraryLetterHeader(letter: Char, modifier: Modifier = Modifier) {
+fun LibraryLetterHeader(label: String, modifier: Modifier = Modifier) {
     Text(
-        text = letter.uppercaseChar().toString(),
+        text = label,
         color = SearchColors.Primary,
-        fontSize = 22.sp,
-        fontWeight = FontWeight.Bold,
+        style = TextStyle(
+            fontFamily = InterFontFamily,
+            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            letterSpacing = (-0.03).em,
+        ),
         modifier = modifier.padding(horizontal = SearchHorizontalPadding, vertical = 10.dp),
     )
 }
@@ -487,7 +497,7 @@ fun LibraryPlayBar(
             modifier = Modifier
                 .weight(1f)
                 .height(44.dp)
-                .clip(SmoothCornerShape(16.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(SearchColors.Tile)
                 .clickable(onClick = onPlay),
         ) {
@@ -503,7 +513,7 @@ fun LibraryPlayBar(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(44.dp)
-                .clip(SmoothCornerShape(16.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(SearchColors.Tile)
                 .clickable(onClick = onMore),
         ) {
@@ -513,144 +523,6 @@ fun LibraryPlayBar(
                 tint = SearchColors.Secondary,
                 modifier = Modifier.size(18.dp),
             )
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------------------------
-// A-Z index
-// ---------------------------------------------------------------------------------------------
-
-/** Buckets by first letter, uppercased; anything not a letter lands under '#'. */
-fun <T> groupByLetter(items: List<T>, keyOf: (T) -> String): Map<Char, List<T>> {
-    val map = LinkedHashMap<Char, MutableList<T>>()
-    for (item in items) {
-        val first = keyOf(item).trim().firstOrNull()?.uppercaseChar()
-        val letter = if (first != null && first.isLetter()) first else '#'
-        map.getOrPut(letter) { mutableListOf() }.add(item)
-    }
-    return map
-}
-
-private val AlphabetRail = ('A'..'Z').toList() + '#'
-
-/**
- * The A-Z index down the right edge, plus the big letter that zooms in while you scrub it.
- *
- * Fills its parent so the zoomed letter can sit over the list; the rail itself is pinned to the
- * right edge inside that.
- *
- * One custom down/move/up loop rather than composed tap + drag detectors: a drag detector alone
- * ignores a tap that never crosses touch slop, and stacking a tap detector on top puts two
- * recognisers on one strip, which is a reliable way to make a scrubber drop touches. Handling the
- * pointer directly makes a tap and the first frame of a drag the same path.
- */
-@Composable
-fun LibraryAlphabetIndex(
-    availableLetters: Set<Char>,
-    onLetterSelected: (Char) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val haptics = LocalHapticFeedback.current
-    var railHeightPx by remember { mutableFloatStateOf(0f) }
-    var lastLetter by remember { mutableStateOf<Char?>(null) }
-    var activeLetter by remember { mutableStateOf<Char?>(null) }
-    var touchYFraction by remember { mutableFloatStateOf(0.5f) }
-    val scope = rememberCoroutineScope()
-    val presence = remember { Animatable(0f) }
-
-    fun letterAt(yPx: Float): Char {
-        val fraction = (yPx / railHeightPx.coerceAtLeast(1f)).coerceIn(0f, 0.9999f)
-        return AlphabetRail[(fraction * AlphabetRail.size).toInt().coerceIn(0, AlphabetRail.lastIndex)]
-    }
-
-    fun handle(yPx: Float) {
-        touchYFraction = (yPx / railHeightPx.coerceAtLeast(1f)).coerceIn(0f, 1f)
-        val letter = letterAt(yPx)
-        activeLetter = letter
-        if (letter != lastLetter && availableLetters.contains(letter)) {
-            lastLetter = letter
-            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            onLetterSelected(letter)
-        }
-        scope.launch { presence.animateTo(1f, tween(130)) }
-    }
-
-    fun release() {
-        lastLetter = null
-        scope.launch {
-            presence.animateTo(0f, tween(280, easing = CubicBezierEasing(0.4f, 0f, 1f, 1f)))
-            activeLetter = null
-        }
-    }
-
-    BoxWithConstraints(modifier = modifier) {
-        val overlayTravel = (maxHeight - 140.dp).coerceAtLeast(0.dp)
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight(0.68f)
-                .width(24.dp)
-                .onGloballyPositioned { railHeightPx = it.size.height.toFloat() }
-                .pointerInput(availableLetters) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        handle(down.position.y)
-                        down.consume()
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!change.pressed) break
-                            handle(change.position.y)
-                            change.consume()
-                        }
-                        release()
-                    }
-                },
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            AlphabetRail.forEach { letter ->
-                Text(
-                    text = letter.lowercaseChar().toString(),
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (availableLetters.contains(letter)) {
-                        SearchColors.Secondary
-                    } else {
-                        SearchColors.Secondary.copy(alpha = 0.28f)
-                    },
-                )
-            }
-        }
-
-        val letter = activeLetter
-        if (letter != null && presence.value > 0.01f) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(end = 44.dp, top = overlayTravel * touchYFraction + 24.dp)
-                    .size(88.dp)
-                    .graphicsLayer {
-                        alpha = presence.value
-                        // Scale and fade together: scale alone reads as the letter popping into
-                        // existence, fade alone loses the "zoomed in" motion entirely.
-                        val s = 0.45f + 0.55f * presence.value
-                        scaleX = s
-                        scaleY = s
-                    }
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = letter.uppercaseChar().toString(),
-                    color = Color.White,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black,
-                )
-            }
         }
     }
 }

@@ -119,6 +119,13 @@ class HomeViewModel @Inject constructor(
     val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
     val localPlaylists = MutableStateFlow<List<com.example.musicfy.db.entities.Playlist>?>(null)
 
+    /**
+     * A new install's hero: one song from each artist picked in onboarding, until there's history.
+     * Null while it's still being asked for (the hero keeps its bones), empty when there's nothing
+     * to ask (history already, offline) or the asking failed.
+     */
+    val starterSongs = MutableStateFlow<List<StarterSong>?>(null)
+
     /** Library artists (onboarding's picks on a new install), for the hero before there's any history. */
     val libraryArtists = database.artists(com.example.musicfy.constants.ArtistSortType.CREATE_DATE, true)
         .map { artists -> artists.filter { it.artist.isYouTubeArtist }.take(5) }
@@ -872,6 +879,38 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private suspend fun loadStarterSongs() {
+        if (database.eventCount().first() > 0) {
+            starterSongs.value = emptyList()
+            return
+        }
+        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+        val picked = database.artists(com.example.musicfy.constants.ArtistSortType.CREATE_DATE, true).first()
+            .filter { it.artist.isYouTubeArtist }
+            .take(5)
+        try {
+            starterSongs.value = coroutineScope {
+                picked.map { artist ->
+                    async {
+                        // an artist page leads with its top songs; one of the first few, so a
+                        // reinstall doesn't greet you with the very same card
+                        val top = artistPage(artist.id)?.sections.orEmpty().firstNotNullOfOrNull { section ->
+                            section.items.filterIsInstance<SongItem>().filterExplicit(hideExplicit).takeIf { it.isNotEmpty() }
+                        } ?: return@async null
+                        StarterSong(
+                            song = top.take(3).random(),
+                            artistName = artist.artist.name,
+                            artistThumbnail = artist.artist.thumbnailUrl,
+                        )
+                    }
+                }.awaitAll().filterNotNull()
+            }
+        } finally {
+            // a failed or cancelled ask must not leave the hero waiting on it
+            if (starterSongs.value == null) starterSongs.value = emptyList()
+        }
+    }
+
     private fun isCommunityOrTrendingSection(title: String): Boolean {
         val titleLower = title.lowercase()
         return "trending" in titleLower || "community" in titleLower
@@ -886,6 +925,7 @@ class HomeViewModel @Inject constructor(
         // each source on its own: one failing request must not cancel the others (that took whole
         // sections down with it), and an unexpected throw shouldn't reach the crash handler
         supervisorScope {
+            launchSafely { loadStarterSongs() }
             launchSafely { getDailyDiscover() }
             launchSafely { getCommunityPlaylists() }
             launchSafely { loadSimilarRecommendations() }
@@ -975,6 +1015,8 @@ class HomeViewModel @Inject constructor(
             // when it lost that race the account playlists were silently skipped
             context.dataStore.get(InnerTubeCookieKey, "").takeIf { it.isNotEmpty() }?.let { YouTube.cookie = it }
             loadNetworkDataPhase()
+        } else if (starterSongs.value == null) {
+            starterSongs.value = emptyList()
         }
         lastLoadAt = SystemClock.elapsedRealtime()
     }
@@ -1184,6 +1226,8 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
+            // its database writes ripple through every Home row; not while the launch intro plays
+            com.example.musicfy.ui.launch.LaunchGate.awaitIntro()
             syncUtils.tryAutoSync()
         }
 
@@ -1229,3 +1273,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 }
+
+/** a song by one of the artists picked in onboarding, put forward on a new install's hero */
+data class StarterSong(
+    val song: SongItem,
+    val artistName: String,
+    val artistThumbnail: String?,
+)

@@ -213,6 +213,11 @@ fun YouTubeLoginWebContent(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 WebView(ctx).apply {
+                    // see CaptureWebContent: WRAP_CONTENT makes Chromium lay pages out at zero height
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    )
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
                     settings.setSupportZoom(true)

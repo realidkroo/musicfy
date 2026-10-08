@@ -57,6 +57,11 @@ data class RemotePlaylist(
     val subtitle: String? = null,
     /** Goes into Liked songs instead of becoming a playlist. */
     val isLiked: Boolean = false,
+    /**
+     * The account's whole song library rather than a playlist: goes into the Library's Songs (and
+     * Artists, Albums) as songs, not into a playlist named after the service.
+     */
+    val isLibrary: Boolean = false,
     val coverUrl: String? = null,
 )
 

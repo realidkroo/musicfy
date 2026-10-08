@@ -32,17 +32,18 @@ fun LibrarySongsScreen(
     LibraryEntityListScreen(
         title = "Songs",
         subtitle = "All songs on your library listed here.",
-        searchPlaceholder = "Find song listed here, by the lyrics, or the artist",
+        searchPlaceholder = "Find a song by its title or artist",
         items = songs,
         idOf = { it.id },
         nameOf = { it.song.title },
         subtitleOf = { it.artists.joinToString { a -> a.name }.ifBlank { null } },
         thumbnailOf = { it.song.thumbnailUrl },
+        playingIdOf = { it.id },
         onClick = { song ->
             // Queue the alphabetical order the user is looking at, not the underlying
             // create-date order — otherwise tapping a row starts a queue that jumps somewhere
             // unrelated to what's on screen.
-            val ordered = songs.sortedBy { it.song.title.trim().lowercase() }
+            val ordered = sortForLibraryIndex(songs) { it.song.title }
             playerConnection.playQueue(
                 ListQueue(
                     title = "Songs",

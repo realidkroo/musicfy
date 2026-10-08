@@ -2,6 +2,8 @@
 
 package com.example.musicfy.ui.component
 
+import androidx.compose.ui.unit.em
+import com.example.musicfy.ui.theme.InterFontFamily
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -89,7 +91,13 @@ internal fun SheetTextField(
         maxLines = maxLines,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        textStyle = TextStyle(color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium),
+        textStyle = TextStyle(
+            color = Color.White,
+            fontFamily = InterFontFamily,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = (-0.03).em,
+        ),
         cursorBrush = SolidColor(Color.White),
         modifier = modifier.fillMaxWidth(),
         decorationBox = { inner ->

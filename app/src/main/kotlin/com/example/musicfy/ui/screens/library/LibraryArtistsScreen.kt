@@ -27,12 +27,13 @@ fun LibraryArtistsScreen(
     LibraryEntityListScreen(
         title = "Artist",
         subtitle = "All artist on your library listed here.",
-        searchPlaceholder = "Find artist listed here, by the lyrics, or the music",
+        searchPlaceholder = "Find an artist by name",
         items = artists,
         idOf = { it.id },
         nameOf = { it.artist.name },
-        subtitleOf = { null },
+        subtitleOf = { if (it.songCount == 1) "1 song" else "${it.songCount} songs" },
         thumbnailOf = { it.artist.thumbnailUrl },
+        roundThumbnails = true,
         onClick = { artist -> navController.navigate("artist/${artist.id}") },
         onLongClick = { artist ->
             menuState.show {

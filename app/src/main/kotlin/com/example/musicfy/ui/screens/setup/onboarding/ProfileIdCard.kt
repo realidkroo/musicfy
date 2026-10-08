@@ -6,6 +6,7 @@
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
+import com.example.musicfy.ui.theme.InterFontFamily
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -172,7 +173,7 @@ internal fun ProfileIdCard(
 
 /** Vertical text, rotated a quarter turn, sliding downward without end. Drawn, never recomposed. */
 @Composable
-private fun MarqueeStrip(
+internal fun MarqueeStrip(
     text: String,
     color: Color,
     background: Color,
@@ -181,7 +182,7 @@ private fun MarqueeStrip(
 ) {
     val measurer = rememberTextMeasurer()
     val style = remember(color, fontSizeSp) {
-        TextStyle(color = color, fontSize = fontSizeSp.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+        TextStyle(color = color, fontFamily = InterFontFamily, fontSize = fontSizeSp.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
     }
     val layout = remember(text, style) { measurer.measure("$text   ·   ", style) }
     val transition = rememberInfiniteTransition(label = "idCardMarquee")

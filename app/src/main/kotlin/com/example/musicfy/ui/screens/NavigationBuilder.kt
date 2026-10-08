@@ -129,6 +129,21 @@ private val HomeRecedeSpring = spring(
 )
 private val HomeReturnEase = tween<Float>(ContainerCloseMillis, easing = ContainerCloseEasing)
 
+/** Library screens recede like Home when a cover opens from them, and come back on the same clock. */
+private fun libraryExitTo(route: String?): androidx.compose.animation.ExitTransition? =
+    if (route.opensFromCover()) {
+        scaleOut(HomeRecedeSpring, targetScale = 0.92f) + fadeOut(HomeRecedeSpring, targetAlpha = 0.45f)
+    } else {
+        null
+    }
+
+private fun libraryReturnFrom(route: String?): androidx.compose.animation.EnterTransition =
+    if (route.opensFromCover()) {
+        scaleIn(HomeReturnEase, initialScale = 0.92f) + fadeIn(HomeReturnEase, initialAlpha = 0.45f)
+    } else {
+        fadeIn(tween(150))
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.navigationBuilder(
     navController: NavHostController,
@@ -218,7 +233,9 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(
         route = "library",
-        popEnterTransition = { fadeIn(tween(150)) },
+        // a playlist opening from its cover: the Library sinks back while it grows, as Home does
+        exitTransition = { libraryExitTo(targetState.destination.route) },
+        popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
     ) {
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val useDarkTheme = ForceDarkTheme
@@ -234,8 +251,15 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.library.LibrarySongsScreen(navController = navController)
     }
 
-    composable("library/playlists") {
-        com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController)
+    composable(
+        route = "library/playlists",
+        exitTransition = { libraryExitTo(targetState.destination.route) },
+        popEnterTransition = { libraryReturnFrom(initialState.destination.route) },
+    ) {
+        // the scope a playlist's cover needs to grow into its page, as on Home
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            com.example.musicfy.ui.screens.library.LibraryPlaylistsScreen(navController = navController)
+        }
     }
 
     composable("library/added") {
@@ -256,6 +280,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable(Screens.Settings.route) {
         ProfileScreen(navController = navController)
+    }
+
+    composable("stats") {
+        com.example.musicfy.ui.screens.recap.StatsScreen(navController = navController)
     }
 
     composable("advanced_audio_settings") {

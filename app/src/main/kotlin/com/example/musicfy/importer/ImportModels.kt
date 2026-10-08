@@ -41,12 +41,14 @@ enum class ImportSource(val key: String, val label: String) {
 data class ParsedImport(
     val likedSongs: List<ImportedTrack>,
     val playlists: Map<String, List<ImportedTrack>>,
+    /** Songs that go straight into the Library (an account's whole song library), in no playlist. */
+    val librarySongs: List<ImportedTrack> = emptyList(),
     /** Things the user should know before importing, e.g. a source that only shares part of a playlist. */
     val warnings: List<String> = emptyList(),
     /** Which service this came from; null when that isn't known (a plain CSV). */
     val provider: ImportSource? = null,
 ) {
-    val totalSongs: Int get() = likedSongs.size + playlists.values.sumOf { it.size }
+    val totalSongs: Int get() = likedSongs.size + librarySongs.size + playlists.values.sumOf { it.size }
     val totalPlaylists: Int get() = playlists.size
 }
 

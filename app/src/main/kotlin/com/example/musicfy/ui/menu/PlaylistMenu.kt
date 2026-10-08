@@ -2,6 +2,9 @@
 
 package com.example.musicfy.ui.menu
 
+import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderButton
+import com.example.musicfy.ui.component.SheetHeader
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.PaddingValues
@@ -225,31 +228,28 @@ fun PlaylistMenu(
         )
     }
 
-    PlaylistListItem(
-        playlist = playlist,
-        backgroundColor = Color.Transparent,
-        trailingContent = {
-            if (playlist.playlist.isEditable != true) {
-                IconButton(
+    // The sheet's header: cover, name, size - and save, for playlists that aren't the user's own.
+    SheetHeader(
+        thumbnailUrl = playlist.thumbnails.firstOrNull(),
+        title = playlist.playlist.name,
+        subtitle = if (playlist.songCount == 1) "1 song" else "${playlist.songCount} songs",
+        trailing = if (playlist.playlist.isEditable != true) {
+            {
+                SheetHeaderButton(
+                    icon = if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
+                    active = dbPlaylist?.playlist?.bookmarkedAt != null,
+                    tint = if (dbPlaylist?.playlist?.bookmarkedAt != null) MaterialTheme.colorScheme.error else Color.White,
                     onClick = {
                         database.query {
                             dbPlaylist?.playlist?.toggleLike()?.let { update(it) }
                         }
-                    }
-                ) {
-                    Icon(
-                        painter = painterResource(if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border),
-                        tint = if (dbPlaylist?.playlist?.bookmarkedAt != null) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                        contentDescription = null
-                    )
-                }
+                    },
+                )
             }
-        },
+        } else null,
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    SheetDivider()
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -265,7 +265,6 @@ fun PlaylistMenu(
         item {
             NewActionGrid(
                 actions = listOfNotNull(
-                    if (true) {
                         NewAction(
                             icon = {
                                 Icon(
@@ -287,7 +286,7 @@ fun PlaylistMenu(
                                     )
                                 }
                             }
-                        )
+                        ),
                         NewAction(
                             icon = {
                                 Icon(
@@ -309,8 +308,7 @@ fun PlaylistMenu(
                                     )
                                 }
                             }
-                        )
-                    } else null,
+                        ),
                     NewAction(
                         icon = {
                             Icon(
@@ -332,7 +330,7 @@ fun PlaylistMenu(
                         }
                     )
                 ),
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
                 columns = if (false) 1 else 3
             )
         }

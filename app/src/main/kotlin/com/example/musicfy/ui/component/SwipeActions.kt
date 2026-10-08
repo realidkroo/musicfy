@@ -439,8 +439,8 @@ fun queueSwipeAction(mediaItem: () -> MediaItem): SwipeAction {
         color = SwipeQueueColor,
         label = stringResource(R.string.add_to_queue),
     ) {
+        // PlayerConnection says "Added to Queue" itself
         playerConnection?.addToQueue(mediaItem())
-        Toast.makeText(context, R.string.added_to_queue, Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -460,11 +460,11 @@ fun librarySwipeAction(song: SongEntity): SwipeAction {
         val token = if (inLibrary) song.libraryRemoveToken else song.libraryAddToken
         token?.let { SwipeScope.launch { YouTube.feedback(listOf(it)) } }
         database.query { update(song.toggleLibrary()) }
-        Toast.makeText(
-            context,
-            if (inLibrary) R.string.removed_from_library else R.string.added_to_library,
-            Toast.LENGTH_SHORT,
-        ).show()
+        TopToaster.show(
+            text = context.getString(if (inLibrary) R.string.removed_from_library else R.string.added_to_library),
+            thumbnail = song.thumbnailUrl,
+            iconRes = R.drawable.library_add_check,
+        )
     }
 }
 
@@ -493,11 +493,11 @@ fun librarySwipeAction(song: SongItem): SwipeAction {
         } else {
             database.query { inLibrary(song.id, null) }
         }
-        Toast.makeText(
-            context,
-            if (adding) R.string.added_to_library else R.string.removed_from_library,
-            Toast.LENGTH_SHORT,
-        ).show()
+        TopToaster.show(
+            text = context.getString(if (adding) R.string.added_to_library else R.string.removed_from_library),
+            thumbnail = song.thumbnail,
+            iconRes = R.drawable.library_add_check,
+        )
     }
 }
 

@@ -100,10 +100,13 @@ internal fun PlaylistCoverCarousel(
     onChoice: (CoverChoice?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // The picture card comes first, at the far left, with the generated styles after it. The
+    // carousel still opens on the card asked for ([startPage] is a style's ordinal, or the number
+    // of styles for the picture), so a new playlist starts on its default style, not on the picker.
     val styles = PlaylistCoverStyle.entries
-    val imagePage = styles.size
+    val imagePage = 0
     val pageCount = styles.size + 1
-    val firstPage = startPage.coerceIn(0, pageCount - 1)
+    val firstPage = (if (startPage >= styles.size) imagePage else startPage + 1).coerceIn(0, pageCount - 1)
 
     val scope = rememberCoroutineScope()
     var picked by remember { mutableStateOf<Uri?>(null) }
@@ -133,7 +136,7 @@ internal fun PlaylistCoverCarousel(
             currentOnChoice(
                 when {
                     !hasTouched && uri == null -> null
-                    page < imagePage -> CoverChoice.Generated(styles[page])
+                    page != imagePage -> CoverChoice.Generated(styles[page - 1])
                     uri != null -> CoverChoice.Picked(uri)
                     else -> null
                 }
@@ -159,7 +162,7 @@ internal fun PlaylistCoverCarousel(
                     page = page,
                     size = card,
                     pagerState = pagerState,
-                    cover = styles.getOrNull(page)?.let { covers[it] },
+                    cover = styles.getOrNull(page - 1)?.let { covers[it] },
                     pickedImage = picked,
                     existingImage = existingImage,
                     onClick = {
@@ -208,7 +211,7 @@ private fun CoverCard(
     existingImage: String?,
     onClick: () -> Unit,
 ) {
-    val isImageCard = page == PlaylistCoverStyle.entries.size
+    val isImageCard = page == 0
     Box(
         modifier = Modifier
             .size(size)

@@ -6,6 +6,7 @@
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
+import androidx.compose.ui.unit.em
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -69,6 +70,14 @@ internal object Onb {
     val TopClearance = 52.dp
 }
 
+/**
+ * Tracking for the big page titles and the line under them: as tight as Home's headings. They were
+ * -0.5sp and -0.2sp, which at 34sp and 18sp is looser than the -0.05em every other line in the app
+ * gets, so the headings read wider than the text around them.
+ */
+internal val OnbTitleTracking = (-0.04).em
+internal val OnbSubtitleTracking = (-0.035).em
+
 /** Side padding that shrinks on very narrow screens (or very large display-size settings). */
 @Composable
 internal fun rememberSidePadding(maxWidth: Dp): Dp = remember(maxWidth) { if (maxWidth < 340.dp) 20.dp else 28.dp }
@@ -111,7 +120,7 @@ internal fun OnboardingPage(
                     fontSize = 34.sp,
                     lineHeight = 38.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp,
+                    letterSpacing = OnbTitleTracking,
                 )
                 if (subtitle != null) {
                     Spacer(Modifier.height(10.dp))
@@ -121,7 +130,7 @@ internal fun OnboardingPage(
                         fontSize = 18.sp,
                         lineHeight = 23.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.2).sp,
+                        letterSpacing = OnbSubtitleTracking,
                     )
                 }
                 Spacer(Modifier.height(22.dp))

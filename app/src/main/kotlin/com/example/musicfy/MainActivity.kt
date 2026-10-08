@@ -193,7 +193,12 @@ import com.example.musicfy.ui.theme.MusicfyTheme
 import com.example.musicfy.ui.theme.extractThemeColor
 import com.example.musicfy.ui.utils.appBarScrollBehavior
 import com.example.musicfy.ui.utils.resetHeightOffset
-import com.example.musicfy.ui.utils.setZoomFadeExitAnimation
+import com.example.musicfy.ui.utils.handOffToLaunchIntro
+import com.example.musicfy.ui.launch.LaunchGate
+import com.example.musicfy.ui.launch.LaunchIntroOverlay
+import com.example.musicfy.ui.launch.LaunchIntroState
+import com.example.musicfy.ui.launch.LocalLaunchIntro
+import com.example.musicfy.ui.launch.launchRise
 import com.example.musicfy.LocalDatabase
 import com.example.musicfy.LocalDownloadUtil
 import com.example.musicfy.utils.SyncUtils
@@ -282,6 +287,10 @@ class MainActivity : ComponentActivity() {
     /** Bumped when launched from an update notification; the composition opens the version sheet. */
     private var openUpdateRequests by mutableStateOf(0)
 
+    /** A fresh launch from the launcher plays the launch intro (ui/launch/LaunchIntro.kt). */
+    private var introRequested = false
+    private var introPlays = false
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (service is MusicBinder) {
@@ -358,8 +367,10 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen().setZoomFadeExitAnimation()
+        installSplashScreen().handOffToLaunchIntro { introPlays }
         super.onCreate(savedInstanceState)
+        introRequested = savedInstanceState == null && intent?.action == Intent.ACTION_MAIN
+        if (introRequested) LaunchGate.begin() else LaunchGate.skip()
         if (savedInstanceState == null && intent?.action == com.example.musicfy.ui.screens.update.ActionOpenUpdate) {
             openUpdateRequests++
         }
@@ -485,10 +496,15 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // the launch intro waits for this, so the whole app doesn't recompose for a new colour
+        // scheme halfway through it
+        var themeSettled by remember { mutableStateOf(false) }
+
         LaunchedEffect(playerConnection, enableDynamicTheme, selectedThemeColor) {
             val playerConnection = playerConnection
             if (!enableDynamicTheme || playerConnection == null) {
                 themeColor = selectedThemeColor
+                if (!enableDynamicTheme) themeSettled = true
                 return@LaunchedEffect
             }
 
@@ -515,6 +531,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     themeColor = selectedThemeColor
                 }
+                themeSettled = true
             }
         }
 
@@ -563,6 +580,14 @@ class MainActivity : ComponentActivity() {
                         ACTION_LIBRARY -> NavigationTab.SEARCH
                         else -> null
                     }
+                }
+
+                // the intro flies the splash mark into Home's logo, so it plays only when Home is first
+                val launchIntro = remember {
+                    val plays = introRequested && (tabOpenedFromShortcut ?: defaultOpenTab) == NavigationTab.HOME
+                    introPlays = plays
+                    if (introRequested && !plays) LaunchGate.skip()
+                    LaunchIntroState(plays)
                 }
 
                 val topLevelScreens = remember {
@@ -614,6 +639,10 @@ class MainActivity : ComponentActivity() {
                         currentRoute!!.startsWith("local_playlist/") ||
                         currentRoute!!.startsWith("online_playlist/") ||
                         currentRoute!!.startsWith("auto_playlist/") ||
+                        // the bar stays while a page from the Library, an album or an artist is open
+                        currentRoute!!.startsWith("library/") ||
+                        currentRoute!!.startsWith("album/") ||
+                        currentRoute!!.startsWith("artist/") ||
 
                         currentRoute in SubSettingsRoutes
                 }
@@ -833,6 +862,7 @@ class MainActivity : ComponentActivity() {
                     LocalCropAlbumArt provides cropAlbumArt,
                     LocalGridItemSize provides gridItemSize,
                     LocalSwipeToSong provides swipeToSong,
+                    LocalLaunchIntro provides launchIntro,
                 ) {
                     com.example.musicfy.ui.component.PopupSheetHost(
                         states = listOf(
@@ -997,6 +1027,7 @@ class MainActivity : ComponentActivity() {
                                         Box(
                                             modifier = Modifier
                                                 .align(Alignment.BottomCenter)
+                                                .launchRise(order = 3)
                                                 .fillMaxWidth()
                                                 .height(bottomInset + navPadding + 40.dp)
                                                 .background(
@@ -1030,7 +1061,8 @@ class MainActivity : ComponentActivity() {
                                         BottomSheetPlayer(
                                             state = playerBottomSheetState,
                                             navController = navController,
-                                            pureBlack = pureBlack
+                                            pureBlack = pureBlack,
+                                            modifier = Modifier.launchRise(order = 3),
                                         )
 
                                         AppNavigationBar(
@@ -1042,6 +1074,7 @@ class MainActivity : ComponentActivity() {
                                             onSearchLongClick = onSearchLongClick,
                                             modifier = Modifier
                                                 .align(Alignment.BottomCenter)
+                                                .launchRise(order = 3)
                                                 .height(bottomInset + navPadding)
 
                                                 .graphicsLayer {
@@ -1238,6 +1271,9 @@ class MainActivity : ComponentActivity() {
                     }
                     }
 
+                    // action feedback ("Added to Queue", "Undo"...) drops in over the sheets too
+                    com.example.musicfy.ui.component.TopToastHost()
+
                     HomeUpdatePrompt(currentRoute = currentRoute)
 
                     sharedSong?.let { song ->
@@ -1265,6 +1301,11 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+
+                    LaunchIntroOverlay(
+                        state = launchIntro,
+                        essentialsReady = playerConnection != null && themeSettled,
+                    )
 
                 }
             }
@@ -1382,6 +1423,7 @@ val SubSettingsRoutes = setOf(
     "import_tunemymusic",
     "import_progress",
     "youtube_sync",
+    "stats",
 )
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }

@@ -5,6 +5,9 @@
 
 package com.example.musicfy.ui.screens.setup.onboarding
 
+import com.example.musicfy.ui.component.rememberDeviceTilt
+import androidx.compose.ui.unit.em
+import com.example.musicfy.ui.theme.InterFontFamily
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.WindowInsets
@@ -436,7 +439,7 @@ internal fun ProfilePage(
             value = username,
             onValueChange = { onUsernameChange(it.take(32)) },
             singleLine = true,
-            textStyle = TextStyle(color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+            textStyle = TextStyle(color = Color.White, fontFamily = InterFontFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.03).em),
             cursorBrush = SolidColor(Color.White),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             decorationBox = { inner ->
@@ -455,12 +458,18 @@ internal fun ProfilePage(
         Spacer(Modifier.height(24.dp))
         Text("Set a profile picture here!", color = Onb.Muted, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(12.dp))
+        val deviceTilt = rememberDeviceTilt()
         ProfileIdCard(
             username = username,
             photo = photo,
             cardNumber = cardNumber,
             joinedText = joinedText,
             onPhotoClick = onPhotoClick,
+            modifier = Modifier.graphicsLayer {
+                rotationX = deviceTilt.rotationX
+                rotationY = deviceTilt.rotationY
+                cameraDistance = 14f * density
+            },
         )
     }
 }
@@ -499,7 +508,7 @@ internal fun BuildHomePage(
             value = query,
             onValueChange = onQueryChange,
             singleLine = true,
-            textStyle = TextStyle(color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+            textStyle = TextStyle(color = Color.White, fontFamily = InterFontFamily, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.03).em),
             cursorBrush = SolidColor(Color.White),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             decorationBox = { inner ->
@@ -511,8 +520,6 @@ internal fun BuildHomePage(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(painterResource(R.drawable.search), contentDescription = null, tint = Onb.Faint, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(10.dp))
                     Box {
                         if (query.isEmpty()) Text("Search artists", color = Onb.Faint, fontSize = 15.sp)
                         inner()
@@ -618,7 +625,7 @@ internal fun BlurWarningPage(
                 Column(modifier = Modifier.padding(horizontal = side)) {
                     PageBadge(painterResource(R.drawable.warning))
                     Spacer(Modifier.height(22.dp))
-                    Text("Warning", color = Onb.Title, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
+                    Text("Warning", color = Onb.Title, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = OnbTitleTracking)
                     Spacer(Modifier.height(10.dp))
                     Text(
                         "Your phone may be too weak to run blurs. Do you want to disable blur? You can always change this in Settings.",
@@ -626,7 +633,7 @@ internal fun BlurWarningPage(
                         fontSize = 18.sp,
                         lineHeight = 23.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.2).sp,
+                        letterSpacing = OnbSubtitleTracking,
                     )
                     Spacer(Modifier.height(22.dp))
                     OnbToggleCard(

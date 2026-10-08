@@ -2,6 +2,9 @@
 
 package com.example.musicfy.ui.menu
 
+import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderButton
+import com.example.musicfy.ui.component.SheetHeader
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
@@ -189,26 +192,25 @@ fun YouTubePlaylistMenu(
         onDismiss = { showChoosePlaylistDialog = false },
     )
 
-    YouTubeListItem(
-        backgroundColor = Color.Transparent,
-        item = playlist,
-        trailingContent = {
-            if (playlist.id != "LM" && !playlist.isEditable) {
-                IconButton(
+    // The sheet's header: cover, name, who made it - and save, for playlists that aren't the user's own.
+    SheetHeader(
+        thumbnailUrl = playlist.thumbnail,
+        title = playlist.title,
+        subtitle = listOfNotNull(playlist.author?.name, playlist.songCountText).joinToString(" • "),
+        trailing = if (playlist.id != "LM" && !playlist.isEditable) {
+            {
+                SheetHeaderButton(
+                    icon = if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
+                    active = dbPlaylist?.playlist?.bookmarkedAt != null,
+                    tint = if (dbPlaylist?.playlist?.bookmarkedAt != null) MaterialTheme.colorScheme.error else Color.White,
                     onClick = {
                         database.toggleSavedPlaylist(playlist, dbPlaylist, songs, coroutineScope)
-                    }
-                ) {
-                    Icon(
-                        painter = painterResource(if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border),
-                        tint = if (dbPlaylist?.playlist?.bookmarkedAt != null) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                        contentDescription = null
-                    )
-                }
+                    },
+                )
             }
-        }
+        } else null,
     )
-    HorizontalDivider()
+    SheetDivider()
 
     var downloadState by remember {
         mutableIntStateOf(Download.STATE_STOPPED)
@@ -415,7 +417,7 @@ fun YouTubePlaylistMenu(
                         }
                     }
                 },
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
+                modifier = Modifier.padding(bottom = 12.dp)
             )
         }
 

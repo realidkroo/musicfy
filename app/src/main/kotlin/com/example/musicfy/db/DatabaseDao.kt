@@ -1120,6 +1120,10 @@ interface DatabaseDao {
         songIds: List<String>,
     ): List<String>
 
+    /** Takes back songs just appended to a playlist (they sit at [fromPosition] or later). */
+    @Query("DELETE FROM playlist_song_map WHERE playlistId = :playlistId AND songId IN (:songIds) AND position >= :fromPosition")
+    fun removeAddedSongs(playlistId: String, songIds: List<String>, fromPosition: Int)
+
     @Transaction
     fun addSongToPlaylist(playlist: Playlist, songIds: List<String>) {
         var position = playlist.songCount
@@ -1267,6 +1271,13 @@ interface DatabaseDao {
 
     @Query("SELECT COUNT(*) FROM event")
     fun eventCount(): Flow<Int>
+
+    /** Every play in [fromTimeStamp, toTimeStamp), bare - the monthly recap and Stats aggregate these themselves. */
+    @Query("SELECT songId, timestamp, playTime FROM event WHERE timestamp >= :fromTimeStamp AND timestamp < :toTimeStamp")
+    suspend fun recapEvents(fromTimeStamp: Long, toTimeStamp: Long): List<RecapEventRow>
+
+    @Query("SELECT MIN(timestamp) FROM event")
+    suspend fun firstEventTimestamp(): Long?
 
     @Transaction
     @Query("DELETE FROM event")

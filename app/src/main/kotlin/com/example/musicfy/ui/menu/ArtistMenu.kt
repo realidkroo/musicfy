@@ -2,6 +2,9 @@
 
 package com.example.musicfy.ui.menu
 
+import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderButton
+import com.example.musicfy.ui.component.SheetHeader
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.PaddingValues
@@ -59,16 +62,13 @@ fun ArtistMenu(
     val artist = artistState.value ?: originalArtist
     val isPinned by database.speedDialDao.isPinned(artist.id).collectAsState(initial = false)
 
-    ArtistListItem(
-        artist = artist,
-        backgroundColor = Color.Transparent,
-        badges = {},
-        trailingContent = {},
+    SheetHeader(
+        thumbnailUrl = artist.artist.thumbnailUrl,
+        title = artist.artist.name,
+        subtitle = if (artist.songCount == 1) "1 song in your library" else "${artist.songCount} songs in your library",
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    SheetDivider()
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -211,7 +211,7 @@ fun ArtistMenu(
                         )
                     }
                 },
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
                 columns = if (false) 1 else 3
             )
         }

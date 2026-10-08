@@ -1,145 +1,217 @@
 // ProfileScreen.kt
+//
+// The Musicfy page. A dark header holds the profile ID card over a dot grid, with a giant MUSICFY
+// column sliding up the right edge. Pull the header down and it fills the screen, the card flips to
+// a scratch-off barcode, and scratching it opens the month's recap (ui/screens/recap) - which hands
+// back to this header when it's done. Below: listening time (into Stats), version, settings.
 
 package com.example.musicfy.ui.screens.settings
 
-import com.example.musicfy.ui.screens.update.showUpdateSheet
+import com.example.musicfy.ui.component.BlurEffectCache
+import com.example.musicfy.ui.component.rememberDeviceTilt
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.navigation.NavController
-import coil3.compose.AsyncImage
 import com.example.musicfy.BuildConfig
+import com.example.musicfy.LocalAppContentObscured
+import com.example.musicfy.LocalDatabase
 import com.example.musicfy.R
 import com.example.musicfy.constants.InnerTubeCookieKey
+import com.example.musicfy.constants.ProfileCardNumberKey
+import com.example.musicfy.constants.ProfileJoinedEpochDayKey
 import com.example.musicfy.constants.ProfilePicUriKey
 import com.example.musicfy.constants.UsernameKey
 import com.example.musicfy.ui.component.BlurDirection
 import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.HomeContentInset
+import com.example.musicfy.ui.component.LocalZoomOutOverlayState
+import com.example.musicfy.ui.component.OdometerNumber
 import com.example.musicfy.ui.component.ProgressiveGlassBackground
-import com.example.musicfy.ui.component.SettingsGroup
-import com.example.musicfy.ui.component.SettingsItem
 import com.example.musicfy.ui.component.glassRoot
+import com.example.musicfy.ui.screens.recap.DateLong
+import com.example.musicfy.ui.screens.recap.Emphasized
+import com.example.musicfy.ui.screens.recap.GiantTextState
+import com.example.musicfy.ui.screens.recap.HeaderDots
+import com.example.musicfy.ui.screens.recap.HeaderGrey
+import com.example.musicfy.ui.screens.recap.HeaderText
+import com.example.musicfy.ui.screens.recap.IdCardBack
+import com.example.musicfy.ui.screens.recap.RecapAnchors
+import com.example.musicfy.ui.screens.recap.RecapAvailability
+import com.example.musicfy.ui.screens.recap.RecapRepository
+import com.example.musicfy.ui.screens.recap.RecapStoryData
+import com.example.musicfy.ui.screens.recap.RecapStoryHost
+import com.example.musicfy.ui.screens.recap.ScanVerdict
+import com.example.musicfy.ui.screens.recap.ScratchState
+import com.example.musicfy.ui.screens.recap.StoryDark
+import com.example.musicfy.ui.screens.recap.StoryDots
+import com.example.musicfy.ui.screens.recap.StoryTextDark
+import com.example.musicfy.ui.screens.recap.easeOutCubic
+import com.example.musicfy.ui.screens.recap.giantText
+import com.example.musicfy.ui.screens.recap.go
+import com.example.musicfy.ui.screens.recap.lerpF
+import com.example.musicfy.ui.screens.recap.recapBarcodeCaption
+import com.example.musicfy.ui.screens.recap.recapBarcodePayload
+import com.example.musicfy.ui.screens.recap.recapDots
+import com.example.musicfy.ui.screens.recap.rememberRecapTime
+import com.example.musicfy.ui.screens.setup.onboarding.IdCardAspect
+import com.example.musicfy.ui.screens.setup.onboarding.ProfileIdCard
+import com.example.musicfy.ui.screens.update.UpdateHeadline
+import com.example.musicfy.ui.screens.update.rememberUpdateState
+import com.example.musicfy.ui.screens.update.showUpdateSheet
 import com.example.musicfy.ui.theme.InterFontFamily
+import com.example.musicfy.ui.utils.stableSystemBars
 import com.example.musicfy.utils.rememberPreference
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlin.math.PI
+import java.time.LocalDate
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
-
-private fun lerpDp(start: Dp, stop: Dp, fraction: Float): Dp =
-    start + (stop - start) * fraction
-
-private fun lerpFloat(start: Float, stop: Float, fraction: Float): Float =
-    start + (stop - start) * fraction
-
-private fun randomGreetingWord(): String {
-    return listOf("Hey", "Hello", "Good morning", "Good afternoon", "Good evening").random()
-}
+import kotlin.random.Random
 
 private object MusicfyGreeting {
-    private val greetingState = mutableStateOf(randomGreetingWord())
+    private fun pick() = listOf("Hello again", "Hey", "Welcome back", "Good to see you").random()
+
+    private val greetingState = mutableStateOf("Hello again")
     private var wasBackgrounded = false
 
-    val current: String
-        get() = greetingState.value
+    val current: String get() = greetingState.value
 
     init {
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
                 when (event) {
                     Lifecycle.Event.ON_STOP -> wasBackgrounded = true
-                    Lifecycle.Event.ON_START -> {
-                        if (wasBackgrounded) {
-                            greetingState.value = randomGreetingWord()
-                            wasBackgrounded = false
-                        }
+                    Lifecycle.Event.ON_START -> if (wasBackgrounded) {
+                        greetingState.value = pick()
+                        wasBackgrounded = false
                     }
                     else -> Unit
                 }
-            }
+            },
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Where the header is in its pull-down / scratch / recap life. */
+private enum class HeaderStage { Collapsed, Pulling, Expanding, Expanded, Scanning, Invalid, Story }
+
+private val PageCard = Color(0xFF0F0F0F)
+
 @Composable
-fun ProfileScreen(
-    navController: NavController
-) {
-    val updateState by com.example.musicfy.ui.screens.update.rememberUpdateState()
-    val zoomOutState = com.example.musicfy.ui.component.LocalZoomOutOverlayState.current
+fun ProfileScreen(navController: NavController) {
+    val database = LocalDatabase.current
+    val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val zoomOutState = LocalZoomOutOverlayState.current
+    val updateState by rememberUpdateState()
+    val obscured = LocalAppContentObscured.current
+    val windowHeight = LocalWindowInfo.current.containerSize.height.toFloat()
+    val statusBarTop = WindowInsets.stableSystemBars.asPaddingValues().calculateTopPadding()
+    val topPx = with(density) { statusBarTop.toPx() }
+    val cornerPx = with(density) { 26.dp.toPx() }
 
     val (localUsername) = rememberPreference(UsernameKey, "")
     val (innerTubeCookie) = rememberPreference(InnerTubeCookieKey, "")
     val (profilePicUri) = rememberPreference(ProfilePicUriKey, "")
-    val (enable26Recap) = rememberPreference(com.example.musicfy.constants.Enable26RecapKey, false)
+    val (cardNumberPref, setCardNumber) = rememberPreference(ProfileCardNumberKey, "")
+    val (joinedEpochDay, setJoinedEpochDay) = rememberPreference(ProfileJoinedEpochDayKey, -1L)
+    val (forceRecap) = rememberPreference(com.example.musicfy.constants.ForceMonthlyRecapKey, false)
 
     var liveAccountName by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(innerTubeCookie) {
@@ -148,540 +220,695 @@ fun ProfileScreen(
             return@LaunchedEffect
         }
         com.music.innertube.YouTube.cookie = innerTubeCookie
-        com.music.innertube.YouTube.accountInfo()
-            .onSuccess { info -> liveAccountName = info.name }
+        com.music.innertube.YouTube.accountInfo().onSuccess { liveAccountName = it.name }
     }
     val accountName = localUsername.ifBlank { liveAccountName.orEmpty() }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val greeting = MusicfyGreeting.current
-
-    val database = com.example.musicfy.LocalDatabase.current
     val totalListeningMs by database.totalListeningTimeMs().collectAsState(initial = 0L)
 
-    fun showWip() {
-        coroutineScope.launch {
-            snackbarHostState.showSnackbar("Work in progress — we haven't built this page yet")
+    // the onboarding writes the card's number and join date; an install from before it gets them once, here
+    LaunchedEffect(cardNumberPref, joinedEpochDay) {
+        if (cardNumberPref.isBlank()) setCardNumber((10_000_000_000L + Random.nextLong(89_999_999_999L)).toString())
+        if (joinedEpochDay < 0L) setJoinedEpochDay((RecapRepository.firstPlayDate(database) ?: LocalDate.now()).toEpochDay())
+    }
+    val cardNumber = cardNumberPref.ifBlank { "00000000000" }
+    val joinedDate = if (joinedEpochDay >= 0L) LocalDate.ofEpochDay(joinedEpochDay) else LocalDate.now()
+    val joinedText = "joined at " + joinedDate.format(DateLong)
+    val photo: Any? = profilePicUri.takeIf { it.isNotBlank() }?.let { if (it.contains("://")) it else "file://$it" }
+
+    // ---- header state -------------------------------------------------------------------------
+    var stage by remember { mutableStateOf(HeaderStage.Collapsed) }
+    var expand by remember { mutableFloatStateOf(0f) }
+    var expandJob by remember { mutableStateOf<Job?>(null) }
+    var pullPx by remember { mutableFloatStateOf(0f) }
+    var downInHeader by remember { mutableStateOf(false) }
+    val flip = remember { Animatable(0f) }
+    val tiltX = remember { Animatable(0f) }
+    val tiltY = remember { Animatable(0f) }
+    var tiltTarget by remember { mutableStateOf(Offset.Zero) }
+    val deviceTilt = rememberDeviceTilt()
+    var scratchKey by remember { mutableIntStateOf(0) }
+    val scratch = remember(scratchKey) { ScratchState() }
+    val scan = remember { Animatable(0f) }
+    var verdict by remember { mutableStateOf<ScanVerdict?>(null) }
+    var recapKey by remember { mutableIntStateOf(0) }
+    var recap by remember { mutableStateOf<RecapAvailability?>(null) }
+    var story by remember { mutableStateOf<Pair<RecapStoryData, RecapAnchors>?>(null) }
+    var storyCovering by remember { mutableStateOf(false) }
+    var cardHidden by remember { mutableStateOf(false) }
+    val contentIn = remember { Animatable(1f) }
+    var rootOnScreen by remember { mutableStateOf(Offset.Zero) }
+    var cardOnScreen by remember { mutableStateOf(Rect.Zero) }
+
+    val time = rememberRecapTime(running = !storyCovering && !obscured.value)
+    val measurer = rememberTextMeasurer()
+    val giant = remember {
+        GiantTextState("MUSICFY", filledRows = 0..0).apply { color = { lerp(HeaderText, StoryTextDark, expand) } }
+    }
+
+    // whether there's a recap waiting, so the pull hint can say so now and then
+    var recapWaiting by remember { mutableStateOf(false) }
+    LaunchedEffect(forceRecap) {
+        recapWaiting = runCatching {
+            RecapRepository.recapFor(database, LocalDate.now(), force = forceRecap) is RecapAvailability.Ready
+        }.getOrDefault(false)
+    }
+    // 0 = the chevron, 1 = "swipe down here!!"; it turns into the words every few seconds and back
+    val hintWords = remember { Animatable(0f) }
+    LaunchedEffect(recapWaiting, stage) {
+        if (!recapWaiting || stage != HeaderStage.Collapsed) {
+            hintWords.animateTo(0f, tween(300, easing = FastOutSlowInEasing))
+            return@LaunchedEffect
+        }
+        while (true) {
+            delay(3600)
+            hintWords.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+            delay(2400)
+            hintWords.animateTo(0f, tween(520, easing = FastOutSlowInEasing))
         }
     }
+
+    LaunchedEffect(recapKey) {
+        if (recapKey == 0) return@LaunchedEffect
+        recap = null
+        recap = RecapRepository.recapFor(database, LocalDate.now(), force = forceRecap)
+    }
+    // the finger's tilt, eased so the card feels weighty rather than glued on
+    LaunchedEffect(Unit) {
+        snapshotFlow { tiltTarget }.collect { t ->
+            val settle = t == Offset.Zero
+            val spec = if (settle) spring<Float>(dampingRatio = 0.42f, stiffness = Spring.StiffnessLow) else spring(stiffness = Spring.StiffnessMediumLow)
+            launch { tiltX.animateTo(t.y, spec) }
+            launch { tiltY.animateTo(t.x, spec) }
+        }
+    }
+
+    fun animateExpand(target: Float, ms: Int) {
+        expandJob?.cancel()
+        val from = expand
+        expandJob = scope.launch { animate(from, target, animationSpec = tween(ms, easing = Emphasized)) { v, _ -> expand = v } }
+    }
+
+    fun collapse() {
+        stage = HeaderStage.Collapsed
+        pullPx = 0f
+        animateExpand(0f, 650)
+        scope.launch { flip.animateTo(0f, tween(650, easing = FastOutSlowInEasing)) }
+        scope.launch {
+            delay(650)
+            scratchKey++
+            scan.snapTo(0f)
+            verdict = null
+        }
+    }
+
+    fun expandFully() {
+        stage = HeaderStage.Expanding
+        pullPx = 0f
+        tiltTarget = Offset.Zero
+        recapKey++
+        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+        animateExpand(1f, 760)
+        scope.launch {
+            delay(140)
+            flip.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+            stage = HeaderStage.Expanded
+        }
+    }
+
+    fun onScratched() {
+        if (stage != HeaderStage.Expanded) return
+        stage = HeaderStage.Scanning
+        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+        scope.launch {
+            scratch.dissolve.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+            val r = recap ?: snapshotFlow { recap }.filterNotNull().first()
+            when (r) {
+                is RecapAvailability.Ready -> {
+                    stage = HeaderStage.Story
+                    val headerTop = rootOnScreen.y
+                    val top = topPx
+                    story = RecapStoryData(
+                        stats = r.stats,
+                        monthProgress = r.monthProgressPercent,
+                        username = accountName,
+                        photo = photo,
+                        cardNumber = cardNumber,
+                        joinedText = joinedText,
+                        joinedDate = joinedDate,
+                        allTimeMs = totalListeningMs,
+                    ) to RecapAnchors(
+                        expandedCard = cardOnScreen,
+                        headerCard = Rect(
+                            offset = Offset(cardOnScreen.left, headerTop + top + with(density) { CardTopDp.dp.toPx() }),
+                            size = cardOnScreen.size,
+                        ),
+                        headerHeight = headerTop + collapsedHeaderPx(top, cardOnScreen.height, density.density),
+                        topInset = headerTop + top,
+                    )
+                }
+                is RecapAvailability.NotYet -> {
+                    verdict = ScanVerdict.Invalid
+                    scan.animateTo(1f, tween(1950, easing = LinearEasing))
+                    haptics.performHapticFeedback(HapticFeedbackType.Reject)
+                    stage = HeaderStage.Invalid
+                }
+            }
+        }
+    }
+
+    BackHandler(enabled = stage == HeaderStage.Expanded || stage == HeaderStage.Invalid || stage == HeaderStage.Pulling) { collapse() }
 
     val scrollState = rememberScrollState()
     val glassState = remember { GlassState() }
 
-    val density = LocalDensity.current
-    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .onGloballyPositioned { rootOnScreen = it.positionOnScreen() }
+            .pointerInput(Unit) {
+                // a new touch is "in the header" only if the header itself says so (it sees it next)
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    downInHeader = false
+                }
+            },
+    ) {
+        val viewportH = constraints.maxHeight.toFloat()
+        val inset = with(density) { HomeContentInset.toPx() }
+        val cardW = constraints.maxWidth - 2 * inset
+        val cardH = cardW / IdCardAspect
+        val collapsedH = collapsedHeaderPx(topPx, cardH, density.density)
+        val cardTopCollapsed = topPx + with(density) { CardTopDp.dp.toPx() }
+        val cardTopExpanded = viewportH * 0.49f - cardH / 2f
+        val pullRange = (viewportH - collapsedH).coerceAtLeast(1f)
+        val collapseProgress by remember { derivedStateOf { (scrollState.value / with(density) { 120.dp.toPx() }).coerceIn(0f, 1f) } }
 
-    // Collapse range for smooth morphing: ~135dp
-    val collapseThresholdPx = with(density) { 135.dp.toPx() }
-    val rawScrollProgress by remember {
-        derivedStateOf { (scrollState.value.toFloat() / collapseThresholdPx).coerceIn(0f, 1f) }
-    }
-    val easedProgress = FastOutSlowInEasing.transform(rawScrollProgress)
-
-    // Expanded header height: statusBarTop + avatar(96) + space(16) + greeting(32) + space(20) = statusBarTop + 164.dp
-    val headerExpandedSpacerHeight = statusBarTop + 164.dp
-    val topBarHeight = statusBarTop + 86.dp
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-
-            // Layer 1: Scrollable Page Content
-            Column(
-                modifier = Modifier
-                    .padding(bottom = paddingValues.calculateBottomPadding())
-                    .fillMaxSize()
-                    .glassRoot(glassState, isActive = { rawScrollProgress > 0f })
-                    .verticalScroll(scrollState)
-                    .padding(horizontal = 24.dp)
-            ) {
-                // Spacer matching the expanded header bounds
-                Spacer(modifier = Modifier.height(headerExpandedSpacerHeight))
-
-                // Listening Time (Exact font size as Figma concept)
-                ListeningTimeRow(totalListeningMs = totalListeningMs)
-
-                // Modern Animated Recap Card (hidden by default, toggled via Experimental Settings)
-                if (enable26Recap) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    RecapCard(onClick = { showWip() })
+        val pullConnection = remember(pullRange) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (stage != HeaderStage.Pulling || available.y >= 0f) return Offset.Zero
+                    val before = pullPx
+                    pullPx = (pullPx + available.y).coerceAtLeast(0f)
+                    expand = (pullPx * 0.62f / pullRange).coerceIn(0f, 0.8f)
+                    if (pullPx == 0f) stage = HeaderStage.Collapsed
+                    return Offset(0f, pullPx - before)
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    val canPull = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling
+                    if (!canPull || !downInHeader || source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                    stage = HeaderStage.Pulling
+                    pullPx += available.y
+                    expand = (pullPx * 0.62f / pullRange).coerceIn(0f, 0.8f)
+                    return Offset(0f, available.y)
+                }
 
-                SectionHeading("App version")
-                SettingsGroup(
-                    items = listOf(
-                        SettingsItem(
-                            title = {
-                                Text(
-                                    text = BuildConfig.VERSION_NAME,
-                                    fontFamily = InterFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
-                            },
-                            description = {
-                                Text(
-                                    text = if (updateState is com.example.musicfy.core.updater.UpdateState.Available) {
-                                        com.example.musicfy.ui.screens.update.UpdateHeadline
-                                    } else {
-                                        "Made with <3 by roo!"
-                                    },
-                                    fontFamily = InterFontFamily,
-                                    fontSize = 12.sp,
-                                    color = Color.White.copy(alpha = 0.65f)
-                                )
-                            },
-                            icon = painterResource(R.drawable.ic_musicfy_mark),
-                            iconShape = CircleShape,
-                            onClick = { zoomOutState.showUpdateSheet(updateState) }
-                        )
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                SectionHeading("Settings")
-                SettingsGroup(
-                    items = listOf(
-                        SettingsItem(
-                            title = {
-                                Text(
-                                    text = "Open musicfy settings",
-                                    fontFamily = InterFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                                )
-                            },
-                            icon = painterResource(R.drawable.settings),
-                            iconShape = CircleShape,
-                            onClick = { navController.navigate("musicfy_settings") }
-                        )
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(180.dp))
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    if (stage != HeaderStage.Pulling) return Velocity.Zero
+                    if (expand > 0.16f || available.y > 1600f) expandFully() else collapse()
+                    return available
+                }
             }
+        }
 
-            // Layer 2: Progressive Glass Top Bar with Dark Gradient
-            if (rawScrollProgress > 0.005f) {
+        // ---- the scrolling page ---------------------------------------------------------------
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassRoot(glassState, isActive = { collapseProgress > 0f && stage == HeaderStage.Collapsed }),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(pullConnection)
+                    .verticalScroll(scrollState, enabled = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling),
+            ) {
+                // header: grows to the viewport as it's pulled
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(topBarHeight)
-                        .align(Alignment.TopCenter)
+                        .layout { measurable, constraints ->
+                            val h = lerpF(collapsedH, viewportH, expand).roundToInt()
+                            val p = measurable.measure(Constraints.fixed(constraints.maxWidth, h))
+                            layout(constraints.maxWidth, h) { p.place(0, 0) }
+                        }
+                        .pointerInput(Unit) {
+                            // tilt follows the finger; nothing is consumed, so scrolling still works
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                downInHeader = true
+                                var acc = Offset.Zero
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    if (!change.pressed) break
+                                    if (stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling) {
+                                        acc += change.positionChange()
+                                        tiltTarget = Offset(
+                                            (acc.x * 0.09f).coerceIn(-26f, 26f),
+                                            (-acc.y * 0.07f).coerceIn(-18f, 18f),
+                                        )
+                                    }
+                                }
+                                tiltTarget = Offset.Zero
+                            }
+                        }
+                        .pointerInput(stage) {
+                            if (stage != HeaderStage.Expanded && stage != HeaderStage.Invalid) return@pointerInput
+                            // expanded: a swipe up folds it away again
+                            var dy = 0f
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    if (dy < -with(density) { 64.dp.toPx() }) collapse() else animateExpand(1f, 300)
+                                    dy = 0f
+                                },
+                                onDragCancel = { animateExpand(1f, 300) },
+                            ) { change, amount ->
+                                change.consume()
+                                dy += amount
+                                expand = (1f + dy.coerceAtMost(0f) / pullRange * 0.8f).coerceIn(0.4f, 1f)
+                            }
+                        }
+                        .clipBottomRounded { cornerPx * (1f - expand) }
+                        .drawBehind { drawRect(lerp(HeaderGrey, StoryDark, expand)) }
+                        .giantText(giant, time, measurer, centerY = { windowHeight / 2f - rootOnScreen.y })
+                        .recapDots(color = { lerp(HeaderDots, StoryDots, expand) }),
                 ) {
-                    ProgressiveGlassBackground(
-                        state = glassState,
-                        maxBlurRadius = { 55f * rawScrollProgress },
-                        foundationColor = Color.Black.copy(alpha = 0.55f * easedProgress),
-                        direction = BlurDirection.BottomToTop,
-                        steps = 5,
+                    // greeting (in the header; its scrolled-away twin lives in the top bar)
+                    Text(
+                        text = "${MusicfyGreeting.current}, ${accountName.ifBlank { "there" }}!",
+                        style = PageTitle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = (rawScrollProgress * 1.5f).coerceIn(0f, 1f) }
+                            .padding(start = HomeContentInset, end = HomeContentInset, top = statusBarTop + 80.dp)
+                            .graphicsLayer {
+                                alpha = ((1f - expand * 3f) * (1f - collapseProgress * 1.6f)).coerceIn(0f, 1f) * contentIn.value
+                                translationY = (1f - contentIn.value) * 24.dp.toPx()
+                            },
                     )
 
-                    // Smooth, rich dark gradient dissolving naturally into the black page
+                    // the card: tilts with the finger, drifts a little on its own, flips to the barcode
+                    val showBack by remember { derivedStateOf { flip.value >= 0.5f } }
+                    val coatingGone by remember(scratch) { derivedStateOf { scratch.dissolve.value >= 1f } }
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Black,
-                                        Color.Black.copy(alpha = 0.92f * easedProgress),
-                                        Color.Black.copy(alpha = 0.60f * easedProgress),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
-
-            // Layer 3: Coordinated Morphing Avatar & Greeting Header
-            // Avatar smoothly scales from 96dp to 36dp and glides to top bar position
-            val avatarSize = lerpDp(96.dp, 36.dp, easedProgress)
-            val avatarX = 24.dp
-            val avatarY = lerpDp(statusBarTop + 20.dp, statusBarTop + 16.dp, easedProgress)
-
-            Box(
-                modifier = Modifier
-                    .offset(x = avatarX, y = avatarY)
-                    .size(avatarSize)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE5E5EA)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (profilePicUri.isNotBlank()) {
-                    AsyncImage(
-                        model = profilePicUri.takeIf { it.contains("://") } ?: "file://$profilePicUri",
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Text(
-                        text = accountName.firstOrNull()?.uppercase() ?: "M",
-                        fontFamily = InterFontFamily,
-                        fontSize = lerpDp(38.dp, 16.dp, easedProgress).value.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF2C2C2E)
-                    )
-                }
-            }
-
-            // Greeting text + Edit Profile pill
-            val greetingX = lerpDp(24.dp, 72.dp, easedProgress)
-            val greetingY = lerpDp(statusBarTop + 132.dp, statusBarTop + 22.dp, easedProgress)
-            val textScale = lerpFloat(1.0f, 0.80f, easedProgress)
-            val pillAlpha = (1f - rawScrollProgress * 3.5f).coerceIn(0f, 1f)
-
-            Row(
-                modifier = Modifier
-                    .offset(x = greetingX, y = greetingY)
-                    .padding(end = 24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "$greeting, ${accountName.ifBlank { "there" }}!",
-                    style = TextStyle(
-                        fontFamily = InterFontFamily,
-                        fontWeight = if (easedProgress > 0.5f) FontWeight.SemiBold else FontWeight.Bold,
-                        fontSize = 22.sp,
-                        letterSpacing = (-0.5).sp,
-                        color = Color.White
-                    ),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = textScale
-                        scaleY = textScale
-                        transformOrigin = TransformOrigin(0f, 0.5f)
-                    }
-                )
-
-                if (pillAlpha > 0.01f) {
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = Color(0xFF202024),
-                        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.15f * pillAlpha)),
-                        modifier = Modifier
-                            .graphicsLayer { alpha = pillAlpha }
-                            .clickable { showWip() }
+                            .padding(horizontal = HomeContentInset)
+                            .fillMaxWidth()
+                            .aspectRatio(IdCardAspect)
+                            .offset { androidx.compose.ui.unit.IntOffset(0, lerpF(cardTopCollapsed, cardTopExpanded, expand).roundToInt()) }
+                            .onGloballyPositioned { coords ->
+                                val p = coords.positionOnScreen()
+                                cardOnScreen = Rect(p, Size(coords.size.width.toFloat(), coords.size.height.toFloat()))
+                            }
+                            .graphicsLayer {
+                                val live = stage == HeaderStage.Collapsed || stage == HeaderStage.Pulling
+                                val sway = if (live) 1f else 0f
+                                val t = time.sway
+                                // the phone's lean too; half as much on the back, so scratching stays steady
+                                val lean = if (flip.value >= 0.5f) 0.5f else 1f
+                                rotationY = flip.value * 180f + tiltY.value + deviceTilt.rotationY * lean + sway * sin(t * 0.9f) * 3f
+                                rotationX = tiltX.value + deviceTilt.rotationX * lean + sway * cos(t * 0.7f) * 2f - (if (stage == HeaderStage.Pulling) expand * 14f else 0f)
+                                cameraDistance = 14f * this.density
+                                alpha = if (cardHidden) 0f else 1f
+                            },
                     ) {
-                        Text(
-                            text = "edit profile",
-                            fontFamily = InterFontFamily,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White.copy(alpha = 0.85f),
-                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 4.dp)
-                        )
+                        if (!showBack) {
+                            ProfileIdCard(
+                                username = accountName,
+                                photo = photo,
+                                cardNumber = cardNumber,
+                                joinedText = joinedText,
+                                showIdCardOf = true,
+                            )
+                        } else {
+                            val range = (recap as? RecapAvailability.Ready)?.stats?.range
+                            val payload = recapBarcodePayload(range)
+                            IdCardBack(
+                                username = accountName,
+                                payload = payload,
+                                caption = recapBarcodeCaption(payload, cardNumber),
+                                scratch = scratch.takeIf { !coatingGone && (stage == HeaderStage.Expanding || stage == HeaderStage.Expanded || stage == HeaderStage.Scanning) },
+                                time = time,
+                                scan = { scan.value },
+                                verdict = { verdict },
+                                onScratchProgress = { if (it >= 0.55f) onScratched() },
+                                modifier = Modifier.graphicsLayer { rotationY = 180f },
+                            )
+                        }
                     }
+
+                    // pull hint: a chevron that, with a recap waiting, turns into words now and then
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset { androidx.compose.ui.unit.IntOffset(0, (cardTopCollapsed + cardH + 14.dp.toPx()).roundToInt()) }
+                            .height(30.dp)
+                            .graphicsLayer {
+                                alpha = (1f - expand * 4f).coerceIn(0f, 1f) * contentIn.value
+                                translationY = ((sin(time.sway * 2.4f) + 1f) / 2f) * 4.dp.toPx()
+                            },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.expand_more),
+                            contentDescription = "Pull down",
+                            tint = Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier
+                                .size(30.dp)
+                                .graphicsLayer {
+                                    val w = hintWords.value
+                                    alpha = 1f - w
+                                    scaleX = 1f - 0.3f * w
+                                    scaleY = 1f - 0.3f * w
+                                    renderEffect = BlurEffectCache.get(w * 14f)
+                                },
+                        )
+                        if (recapWaiting) {
+                            Text(
+                                text = "swipe down here!!",
+                                style = MonoSmall.copy(color = Color.White.copy(alpha = 0.6f)),
+                                maxLines = 1,
+                                modifier = Modifier.graphicsLayer {
+                                    val w = hintWords.value
+                                    alpha = w
+                                    scaleX = 0.85f + 0.15f * w
+                                    scaleY = 0.85f + 0.15f * w
+                                    renderEffect = BlurEffectCache.get((1f - w) * 14f)
+                                },
+                            )
+                        }
+                    }
+
+                    // under the expanded card: "scratch!", or why the code didn't scan
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset { androidx.compose.ui.unit.IntOffset(0, (cardTopExpanded + cardH + 34.dp.toPx()).roundToInt()) }
+                            .padding(horizontal = 40.dp)
+                            .graphicsLayer {
+                                alpha = ((expand - 0.75f) / 0.25f).coerceIn(0f, 1f)
+                                translationY = (1f - expand) * 40.dp.toPx()
+                            },
+                    ) {
+                        val invalid = stage == HeaderStage.Invalid
+                        Text(
+                            text = if (invalid) "come back later" else "scratch!",
+                            style = PageTitle.copy(fontSize = 20.sp, textAlign = TextAlign.Center),
+                            modifier = Modifier.graphicsLayer { alpha = if (invalid) 1f else 1f - scratch.dissolve.value },
+                        )
+                        if (invalid) {
+                            Text(
+                                text = (recap as? RecapAvailability.NotYet)?.comeBack.orEmpty(),
+                                style = PageTitle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, color = Color.White.copy(alpha = 0.6f)),
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                            Text(
+                                text = "swipe up to close",
+                                style = MonoSmall.copy(color = Color.White.copy(alpha = 0.35f)),
+                                modifier = Modifier.padding(top = 26.dp),
+                            )
+                        }
+                    }
+                }
+
+                // ---- everything under the header ----
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = HomeContentInset)
+                        .graphicsLayer {
+                            alpha = contentIn.value * (1f - expand * 2f).coerceIn(0f, 1f)
+                            translationY = (1f - contentIn.value) * 60.dp.toPx()
+                        },
+                ) {
+                    Spacer(Modifier.height(24.dp))
+                    ListeningTimeCard(totalListeningMs, onViewStats = { navController.navigate("stats") })
+                    Spacer(Modifier.height(16.dp))
+                    VersionCard(
+                        updateHeadline = if (updateState is com.example.musicfy.core.updater.UpdateState.Available) UpdateHeadline else null,
+                        onAbout = { zoomOutState.showUpdateSheet(updateState) },
+                    )
+                    Spacer(Modifier.height(28.dp))
+                    Text("Settings", style = PageTitle.copy(fontSize = 15.sp), modifier = Modifier.padding(start = 2.dp, bottom = 10.dp))
+                    OpenSettingsRow(onClick = { navController.navigate("musicfy_settings") })
+                    Spacer(Modifier.height(180.dp))
                 }
             }
         }
+
+        // ---- the glass top bar, a sibling of the glassRoot box (never inside it) ------------------
+        if (collapseProgress > 0.005f && stage == HeaderStage.Collapsed) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(statusBarTop + 84.dp)
+                    .align(Alignment.TopCenter),
+            ) {
+                ProgressiveGlassBackground(
+                    state = glassState,
+                    maxBlurRadius = { 55f * collapseProgress },
+                    foundationColor = Color.Black.copy(alpha = 0.55f * collapseProgress),
+                    direction = BlurDirection.BottomToTop,
+                    steps = 3,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = (collapseProgress * 1.5f).coerceIn(0f, 1f) },
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Black, Color.Black.copy(alpha = 0.85f * collapseProgress), Color.Transparent),
+                            ),
+                        ),
+                )
+            }
+        }
+
+        // ---- logo, and the greeting sliding into the bar beside it ----
+        Icon(
+            painter = painterResource(R.drawable.ic_musicfy_mark),
+            contentDescription = "Musicfy",
+            tint = Color.White,
+            modifier = Modifier
+                .padding(start = HomeContentInset, top = statusBarTop + TopBarLogoTop)
+                .size(width = 31.dp, height = 34.dp)
+                .graphicsLayer {
+                    val k = 1f - collapseProgress * 0.18f
+                    scaleX = k
+                    scaleY = k
+                    transformOrigin = TransformOrigin(0f, 0.5f)
+                },
+        )
+        if (collapseProgress > 0.01f) {
+            Text(
+                text = "${MusicfyGreeting.current}, ${accountName.ifBlank { "there" }}!",
+                style = PageTitle.copy(fontSize = 18.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .padding(start = HomeContentInset + 40.dp, end = HomeContentInset, top = statusBarTop + 37.dp)
+                    .graphicsLayer {
+                        val p = ((collapseProgress - 0.35f) / 0.65f).coerceIn(0f, 1f)
+                        alpha = easeOutCubic(p)
+                        translationY = (1f - easeOutCubic(p)) * 12.dp.toPx()
+                    },
+            )
+        }
     }
 
+    story?.let { (data, anchors) ->
+        val payload = recapBarcodePayload(data.stats.range)
+        RecapStoryHost(
+            data = data,
+            anchors = anchors,
+            payload = payload,
+            caption = recapBarcodeCaption(payload, cardNumber),
+            onCovered = {
+                // hidden under the story: reset to the collapsed header, card and content tucked away
+                storyCovering = true
+                expandJob?.cancel()
+                expand = 0f
+                cardHidden = true
+                scope.launch {
+                    flip.snapTo(0f)
+                    scan.snapTo(0f)
+                    contentIn.snapTo(0f)
+                    scrollState.scrollTo(0)
+                }
+                scratchKey++
+                verdict = null
+            },
+            onReturned = {
+                cardHidden = false
+                storyCovering = false
+                stage = HeaderStage.Collapsed
+            },
+            onClosed = {
+                story = null
+                scope.launch { contentIn.go(1f, 900, Emphasized) }
+            },
+        )
+    }
 }
 
-@Composable
-private fun SectionHeading(text: String) {
-    Text(
-        text = text,
-        fontFamily = InterFontFamily,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        fontSize = 18.sp,
-        letterSpacing = (-0.4).sp,
-        color = Color.White,
-        modifier = Modifier.padding(bottom = 10.dp)
-    )
+private const val CardTopDp = 130f
+
+/** The logo's top below the status bar: Settings and Library centre a 32dp mark in a 62dp block 18dp down. */
+private val TopBarLogoTop = 32.dp
+
+/** Inner padding every card on this page shares. */
+private val CardPadding = PaddingValues(horizontal = 28.dp, vertical = 22.dp)
+
+/** The collapsed header: inset, logo, greeting, the card, and room for the pull hint. */
+private fun collapsedHeaderPx(top: Float, cardH: Float, density: Float): Float = top + CardTopDp * density + cardH + 49f * density
+
+/** Clips to the bounds with only the bottom corners rounded, by a radius that can change every frame. */
+private fun Modifier.clipBottomRounded(radius: () -> Float): Modifier = drawWithCache {
+    val path = Path()
+    onDrawWithContent {
+        val r = radius()
+        if (r <= 0.5f) {
+            drawContent()
+            return@onDrawWithContent
+        }
+        path.reset()
+        path.addRoundRect(
+            RoundRect(
+                rect = Rect(0f, 0f, size.width, size.height),
+                bottomLeft = CornerRadius(r),
+                bottomRight = CornerRadius(r),
+            ),
+        )
+        clipPath(path) { this@onDrawWithContent.drawContent() }
+    }
 }
 
-/**
- * Total time the user has spent listening, split into hours and minutes.
- * Styled exactly to match the Figma concept with large bold numbers and monospace label.
- */
-@Composable
-private fun ListeningTimeRow(totalListeningMs: Long) {
-    val totalMinutes = (totalListeningMs / 60_000L).coerceAtLeast(0L)
-    val hours = totalMinutes / 60
-    val minutes = totalMinutes % 60
+private val PageTitle = TextStyle(
+    fontFamily = InterFontFamily,
+    fontWeight = FontWeight.Bold,
+    fontSize = 23.sp,
+    letterSpacing = (-0.6).sp,
+    color = Color.White,
+)
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
+private val MonoSmall = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+
+@Composable
+private fun ListeningTimeCard(totalMs: Long, onViewStats: () -> Unit) {
+    val totalMinutes = (totalMs / 60_000L).coerceAtLeast(0L)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(PageCard)
+            .clickable(onClick = onViewStats)
+            .padding(CardPadding),
     ) {
-        ListeningTimeValue(value = hours.toString(), unit = "h")
-
-        ListeningTimeSeparator()
-
-        ListeningTimeValue(value = minutes.toString(), unit = "m")
-
-        ListeningTimeSeparator()
-
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TimeValue((totalMinutes / 60).toString(), "h")
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 14.dp)
+                    .width(1.dp)
+                    .height(34.dp)
+                    .background(Color.White.copy(alpha = 0.4f)),
+            )
+            TimeValue((totalMinutes % 60).toString(), "m")
+            Spacer(Modifier.weight(1f))
+            Text(
+                "Total Listening\ntime",
+                style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp, lineHeight = 18.sp, color = Color(0xFF8A8A8A)),
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF474747)))
+        Spacer(Modifier.height(12.dp))
         Text(
-            text = "MUSICFY\nLISTENING TIME",
-            fontFamily = FontFamily.Monospace,
-            fontSize = 11.sp,
-            lineHeight = 14.sp,
-            letterSpacing = (-0.2).sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.75f),
+            "View Stats  >",
+            style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFF8A8A8A)),
         )
     }
 }
 
 @Composable
-private fun ListeningTimeValue(value: String, unit: String) {
+private fun TimeValue(value: String, unit: String) {
     Row(verticalAlignment = Alignment.Bottom) {
-        com.example.musicfy.ui.component.OdometerNumber(
+        OdometerNumber(
             value = value,
-            fontSize = 46.sp,
+            fontSize = 44.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = InterFontFamily,
             color = Color.White,
-            letterSpacing = (-2.0).sp,
+            letterSpacing = (-2).sp,
         )
-        Spacer(modifier = Modifier.width(3.dp))
         Text(
-            text = unit,
-            fontFamily = InterFontFamily,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.75f),
-            modifier = Modifier.padding(bottom = 6.dp)
+            unit,
+            style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White),
+            modifier = Modifier.padding(start = 1.dp, bottom = 6.dp),
         )
     }
 }
 
 @Composable
-private fun ListeningTimeSeparator() {
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .width(1.dp)
-            .height(34.dp)
-            .background(Color.White.copy(alpha = 0.25f))
-    )
-}
-
-/**
- * Modern Animated Recap Card featuring organic GPU-accelerated waving liquid gradient,
- * overlapping decorative album sleeves, and bold display typography.
- */
-@Composable
-private fun RecapCard(onClick: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "recapAnimation")
-
-    val wavePhase1 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(6800, easing = LinearEasing)
-        ),
-        label = "wavePhase1"
-    )
-
-    val wavePhase2 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(9800, easing = LinearEasing)
-        ),
-        label = "wavePhase2"
-    )
-
-    val shimmerOffset by infiniteTransition.animateFloat(
-        initialValue = -0.5f,
-        targetValue = 1.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4200, easing = LinearEasing)
-        ),
-        label = "shimmerOffset"
-    )
-
-    val wavePath1 = remember { Path() }
-    val wavePath2 = remember { Path() }
-
-    Box(
+private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .height(112.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .clickable(onClick = onClick)
+            .clip(RoundedCornerShape(16.dp))
+            .background(PageCard)
+            .clickable(onClick = onAbout)
+            .padding(CardPadding),
     ) {
-        // GPU Canvas with flowing harmonic waves and subtle specular sheen
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-
-            // 1. Rich base warm gradient
-            val baseBrush = Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFFE26D5C),
-                    Color(0xFFEB765E),
-                    Color(0xFFF3966D),
-                    Color(0xFFD45844)
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(w, h)
-            )
-            drawRect(brush = baseBrush)
-
-            // 2. Wave Layer 1 (fluid primary harmonic curve)
-            wavePath1.reset()
-            wavePath1.moveTo(0f, h)
-            wavePath1.lineTo(0f, h * 0.40f)
-            val steps = 36
-            val stepW = w / steps
-            for (i in 1..steps) {
-                val x = i * stepW
-                val normX = x / w
-                val y = h * 0.46f +
-                    sin(normX * 2 * PI + wavePhase1).toFloat() * (h * 0.16f) +
-                    cos(normX * 3.5 * PI + wavePhase2).toFloat() * (h * 0.08f)
-                wavePath1.lineTo(x, y)
-            }
-            wavePath1.lineTo(w, h)
-            wavePath1.close()
-
-            val wave1Brush = Brush.verticalGradient(
-                colors = listOf(
-                    Color(0xFFFF9E7A).copy(alpha = 0.50f),
-                    Color(0xFFDE4C34).copy(alpha = 0.35f)
-                ),
-                startY = h * 0.2f,
-                endY = h
-            )
-            drawPath(path = wavePath1, brush = wave1Brush)
-
-            // 3. Wave Layer 2 (complementary dynamic wave)
-            wavePath2.reset()
-            wavePath2.moveTo(0f, h)
-            wavePath2.lineTo(0f, h * 0.58f)
-            for (i in 1..steps) {
-                val x = i * stepW
-                val normX = x / w
-                val y = h * 0.56f +
-                    sin(normX * 3 * PI + wavePhase2).toFloat() * (h * 0.13f) -
-                    cos(normX * 1.8 * PI + wavePhase1).toFloat() * (h * 0.09f)
-                wavePath2.lineTo(x, y)
-            }
-            wavePath2.lineTo(w, h)
-            wavePath2.close()
-
-            val wave2Brush = Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFFFFC7A0).copy(alpha = 0.45f),
-                    Color(0xFFE85B3F).copy(alpha = 0.20f)
-                ),
-                start = Offset(0f, h * 0.4f),
-                end = Offset(w, h)
-            )
-            drawPath(path = wavePath2, brush = wave2Brush)
-
-            // 4. Sweeping diagonal specular sheen
-            val shimmerX = shimmerOffset * w
-            val shimmerBrush = Brush.linearGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    Color.White.copy(alpha = 0.14f),
-                    Color.Transparent
-                ),
-                start = Offset(shimmerX - w * 0.25f, 0f),
-                end = Offset(shimmerX + w * 0.25f, h)
-            )
-            drawRect(brush = shimmerBrush)
-        }
-
-        // Left decorative overlapping sleeve/album cards
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .offset(x = (-8).dp, y = 8.dp)
-        ) {
-            // Back white/translucent card sleeve peeking
-            Box(
-                modifier = Modifier
-                    .offset(x = 10.dp, y = (-4).dp)
-                    .size(width = 66.dp, height = 78.dp)
-                    .rotate(-14f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = 0.40f))
-            )
-
-            // Front dark-slate album sleeve peeking
-            Box(
-                modifier = Modifier
-                    .offset(x = 18.dp, y = 8.dp)
-                    .size(width = 72.dp, height = 86.dp)
-                    .rotate(-5f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF6E7480))
-            ) {
-                // Mini inner vinyl groove accent peeking from corner
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .align(Alignment.TopEnd)
-                        .offset(x = 6.dp, y = (-6).dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF1E2024))
-                )
-            }
-        }
-
-        // Right Text: "Your 26"re-cap is here"
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 102.dp, end = 20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Version", style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFF9A9A9A)))
             Text(
-                text = "Your 26\"re-cap is here",
-                fontFamily = InterFontFamily,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 21.sp,
-                letterSpacing = (-0.5).sp,
-                color = Color.White,
-                lineHeight = 26.sp,
-                style = TextStyle(
-                    shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.25f),
-                        offset = Offset(0f, 2f),
-                        blurRadius = 6f
-                    )
-                )
+                // "7.1.1 build#1093" -> "7.1.1"
+                BuildConfig.VERSION_NAME.substringBefore(' '),
+                style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 44.sp, letterSpacing = (-2).sp, color = Color.White),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
+            if (updateHeadline != null) {
+                Text(updateHeadline, style = TextStyle(fontFamily = InterFontFamily, fontSize = 12.sp, color = Color(0xFF88FF76)), maxLines = 1)
+            }
         }
+        Text(
+            if (updateHeadline != null) "Update" else "About app",
+            style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White),
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(Color(0xFF4D4D4D))
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
 
-        // Elegant glass/card rim border
+@Composable
+private fun OpenSettingsRow(onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(PageCard)
+            .clickable(onClick = onClick)
+            .padding(CardPadding),
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(22.dp))
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.25f),
-                            Color.White.copy(alpha = 0.05f)
-                        )
-                    )
-                )
-                .padding(1.dp)
-                .clip(RoundedCornerShape(21.dp))
-                .background(Color.Transparent)
-        )
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFD9D9D9)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(painterResource(R.drawable.settings), contentDescription = null, tint = Color(0xFF232323), modifier = Modifier.size(16.dp))
+        }
+        Text("Open settings", style = PageTitle.copy(fontSize = 20.sp))
     }
 }

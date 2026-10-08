@@ -2,6 +2,9 @@
 
 package com.example.musicfy.ui.menu
 
+import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderButton
+import com.example.musicfy.ui.component.SheetHeader
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
@@ -258,31 +261,29 @@ fun AlbumMenu(
         }
     }
 
-    AlbumListItem(
-        album = album,
-        backgroundColor = Color.Transparent,
-        showLikedIcon = false,
-        badges = {},
-        trailingContent = {
-            IconButton(
+    // The sheet's header, as in the album-menu mock: cover, title, the artists, and save.
+    SheetHeader(
+        thumbnailUrl = album.album.thumbnailUrl,
+        title = album.album.title,
+        subtitle = listOfNotNull(
+            album.artists.joinToString { it.name }.ifBlank { null },
+            album.album.year?.toString(),
+        ).joinToString(" • "),
+        trailing = {
+            SheetHeaderButton(
+                icon = if (album.album.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
+                active = album.album.bookmarkedAt != null,
+                tint = if (album.album.bookmarkedAt != null) MaterialTheme.colorScheme.error else Color.White,
                 onClick = {
                     database.query {
                         update(album.album.toggleLike())
                     }
                 },
-            ) {
-                Icon(
-                    painter = painterResource(if (album.album.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border),
-                    tint = if (album.album.bookmarkedAt != null) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                    contentDescription = null,
-                )
-            }
+            )
         },
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    SheetDivider()
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -298,7 +299,6 @@ fun AlbumMenu(
         item {
             NewActionGrid(
                 actions = listOfNotNull(
-                    if (true) {
                         NewAction(
                             icon = {
                                 Icon(
@@ -320,8 +320,59 @@ fun AlbumMenu(
                                     )
                                 }
                             }
+                        ),
+                    NewAction(
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.share),
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        text = stringResource(R.string.share),
+                        onClick = {
+                            onDismiss()
+                            val intent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${album.album.playlistId}")
+                            }
+                            context.startActivity(Intent.createChooser(intent, null))
+                        }
+                    ),
+                    NewAction(
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.album),
+                                contentDescription = null,
+                            )
+                        },
+                        text = stringResource(R.string.view_album),
+                        onClick = {
+                            onDismiss()
+                            navController.navigate("album/${album.album.id}")
+                        }
+                    ),
+                    if (album.artists.isNotEmpty()) {
+                        NewAction(
+    icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.artist),
+                                    contentDescription = null,
+                                )
+                            },
+                            text = stringResource(R.string.view_artist),
+                            onClick = {
+                                if (album.artists.size == 1) {
+                                    navController.navigate("artist/${album.artists[0].id}")
+                                    onDismiss()
+                                } else {
+                                    showSelectArtistDialog = true
+                                }
+                            }
                         )
-
+                    } else null,
                         NewAction(
                             icon = {
                                 Icon(
@@ -346,30 +397,9 @@ fun AlbumMenu(
                                     )
                                 }
                             }
-                        )
-                    } else null,
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.share),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        text = stringResource(R.string.share),
-                        onClick = {
-                            onDismiss()
-                            val intent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/playlist?list=${album.album.playlistId}")
-                            }
-                            context.startActivity(Intent.createChooser(intent, null))
-                        }
-                    )
+                        ),
                 ),
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
                 columns = if (false) 1 else 3
             )
         }
@@ -548,24 +578,6 @@ fun AlbumMenu(
         item {
             Material3MenuGroup(
                 items = listOf(
-                    Material3MenuItemData(
-                        title = { Text(text = stringResource(R.string.view_artist)) },
-                        description = { Text(text = album.artists.joinToString { it.name }) },
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.artist),
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            if (album.artists.size == 1) {
-                                navController.navigate("artist/${album.artists[0].id}")
-                                onDismiss()
-                            } else {
-                                showSelectArtistDialog = true
-                            }
-                        }
-                    ),
                     Material3MenuItemData(
                         title = { Text(text = stringResource(R.string.refetch)) },
                         description = { Text(text = stringResource(R.string.refetch_desc)) },

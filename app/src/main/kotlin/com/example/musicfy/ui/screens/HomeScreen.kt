@@ -146,6 +146,11 @@ import com.example.musicfy.ui.component.HomeCardHighlight
 import com.example.musicfy.ui.component.HomeCoverCard
 import com.example.musicfy.ui.component.HomeRowHeight
 import com.example.musicfy.ui.component.HomeSectionBones
+import com.example.musicfy.ui.component.HeroCarouselBones
+import com.example.musicfy.ui.launch.launchMarkTarget
+import com.example.musicfy.ui.launch.launchRise
+import com.example.musicfy.ui.launch.rememberLaunchHold
+import com.example.musicfy.ui.launch.ReportLaunchHomeComposed
 import com.example.musicfy.ui.component.HomeSectionTitle
 import com.example.musicfy.ui.component.HomeTrackRow
 import com.example.musicfy.ui.component.HomeVideoCard
@@ -210,7 +215,7 @@ private fun LazyListScope.homeItem(
     content: @Composable () -> Unit,
 ) {
     item(key = key) {
-        Box(modifier = Modifier.revealOnAppear(key, revealSeen)) {
+        Box(modifier = Modifier.revealOnAppear(key, revealSeen, cascade = true)) {
             content()
         }
     }
@@ -507,6 +512,91 @@ fun AllTimeHitsCard(
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+private val HomeMarkWidth = 31.dp
+private val HomeMarkHeight = 34.dp
+private val HomeTopBarRise = 16.dp
+
+/**
+ * Home before the player service is up: the top bar, hero and bones the real Home shows while it
+ * loads, in exactly the same places, so the swap to the real thing can't be seen. On a launch the
+ * intro lands on this logo when it's the first one laid out.
+ */
+@Composable
+private fun HomeShell() {
+    val profilePicUri by rememberPreference(ProfilePicUriKey, "")
+    val profileImageUrl = profilePicUri
+        .takeIf { it.isNotBlank() }
+        ?.let { if (it.contains("://")) it else "file://$it" }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            HeroCarouselBones(modifier = Modifier.launchRise(order = 1))
+            BonesHost(modifier = Modifier.launchRise(order = 2)) {
+                repeat(2) {
+                    HomeSectionBones()
+                    Spacer(modifier = Modifier.height(34.dp))
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    top = WindowInsets.stableSystemBars.asPaddingValues().calculateTopPadding() + 14.dp,
+                    bottom = 16.dp,
+                    start = HomeContentInset,
+                    end = 30.dp
+                ),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_musicfy_mark),
+                contentDescription = "Musicfy",
+                tint = Color.White,
+                modifier = Modifier
+                    .launchMarkTarget()
+                    .size(HomeMarkWidth, HomeMarkHeight)
+            )
+            Box(
+                modifier = Modifier
+                    .launchRise(order = 0, distance = HomeTopBarRise)
+                    .height(44.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (profileImageUrl != null) {
+                    AsyncImage(
+                        model = profileImageUrl,
+                        placeholder = painterResource(R.drawable.person),
+                        error = painterResource(R.drawable.person),
+                        contentDescription = "Profile",
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.person),
+                            contentDescription = "Profile",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -516,7 +606,11 @@ fun HomeScreen(
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerBottomSheetState = com.example.musicfy.ui.component.LocalPlayerBottomSheetState.current
-    val playerConnection = LocalPlayerConnection.current ?: return
+    // the player service comes up a beat after the first frame; Home's skeleton doesn't wait for it
+    val playerConnection = LocalPlayerConnection.current ?: run {
+        HomeShell()
+        return
+    }
     val haptic = LocalHapticFeedback.current
 
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
@@ -552,8 +646,10 @@ fun HomeScreen(
                 }
             }
     }
-    // a new install's hero: what was just imported, or else the artists picked in onboarding
-    val starterItems = remember(localPlaylists, libraryArtists) {
+    // a new install's hero: what was just imported, or else a song from each artist picked in
+    // onboarding (the artists themselves if their songs couldn't be fetched)
+    val starterSongs by viewModel.starterSongs.collectAsState()
+    val starterItems = remember(localPlaylists, libraryArtists, starterSongs) {
         val imported = localPlaylists.orEmpty()
             .filter { it.songCount > 0 && it.id != "liked" }
             .take(5)
@@ -566,15 +662,23 @@ fun HomeScreen(
                     thumbnailUrl = it.thumbnails.firstOrNull() ?: it.playlist.thumbnailUrl,
                 )
             }
+        val songs = starterSongs
         imported.ifEmpty {
-            libraryArtists.map {
-                com.example.musicfy.ui.component.StarterItem(
-                    kind = com.example.musicfy.ui.component.StarterItem.Kind.Artist,
-                    id = it.id,
-                    title = it.artist.name,
-                    detail = "",
-                    thumbnailUrl = it.artist.thumbnailUrl,
-                )
+            when {
+                // still being asked for; the hero holds its bones meanwhile
+                songs == null -> emptyList()
+                songs.isNotEmpty() -> songs.map {
+                    com.example.musicfy.ui.component.StarterSongItem(it.song, it.artistName, it.artistThumbnail)
+                }
+                else -> libraryArtists.map {
+                    com.example.musicfy.ui.component.StarterItem(
+                        kind = com.example.musicfy.ui.component.StarterItem.Kind.Artist,
+                        id = it.id,
+                        title = it.artist.name,
+                        detail = "",
+                        thumbnailUrl = it.artist.thumbnailUrl,
+                    )
+                }
             }
         }
     }
@@ -598,13 +702,11 @@ fun HomeScreen(
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
     // keepListening stays null until the first local load lands, which also covers the moment
     // before load() has flipped isLoading on
-    val isFirstLoad = isLoading || keepListening == null
+    // right after a launch Home shows its bones through the intro and reveals its content after
+    val launchHold = rememberLaunchHold()
+    ReportLaunchHomeComposed()
+    val isFirstLoad = isLoading || keepListening == null || launchHold
     val revealSeen = rememberRevealSeenState()
-
-    val isFreshSetup = mediaMetadata == null &&
-        lastPlayedSong == null &&
-        dailyDiscover.isNullOrEmpty() &&
-        keepListening.orEmpty().filterIsInstance<Song>().isEmpty()
 
     // the gacha's reel: songs you play most, favourites you've drifted from, recommendations and
     // recent plays, all mixed together (only ones with a cover, so the reel never shows a blank)
@@ -1061,14 +1163,17 @@ fun HomeScreen(
                         playerConnection = playerConnection,
                         navController = navController,
                         heroScrollProgressProvider = heroScrollProgressProvider,
-                        isLoading = isFirstLoad,
+                        isLoading = isFirstLoad || starterSongs == null,
+                        hold = launchHold,
                         gachaPool = gachaPool,
                         starterItems = starterItems,
                         playlistPicks = playlistPicks,
+                        modifier = Modifier.launchRise(order = 1),
                     )
                 }
 
-                homeSections.forEach { section ->
+                // nothing but bones while the launch intro plays; the rows reveal once it lands
+                if (!launchHold) homeSections.forEach { section ->
                     when (section) {
                         HomeSection.SpeedDial -> {
                             speedDialItems.takeIf { it.isNotEmpty() }?.let { items ->
@@ -1530,14 +1635,16 @@ fun HomeScreen(
 
                 // only while something is really on its way; a page token alone used to leave
                 // these bones up forever when the next page couldn't load
-                if ((isFirstLoad && speedDialItems.isEmpty() && keepListening.isNullOrEmpty()) || isLoadingMore) {
+                if (launchHold || (isFirstLoad && speedDialItems.isEmpty() && keepListening.isNullOrEmpty()) || isLoadingMore) {
                     item(key = "loading_bones") {
                         BonesHost(
-                            modifier = Modifier.animateItem(
-                                fadeInSpec = tween(220),
-                                placementSpec = null,
-                                fadeOutSpec = tween(220),
-                            )
+                            modifier = Modifier
+                                .animateItem(
+                                    fadeInSpec = tween(220),
+                                    placementSpec = null,
+                                    fadeOutSpec = tween(220),
+                                )
+                                .launchRise(order = 2)
                         ) {
                             repeat(2) {
                                 HomeSectionBones()
@@ -1616,22 +1723,18 @@ fun HomeScreen(
                         label = "topBarProgress"
                     )
 
-                    // the brand mark over the hero, swapped for a bold "Home" once the hero scrolls away
+                    // the brand mark over the hero, swapped for a bold "Home" once the hero scrolls away.
+                    // it's also where the launch intro lands the splash mark
                     Box(contentAlignment = Alignment.CenterStart) {
-                        val markAlpha by animateFloatAsState(
-                            targetValue = if (isFreshSetup) 0f else 1f,
-                            animationSpec = tween(durationMillis = 400),
-                            label = "markAlpha"
-                        )
-
                         Icon(
                             painter = painterResource(R.drawable.ic_musicfy_mark),
                             contentDescription = "Musicfy",
                             tint = Color.White,
                             modifier = Modifier
-                                .size(width = 31.dp, height = 34.dp)
+                                .launchMarkTarget()
+                                .size(HomeMarkWidth, HomeMarkHeight)
                                 .graphicsLayer {
-                                    alpha = (1f - topBarProgress) * markAlpha
+                                    alpha = 1f - topBarProgress
                                     val scale = 1f - topBarProgress * 0.25f
                                     scaleX = scale
                                     scaleY = scale
@@ -1659,6 +1762,7 @@ fun HomeScreen(
 
                     Box(
                         modifier = Modifier
+                            .launchRise(order = 0, distance = HomeTopBarRise)
                             .graphicsLayer {
                                 val scale = 1f - (topBarProgress * 0.1f)
                                 scaleX = scale

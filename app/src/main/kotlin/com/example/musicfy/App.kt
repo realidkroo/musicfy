@@ -50,6 +50,9 @@ import java.net.Proxy
 import java.util.Locale
 import javax.inject.Inject
 
+// how long after the launch intro the PoToken WebView may boot (Home's reveal runs ~1s)
+private const val PoTokenAfterIntroMillis = 2_500L
+
 @HiltAndroidApp
 class App : Application(), SingletonImageLoader.Factory {
 
@@ -116,6 +119,10 @@ class App : Application(), SingletonImageLoader.Factory {
                 true
             }
             if (ready == true) {
+                // its WebView boots on the main thread; let the launch intro and Home's reveal
+                // play out first. VISIONOS streams need no token, so nothing waits on this
+                com.example.musicfy.ui.launch.LaunchGate.awaitIntro()
+                kotlinx.coroutines.delay(PoTokenAfterIntroMillis)
                 com.example.musicfy.utils.YTPlayerUtils.preWarmPoToken()
             }
         }

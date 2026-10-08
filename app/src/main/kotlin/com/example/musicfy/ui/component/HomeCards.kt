@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.component
 
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -122,7 +123,8 @@ fun HomeSectionTitle(
     label: String? = null,
     thumbnail: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
-    onPlayAllClick: (() -> Unit)? = null,
+    /** No longer drawn: the three dots beside the title are gone. Kept so callers needn't change. */
+    @Suppress("UNUSED_PARAMETER") onPlayAllClick: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -170,30 +172,8 @@ fun HomeSectionTitle(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (onPlayAllClick != null) {
-            Spacer(Modifier.width(4.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clickable(
-                        interactionSource = null,
-                        indication = SectionTitleHighlight,
-                        onClick = onPlayAllClick,
-                    )
-                    .padding(horizontal = 6.dp, vertical = 8.dp),
-            ) {
-                repeat(3) { i ->
-                    if (i > 0) Spacer(Modifier.width(3.dp))
-                    Box(
-                        Modifier
-                            .size(4.dp)
-                            .background(SectionLabelColor, CircleShape),
-                    )
-                }
-            }
-        }
         if (onClick != null) {
-            Spacer(Modifier.width(if (onPlayAllClick != null) 2.dp else 6.dp))
+            Spacer(Modifier.width(6.dp))
             SectionChevron()
         }
     }
@@ -363,7 +343,10 @@ fun HomeVideoCard(
     }
 }
 
-/** the "list" and "Rank" rows: 54dp cover, two lines, a small more button. [rank] adds the big number. */
+/**
+ * the "list" and "Rank" rows: 54dp cover, two lines, a small more button. [rank] adds the big number.
+ * No [onMoreClick], no button: the Library's lists use these rows and open the menu on long press.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeTrackRow(
@@ -374,9 +357,13 @@ fun HomeTrackRow(
     isPlaying: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    onMoreClick: () -> Unit,
+    onMoreClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     rank: Int? = null,
+    /** The cover's outline: Home's rounded square, or a circle for an artist. */
+    coverShape: Shape = HomeRowShape,
+    /** Applied to the cover itself, e.g. to open a playlist growing out of it. */
+    coverModifier: Modifier = Modifier,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -399,16 +386,16 @@ fun HomeTrackRow(
             )
         }
         Box(
-            modifier = Modifier
+            modifier = coverModifier
                 .size(HomeRowHeight)
-                .clip(HomeRowShape)
+                .clip(coverShape)
                 .background(BoneColor),
         ) {
             ItemThumbnail(
                 thumbnailUrl = thumbnailUrl,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = HomeRowShape,
+                shape = coverShape,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -434,7 +421,7 @@ fun HomeTrackRow(
                 )
             }
         }
-        Box(
+        if (onMoreClick != null) Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(38.dp)

@@ -77,6 +77,11 @@ fun MonochromeChallengeDialog(
                         .height(140.dp),
                     factory = { ctx ->
                         WebView(ctx).apply {
+                            // WRAP_CONTENT (no params) makes Chromium lay pages out at zero height
+                            layoutParams = android.view.ViewGroup.LayoutParams(
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                            )
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             settings.databaseEnabled = true

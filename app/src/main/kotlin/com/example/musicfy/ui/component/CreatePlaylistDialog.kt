@@ -124,6 +124,7 @@ fun CreatePlaylistDialog(
                                 withContext(Dispatchers.Main) {
                                     currentOnCreated?.invoke(playlistId)
                                     sheet?.dismiss()
+                                    TopToaster.show("Successfully created the playlist", thumbnail = cover, iconRes = R.drawable.playlist_add)
                                 }
                             } catch (e: kotlinx.coroutines.CancellationException) {
                                 throw e

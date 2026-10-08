@@ -51,7 +51,6 @@ import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.ui.component.navigateToTab
-import com.example.musicfy.ui.screens.search.SearchArtwork
 import com.example.musicfy.ui.screens.search.SearchAvatar
 import com.example.musicfy.ui.screens.search.SearchColors
 import com.example.musicfy.ui.screens.search.SearchField
@@ -61,6 +60,7 @@ import com.example.musicfy.ui.screens.search.rememberCollapseProgress
 import com.example.musicfy.ui.screens.settings.importsync.ImportProgressRoute
 import com.example.musicfy.ui.screens.search.searchTopBarHeight
 import com.example.musicfy.utils.rememberPreference
+import com.example.musicfy.viewmodels.ImportedSourceCard
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.Artist as InnertubeArtist
@@ -136,7 +136,7 @@ fun LibraryHomeScreen(
             Spacer(modifier = Modifier.height(4.dp))
             LibraryImportBanner(
                 progress = importProgress,
-                onOpenSheet = { menuState.showImportMusicSheet(navController) },
+                onOpenSheet = { menuState.showLibraryImportSheet() },
                 onOpenProgress = { navController.navigate(ImportProgressRoute) },
                 modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
             )
@@ -199,10 +199,12 @@ fun LibraryHomeScreen(
                 albumCovers = albums.map { it.album.thumbnailUrl },
                 artistCovers = artists.map { it.artist.thumbnailUrl },
                 playlistCovers = playlists.flatMap { it.thumbnails },
+                importedSources = importedSources,
                 onSongs = { navController.navigate("library/songs") },
                 onAlbums = { navController.navigate("library/albums") },
                 onArtists = { navController.navigate("library/artists") },
                 onPlaylists = { navController.navigate("library/playlists") },
+                onImported = { navController.navigate("library/imported/${it.source.key}") },
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -245,16 +247,6 @@ fun LibraryHomeScreen(
             )
         }
 
-        // One card for each service that has brought music in. Their songs are in Songs, Artist
-        // and Albums with everything else; these just gather what came from where.
-        items(importedSources, key = { "imported_${it.source.key}" }) { card ->
-            Spacer(modifier = Modifier.height(12.dp))
-            LibraryImportedCard(
-                card = card,
-                onClick = { navController.navigate("library/imported/${card.source.key}") },
-                modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
-            )
-        }
     }
 }
 
@@ -338,10 +330,12 @@ private fun LibraryCategoryGrid(
     albumCovers: List<String?>,
     artistCovers: List<String?>,
     playlistCovers: List<String?>,
+    importedSources: List<ImportedSourceCard>,
     onSongs: () -> Unit,
     onAlbums: () -> Unit,
     onArtists: () -> Unit,
     onPlaylists: () -> Unit,
+    onImported: (ImportedSourceCard) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = SearchHorizontalPadding),
@@ -369,6 +363,7 @@ private fun LibraryCategoryGrid(
                 count = artistCount,
                 covers = artistCovers,
                 onClick = onArtists,
+                roundCovers = true,
                 modifier = Modifier.weight(1f),
             )
             LibraryCategoryCard(
@@ -378,6 +373,22 @@ private fun LibraryCategoryGrid(
                 onClick = onPlaylists,
                 modifier = Modifier.weight(1f),
             )
+        }
+        // Each service music came in from is a category of its own, under its icon and name. Its
+        // songs are in Songs, Artist and Albums with everything else; this gathers what came from where.
+        importedSources.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { card ->
+                    LibraryCategoryCard(
+                        title = card.source.label,
+                        count = card.songCount,
+                        covers = card.covers,
+                        onClick = { onImported(card) },
+                        icon = { ImportSourceIcon(card.source, size = 18.dp) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
         }
     }
 }
@@ -409,28 +420,16 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.librarySearchResults
             is ArtistItem -> "Artist"
             is PlaylistItem -> "Playlist"
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onOpen(item) }
-                .padding(horizontal = SearchHorizontalPadding, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SearchArtwork(url = item.thumbnail, size = 44.dp)
-            Spacer(modifier = Modifier.width(14.dp))
-            Column {
-                Text(
-                    text = item.title,
-                    color = SearchColors.Primary,
-                    fontSize = 15.sp,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-                if (subtitle.isNotBlank()) {
-                    Text(text = subtitle, color = SearchColors.Secondary, fontSize = 12.sp, maxLines = 1)
-                }
-            }
-        }
+        LibraryListRow(
+            title = item.title,
+            subtitle = subtitle,
+            thumbnailUrl = item.thumbnail,
+            onClick = { onOpen(item) },
+            onLongClick = { onOpen(item) },
+            round = item is ArtistItem,
+            // the Library's own playlists open growing out of their cover, as from Home
+            sharedElementKey = if (item is PlaylistItem && item.id.startsWith("LP")) "playlist-${item.id}" else null,
+        )
     }
 }
 
@@ -443,7 +442,10 @@ internal fun openLibraryItem(
         is SongItem -> playerConnection?.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
         is AlbumItem -> navController.navigate("album/${item.browseId}")
         is ArtistItem -> navController.navigate("artist/${item.id}")
-        is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+        // the Library's own playlists have local ids; only YouTube ones open as online playlists
+        is PlaylistItem -> navController.navigate(
+            if (item.id.startsWith("LP")) "local_playlist/${item.id}" else "online_playlist/${item.id}"
+        )
     }
 }
 

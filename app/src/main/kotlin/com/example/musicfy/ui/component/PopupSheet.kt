@@ -148,6 +148,8 @@ class PopupSheetState {
         val minHeightPx: Float,
         /** Called once the sheet has left - however it was closed. */
         val onClosed: (() -> Unit)?,
+        /** The sheet's own colour, for a [fullBleed] sheet that paints a different one; null = [MenuSurface]. */
+        val surface: Color?,
         val content: @Composable ColumnScope.() -> Unit,
     ) {
         /** Shown unlocked = keeps its handle row even while [locked], so locking can't shift the content. */
@@ -184,9 +186,10 @@ class PopupSheetState {
         buttonBar: (@Composable () -> Unit)? = null,
         fullBleed: Boolean = false,
         onClosed: (() -> Unit)? = null,
+        surface: Color? = null,
         content: @Composable ColumnScope.() -> Unit,
     ) {
-        showWithHandle(locked, buttonBar, fullBleed, onClosed, content)
+        showWithHandle(locked, buttonBar, fullBleed, onClosed, surface, content)
     }
 
     /**
@@ -200,6 +203,7 @@ class PopupSheetState {
         buttonBar: (@Composable () -> Unit)? = null,
         fullBleed: Boolean = false,
         onClosed: (() -> Unit)? = null,
+        surface: Color? = null,
         content: @Composable ColumnScope.() -> Unit,
     ): PopupSheetHandle {
         // A frame already on its way out stays on top until it's gone, so the new one slides in
@@ -207,7 +211,7 @@ class PopupSheetState {
         var index = frames.size
         while (index > 0 && frames[index - 1].closing) index--
         val covered = frames.getOrNull(index - 1)
-        val frame = Frame(locked, buttonBar, fullBleed, covered?.heightPx ?: 0f, onClosed, content)
+        val frame = Frame(locked, buttonBar, fullBleed, covered?.heightPx ?: 0f, onClosed, surface, content)
         frames.add(index, frame)
         return PopupSheetHandle(frame)
     }
@@ -596,7 +600,7 @@ private fun BoxWithConstraintsScope.PopupSheetFrame(
                 val frames = state.frames
                 val index = frames.indexOf(frame)
                 val recede = if (index < 0) 0f else frames.depthAbove(index).coerceAtMost(1f)
-                drawRect(lerp(MenuSurface, MenuRowSurface, recede))
+                drawRect(lerp(frame.surface ?: MenuSurface, MenuRowSurface, recede))
             }
             // The whole sheet is a touch target, not just the parts of its content that have one -
             // otherwise a tap on an empty patch (beside a row, around the button bar) fell

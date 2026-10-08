@@ -2,6 +2,9 @@
 
 package com.example.musicfy.ui.menu
 
+import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeaderButton
+import com.example.musicfy.ui.component.SheetHeader
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.PaddingValues
@@ -58,15 +61,13 @@ fun YouTubeArtistMenu(
     val isPinned by database.speedDialDao.isPinned(artist.id).collectAsState(initial = false)
     val coroutineScope = rememberCoroutineScope()
 
-    YouTubeListItem(
-        backgroundColor = Color.Transparent,
-        item = artist,
-        trailingContent = {},
+    SheetHeader(
+        thumbnailUrl = artist.thumbnail,
+        title = artist.title,
+        subtitle = "Artist",
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    SheetDivider()
 
     val configuration = LocalConfiguration.current
     val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -151,7 +152,7 @@ fun YouTubeArtistMenu(
                         )
                     )
                 },
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
                 columns = if (false) 1 else 3
             )
         }

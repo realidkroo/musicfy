@@ -73,13 +73,18 @@ private class AppleMusicLibrary(private val headers: Map<String, String>) : Acco
                 coverUrl = attributes?.get("artwork").obj()?.string("url")?.let(::artworkUrl),
             )
         }
-        // loved songs first, like the other services list Liked songs first
+        // loved songs first, like the other services list Liked songs first, then the whole library
         result.sortBy { if (it.isLiked) 0 else 1 }
-        result += RemotePlaylist(
-            id = LIBRARY_SONGS_ID,
-            name = "Apple Music library",
-            trackCount = null,
-            subtitle = "Every song in your library, as one playlist",
+        val libraryAt = result.indexOfLast { it.isLiked } + 1
+        result.add(
+            libraryAt,
+            RemotePlaylist(
+                id = LIBRARY_SONGS_ID,
+                name = "Library songs",
+                trackCount = null,
+                subtitle = "Every song in your library, into Library → Songs",
+                isLibrary = true,
+            ),
         )
         return result
     }

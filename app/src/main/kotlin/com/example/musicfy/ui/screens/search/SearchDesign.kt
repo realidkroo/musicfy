@@ -374,7 +374,9 @@ fun SearchGlassTopBar(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(top = statusBar + SearchTopClearance, end = SearchHorizontalPadding)
-                    .height(if (title == null) SearchFieldHeight else SearchTitleBlockHeight)
+                    // As tall as this page's title block (taller on Library pages with a subtitle),
+                    // so the drop below lands its centre on the search field's centre.
+                    .height(if (title == null) SearchFieldHeight else titleBlockHeight)
                     .graphicsLayer {
                         if (title != null) {
                             translationY = progressProvider().coerceIn(0f, 1f) * avatarDropPx

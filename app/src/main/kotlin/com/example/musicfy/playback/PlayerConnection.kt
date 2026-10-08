@@ -3,6 +3,8 @@
 package com.example.musicfy.playback
 
 import android.content.Context
+import com.example.musicfy.ui.component.TopToaster
+import com.example.musicfy.R
 import androidx.compose.runtime.Stable
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -315,6 +317,12 @@ class PlayerConnection(
             Timber.tag(TAG).e(e, "Error in addToQueue")
             throw e
         }
+        val first = items.firstOrNull() ?: return
+        TopToaster.show(
+            text = if (items.size == 1) "Added ${first.mediaMetadata.title ?: "song"} to Queue" else "Added ${items.size} songs to Queue",
+            thumbnail = first.mediaMetadata.artworkUri?.toString(),
+            iconRes = R.drawable.queue_music,
+        )
     }
 
     // Queue page operations. Items are addressed by the uid the queue list was built from
@@ -403,6 +411,9 @@ class PlayerConnection(
         val indices = (0 until timeline.windowCount).filter {
             it != current && timeline.getWindow(it, window).uid.hashCode() in wanted
         }
+        if (indices.isEmpty()) return
+        // kept for the Undo, which puts each one back where it was
+        val removed = indices.map { it to player.getMediaItemAt(it) }
         try {
             // Back to front in contiguous runs: one timeline change per run instead of per song,
             // and earlier indices stay valid while later ones go.
@@ -415,7 +426,19 @@ class PlayerConnection(
             }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in removeQueueItems")
+            return
         }
+        val first = removed.first().second
+        TopToaster.show(
+            text = if (removed.size == 1) "Removed ${first.mediaMetadata.title ?: "song"} from queue" else "Removed ${removed.size} songs from queue",
+            thumbnail = first.mediaMetadata.artworkUri?.toString(),
+            iconRes = R.drawable.queue_music,
+            actionLabel = "Undo",
+            onAction = {
+                // ascending, so each lands at its old index once the ones before it are back
+                removed.forEach { (index, item) -> player.addMediaItem(index.coerceAtMost(player.mediaItemCount), item) }
+            },
+        )
     }
 
     fun toggleLike() {

@@ -2,6 +2,14 @@
 
 package com.example.musicfy.ui.component
 
+import com.example.musicfy.ui.player.menu.MenuRowSurface
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.background
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
@@ -9,8 +17,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,10 +25,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,8 +47,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 
 @Composable
 fun NewActionButton(
@@ -154,19 +156,23 @@ fun NewMenuSectionHeader(
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
+/**
+ * The actions at the top of a menu. These used to sit side by side as connected buttons; the sheet
+ * design puts every action on a row of its own - the icon in a white badge, then the label - the
+ * same row as the rest of the menu (see Material3MenuGroup), so that is what this draws, wherever a
+ * menu still lists its first actions here. [columns] is accepted and ignored.
+ */
 @Composable
 fun NewActionGrid(
     actions: List<NewAction>,
     modifier: Modifier = Modifier,
-    columns: Int = 3
+    @Suppress("UNUSED_PARAMETER") columns: Int = 3,
 ) {
-    FlowRow(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        actions.forEachIndexed { index, action ->
+        actions.forEach { action ->
             var performAction by remember { mutableStateOf(false) }
 
             if (performAction) {
@@ -176,36 +182,51 @@ fun NewActionGrid(
                 }
             }
 
-            val bgColor = if (action.backgroundColor != Color.Unspecified) action.backgroundColor else MaterialTheme.colorScheme.surfaceVariant
-            val contentCol = if (action.contentColor != Color.Unspecified) action.contentColor else MaterialTheme.colorScheme.onSurfaceVariant
-
-            ToggleButton(
-                checked = false,
-                onCheckedChange = { performAction = true },
-                enabled = action.enabled,
-                shapes = when {
-                    actions.size == 1 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    index == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                    index == actions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                },
-                colors = ToggleButtonDefaults.toggleButtonColors(
-                    containerColor = bgColor,
-                    contentColor = contentCol,
-                    disabledContainerColor = bgColor.copy(alpha = 0.5f),
-                    disabledContentColor = contentCol.copy(alpha = 0.5f)
-                ),
+            val contentAlpha = if (action.enabled) 1f else 0.35f
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MenuRowSurface)
+                    .clickable(
+                        enabled = action.enabled,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { performAction = true },
+                    )
                     .semantics { role = Role.Button }
+                    .padding(horizontal = 14.dp, vertical = 14.dp),
             ) {
-                action.icon()
-                Spacer(Modifier.size(ToggleButtonDefaults.IconSpacing))
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.9f * contentAlpha)),
+                ) {
+                    // The actions bring their own icons, tinted for the old grey buttons; on the white
+                    // badge they're drawn dark whatever tint they ask for.
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(13.dp)
+                            .graphicsLayer {
+                                colorFilter = ColorFilter.tint(Color.Black.copy(alpha = 0.75f), BlendMode.SrcIn)
+                            },
+                    ) {
+                        action.icon()
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = action.text,
-                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = contentAlpha),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
             }
         }

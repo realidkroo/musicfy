@@ -27,13 +27,14 @@ fun LibraryPlaylistsScreen(
     LibraryEntityListScreen(
         title = "Playlist",
         subtitle = "All playlist on your library listed here.",
-        searchPlaceholder = "Find song listed here, by the lyrics, or the artist",
+        searchPlaceholder = "Find a playlist by its name",
         items = playlists,
         idOf = { it.id },
         nameOf = { it.playlist.name },
         subtitleOf = { "${it.songCount} songs" },
         thumbnailOf = { it.thumbnails.firstOrNull() },
-        largeRows = true,
+        // the same key Home's cards use, so the playlist opens growing out of its cover
+        sharedElementKeyOf = { "playlist-${it.id}" },
         onClick = { playlist -> navController.navigate("local_playlist/${playlist.id}") },
         onLongClick = { playlist ->
             menuState.show {

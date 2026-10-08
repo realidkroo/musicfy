@@ -22,6 +22,8 @@ val DarkModeKey = stringPreferencesKey("darkMode")
 val PureBlackKey = booleanPreferencesKey("pureBlack")
 val PureBlackMiniPlayerKey = booleanPreferencesKey("pureBlackMiniPlayer")
 val Enable26RecapKey = booleanPreferencesKey("enable26Recap")
+/** Opens the monthly recap even before the 3rd or with fewer than 10 songs played (Experimental). */
+val ForceMonthlyRecapKey = booleanPreferencesKey("forceMonthlyRecap")
 val MiniPlayerOutlineKey = booleanPreferencesKey("miniPlayerOutline")
 val DensityScaleKey = floatPreferencesKey("density_scale_factor")
 val CustomDensityScaleKey = floatPreferencesKey("custom_density_scale_value")

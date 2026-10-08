@@ -2,6 +2,9 @@
 
 package com.example.musicfy.ui.screens.settings.importsync
 
+import android.view.ContextThemeWrapper
+import android.content.Context
+import android.view.ViewGroup
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.os.Message
@@ -54,6 +57,7 @@ import androidx.webkit.WebViewFeature
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.R
 import kotlinx.coroutines.delay
+import timber.log.Timber
 
 /** Desktop Chrome: Tidal's web player refuses phones, and the others show their full web player. */
 private const val DESKTOP_USER_AGENT =
@@ -197,18 +201,25 @@ fun CaptureWebContent(
     val documentStartSupported = remember { WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT) }
 
     fun WebView.configure(isPopup: Boolean) {
+        // A WebView with no LayoutParams gets WRAP_CONTENT, and Chromium then lays the page out at
+        // zero height (vh/dvh = 0, the initial containing block 0 tall). Spotify's sign-in page is
+        // `position: absolute; inset: 0`, so it came out 48px tall and the whole form was clipped:
+        // a blank page that had loaded fine.
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.javaScriptCanOpenWindowsAutomatically = true
         settings.setSupportMultipleWindows(true)
         settings.useWideViewPort = true
-        settings.loadWithOverviewMode = true
+        // zooming out to fit the widest element only suits a desktop site; on a phone site one
+        // oversized hidden element shrank the whole page out of sight
+        settings.loadWithOverviewMode = desktopSite
         settings.setSupportZoom(true)
         settings.builtInZoomControls = true
         settings.displayZoomControls = false
-        // the phone site where it exists; WebView's own marker removed, since sign-in pages refuse it
-        settings.userAgentString = if (desktopSite) DESKTOP_USER_AGENT else settings.userAgentString.replace("; wv", "")
+        settings.userAgentString = if (desktopSite) DESKTOP_USER_AGENT else chromeUserAgent(settings.userAgentString)
         disableForcedDarkening()
+        hideAppIdentity()
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
         addJavascriptInterface(bridge, BRIDGE_NAME)
@@ -236,6 +247,15 @@ fun CaptureWebContent(
                 currentOnTick(view)
             }
 
+            // when a sign-in page stays blank, these say why (logcat tag SignInWeb, or chrome://inspect)
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) {
+                if (request.isForMainFrame) Timber.tag(LOG_TAG).w("page failed: %s %s", error.errorCode, error.description)
+            }
+
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+                if (request.isForMainFrame) Timber.tag(LOG_TAG).w("page answered HTTP %s: %s", response.statusCode, request.url?.host)
+            }
+
             // a second way to see request headers, for requests the page hook misses
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val url = request.url?.toString().orEmpty()
@@ -251,6 +271,11 @@ fun CaptureWebContent(
         webChromeClient = object : WebChromeClient() {
             // Apple's authorize step and "Continue with Google/Apple" open popups that report back to this page
             override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
+                // only windows the user asked for: a script opening one on its own would cover the page
+                if (!isUserGesture) {
+                    Timber.tag(LOG_TAG).d("blocked a window opened without a tap")
+                    return false
+                }
                 val transport = resultMsg.obj as? WebView.WebViewTransport ?: return false
                 popupWebView?.let(::destroyLater)
                 val popup = WebView(view.context).apply { configure(isPopup = true) }
@@ -258,6 +283,13 @@ fun CaptureWebContent(
                 transport.webView = popup
                 resultMsg.sendToTarget()
                 return true
+            }
+
+            override fun onConsoleMessage(message: android.webkit.ConsoleMessage): Boolean {
+                if (message.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
+                    Timber.tag(LOG_TAG).w("%s (%s:%d)", message.message(), message.sourceId(), message.lineNumber())
+                }
+                return false
             }
 
             override fun onCloseWindow(window: WebView) {
@@ -308,7 +340,7 @@ fun CaptureWebContent(
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
-                    WebView(context).apply {
+                    WebView(lightThemed(context)).apply {
                         configure(isPopup = false)
                         loadUrl(startUrl)
                         mainWebView = this
@@ -350,6 +382,26 @@ fun WebLoginHeader(title: String, subtitle: String, onBack: () -> Unit) {
 private fun isPlayerPage(url: String?, playerOrigins: Set<String>): Boolean =
     url != null && playerOrigins.any { url.startsWith(it) }
 
+private const val LOG_TAG = "SignInWeb"
+
+/**
+ * WebView's own user agent says "; wv" and "Version/4.0", both of which sign-in pages read as an
+ * embedded browser. Without them it's the same Chrome-for-phones string, real version included.
+ */
+internal fun chromeUserAgent(webViewAgent: String): String =
+    webViewAgent.replace("; wv", "").replace(Regex("""\s?Version/\d+(\.\d+)*"""), "")
+
+/**
+ * WebView names the app in an X-Requested-With header on every request, which is how sites spot an
+ * embedded browser. Android lets an app opt out; sign-in pages get no app name.
+ */
+@SuppressLint("RequiresFeature")
+internal fun WebView.hideAppIdentity() {
+    if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+        WebSettingsCompat.setRequestedWithHeaderOriginAllowList(settings, emptySet())
+    }
+}
+
 /**
  * Sign-in pages draw their own dark mode. WebView's automatic darkening (and MIUI's forced dark)
  * repainted them on top of it and left light text on light fields.
@@ -361,6 +413,16 @@ internal fun WebView.disableForcedDarkening() {
     }
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) isForceDarkAllowed = false
 }
+
+/**
+ * The context sign-in pages are shown in: the app's, with a light theme. On Android 13+ a WebView
+ * takes `prefers-color-scheme` from its context's theme, and Musicfy's is dark. Apple Music then
+ * went dark around its sign-in frame, which has no dark mode and a see-through background, so the
+ * frame's dark text sat on a dark page - only the code boxes and links showed. Spotify and Tidal
+ * draw their own dark pages either way. Popups are made from this view's context, so they get it too.
+ */
+private fun lightThemed(context: Context): Context =
+    ContextThemeWrapper(context, android.R.style.Theme_DeviceDefault_Light_NoActionBar)
 
 /** Lets Compose detach the view first; destroying an attached WebView logs errors. */
 private fun destroyLater(webView: WebView) {

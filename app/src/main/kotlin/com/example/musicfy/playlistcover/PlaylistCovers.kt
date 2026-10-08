@@ -2,6 +2,8 @@
 
 package com.example.musicfy.playlistcover
 
+import com.example.musicfy.R
+import androidx.core.content.res.ResourcesCompat
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -116,6 +118,17 @@ class CoverPalette(
 }
 
 object PlaylistCoverGenerator {
+    /** Inter Bold - the app's own face - once [prepare] has loaded it; the system sans until then. */
+    @Volatile
+    private var titleFace: Typeface? = null
+
+    /** Loads the title's face from the app's fonts. Cheap after the first call. */
+    fun prepare(context: Context) {
+        if (titleFace == null) {
+            titleFace = runCatching { ResourcesCompat.getFont(context.applicationContext, R.font.inter_bold) }.getOrNull()
+        }
+    }
+
     /** Edge of a stored cover, in px. Plenty for the biggest place one is shown. */
     const val ExportSize = 720
 
@@ -310,8 +323,10 @@ object PlaylistCoverGenerator {
         if (text.isEmpty()) return
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = ink
-            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            typeface = titleFace ?: Typeface.create("sans-serif", Typeface.BOLD)
             textSize = s * 0.108f
+            // tight, like the app's own headings (em, so it scales with the cover)
+            letterSpacing = -0.045f
         }
         val layout = StaticLayout.Builder
             .obtain(text, 0, text.length, paint, (s * 0.78f).toInt())
@@ -441,6 +456,7 @@ object PlaylistCoverStore {
 object PlaylistCovers {
     /** A song's artwork as a software bitmap for the palette and the backdrop, or null if it won't load. */
     suspend fun loadArtwork(context: Context, url: String?): Bitmap? {
+        PlaylistCoverGenerator.prepare(context)
         if (url.isNullOrBlank()) return null
         return try {
             val request = ImageRequest.Builder(context)

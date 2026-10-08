@@ -34,8 +34,10 @@ internal fun ProviderSquircle(service: AccountService, size: Dp = 40.dp, modifie
     val art = when (service) {
         // logo on its own black square
         AccountService.SPOTIFY -> ProviderArt(R.drawable.provider_spotify, SolidColor(Color(0xFF191414)))
-        // round logo on white: shown as its circle, on black
-        AccountService.TIDAL -> ProviderArt(R.drawable.provider_tidal, SolidColor(Color.Black), circular = true)
+        // round logo on white: shown as its circle, on black. Zoomed a touch inside the circle so its
+        // edge falls inside the black disc - clipped right at the disc's edge, the white around it
+        // bled into the antialiasing and drew a thin light ring round the icon.
+        AccountService.TIDAL -> ProviderArt(R.drawable.provider_tidal, SolidColor(Color.Black), circular = true, zoom = 1.06f)
         // red disc: red behind it, so the squircle reads as one red icon
         AccountService.YOUTUBE_MUSIC -> ProviderArt(R.drawable.provider_youtube_music, SolidColor(Color(0xFFFF0000)), zoom = 1.06f)
         // already an app icon with rounded corners; enlarged a touch so its own corners fall outside
@@ -58,8 +60,9 @@ internal fun ProviderSquircle(service: AccountService, size: Dp = 40.dp, modifie
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
-                .scale(art.zoom)
-                .then(if (art.circular) Modifier.clip(CircleShape) else Modifier),
+                // the circle first, then the zoom inside it, so the circle itself stays put
+                .then(if (art.circular) Modifier.clip(CircleShape) else Modifier)
+                .scale(art.zoom),
         )
     }
 }

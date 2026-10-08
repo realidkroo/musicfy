@@ -49,8 +49,8 @@ fun ExperimentalSettingsScreen(navController: NavController) {
         com.example.musicfy.constants.ShowBigDiscStylesKey,
         defaultValue = false,
     )
-    val (enable26Recap, onEnable26RecapChange) = rememberPreference(
-        com.example.musicfy.constants.Enable26RecapKey,
+    val (forceRecap, onForceRecapChange) = rememberPreference(
+        com.example.musicfy.constants.ForceMonthlyRecapKey,
         defaultValue = false,
     )
     val (forceYtBackdropBlur1500, onForceYtBackdropBlur1500Change) = rememberPreference(
@@ -96,16 +96,16 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                     )
                     add(
                         SettingsItem(
-                            title = { Text("26 recap") },
-                            highlightKey = "26 recap",
-                            descriptionText = "Enable 2026 Recap placeholder",
+                            title = { Text("Force show monthly recap") },
+                            highlightKey = "Force show monthly recap",
+                            descriptionText = "Unlock the recap behind the Musicfy card now, before the 3rd or 10 songs",
                             icon = painterResource(R.drawable.history),
                             iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = { onEnable26RecapChange(!enable26Recap) },
+                            onClick = { onForceRecapChange(!forceRecap) },
                             trailingContent = {
                                 AppSwitch(
-                                    checked = enable26Recap,
-                                    onCheckedChange = onEnable26RecapChange,
+                                    checked = forceRecap,
+                                    onCheckedChange = onForceRecapChange,
                                 )
                             }
                         )

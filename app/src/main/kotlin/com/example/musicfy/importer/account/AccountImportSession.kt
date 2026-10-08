@@ -213,6 +213,7 @@ class AccountImportSession(
         workJob?.cancel()
         workJob = scope.launch(Dispatchers.IO) {
             val liked = mutableListOf<ImportedTrack>()
+            val librarySongs = mutableListOf<ImportedTrack>()
             val playlists = linkedMapOf<String, List<ImportedTrack>>()
             val failed = mutableListOf<String>()
             var signedOut = false
@@ -221,7 +222,11 @@ class AccountImportSession(
                 _state.value = AccountImportState.Reading("Reading \"${playlist.name}\"", index, chosen.size)
                 try {
                     val tracks = lib.tracks(playlist)
-                    if (playlist.isLiked) liked += tracks else playlists[uniqueName(playlist.name, playlists.keys)] = tracks
+                    when {
+                        playlist.isLiked -> liked += tracks
+                        playlist.isLibrary -> librarySongs += tracks
+                        else -> playlists[uniqueName(playlist.name, playlists.keys)] = tracks
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: AccountImportException) {
@@ -242,12 +247,13 @@ class AccountImportSession(
                 return@launch
             }
             _state.value = lastChoosing ?: choosing
-            if (liked.isEmpty() && playlists.isEmpty()) {
+            if (liked.isEmpty() && librarySongs.isEmpty() && playlists.isEmpty()) {
                 _notice.value = "Couldn't read ${failed.joinToString(", ").ifEmpty { "those playlists" }}."
                 return@launch
             }
             _ready.value = ParsedImport(
                 likedSongs = liked,
+                librarySongs = librarySongs,
                 playlists = playlists,
                 warnings = if (failed.isEmpty()) emptyList() else listOf("Couldn't read: ${failed.joinToString(", ")}. The rest imports fine."),
                 provider = ImportSource.fromKey(service.route),

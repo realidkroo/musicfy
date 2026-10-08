@@ -5,6 +5,7 @@
 
 package com.example.musicfy.ui.screens.library
 
+import com.example.musicfy.ui.screens.search.AvatarSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -36,16 +37,16 @@ fun LibraryImportedScreen(
 
     val label = source?.label ?: "an unknown source"
     val sourceIcon: (@Composable () -> Unit)? = if (source != null) {
-        { ImportSourceIcon(source, size = 40.dp) }
+        { ImportSourceIcon(source, size = AvatarSize) }
     } else {
         null
     }
 
     LibraryEntityListScreen(
-        title = "Imported from $label",
+        title = source?.label ?: "Imported",
         subtitle = when (songs.size) {
-            1 -> "1 song you brought in from $label."
-            else -> "${songs.size} songs you brought in from $label."
+            1 -> "1 song imported from $label."
+            else -> "${songs.size} songs imported from $label."
         },
         searchPlaceholder = "Find a song imported from $label",
         items = songs,
@@ -53,9 +54,10 @@ fun LibraryImportedScreen(
         nameOf = { it.song.title },
         subtitleOf = { it.artists.joinToString { a -> a.name }.ifBlank { null } },
         thumbnailOf = { it.song.thumbnailUrl },
+        playingIdOf = { it.id },
         onClick = { song ->
             // The order on screen, so the queue starts where the user tapped and runs down the list.
-            val ordered = songs.sortedBy { it.song.title.trim().lowercase() }
+            val ordered = sortForLibraryIndex(songs) { it.song.title }
             playerConnection.playQueue(
                 ListQueue(
                     title = "Imported from $label",

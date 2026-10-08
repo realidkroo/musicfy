@@ -104,6 +104,7 @@ class MusicImportService @Inject constructor(
         val mirror = options.mirrorToYouTube && signedIn
 
         if (parsed.likedSongs.isNotEmpty()) importLiked(matcher, parsed.likedSongs, mirror)
+        if (parsed.librarySongs.isNotEmpty()) importLibrarySongs(matcher, parsed.librarySongs)
 
         for ((name, tracks) in parsed.playlists) {
             coroutineContext.ensureActive()
@@ -147,6 +148,40 @@ class MusicImportService @Inject constructor(
                 _progress.update { it.copy(youtubeFailures = it.youtubeFailures + "Liked songs (${newlyLiked.size - pushed.size} will retry on next sync)") }
             }
         }
+    }
+
+    /** An account's whole song library: into the Library's Songs, and nowhere else. */
+    private suspend fun importLibrarySongs(matcher: TrackMatcher, tracks: List<ImportedTrack>) {
+        val matched = matchAll(matcher, tracks, playlistName = null, label = "Library songs").distinctBy { it.id }
+        if (matched.isEmpty()) return
+        database.withTransaction {
+            matched.forEach { insert(it.toMediaMetadata()) }
+        }
+        fileIntoLibrary(matched.map { it.id })
+    }
+
+    /**
+     * Imports from before library songs had their own place made them a playlist named after the
+     * service ("Apple Music library"), and older ones never put anything in the Library at all.
+     * Their songs are filed into the Library and tagged with the service, once. The playlist stays:
+     * it may have been edited since, and deleting it is the user's call.
+     */
+    suspend fun repairEarlierImports() {
+        if (isRunning) return
+        val legacy = database.playlistsByNameAsc().first()
+            .filter { it.playlist.isEditable && it.playlist.browseId == null && it.playlist.name in LegacyLibraryPlaylists }
+        for (playlist in legacy) {
+            val songIds = database.playlistSongs(playlist.id).first().map { it.song.id }
+            if (songIds.isEmpty()) continue
+            val tagged = database.importedSongIds().toSet()
+            val missing = songIds.filter { id ->
+                id !in tagged || database.getSongById(id)?.song?.inLibrary == null
+            }
+            if (missing.isEmpty()) continue
+            source = LegacyLibraryPlaylists.getValue(playlist.playlist.name)
+            fileIntoLibrary(missing)
+        }
+        source = ImportSource.OTHER
     }
 
     private suspend fun importPlaylist(
@@ -288,6 +323,9 @@ class MusicImportService @Inject constructor(
     }
 
     private companion object {
+        /** What earlier versions named the playlist they made of a service's whole library. */
+        val LegacyLibraryPlaylists = mapOf("Apple Music library" to ImportSource.APPLE_MUSIC)
+
         const val MATCH_PARALLELISM = 4
         const val LIKE_DELAY_MS = 120L
     }
