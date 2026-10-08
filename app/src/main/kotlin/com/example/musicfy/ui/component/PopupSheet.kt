@@ -61,6 +61,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -145,6 +146,8 @@ class PopupSheetState {
         val fullBleed: Boolean,
         /** Height of the sheet this one covered when it was pushed - it opens at least this tall. */
         val minHeightPx: Float,
+        /** Called once the sheet has left - however it was closed. */
+        val onClosed: (() -> Unit)?,
         val content: @Composable ColumnScope.() -> Unit,
     ) {
         /** Shown unlocked = keeps its handle row even while [locked], so locking can't shift the content. */
@@ -171,19 +174,42 @@ class PopupSheetState {
      * comes back forward when the new one is dismissed - so call this from inside an existing
      * frame's content to "continue into" another screen (e.g. the app-version sheet's
      * `popup.showDonateSheet()`), and `dismiss()` to go back.
+     *
+     * [onClosed] is for a caller that keeps its own "is it open" state (a declarative
+     * `if (show) Thing()`): it runs once the sheet has played its exit and been removed, whether
+     * that was a drag, the backdrop, back or a `dismiss()`.
      */
     fun show(
         locked: Boolean = false,
         buttonBar: (@Composable () -> Unit)? = null,
         fullBleed: Boolean = false,
+        onClosed: (() -> Unit)? = null,
         content: @Composable ColumnScope.() -> Unit,
     ) {
+        showWithHandle(locked, buttonBar, fullBleed, onClosed, content)
+    }
+
+    /**
+     * [show], handing back a [PopupSheetHandle] for this very sheet. For a sheet that closes
+     * itself - after its work is done - and must close *itself*: [dismiss] closes whichever sheet
+     * is in front, which by then may be one that was pushed over it, or already be this one on its
+     * way out.
+     */
+    fun showWithHandle(
+        locked: Boolean = false,
+        buttonBar: (@Composable () -> Unit)? = null,
+        fullBleed: Boolean = false,
+        onClosed: (() -> Unit)? = null,
+        content: @Composable ColumnScope.() -> Unit,
+    ): PopupSheetHandle {
         // A frame already on its way out stays on top until it's gone, so the new one slides in
         // underneath it rather than over a sheet that's leaving.
         var index = frames.size
         while (index > 0 && frames[index - 1].closing) index--
         val covered = frames.getOrNull(index - 1)
-        frames.add(index, Frame(locked, buttonBar, fullBleed, covered?.heightPx ?: 0f, content))
+        val frame = Frame(locked, buttonBar, fullBleed, covered?.heightPx ?: 0f, onClosed, content)
+        frames.add(index, frame)
+        return PopupSheetHandle(frame)
     }
 
     /** Closes the front sheet: it plays its exit, then is popped, and the one behind comes forward. */
@@ -206,7 +232,20 @@ class PopupSheetState {
     }
 
     internal fun remove(frame: Frame) {
-        frames.remove(frame)
+        if (frames.remove(frame)) frame.onClosed?.invoke()
+    }
+}
+
+/** One shown sheet, from [PopupSheetState.showWithHandle]. */
+class PopupSheetHandle internal constructor(private val frame: PopupSheetState.Frame) {
+    /** Closes this sheet with its exit animation. Nothing if it is already leaving or gone. */
+    fun dismiss() {
+        if (!frame.closing) frame.closing = true
+    }
+
+    /** Locks this sheet in place (or unlocks it) - see [PopupSheetState.setLocked]. */
+    fun setLocked(locked: Boolean) {
+        frame.locked = locked
     }
 }
 
@@ -531,6 +570,10 @@ private fun BoxWithConstraintsScope.PopupSheetFrame(
         modifier = Modifier
             .align(if (metrics.isTablet) Alignment.Center else Alignment.BottomCenter)
             .then(sheetSizeModifier(metrics.isTablet))
+            // Lifts the sheet clear of the keyboard (and shrinks its room by the same amount), for
+            // the sheets with a text field. After the size cap and before the measurement below,
+            // so what is measured - and what the stack geometry works from - is the sheet itself.
+            .imePadding()
             .onSizeChanged { frame.heightPx = it.height.toFloat() }
             .graphicsLayer {
                 val frames = state.frames

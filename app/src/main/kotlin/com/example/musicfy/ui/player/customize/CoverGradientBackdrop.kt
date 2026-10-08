@@ -74,8 +74,14 @@ fun CoverGradientBackdrop(
     modifier: Modifier = Modifier,
     shader: Any? = rememberWarpShader(),
     timeProvider: (() -> Float)? = null,
+    /**
+     * Called once the picture has loaded - or has failed to, either way there is nothing more to
+     * wait for. A caller fading this backdrop in waits for it: until then it draws nothing.
+     */
+    onLoaded: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val currentOnLoaded by androidx.compose.runtime.rememberUpdatedState(onLoaded)
 
     val ownTime = remember { mutableFloatStateOf(0f) }
     val runOwnClock = timeProvider == null
@@ -109,6 +115,7 @@ fun CoverGradientBackdrop(
             // directly, with the zoom folded into its coordinates, so it is one full-screen draw.
             val bitmap by produceState<android.graphics.Bitmap?>(null, request) {
                 value = runCatching { context.imageLoader.execute(request).image?.toBitmap() }.getOrNull()
+                currentOnLoaded?.invoke()
             }
             val directWarp = remember { createAgslShader(DirectWarpShaderSource) }
             Spacer(
@@ -146,6 +153,8 @@ fun CoverGradientBackdrop(
                 model = request,
                 contentDescription = null,
                 contentScale = ContentScale.FillBounds,
+                onSuccess = { currentOnLoaded?.invoke() },
+                onError = { currentOnLoaded?.invoke() },
                 modifier = Modifier
                     .requiredSize(width, height)
                     // A plain transform: it never needed the Offscreen layer it used to force.

@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -76,11 +77,13 @@ import com.example.musicfy.constants.PlayerBackgroundStyleKey
 import com.example.musicfy.constants.PlayerCoverStyle
 import com.example.musicfy.constants.DefaultPlayerCoverStyle
 import com.example.musicfy.constants.PlayerCoverStyleKey
+import com.example.musicfy.constants.PlayerStyle
 import com.example.musicfy.constants.ShowPlayerBottomCardKey
 import com.example.musicfy.constants.InfiniteQueueKey
 import androidx.activity.compose.BackHandler
 import com.example.musicfy.ui.component.BottomSheet
 import com.example.musicfy.ui.component.BottomSheetState
+import com.example.musicfy.ui.component.ExpandedSwipe
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.player.customize.PlayerCustomizeScreen
 import com.example.musicfy.ui.player.customize.PlayerEditOverlay
@@ -89,6 +92,7 @@ import com.example.musicfy.ui.player.customize.PlayerEditTarget
 import com.example.musicfy.ui.player.menu.PlayerActionMenu
 import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
+import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
@@ -112,6 +116,26 @@ private val QueueButtonExtraHeight = 41.dp
 private val QueueButtonColumnHeight = 75.dp + QueueButtonExtraHeight
 
 private const val EnterBlurRadius = 34f
+
+/** A swipe on the strip below the seek bar commits past this travel, or past [PageSwipeFling]. */
+private val PageSwipeCommit = 40.dp
+
+/** Fling speed (per second) that commits a swipe on its own. */
+private val PageSwipeFling = 600.dp
+
+/** What the vertical swipe being handled is doing, see the handler in [BottomSheetPlayer]. */
+private enum class PlayerSwipe {
+    NONE,
+
+    /** A page following the finger up out of the card. */
+    PULL,
+
+    /** Up on the strip below the seek bar with a page open: the page the card offers. */
+    OPEN_OTHER,
+
+    /** Down on that strip: back to the page before, or to the player. */
+    BACK,
+}
 
 /** The old gap from the seek bar down to the buttons (24dp plus the bar's lift). */
 private val TransportGapAboveRow = 24.dp + SeekBarLift
@@ -272,6 +296,11 @@ fun BottomSheetPlayer(
      */
     var lyricsBottomInset by remember { mutableStateOf(120.dp) }
 
+    // Where the seek bar's top is on screen (root, px; NaN until measured): the vertical swipe
+    // handler's line between the player above and the strip of controls below it. Held in a plain
+    // array, not state - it is only read when a swipe begins.
+    val seekBarTop = remember { floatArrayOf(Float.NaN) }
+
     var lyricsImmersive by remember { mutableStateOf(false) }
     // The queue hides the controls the same way when scrolled, each page with its own flag so one
     // page's state never hides the controls on the other.
@@ -312,24 +341,91 @@ fun BottomSheetPlayer(
         val progressProvider = remember(state) { { state.progress.coerceIn(0f, 1f) } }
         val horizontalOffsetProvider = remember(state) { { state.horizontalOffset } }
 
-        // Swipe up anywhere on the player (the card keeps its own swipe, the flip) and the card's
-        // page follows the finger up out of it. One finger-length to the top of the card is the
-        // whole way, so the card's edge stays under the finger.
+        // Vertical swipes on the expanded player, offered here before the sheet acts on them:
+        //  - On the plain player, a swipe up anywhere (the card keeps its own swipe, the flip) pulls
+        //    the card's page up out of it, the page following the finger. One finger-length to the
+        //    top of the card is the whole way, so the card's edge stays under the finger.
+        //  - From the seek bar down to the card - the timestamps, the transport row, the card - no
+        //    swipe closes the player: that strip has swipes of its own. With a page open (lyrics or
+        //    queue), a swipe up there opens the page the card offers and a swipe down goes back
+        //    to the page before it (or to the player).
         val screenHeightPx = with(density) { screenHeight.toPx() }
         val currentPlayerStyle by androidx.compose.runtime.rememberUpdatedState(playerStyle)
         val currentCardShown by androidx.compose.runtime.rememberUpdatedState(showPlayerBottomCard)
-        val swipeUp = remember(transition, deck, morph, screenHeightPx) {
-            object : com.example.musicfy.ui.component.ExpandedSwipeUp {
+        val swipe = remember(transition, deck, morph, screenHeightPx, density) {
+            val commitPx = with(density) { PageSwipeCommit.toPx() }
+            val flingPx = with(density) { PageSwipeFling.toPx() }
+            object : ExpandedSwipe {
+                // Summed per gesture: one move is too small to tell a vertical swipe from a
+                // horizontal one, and the start tells a new gesture from the one being summed.
+                private var sumStart = Offset.Unspecified
+                private var sum = Offset.Zero
+                private var mode = PlayerSwipe.NONE
+                private var travelled = 0f
+
                 private fun distance() = (morph.cardRect?.top ?: (screenHeightPx * 0.85f)).coerceAtLeast(1f)
 
-                override fun onStart(): Boolean =
-                    currentPlayerStyle == com.example.musicfy.constants.PlayerStyle.DEFAULT &&
-                        editPhase == PlayerEditPhase.NONE &&
-                        transition.beginDrag(if (currentCardShown) deck.focusedPage else PlayerPage.LYRICS)
+                /** The alternate styles and the editor draw and handle their own screen. */
+                private fun owned() = currentPlayerStyle == PlayerStyle.DEFAULT &&
+                    editPhase == PlayerEditPhase.NONE
 
-                override fun onDrag(dy: Float) = transition.dragBy(-dy / distance())
+                /** [start] (root) is on or below the seek bar, with the controls actually showing. */
+                private fun inControlStrip(start: Offset): Boolean {
+                    val top = seekBarTop[0]
+                    return !top.isNaN() && controlsHidden < 0.5f && start.y >= top
+                }
 
-                override fun onEnd(velocityY: Float) = transition.release(-velocityY / distance())
+                override fun onStart(start: Offset, drag: Offset): Boolean {
+                    if (!owned()) return false
+                    if (start != sumStart) {
+                        sumStart = start
+                        sum = Offset.Zero
+                    }
+                    sum += drag
+                    if (abs(sum.y) <= abs(sum.x)) return false
+
+                    val up = sum.y < 0f
+                    mode = when {
+                        transition.page == PlayerPage.NONE ->
+                            if (up && transition.beginDrag(if (currentCardShown) deck.focusedPage else PlayerPage.LYRICS)) {
+                                PlayerSwipe.PULL
+                            } else {
+                                PlayerSwipe.NONE
+                            }
+                        inControlStrip(start) -> if (up) PlayerSwipe.OPEN_OTHER else PlayerSwipe.BACK
+                        else -> PlayerSwipe.NONE
+                    }
+                    if (mode == PlayerSwipe.NONE) return false
+                    // What was summed before this move; the move itself arrives through onDrag.
+                    travelled = sum.y - drag.y
+                    return true
+                }
+
+                override fun onDrag(dy: Float) {
+                    if (mode == PlayerSwipe.PULL) transition.dragBy(-dy / distance()) else travelled += dy
+                }
+
+                override fun onEnd(velocityY: Float) {
+                    val finished = mode
+                    mode = PlayerSwipe.NONE
+                    sumStart = Offset.Unspecified
+                    sum = Offset.Zero
+                    when (finished) {
+                        PlayerSwipe.PULL -> transition.release(-velocityY / distance())
+                        // 0 is a cancelled gesture: nothing to commit.
+                        PlayerSwipe.OPEN_OTHER ->
+                            if (velocityY != 0f && (travelled < -commitPx || velocityY < -flingPx)) {
+                                transition.open(
+                                    if (transition.page == PlayerPage.LYRICS) PlayerPage.QUEUE else PlayerPage.LYRICS
+                                )
+                            }
+                        PlayerSwipe.BACK ->
+                            if (velocityY != 0f && (travelled > commitPx || velocityY > flingPx)) transition.back()
+                        PlayerSwipe.NONE -> Unit
+                    }
+                }
+
+                override fun canCollapseFrom(start: Offset): Boolean = !(owned() && inControlStrip(start))
             }
         }
 
@@ -365,7 +461,7 @@ fun BottomSheetPlayer(
 
             isExpandable = editPhase == PlayerEditPhase.NONE,
             isPillTransition = true,
-            expandedSwipeUp = swipeUp,
+            expandedSwipe = swipe,
             pureBlack = pureBlack,
             background = {},
             sharedContent = {
@@ -756,6 +852,7 @@ fun BottomSheetPlayer(
                                 if (!state.isExpanded || controlsHidden > 0.001f) return@onGloballyPositioned
                                 val rootHeight = coords.findRootCoordinates().size.height
                                 val topY = coords.positionInRoot().y
+                                seekBarTop[0] = topY
                                 val insetPx = (rootHeight - topY).coerceAtLeast(0f)
                                 val inset = with(density) { insetPx.toDp() }
                                 if ((inset - lyricsBottomInset).value.absoluteValue > 0.5f) {

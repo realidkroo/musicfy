@@ -54,12 +54,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import com.example.musicfy.LocalDatabase
+import com.example.musicfy.LocalDownloadUtil
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
+import com.example.musicfy.playback.ExoDownloadService
+import com.example.musicfy.ui.menu.AddToPlaylistDialog
 import com.example.musicfy.ui.utils.resize
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * @param fromLyrics true when the menu was opened from the lyrics page. The lyrics tools are only
@@ -80,6 +89,18 @@ fun PlayerActionMenu(
     val context = LocalContext.current
     val density = LocalDensity.current
 
+    val database = LocalDatabase.current
+    val downloadUtil = LocalDownloadUtil.current
+
+    // The song playing right now - what add to playlist, library and download act on.
+    val currentMetadata by playerConnection.mediaMetadata.collectAsState()
+    val songId = currentMetadata?.id
+    val download by remember(downloadUtil, songId) {
+        if (songId != null) downloadUtil.getDownload(songId) else flowOf(null)
+    }.collectAsState(initial = null)
+    val librarySong by remember(database, songId) { database.song(songId) }.collectAsState(initial = null)
+
+    var showChoosePlaylistDialog by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
     var showAudioDevices by remember { mutableStateOf(false) }
     var showPlaybackSpeed by remember { mutableStateOf(false) }
@@ -219,8 +240,8 @@ fun PlayerActionMenu(
                 MenuRow(
                     icon = R.drawable.playlist_add,
                     title = "add to playlist",
-                    enabled = false,
-                    onClick = {},
+                    enabled = currentMetadata != null,
+                    onClick = { showChoosePlaylistDialog = true },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 MenuRow(
@@ -229,20 +250,49 @@ fun PlayerActionMenu(
                     onClick = { playerConnection.toggleLike() },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                val inLibrary = librarySong?.song?.inLibrary != null
                 MenuRow(
-                    icon = R.drawable.library_add,
-                    title = "add to library",
-                    enabled = false,
-                    onClick = {},
+                    icon = if (inLibrary) R.drawable.library_add_check else R.drawable.library_add,
+                    title = if (inLibrary) "remove from library" else "add to library",
+                    enabled = currentMetadata != null,
+                    onClick = { playerConnection.toggleLibrary() },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                val downloadState = download?.state
                 MenuRow(
-                    icon = R.drawable.download,
-                    title = "download music",
-                    enabled = false,
-                    onClick = {},
+                    icon = if (downloadState == Download.STATE_COMPLETED) R.drawable.offline else R.drawable.download,
+                    title = when (downloadState) {
+                        Download.STATE_COMPLETED -> "remove download"
+                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> "downloading, tap to cancel"
+                        else -> "download music"
+                    },
+                    enabled = currentMetadata != null,
+                    onClick = {
+                        currentMetadata?.let { metadata ->
+                            when (downloadState) {
+                                // Done, or on its way: tapping takes it back out.
+                                Download.STATE_COMPLETED, Download.STATE_QUEUED, Download.STATE_DOWNLOADING ->
+                                    DownloadService.sendRemoveDownload(
+                                        context, ExoDownloadService::class.java, metadata.id, false,
+                                    )
+                                else -> {
+                                    // The song has to be in the database for the download to be
+                                    // listed and played back from there.
+                                    database.transaction { insert(metadata) }
+                                    val request = DownloadRequest.Builder(metadata.id, metadata.id.toUri())
+                                        .setCustomCacheKey(metadata.id)
+                                        .setData(metadata.title.toByteArray())
+                                        .build()
+                                    DownloadService.sendAddDownload(
+                                        context, ExoDownloadService::class.java, request, false,
+                                    )
+                                }
+                            }
+                        }
+                    },
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                // Share stays greyed out for now.
                 MenuRow(
                     icon = R.drawable.share,
                     title = "share song",
@@ -263,6 +313,21 @@ fun PlayerActionMenu(
             }
     }
 
+    // Outside the menu surface, like the sheets below: the picker is a sheet of its own.
+    currentMetadata?.let { metadata ->
+        AddToPlaylistDialog(
+            isVisible = showChoosePlaylistDialog,
+            onGetSong = {
+                // The playlist stores the song by id; it has to exist in the database first.
+                database.transaction { insert(metadata) }
+                listOf(metadata.id)
+            },
+            onDismiss = { showChoosePlaylistDialog = false },
+            // A playlist made from here starts with this song, so its cover takes the song's colours.
+            topSongId = metadata.id,
+            topSongArtworkUrl = metadata.thumbnailUrl,
+        )
+    }
     if (showSleepTimer) {
         SleepTimerSheet(onDismiss = { showSleepTimer = false })
     }

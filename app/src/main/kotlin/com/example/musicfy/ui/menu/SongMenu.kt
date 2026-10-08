@@ -78,6 +78,7 @@ import com.example.musicfy.db.entities.Song
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.ExoDownloadService
+import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.ListDialog
 import com.example.musicfy.ui.component.LocalBottomSheetPageState
@@ -85,6 +86,9 @@ import com.example.musicfy.ui.component.Material3MenuGroup
 import com.example.musicfy.ui.component.Material3MenuItemData
 import com.example.musicfy.ui.component.NewAction
 import com.example.musicfy.ui.component.NewActionGrid
+import com.example.musicfy.ui.component.SheetDivider
+import com.example.musicfy.ui.component.SheetHeader
+import com.example.musicfy.ui.component.SheetHeaderButton
 import com.example.musicfy.ui.component.SongListItem
 import com.example.musicfy.ui.component.TextFieldDialog
 import com.example.musicfy.utils.listItemShape
@@ -218,6 +222,8 @@ fun SongMenu(
         onDismiss = {
             showChoosePlaylistDialog = false
         },
+        topSongId = song.id,
+        topSongArtworkUrl = song.song.thumbnailUrl,
     )
 
     if (showErrorPlaylistAddDialog) {
@@ -298,16 +304,15 @@ fun SongMenu(
         }
     }
 
-    SongListItem(
-        song = song,
-        isSwipeable = false,
-        badges = {},
-        // Flat, like the player's own sheet header. ListItem paints surfaceContainer by default,
-        // which put a grey card behind the track at the top of every menu while the rows beneath
-        // it were flat — two different surfaces in one sheet.
-        backgroundColor = Color.Transparent,
-        trailingContent = {
-            IconButton(
+    SheetHeader(
+        thumbnailUrl = song.song.thumbnailUrl,
+        title = song.song.title,
+        subtitle = song.artists.joinToString(", ") { it.name },
+        trailing = {
+            SheetHeaderButton(
+                icon = if (song.song.liked) R.drawable.favorite else R.drawable.favorite_border,
+                active = song.song.liked,
+                tint = if (song.song.liked) MaterialTheme.colorScheme.error else Color.White,
                 onClick = {
                     val s = song.song.toggleLike()
                     database.query {
@@ -315,19 +320,11 @@ fun SongMenu(
                     }
                     syncUtils.likeSong(s)
                 },
-            ) {
-                Icon(
-                    painter = painterResource(if (song.song.liked) R.drawable.favorite else R.drawable.favorite_border),
-                    tint = if (song.song.liked) MaterialTheme.colorScheme.error else LocalContentColor.current,
-                    contentDescription = null,
-                )
-            }
+            )
         },
     )
 
-    HorizontalDivider()
-
-    Spacer(modifier = Modifier.height(12.dp))
+    SheetDivider()
 
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val configuration = LocalConfiguration.current
@@ -342,42 +339,35 @@ fun SongMenu(
         ),
     ) {
         item {
-            NewActionGrid(
-                actions = listOf(
-                    NewAction(
+            // The four everyone reaches for first, then the rest of the options as they were.
+            Material3MenuGroup(
+                items = listOfNotNull(
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.play)) },
                         icon = {
                             Icon(
-                                painter = painterResource(R.drawable.edit),
+                                painter = painterResource(R.drawable.play),
                                 contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        text = stringResource(R.string.edit),
-                        onClick = { showEditDialog = true }
-                    ),
-                    NewAction(
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.playlist_add),
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        onClick = {
+                            onDismiss()
+                            playerConnection.playQueue(
+                                ListQueue(
+                                    title = song.song.title,
+                                    items = listOf(song.toMediaItem()),
+                                )
                             )
-                        },
-                        text = stringResource(R.string.add_to_an_playlist),
-                        onClick = { showChoosePlaylistDialog = true }
+                        }
                     ),
-                    NewAction(
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.share)) },
                         icon = {
                             Icon(
                                 painter = painterResource(R.drawable.share),
                                 contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        text = stringResource(R.string.share),
                         onClick = {
                             onDismiss()
                             val intent = Intent().apply {
@@ -387,11 +377,74 @@ fun SongMenu(
                             }
                             context.startActivity(Intent.createChooser(intent, null))
                         }
-                    )
-                ),
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
+                    ),
+                    if (song.song.albumId != null) {
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.view_album)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.album),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                onDismiss()
+                                navController.navigate("album/${song.song.albumId}")
+                            }
+                        )
+                    } else null,
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.view_artist)) },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.artist),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = {
+                            if (song.artists.size == 1) {
+                                navController.navigate("artist/${song.artists[0].id}")
+                                onDismiss()
+                            } else {
+                                showSelectArtistDialog = true
+                            }
+                        }
+                    ),
+                )
             )
         }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+
+        item {
+            Material3MenuGroup(
+                items = listOf(
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.edit)) },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.edit),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = { showEditDialog = true }
+                    ),
+                    Material3MenuItemData(
+                        title = { Text(text = stringResource(R.string.add_to_an_playlist)) },
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.playlist_add),
+                                contentDescription = null,
+                            )
+                        },
+                        onClick = { showChoosePlaylistDialog = true }
+                    ),
+                )
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(12.dp)) }
+
         item {
             Material3MenuGroup(
                 items = listOfNotNull(
@@ -684,48 +737,6 @@ fun SongMenu(
         item {
             Material3MenuGroup(
                 items = buildList {
-                    add(
-                        Material3MenuItemData(
-                            title = { Text(text = stringResource(R.string.view_artist)) },
-                            description = { Text(text = song.artists.joinToString { it.name }) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.artist),
-                                    contentDescription = null,
-                                )
-                            },
-                            onClick = {
-                                if (song.artists.size == 1) {
-                                    navController.navigate("artist/${song.artists[0].id}")
-                                    onDismiss()
-                                } else {
-                                    showSelectArtistDialog = true
-                                }
-                            }
-                        )
-                    )
-                    if (song.song.albumId != null) {
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.view_album)) },
-                                description = {
-                                    song.song.albumName?.let {
-                                        Text(text = it)
-                                    }
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.album),
-                                        contentDescription = null,
-                                    )
-                                },
-                                onClick = {
-                                    onDismiss()
-                                    navController.navigate("album/${song.song.albumId}")
-                                }
-                            )
-                        )
-                    }
                     add(
                         Material3MenuItemData(
                             title = { Text(text = stringResource(R.string.refetch)) },

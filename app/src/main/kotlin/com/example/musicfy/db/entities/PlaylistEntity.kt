@@ -32,7 +32,9 @@ data class PlaylistEntity(
     @ColumnInfo(name = "isLocal", defaultValue = false.toString())
     val isLocal: Boolean = false,
     @ColumnInfo(name = "isAutoSync", defaultValue = false.toString())
-    val isAutoSync: Boolean = false
+    val isAutoSync: Boolean = false,
+    /** Free text the owner wrote about the playlist. Local only - never sent to YouTube. */
+    val description: String? = null,
 ) {
     companion object {
         const val LIKED_PLAYLIST_ID = "LP_LIKED"

@@ -14,6 +14,7 @@ import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.db.entities.PlaylistSong
 import com.example.musicfy.extensions.reversed
 import com.example.musicfy.extensions.toEnum
+import com.example.musicfy.playlistcover.PlaylistCovers
 import com.example.musicfy.utils.SyncUtils
 import com.example.musicfy.utils.dataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -94,6 +96,20 @@ constructor(
             playlist.first { it != null }?.playlist?.browseId?.let { browseId ->
                 syncUtils.syncPlaylist(browseId, playlistId)
             }
+        }
+
+        // A generated cover takes its colours from the playlist's top song and carries its title:
+        // when either changes it is drawn again. Any other cover - a picture the user chose, a
+        // remote playlist's own image, the collage of songs - is left exactly as it is.
+        viewModelScope.launch {
+            combine(playlist.filterNotNull(), database.playlistSongs(playlistId)) { entity, songs ->
+                val top = songs.minWithOrNull(compareBy({ it.map.position }, { it.map.id }))?.song
+                Triple(entity.playlist, top?.id, top?.song?.thumbnailUrl)
+            }
+                .distinctUntilChanged()
+                .collect { (entity, topSongId, artworkUrl) ->
+                    PlaylistCovers.refreshIfStale(context, database, entity, topSongId, artworkUrl)
+                }
         }
 
         viewModelScope.launch {

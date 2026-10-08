@@ -95,6 +95,13 @@ internal class PlayerPageTransition(private val scope: CoroutineScope) {
     var dragging by mutableStateOf(false)
         private set
 
+    /**
+     * The page [page] was switched to from, when it was opened over the other one rather than from
+     * the player - where a swipe down ([back]) returns to. NONE when it grew out of the player.
+     */
+    var previous by mutableStateOf(PlayerPage.NONE)
+        private set
+
     private val header = Animatable(0f).apply { updateBounds(lowerBound = 0f) }
     private val lyrics = Animatable(0f)
     private val queue = Animatable(0f)
@@ -131,6 +138,10 @@ internal class PlayerPageTransition(private val scope: CoroutineScope) {
             close()
             return
         }
+        // Opened over the other page: remember it, so a swipe down can go back to it. Opened again
+        // while already showing, nothing changes.
+        if (page == PlayerPage.NONE) previous = PlayerPage.NONE
+        else if (page != target) previous = page
         page = target
         job?.cancel()
         job = scope.launch {
@@ -160,8 +171,23 @@ internal class PlayerPageTransition(private val scope: CoroutineScope) {
         }
     }
 
+    /**
+     * One step back: to the page this one was opened over, or - when it grew out of the player -
+     * closed into the card. Either way the next step back is to the player.
+     */
+    fun back() {
+        val to = previous
+        if (to == PlayerPage.NONE) {
+            close()
+        } else {
+            open(to)
+            previous = PlayerPage.NONE
+        }
+    }
+
     fun close() {
         page = PlayerPage.NONE
+        previous = PlayerPage.NONE
         job?.cancel()
         job = scope.launch {
             if (linked == PlayerPage.NONE) {
@@ -179,6 +205,7 @@ internal class PlayerPageTransition(private val scope: CoroutineScope) {
     /** Closes with no animation - the player itself is going away. */
     fun reset() {
         page = PlayerPage.NONE
+        previous = PlayerPage.NONE
         dragging = false
         job?.cancel()
         job = scope.launch {

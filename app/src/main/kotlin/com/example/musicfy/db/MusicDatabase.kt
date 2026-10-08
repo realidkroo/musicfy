@@ -128,7 +128,7 @@ class MusicDatabase(
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 37,
+    version = 38,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -151,6 +151,7 @@ abstract class InternalDatabase : RoomDatabase() {
                         MIGRATION_24_25,
                         MIGRATION_35_36,
                         MIGRATION_36_37,
+                        MIGRATION_37_38,
                     )
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -716,6 +717,27 @@ val MIGRATION_36_37 =
             }
             if (!columnExists) {
                 db.execSQL("ALTER TABLE song ADD COLUMN localUri TEXT DEFAULT NULL")
+            }
+        }
+    }
+
+val MIGRATION_37_38 =
+    object : Migration(37, 38) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Guarded like the migrations before it: a device that already has the column (a build
+            // from another branch) must not fail the upgrade and fall into the destructive reset.
+            var columnExists = false
+            db.query("PRAGMA table_info(playlist)").use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (cursor.getString(nameIndex) == "description") {
+                        columnExists = true
+                        break
+                    }
+                }
+            }
+            if (!columnExists) {
+                db.execSQL("ALTER TABLE playlist ADD COLUMN description TEXT DEFAULT NULL")
             }
         }
     }

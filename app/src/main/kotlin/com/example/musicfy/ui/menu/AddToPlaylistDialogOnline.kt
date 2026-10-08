@@ -120,7 +120,9 @@ fun AddToPlaylistDialogOnline(
         }
     }
 
-    if (isVisible) {
+    // The list steps aside while the create sheet is up: that is a sheet in the app's own window,
+    // and a platform dialog left open would sit on top of it.
+    if (isVisible && !showCreatePlaylistDialog) {
         val totalItemsCount = 1 + filteredPlaylists.size
         ListDialog(
             onDismiss = onDismiss

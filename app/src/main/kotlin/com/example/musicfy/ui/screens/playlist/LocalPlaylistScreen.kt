@@ -121,7 +121,9 @@ import com.example.musicfy.ui.component.BoneColor
 import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.DraggableScrollbar
 import com.example.musicfy.ui.component.EmptyPlaceholder
+import com.example.musicfy.playlistcover.PlaylistCoverStore
 import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.showEditPlaylistSheet
 import com.example.musicfy.ui.component.SwipeActionsBox
 import com.example.musicfy.ui.component.TextFieldDialog
 import com.example.musicfy.ui.component.librarySwipeAction
@@ -265,29 +267,6 @@ fun LocalPlaylistScreen(
         }
     }
 
-    var showEditDialog by remember { mutableStateOf(false) }
-    if (showEditDialog) {
-        playlist?.playlist?.let { playlistEntity ->
-            TextFieldDialog(
-                icon = { Icon(painter = painterResource(R.drawable.edit), contentDescription = null) },
-                title = { Text(text = stringResource(R.string.edit_playlist)) },
-                onDismiss = { showEditDialog = false },
-                initialTextFieldValue = TextFieldValue(
-                    playlistEntity.name,
-                    TextRange(playlistEntity.name.length)
-                ),
-                onDone = { name ->
-                    database.query {
-                        update(playlistEntity.copy(name = name, lastUpdateTime = LocalDateTime.now()))
-                    }
-                    viewModel.viewModelScope.launch(Dispatchers.IO) {
-                        playlistEntity.browseId?.let { YouTube.renamePlaylist(it, name) }
-                    }
-                },
-            )
-        }
-    }
-
     var showRemoveDownloadDialog by remember { mutableStateOf(false) }
     if (showRemoveDownloadDialog) {
         DefaultDialog(
@@ -345,6 +324,8 @@ fun LocalPlaylistScreen(
                         }
                         viewModel.viewModelScope.launch(Dispatchers.IO) {
                             playlist?.playlist?.browseId?.let { YouTube.deletePlaylist(it) }
+                            // Its generated or picked cover is no use to anyone now.
+                            PlaylistCoverStore.deleteStale(context.applicationContext, viewModel.playlistId, null)
                         }
                         navController.popBackStack()
                     }
@@ -452,7 +433,17 @@ fun LocalPlaylistScreen(
                         songs = songs,
                         context = context,
                         downloadState = downloadState,
-                        onEdit = { showEditDialog = true },
+                        // Over the menu, not instead of it: Done comes back to it.
+                        onEdit = {
+                            val top = songs.minWithOrNull(compareBy({ it.map.position }, { it.map.id }))?.song
+                            menuState.showEditPlaylistSheet(
+                                playlist = currentPlaylist.playlist,
+                                database = database,
+                                context = context,
+                                topSongId = top?.id,
+                                topSongArtworkUrl = top?.song?.thumbnailUrl,
+                            )
+                        },
                         onSync = {
                             coroutineScope.launch(Dispatchers.IO) {
                                 val playlistPage = YouTube.playlist(currentPlaylist.playlist.browseId!!)
@@ -505,7 +496,11 @@ fun LocalPlaylistScreen(
                         onDismiss = { menuState.dismiss() },
                         locked = locked,
                         onToggleLock = { locked = !locked },
-                        onShowSortDialog = { showSortDialog = true }
+                        onShowSortDialog = { showSortDialog = true },
+                        onSearch = { isSearching = true },
+                        onPlayNext = {
+                            playerConnection.playNext(songs.map { it.song.toMediaItem() })
+                        },
                     )
                 }
             }

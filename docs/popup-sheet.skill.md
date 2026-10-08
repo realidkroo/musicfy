@@ -219,6 +219,37 @@ detail sheet's back row call `dismiss()` to pop back to it. Use this pattern (`f
 PopupSheetState.showWhatever(...)` extensions) whenever one popup leads to another, rather than
 giving the second screen its own state.
 
+## Sheets that close themselves, and sheets with text fields
+
+Three small additions to the engine, made for the playlist sheets (add to playlist, create playlist,
+edit playlist - `ui/menu/AddToPlaylistDialog.kt`, `ui/component/CreatePlaylistDialog.kt`,
+`ui/component/EditPlaylistSheet.kt`):
+
+- `show(onClosed = { ... })` runs once the sheet has played its exit and been removed, however it was
+  closed (drag, backdrop, back, `dismiss()`). It is for a caller that keeps its own "is it open" state
+  in a declarative `if (show) Thing()` - the composable calls `show` from a `DisposableEffect`, resets
+  its flag in `onClosed`, and takes the sheet away in `onDispose` if the caller dropped it first.
+- `showWithHandle(...)` is `show` returning a `PopupSheetHandle`. A sheet that closes *itself* after its
+  work is done must use the handle: `state.dismiss()` closes whichever sheet is in front, which by then
+  may be one pushed on top of it (Create playlist over Add to playlist), or already be this one leaving.
+  The handle also carries `setLocked`, so a sheet can lock itself while it saves.
+- The sheet frame has `imePadding()`: a sheet with a text field rises above the keyboard and its room
+  shrinks by the same amount. It sits between the size cap and the height measurement, so the stack
+  geometry still works from the sheet's own height.
+
+The pieces the playlist sheets share - the field, the pill button, the search field, the header, the
+two-up action card, the divider - live in `ui/component/PlaylistSheetKit.kt`. They only have minimum
+heights and use `sp` text, so a large font scale grows them instead of clipping; use them for new sheets
+instead of redrawing the mock again. Anything that can overflow wraps itself in `verticalScroll` (the
+content slot does not scroll), and a row of cards that should run off the screen edge uses
+`Modifier.bleedHorizontally(20.dp)` to undo the sheet's side padding.
+
+Playlist covers (`playlistcover/PlaylistCovers.kt`) are generated images, not assets: a bitmap drawn from
+the playlist's title and the colours of its top song, stored as a small file in `filesDir/playlist_covers`.
+The file name records what it was made from (style, top song, title), which is how a generated cover is
+told apart from a picture the user chose and redrawn when the top song or the title changes - there is no
+database column for it. A playlist's `thumbnailUrl` is simply that file.
+
 ## The `fullBleed` exception
 
 Exactly one call site uses `fullBleed = true` today: the Monochrome onboarding flow

@@ -52,9 +52,12 @@ import com.example.musicfy.db.entities.PlaylistSong
 import com.example.musicfy.db.entities.Song
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.playback.ExoDownloadService
+import com.example.musicfy.playlistcover.PlaylistCoverStore
 import com.example.musicfy.playback.queues.ListQueue
 import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.DefaultDialog
+import com.example.musicfy.ui.component.LocalMenuState
+import com.example.musicfy.ui.component.showEditPlaylistSheet
 import com.example.musicfy.ui.component.Material3MenuGroup
 import com.example.musicfy.ui.component.Material3MenuItemData
 import com.example.musicfy.ui.component.NewAction
@@ -125,36 +128,7 @@ fun PlaylistMenu(
         }
     }
 
-    var showEditDialog by remember {
-        mutableStateOf(false)
-    }
-
-    if (showEditDialog) {
-        TextFieldDialog(
-            icon = { Icon(painter = painterResource(R.drawable.edit), contentDescription = null) },
-            title = { Text(text = stringResource(R.string.edit_playlist)) },
-            onDismiss = { showEditDialog = false },
-            initialTextFieldValue =
-            TextFieldValue(
-                playlist.playlist.name,
-                TextRange(playlist.playlist.name.length),
-            ),
-            onDone = { name ->
-                onDismiss()
-                database.query {
-                    update(
-                        playlist.playlist.copy(
-                            name = name,
-                            lastUpdateTime = LocalDateTime.now()
-                        )
-                    )
-                }
-                coroutineScope.launch(Dispatchers.IO) {
-                    playlist.playlist.browseId?.let { YouTube.renamePlaylist(it, name) }
-                }
-            },
-        )
-    }
+    val menuState = LocalMenuState.current
 
     var showRemoveDownloadDialog by remember {
         mutableStateOf(false)
@@ -240,6 +214,8 @@ fun PlaylistMenu(
 
                         coroutineScope.launch(Dispatchers.IO) {
                             playlist.playlist.browseId?.let { YouTube.deletePlaylist(it) }
+                            // Its generated or picked cover is no use to anyone now.
+                            PlaylistCoverStore.deleteStale(context.applicationContext, playlist.id, null)
                         }
                     }
                 ) {
@@ -450,8 +426,15 @@ fun PlaylistMenu(
                                         contentDescription = null,
                                     )
                                 },
+                                // Opens over this menu, which comes back forward behind it.
                                 onClick = {
-                                    showEditDialog = true
+                                    menuState.showEditPlaylistSheet(
+                                        playlist = dbPlaylist?.playlist ?: playlist.playlist,
+                                        database = database,
+                                        context = context,
+                                        topSongId = songs.firstOrNull()?.id,
+                                        topSongArtworkUrl = songs.firstOrNull()?.song?.thumbnailUrl,
+                                    )
                                 }
                             )
                         )
