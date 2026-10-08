@@ -246,6 +246,14 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.library.LibraryDownloadedScreen(navController = navController)
     }
 
+    // Everything one service brought in, whatever playlist it went into: Imported from Spotify.
+    composable(
+        route = "library/imported/{source}",
+        arguments = listOf(navArgument("source") { type = NavType.StringType }),
+    ) {
+        com.example.musicfy.ui.screens.library.LibraryImportedScreen(navController = navController)
+    }
+
     composable(Screens.Settings.route) {
         ProfileScreen(navController = navController)
     }

@@ -27,6 +27,7 @@ import com.example.musicfy.db.entities.FormatEntity
 import com.example.musicfy.db.entities.LyricsEntity
 import com.example.musicfy.db.entities.PlayCountEntity
 import com.example.musicfy.db.entities.PlaylistEntity
+import com.example.musicfy.db.entities.ImportedSong
 import com.example.musicfy.db.entities.PlaylistEvent
 import com.example.musicfy.db.entities.PlaylistSongMap
 import com.example.musicfy.db.entities.PlaylistSongMapPreview
@@ -121,14 +122,15 @@ class MusicDatabase(
         PlayCountEntity::class,
         RecognitionHistory::class,
         SpeedDialItem::class,
-        PlaylistEvent::class
+        PlaylistEvent::class,
+        ImportedSong::class,
     ],
     views = [
         SortedSongArtistMap::class,
         SortedSongAlbumMap::class,
         PlaylistSongMapPreview::class,
     ],
-    version = 38,
+    version = 39,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -152,6 +154,7 @@ abstract class InternalDatabase : RoomDatabase() {
                         MIGRATION_35_36,
                         MIGRATION_36_37,
                         MIGRATION_37_38,
+                        MIGRATION_38_39,
                     )
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
@@ -739,5 +742,17 @@ val MIGRATION_37_38 =
             if (!columnExists) {
                 db.execSQL("ALTER TABLE playlist ADD COLUMN description TEXT DEFAULT NULL")
             }
+        }
+    }
+
+val MIGRATION_38_39 =
+    object : Migration(38, 39) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // IF NOT EXISTS, like the playlist_event migration: a device that already has the
+            // table must not fail the upgrade into the destructive reset.
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `imported_song` (`songId` TEXT NOT NULL, `source` TEXT NOT NULL, `importedAt` INTEGER NOT NULL, PRIMARY KEY(`songId`, `source`))",
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_imported_song_source` ON `imported_song` (`source`)")
         }
     }

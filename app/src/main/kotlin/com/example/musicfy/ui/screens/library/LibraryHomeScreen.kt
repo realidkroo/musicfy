@@ -48,6 +48,7 @@ import com.example.musicfy.db.entities.Song
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.glassRoot
 import com.example.musicfy.ui.component.navigateToTab
 import com.example.musicfy.ui.screens.search.SearchArtwork
@@ -57,6 +58,7 @@ import com.example.musicfy.ui.screens.search.SearchField
 import com.example.musicfy.ui.screens.search.SearchGlassTopBar
 import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
 import com.example.musicfy.ui.screens.search.rememberCollapseProgress
+import com.example.musicfy.ui.screens.settings.importsync.ImportProgressRoute
 import com.example.musicfy.ui.screens.search.searchTopBarHeight
 import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.viewmodels.LibraryHomeViewModel
@@ -83,6 +85,9 @@ fun LibraryHomeScreen(
     val playlists by viewModel.playlists.collectAsState()
     val downloadedSongs by viewModel.downloadedSongs.collectAsState()
     val likedSongs by viewModel.likedSongs.collectAsState()
+    val importedSources by viewModel.importedSources.collectAsState()
+    val importProgress by viewModel.importProgress.collectAsState()
+    val menuState = LocalMenuState.current
 
     val profilePicStr by rememberPreference(ProfilePicUriKey, defaultValue = "")
 
@@ -123,6 +128,19 @@ fun LibraryHomeScreen(
                 onOpen = { item -> openLibraryItem(item, navController, playerConnection) },
             )
             return@LibraryScaffold
+        }
+
+        // Right under the search bar, even in a library with nothing in it - that is when it
+        // matters most. Opens the import sheet, and is the import's progress bar while one runs.
+        item(key = "import_banner") {
+            Spacer(modifier = Modifier.height(4.dp))
+            LibraryImportBanner(
+                progress = importProgress,
+                onOpenSheet = { menuState.showImportMusicSheet(navController) },
+                onOpenProgress = { navController.navigate(ImportProgressRoute) },
+                modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
+            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         // A completely empty library gets one honest message instead of four zero-count cards and
@@ -223,6 +241,17 @@ fun LibraryHomeScreen(
                 label = downloadedSongs.size.toString(),
                 covers = downloadedSongs.map { it.song.thumbnailUrl },
                 onClick = { navController.navigate("library/downloaded") },
+                modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
+            )
+        }
+
+        // One card for each service that has brought music in. Their songs are in Songs, Artist
+        // and Albums with everything else; these just gather what came from where.
+        items(importedSources, key = { "imported_${it.source.key}" }) { card ->
+            Spacer(modifier = Modifier.height(12.dp))
+            LibraryImportedCard(
+                card = card,
+                onClick = { navController.navigate("library/imported/${card.source.key}") },
                 modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
             )
         }

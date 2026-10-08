@@ -36,6 +36,8 @@ import com.example.musicfy.db.entities.LyricsEntity
 import com.example.musicfy.db.entities.PlayCountEntity
 import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.PlaylistEntity
+import com.example.musicfy.db.entities.ImportedSong
+import com.example.musicfy.db.entities.ImportedSourceCount
 import com.example.musicfy.db.entities.PlaylistEvent
 import com.example.musicfy.db.entities.PlaylistSong
 import com.example.musicfy.db.entities.PlaylistSongMap
@@ -1568,6 +1570,33 @@ interface DatabaseDao {
 
     @Update
     fun update(song: SongEntity)
+
+    // ---- imported music ----
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(imported: ImportedSong)
+
+    @Query("SELECT source, COUNT(*) AS songCount FROM imported_song GROUP BY source")
+    fun importedSourceCounts(): Flow<List<ImportedSourceCount>>
+
+    /** The newest few covers of a source, for its card in the Library. */
+    @Query(
+        "SELECT song.thumbnailUrl FROM song JOIN imported_song ON song.id = imported_song.songId " +
+            "WHERE imported_song.source = :source AND song.thumbnailUrl IS NOT NULL " +
+            "ORDER BY imported_song.importedAt DESC LIMIT 4"
+    )
+    fun importedCovers(source: String): Flow<List<String>>
+
+    @Transaction
+    @Query(
+        "SELECT song.* FROM song JOIN imported_song ON song.id = imported_song.songId " +
+            "WHERE imported_song.source = :source ORDER BY song.title"
+    )
+    fun importedSongsByNameAsc(source: String): Flow<List<Song>>
+
+    /** Every song that was imported from anywhere, for the library sync to leave alone. */
+    @Query("SELECT DISTINCT songId FROM imported_song")
+    fun importedSongIds(): List<String>
 
     @Update
     fun update(artist: ArtistEntity)

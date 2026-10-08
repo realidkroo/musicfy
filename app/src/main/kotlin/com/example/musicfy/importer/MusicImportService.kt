@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.musicfy.R
 import com.example.musicfy.db.MusicDatabase
+import com.example.musicfy.db.entities.ImportedSong
 import com.example.musicfy.db.entities.PlaylistEntity
 import com.example.musicfy.db.entities.PlaylistSongMap
 import com.example.musicfy.extensions.isUserLoggedIn
@@ -55,6 +56,9 @@ class MusicImportService @Inject constructor(
     private val importScope = CoroutineScope(Dispatchers.IO + importJob + exceptionHandler)
     private var runningJob: Job? = null
 
+    /** Where the import being run comes from; read by the steps below, one import runs at a time. */
+    @Volatile private var source: ImportSource = ImportSource.OTHER
+
     private val _progress = MutableStateFlow(ImportProgress())
     val progress: StateFlow<ImportProgress> = _progress.asStateFlow()
 
@@ -63,7 +67,8 @@ class MusicImportService @Inject constructor(
     /** Starts an import in the background; false if one is already running. */
     fun startImport(parsed: ParsedImport, options: ImportOptions = ImportOptions()): Boolean {
         if (isRunning) return false
-        _progress.value = ImportProgress(isRunning = true, totalTracks = parsed.totalSongs)
+        source = parsed.provider ?: ImportSource.OTHER
+        _progress.value = ImportProgress(isRunning = true, totalTracks = parsed.totalSongs, source = parsed.provider)
         runningJob = importScope.launch {
             try {
                 runImport(parsed, options)
@@ -113,6 +118,7 @@ class MusicImportService @Inject constructor(
         database.withTransaction {
             matched.forEach { insert(it.toMediaMetadata()) }
         }
+        fileIntoLibrary(matched.map { it.id })
 
         // the source lists newest first; spacing the dates keeps that order in Liked songs
         val now = LocalDateTime.now()
@@ -120,7 +126,6 @@ class MusicImportService @Inject constructor(
         matched.forEachIndexed { index, item ->
             val song = database.getSongById(item.id)?.song ?: return@forEachIndexed
             if (!song.liked) {
-                // inLibrary stays untouched: YouTube library sync unlikes local-library songs it doesn't know
                 database.update(song.copy(liked = true, likedDate = now.minusSeconds(index.toLong())))
                 newlyLiked += item.id
             }
@@ -178,6 +183,7 @@ class MusicImportService @Inject constructor(
                 insert(PlaylistSongMap(songId = songId, playlistId = playlist.id, position = start + index))
             }
         }
+        fileIntoLibrary(songIds)
         if (existing == null) _progress.update { it.copy(playlistsCreated = it.playlistsCreated + 1) }
 
         val browseId = existing?.browseId
@@ -192,6 +198,27 @@ class MusicImportService @Inject constructor(
             browseId == null && mirror && (newIds.isNotEmpty() || existing == null) -> {
                 _progress.update { it.copy(currentLabel = "Creating \"$name\" on YouTube") }
                 mirrorPlaylist(playlist.id, name)
+            }
+        }
+    }
+
+    /**
+     * Puts imported songs where all music lives. The Library's Songs, Artists and Albums list what
+     * is `inLibrary`, so an imported song that only sat in a playlist - or in Liked songs - never
+     * showed up there. Each is also recorded as imported from [source], which is what the
+     * "Imported from" cards list and what the YouTube library sync reads to leave these songs be.
+     *
+     * Local only: this does not touch the user's YouTube library (see mirrorToYouTube for that).
+     */
+    private suspend fun fileIntoLibrary(songIds: List<String>) {
+        if (songIds.isEmpty()) return
+        val now = LocalDateTime.now()
+        val from = source.key
+        database.withTransaction {
+            songIds.distinct().forEach { id ->
+                val song = getSongById(id)?.song ?: return@forEach
+                if (song.inLibrary == null) update(song.copy(inLibrary = now))
+                insert(ImportedSong(songId = id, source = from, importedAt = now))
             }
         }
     }

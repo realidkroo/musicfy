@@ -511,8 +511,11 @@ class SyncUtils @Inject constructor(
                     val remoteSongs = page.items.filterIsInstance<SongItem>().reversed()
                     val remoteIds = remoteSongs.map { it.id }.toSet()
                     val localSongs = database.songsByNameAsc().first()
+                    // Music brought in by an import is in the library on purpose and is not in the
+                    // YouTube one: without this the sync would take each of those songs back out.
+                    val importedIds = database.importedSongIds().toSet()
 
-                    localSongs.filterNot { it.id in remoteIds }.forEach { song ->
+                    localSongs.filterNot { it.id in remoteIds || it.id in importedIds }.forEach { song ->
                         try {
                             database.update(song.song.toggleLibrary())
                             delay(DB_OPERATION_DELAY_MS)

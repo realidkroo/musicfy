@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.example.musicfy.R
+import com.example.musicfy.ui.component.SmoothCornerShape
 import com.example.musicfy.ui.screens.search.SearchColors
 import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
 import com.example.musicfy.ui.screens.search.SearchTitleBlockHeight
@@ -118,7 +119,7 @@ fun LibraryGridArtwork(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(corner))
+            .clip(SmoothCornerShape(corner))
             .background(SearchColors.TileHigh),
         contentAlignment = Alignment.Center,
     ) {
@@ -159,7 +160,7 @@ fun LibraryPinnedTile(
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(SmoothCornerShape(18.dp))
             .background(SearchColors.TileHigh)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -242,7 +243,7 @@ private fun LibraryCoverStack(
  * a library with two songs shows two tiles, not two tiles and two empty boxes.
  */
 @Composable
-private fun LibraryQuadCollage(
+internal fun LibraryQuadCollage(
     covers: List<String?>,
     modifier: Modifier = Modifier,
 ) {
@@ -305,7 +306,7 @@ fun LibraryCategoryCard(
     Box(
         modifier = modifier
             .height(74.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(SmoothCornerShape(16.dp))
             .background(SearchColors.Tile)
             .clickable(onClick = onClick),
     ) {
@@ -358,7 +359,7 @@ fun LibraryWideCard(
         modifier = modifier
             .fillMaxWidth()
             .height(112.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(SmoothCornerShape(18.dp))
             .background(SearchColors.Tile)
             .clickable(onClick = onClick),
     ) {
@@ -411,11 +412,15 @@ fun LibraryListRow(
     large: Boolean = false,
 ) {
     val art = if (large) 52.dp else 34.dp
+    val inset = if (large) 10.dp else 8.dp
+    val coverCorner = if (large) 11.dp else 8.dp
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = SearchHorizontalPadding, vertical = 4.dp)
-            .clip(if (large) RoundedCornerShape(16.dp) else RoundedCornerShape(percent = 50))
+            // The cover's corner plus the padding around it: the pill's curve runs parallel to the
+            // cover's instead of being a capsule that the square sits awkwardly inside.
+            .clip(SmoothCornerShape(coverCorner + inset))
             .background(SearchColors.Tile)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -423,12 +428,12 @@ fun LibraryListRow(
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
-            .padding(horizontal = 10.dp, vertical = if (large) 10.dp else 8.dp),
+            .padding(horizontal = 10.dp, vertical = inset),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LibraryGridArtwork(
             url = thumbnailUrl,
-            corner = 8.dp,
+            corner = coverCorner,
             modifier = Modifier.size(art),
         )
         Spacer(modifier = Modifier.width(14.dp))
@@ -482,7 +487,7 @@ fun LibraryPlayBar(
             modifier = Modifier
                 .weight(1f)
                 .height(44.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(SmoothCornerShape(16.dp))
                 .background(SearchColors.Tile)
                 .clickable(onClick = onPlay),
         ) {
@@ -498,7 +503,7 @@ fun LibraryPlayBar(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(SmoothCornerShape(16.dp))
                 .background(SearchColors.Tile)
                 .clickable(onClick = onMore),
         ) {

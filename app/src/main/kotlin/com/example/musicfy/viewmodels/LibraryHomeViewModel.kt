@@ -10,12 +10,20 @@ import com.example.musicfy.constants.PlaylistSortType
 import com.example.musicfy.constants.SongSortType
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.db.entities.SpeedDialItem
+import com.example.musicfy.importer.ImportProgress
+import com.example.musicfy.importer.ImportSource
+import com.example.musicfy.importer.MusicImportService
 import com.example.musicfy.utils.ArtistImageResolver
 import com.music.innertube.YouTube
 import com.music.innertube.models.YTItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -37,6 +45,7 @@ class LibraryHomeViewModel
 @Inject
 constructor(
     private val database: MusicDatabase,
+    private val importService: MusicImportService,
 ) : ViewModel() {
 
     val pinnedItems = database.speedDialDao.getAll()
@@ -59,6 +68,35 @@ constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val likedSongs = database.likedSongs(SongSortType.CREATE_DATE, true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The import under way, if any - the banner at the top of the Library turns into its progress bar. */
+    val importProgress: StateFlow<ImportProgress> = importService.progress
+
+    /**
+     * One card per service that has brought music in, each with its song count and newest covers.
+     * Under Downloaded, in the order the services are listed in [ImportSource]. A source that only
+     * stands for "some file" ([ImportSource.OTHER]) has no card: its songs are in the library and
+     * that is all there is to say about them.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val importedSources: StateFlow<List<ImportedSourceCard>> = database.importedSourceCounts()
+        .flatMapLatest { counts ->
+            val listed = counts
+                .mapNotNull { row ->
+                    ImportSource.fromKey(row.source)?.takeIf { it.isListed }?.let { it to row.songCount }
+                }
+                .sortedBy { (source, _) -> source.ordinal }
+            if (listed.isEmpty()) {
+                flowOf(emptyList<ImportedSourceCard>())
+            } else {
+                combine(
+                    listed.map { (source, count) ->
+                        database.importedCovers(source.key).map { covers -> ImportedSourceCard(source, count, covers) }
+                    }
+                ) { cards -> cards.toList() }
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
@@ -124,3 +162,11 @@ constructor(
         }
     }
 }
+
+/** What a service's card in the Library shows. */
+@androidx.compose.runtime.Immutable
+data class ImportedSourceCard(
+    val source: ImportSource,
+    val songCount: Int,
+    val covers: List<String>,
+)

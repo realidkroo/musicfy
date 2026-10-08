@@ -48,6 +48,8 @@ fun <T> LibraryEntityListScreen(
     pureBlack: Boolean = false,
     // wraps each entry's row, e.g. to let songs slide to the queue or the library
     rowWrapper: @Composable (item: T, row: @Composable () -> Unit) -> Unit = { _, row -> row() },
+    // shown at the end of the header, where the Library home has its avatar
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     var query by remember { mutableStateOf(TextFieldValue()) }
     val listState = rememberLazyListState()
@@ -91,6 +93,7 @@ fun <T> LibraryEntityListScreen(
             collapseProvider = { collapse.value },
             pureBlack = pureBlack,
             bottomInset = bottomInset,
+            trailing = trailing,
         ) {
             item(key = "top_rule") {
                 LibraryRule()

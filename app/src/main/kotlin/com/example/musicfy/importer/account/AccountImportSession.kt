@@ -5,6 +5,7 @@ package com.example.musicfy.importer.account
 import android.content.Context
 import com.example.musicfy.constants.AccountNameKey
 import com.example.musicfy.extensions.isUserLoggedIn
+import com.example.musicfy.importer.ImportSource
 import com.example.musicfy.importer.ImportedTrack
 import com.example.musicfy.importer.ParsedImport
 import com.example.musicfy.utils.dataStore
@@ -249,6 +250,7 @@ class AccountImportSession(
                 likedSongs = liked,
                 playlists = playlists,
                 warnings = if (failed.isEmpty()) emptyList() else listOf("Couldn't read: ${failed.joinToString(", ")}. The rest imports fine."),
+                provider = ImportSource.fromKey(service.route),
             )
         }
     }

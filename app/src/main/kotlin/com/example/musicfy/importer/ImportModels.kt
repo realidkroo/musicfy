@@ -16,11 +16,35 @@ data class ImportedTrack(
     val ytItem: SongItem? = null,
 )
 
+/**
+ * Where imported music came from. Kept with every imported song (see `ImportedSong`) so the Library
+ * can list "Imported from Spotify" and the YouTube library sync knows to leave these songs alone.
+ */
+enum class ImportSource(val key: String, val label: String) {
+    SPOTIFY("spotify", "Spotify"),
+    APPLE_MUSIC("apple_music", "Apple Music"),
+    TIDAL("tidal", "Tidal"),
+    YOUTUBE_MUSIC("youtube_music", "YouTube Music"),
+    DEEZER("deezer", "Deezer"),
+
+    /** A file or a service with no name of its own (a TuneMyMusic CSV, a Musicfy backup). */
+    OTHER("other", "other sources");
+
+    /** The sources the Library gives a category of their own. */
+    val isListed: Boolean get() = this != OTHER
+
+    companion object {
+        fun fromKey(key: String?): ImportSource? = entries.firstOrNull { it.key == key }
+    }
+}
+
 data class ParsedImport(
     val likedSongs: List<ImportedTrack>,
     val playlists: Map<String, List<ImportedTrack>>,
     /** Things the user should know before importing, e.g. a source that only shares part of a playlist. */
     val warnings: List<String> = emptyList(),
+    /** Which service this came from; null when that isn't known (a plain CSV). */
+    val provider: ImportSource? = null,
 ) {
     val totalSongs: Int get() = likedSongs.size + playlists.values.sumOf { it.size }
     val totalPlaylists: Int get() = playlists.size
@@ -45,6 +69,8 @@ data class ImportProgress(
     val currentLabel: String = "",
     val isDone: Boolean = false,
     val cancelled: Boolean = false,
+    /** The service being imported from, for the "Adding 12 of 340 tracks from Spotify" banner. */
+    val source: ImportSource? = null,
     val playlistsCreated: Int = 0,
     val likedAdded: Int = 0,
     val unmatched: List<UnmatchedTrack> = emptyList(),

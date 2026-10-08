@@ -155,7 +155,7 @@ object LinkImporter {
                 add("Spotify only shares the first $SPOTIFY_EMBED_LIMIT songs of a playlist through links. For the whole playlist, use the TuneMyMusic CSV option.")
             }
         }
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), warnings = warnings)
+        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), warnings = warnings, provider = ImportSource.SPOTIFY)
     }
 
     private const val SPOTIFY_EMBED_LIMIT = 100
@@ -207,7 +207,7 @@ object LinkImporter {
                 add("Apple Music's page only listed ${tracks.size} of $declaredCount songs. For the whole playlist, use the TuneMyMusic CSV option.")
             }
         }
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), warnings = warnings)
+        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), warnings = warnings, provider = ImportSource.APPLE_MUSIC)
     }
 
     // ---- Deezer: public API, no key needed ----
@@ -239,7 +239,7 @@ object LinkImporter {
             pages++
         }
         if (tracks.isEmpty()) throw LinkImportException("That Deezer $type has no songs we can read.")
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks))
+        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), provider = ImportSource.DEEZER)
     }
 
     private suspend fun deezerJson(url: String): JsonObject {
@@ -272,7 +272,7 @@ object LinkImporter {
         }
         val tracks = page.songs.map { it.toImportedTrack() }
         if (tracks.isEmpty()) throw LinkImportException("That YouTube playlist is empty.")
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(page.playlist.title to tracks))
+        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(page.playlist.title to tracks), provider = ImportSource.YOUTUBE_MUSIC)
     }
 
     private suspend fun fetchYouTubeAlbum(browseId: String): ParsedImport {
@@ -281,6 +281,6 @@ object LinkImporter {
         }
         val tracks = page.songs.map { it.toImportedTrack() }
         if (tracks.isEmpty()) throw LinkImportException("That album has no songs.")
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(page.album.title to tracks))
+        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(page.album.title to tracks), provider = ImportSource.YOUTUBE_MUSIC)
     }
 }
