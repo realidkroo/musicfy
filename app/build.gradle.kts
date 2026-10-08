@@ -27,7 +27,7 @@ extensions.configure<ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = 71
-        versionName = "7.1.3 build#1104"
+        versionName = "7.1.3 build#1106"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -45,6 +45,16 @@ extensions.configure<ApplicationExtension> {
 //add nightly build label support
         val isNightly = project.hasProperty("nightly") && project.property("nightly") == "true"
         buildConfigField("Boolean", "IS_NIGHTLY", isNightly.toString())
+
+        // When this build's code was made (its commit, not the wall clock, so it only changes with the
+        // code). The Developer space counts issues, commits and releases since then.
+        val buildTimeMillis = runCatching {
+            providers.exec {
+                commandLine("git", "log", "-1", "--format=%ct")
+                isIgnoreExitValue = true
+            }.standardOutput.asText.get().trim().toLong() * 1000L
+        }.getOrDefault(0L)
+        buildConfigField("long", "BUILD_TIME_MILLIS", "${buildTimeMillis}L")
     }
     
 

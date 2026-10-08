@@ -96,6 +96,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -144,6 +145,8 @@ import com.example.musicfy.ui.screens.recap.recapBarcodeCaption
 import com.example.musicfy.ui.screens.recap.recapBarcodePayload
 import com.example.musicfy.ui.screens.recap.recapDots
 import com.example.musicfy.ui.screens.recap.rememberRecapTime
+import com.example.musicfy.ui.screens.settings.devspace.DevAvatar
+import com.example.musicfy.ui.screens.settings.devspace.rememberDevCounts
 import com.example.musicfy.ui.screens.setup.onboarding.IdCardAspect
 import com.example.musicfy.ui.screens.setup.onboarding.ProfileIdCard
 import com.example.musicfy.ui.screens.update.UpdateHeadline
@@ -650,6 +653,8 @@ fun ProfileScreen(navController: NavController) {
                         updateHeadline = if (updateState is com.example.musicfy.core.updater.UpdateState.Available) UpdateHeadline else null,
                         onAbout = { zoomOutState.showUpdateSheet(updateState) },
                     )
+                    Spacer(Modifier.height(16.dp))
+                    DeveloperCard(onClick = { navController.navigate("developer_space") })
                     Spacer(Modifier.height(28.dp))
                     Text("Settings", style = PageTitle.copy(fontSize = 15.sp), modifier = Modifier.padding(start = 2.dp, bottom = 10.dp))
                     OpenSettingsRow(onClick = { navController.navigate("musicfy_settings") })
@@ -797,9 +802,17 @@ private val PageTitle = TextStyle(
 
 private val MonoSmall = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp)
 
+/** A big figure's size in dp: it follows the card's width, not the font-size setting, so it never overflows. */
+@Composable
+private fun figureSp(dp: Float): TextUnit = with(LocalDensity.current) { dp.dp.toSp() }
+
+/** How much the cards' figures grow or shrink from the design's 360dp-wide phone, by the width they actually get. */
+private fun widthScale(cardWidthDp: Float): Float = (cardWidthDp / 320f).coerceIn(0.72f, 1.2f)
+
 @Composable
 private fun ListeningTimeCard(totalMs: Long, onViewStats: () -> Unit) {
     val totalMinutes = (totalMs / 60_000L).coerceAtLeast(0L)
+    val hours = totalMinutes / 60
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -808,21 +821,26 @@ private fun ListeningTimeCard(totalMs: Long, onViewStats: () -> Unit) {
             .clickable(onClick = onViewStats)
             .padding(CardPadding),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TimeValue((totalMinutes / 60).toString(), "h")
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 14.dp)
-                    .width(1.dp)
-                    .height(34.dp)
-                    .background(Color.White.copy(alpha = 0.4f)),
-            )
-            TimeValue((totalMinutes % 60).toString(), "m")
-            Spacer(Modifier.weight(1f))
-            Text(
-                "Total Listening\ntime",
-                style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp, lineHeight = 18.sp, color = Color(0xFF8A8A8A)),
-            )
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // long hour counts ("1234h") shrink the figures a step so the label keeps its room
+            val k = widthScale(maxWidth.value + 40f) * if (hours >= 1000) 0.8f else if (hours >= 100) 0.9f else 1f
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TimeValue(hours.toString(), "h", k)
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = (14 * k).dp)
+                        .width(1.dp)
+                        .height((34 * k).dp)
+                        .background(Color.White.copy(alpha = 0.4f)),
+                )
+                TimeValue((totalMinutes % 60).toString(), "m", k)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "Total Listening\ntime",
+                    style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 14.sp, lineHeight = 18.sp, color = Color(0xFF8A8A8A), textAlign = TextAlign.End),
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
         Spacer(Modifier.height(14.dp))
         Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF474747)))
@@ -835,11 +853,11 @@ private fun ListeningTimeCard(totalMs: Long, onViewStats: () -> Unit) {
 }
 
 @Composable
-private fun TimeValue(value: String, unit: String) {
+private fun TimeValue(value: String, unit: String, k: Float) {
     Row(verticalAlignment = Alignment.Bottom) {
         OdometerNumber(
             value = value,
-            fontSize = 44.sp,
+            fontSize = figureSp(44f * k),
             fontWeight = FontWeight.Bold,
             fontFamily = InterFontFamily,
             color = Color.White,
@@ -847,43 +865,101 @@ private fun TimeValue(value: String, unit: String) {
         )
         Text(
             unit,
-            style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White),
-            modifier = Modifier.padding(start = 1.dp, bottom = 6.dp),
+            style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = figureSp(18f * k), color = Color.White),
+            modifier = Modifier.padding(start = 1.dp, bottom = (6 * k).dp),
         )
     }
 }
 
 @Composable
 private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    BoxWithConstraints {
+        val k = widthScale(maxWidth.value)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(PageCard)
+                .clickable(onClick = onAbout)
+                .padding(CardPadding),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Version", style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFF9A9A9A)))
+                Text(
+                    // "7.1.1 build#1093" -> "7.1.1"
+                    BuildConfig.VERSION_NAME.substringBefore(' '),
+                    style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = figureSp(44f * k), letterSpacing = (-2).sp, color = Color.White),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (updateHeadline != null) {
+                    Text(updateHeadline, style = TextStyle(fontFamily = InterFontFamily, fontSize = 12.sp, color = Color(0xFF88FF76)), maxLines = 2)
+                }
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                if (updateHeadline != null) "Update" else "About app",
+                style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White),
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(Color(0xFF4D4D4D))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+/** "Developer page": roo's picture and the repo's open / resolved issue counts, live from GitHub. */
+@Composable
+private fun DeveloperCard(onClick: () -> Unit) {
+    val counts = rememberDevCounts()
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
             .background(PageCard)
-            .clickable(onClick = onAbout)
+            .clickable(onClick = onClick)
             .padding(CardPadding),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text("Version", style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color(0xFF9A9A9A)))
-            Text(
-                // "7.1.1 build#1093" -> "7.1.1"
-                BuildConfig.VERSION_NAME.substringBefore(' '),
-                style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 44.sp, letterSpacing = (-2).sp, color = Color.White),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (updateHeadline != null) {
-                Text(updateHeadline, style = TextStyle(fontFamily = InterFontFamily, fontSize = 12.sp, color = Color(0xFF88FF76)), maxLines = 1)
+        Text("Developer page", style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = (-0.4).sp, color = Color(0xFF8A8A8A)))
+        Spacer(Modifier.height(12.dp))
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val k = widthScale(maxWidth.value + 40f) * if (maxOf(counts?.open ?: 0, counts?.resolved ?: 0) >= 100) 0.85f else 1f
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DevAvatar(Modifier.size((38 * k).dp))
+                Spacer(Modifier.width((14 * k).dp))
+                DevFigure(counts?.open, "issues", k, Modifier.weight(1f, fill = false))
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = (12 * k).dp)
+                        .width(1.dp)
+                        .height((30 * k).dp)
+                        .background(Color.White.copy(alpha = 0.85f)),
+                )
+                DevFigure(counts?.resolved, "Resolved", k, Modifier.weight(1f, fill = false))
             }
         }
+    }
+}
+
+@Composable
+private fun DevFigure(value: Int?, label: String, k: Float, modifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.Bottom, modifier = modifier) {
+        OdometerNumber(
+            value = value?.toString() ?: "–",
+            fontSize = figureSp(40f * k),
+            fontWeight = FontWeight.Bold,
+            fontFamily = InterFontFamily,
+            color = Color.White,
+            letterSpacing = (-1.6).sp,
+        )
         Text(
-            if (updateHeadline != null) "Update" else "About app",
-            style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White),
-            modifier = Modifier
-                .clip(CircleShape)
-                .background(Color(0xFF4D4D4D))
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            label,
+            style = TextStyle(fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = figureSp(15f * k), letterSpacing = (-0.5).sp, color = Color(0xFF8A8A8A)),
+            maxLines = 1,
+            modifier = Modifier.padding(start = 3.dp, bottom = (6 * k).dp),
         )
     }
 }

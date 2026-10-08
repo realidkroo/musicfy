@@ -397,12 +397,6 @@ fun MusicfySettingsScreen(navController: NavController) {
                         )
 
                         CategoryBubble(
-                            title = "Experimental settings",
-                            iconRes = R.drawable.biotech,
-                            onClick = { navController.navigate("experimental_settings") }
-                        )
-
-                        CategoryBubble(
                             title = "Other Settings",
                             iconRes = R.drawable.settings,
                             onClick = { navController.navigate("other_settings") }
@@ -471,7 +465,7 @@ fun MusicfySettingsScreen(navController: NavController) {
 }
 
 @Composable
-private fun CategoryBubble(
+internal fun CategoryBubble(
     title: String,
     iconRes: Int,
     onClick: () -> Unit,

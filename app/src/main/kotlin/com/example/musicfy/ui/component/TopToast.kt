@@ -244,7 +244,7 @@ private fun ToastPill(toast: TopToast) {
                     }
                     .padding(horizontal = 4.dp, vertical = 8.dp),
             ) {
-                Icon(painterResource(R.drawable.arrow_forward), null, tint = Color(0xFFE6E6E6), modifier = Modifier.size(18.dp))
+                Icon(painterResource(R.drawable.undo), null, tint = Color(0xFFE6E6E6), modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(
                     toast.actionLabel,

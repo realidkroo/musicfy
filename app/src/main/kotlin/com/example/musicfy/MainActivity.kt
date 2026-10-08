@@ -1424,6 +1424,7 @@ val SubSettingsRoutes = setOf(
     "import_progress",
     "youtube_sync",
     "stats",
+    "developer_space",
 )
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }
