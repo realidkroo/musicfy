@@ -147,8 +147,12 @@ fun TopToastHost(modifier: Modifier = Modifier) {
                     slideOutVertically(tween(260, easing = ToastEase)) { -it - 40 } + fadeOut(tween(200))
                     ) using SizeTransform(clip = false) { _, _ -> tween(1) }
             },
+            // full width, top-centred: with nothing left to show the box shrinks, and an exiting pill
+            // would otherwise be re-aligned into the shrinking box and jump sideways before it leaves
+            contentAlignment = Alignment.TopCenter,
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .fillMaxWidth()
                 .padding(top = top + 8.dp, start = 14.dp, end = 14.dp),
             label = "topToast",
         ) { t ->

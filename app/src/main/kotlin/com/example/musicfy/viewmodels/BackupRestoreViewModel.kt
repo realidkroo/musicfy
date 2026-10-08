@@ -67,10 +67,10 @@ class BackupRestoreViewModel @Inject constructor(
                 }
             }
         }.onSuccess {
-            Toast.makeText(context, R.string.backup_create_success, Toast.LENGTH_SHORT).show()
+            com.example.musicfy.ui.component.TopToaster.show(context.getString(R.string.backup_create_success), iconRes = R.drawable.backup)
         }.onFailure {
             reportException(it)
-            Toast.makeText(context, R.string.backup_create_failed, Toast.LENGTH_SHORT).show()
+            com.example.musicfy.ui.component.TopToaster.error(context.getString(R.string.backup_create_failed))
         }
     }
 
@@ -126,7 +126,7 @@ class BackupRestoreViewModel @Inject constructor(
         }.onFailure {
             reportException(it)
             Timber.tag("RESTORE").e(it, "Restore failed")
-            Toast.makeText(context, R.string.restore_failed, Toast.LENGTH_SHORT).show()
+            com.example.musicfy.ui.component.TopToaster.error(context.getString(R.string.restore_failed))
         }
     }
 

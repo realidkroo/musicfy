@@ -637,7 +637,7 @@ fun ProfileScreen(navController: NavController) {
                 // ---- everything under the header ----
                 Column(
                     modifier = Modifier
-                        .padding(horizontal = HomeContentInset)
+                        .padding(horizontal = 20.dp)
                         .graphicsLayer {
                             alpha = contentIn.value * (1f - expand * 2f).coerceIn(0f, 1f)
                             translationY = (1f - contentIn.value) * 60.dp.toPx()
@@ -761,7 +761,7 @@ private const val CardTopDp = 130f
 private val TopBarLogoTop = 32.dp
 
 /** Inner padding every card on this page shares. */
-private val CardPadding = PaddingValues(horizontal = 28.dp, vertical = 22.dp)
+private val CardPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp)
 
 /** The collapsed header: inset, logo, greeting, the card, and room for the pull hint. */
 private fun collapsedHeaderPx(top: Float, cardH: Float, density: Float): Float = top + CardTopDp * density + cardH + 49f * density
@@ -803,7 +803,7 @@ private fun ListeningTimeCard(totalMs: Long, onViewStats: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(PageCard)
             .clickable(onClick = onViewStats)
             .padding(CardPadding),
@@ -859,7 +859,7 @@ private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(PageCard)
             .clickable(onClick = onAbout)
             .padding(CardPadding),
@@ -892,23 +892,24 @@ private fun VersionCard(updateHeadline: String?, onAbout: () -> Unit) {
 private fun OpenSettingsRow(onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .height(64.dp)
+            .clip(RoundedCornerShape(22.dp))
             .background(PageCard)
             .clickable(onClick = onClick)
-            .padding(CardPadding),
+            .padding(horizontal = 16.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(26.dp)
+                .size(36.dp)
                 .clip(CircleShape)
                 .background(Color(0xFFD9D9D9)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(painterResource(R.drawable.settings), contentDescription = null, tint = Color(0xFF232323), modifier = Modifier.size(16.dp))
+            Icon(painterResource(R.drawable.settings), contentDescription = null, tint = Color(0xFF232323), modifier = Modifier.size(18.dp))
         }
-        Text("Open settings", style = PageTitle.copy(fontSize = 20.sp))
+        Text("Open settings", style = PageTitle.copy(fontSize = 17.sp, fontWeight = FontWeight.SemiBold))
     }
 }

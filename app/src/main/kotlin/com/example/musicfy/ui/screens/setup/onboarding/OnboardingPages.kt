@@ -133,7 +133,7 @@ internal fun ProviderListPage(onPick: (AccountService) -> Unit, onBack: () -> Un
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             listOf(
-                AccountService.SPOTIFY to "Liked Songs and every playlist",
+                AccountService.SPOTIFY to "[borked-notworking.use csv export instead.]",
                 AccountService.APPLE_MUSIC to "Library playlists and Favorite Songs",
                 AccountService.YOUTUBE_MUSIC to "Liked music and playlists · also supports sync",
                 AccountService.TIDAL to "My Tracks and your playlists",

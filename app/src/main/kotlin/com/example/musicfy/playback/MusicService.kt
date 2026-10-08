@@ -1297,6 +1297,7 @@ class MusicService :
         }
 
         waitingForNetworkConnection.value = true
+        com.example.musicfy.ui.component.TopToaster.error("Stream failed: no internet connection")
 
         retryJob?.cancel()
         retryJob = scope.launch {
@@ -1332,6 +1333,7 @@ class MusicService :
 
         consecutivePlaybackErr += 2
         val nextWindowIndex = player.nextMediaItemIndex
+        announceStreamFailure()
 
         if (consecutivePlaybackErr <= MAX_CONSECUTIVE_ERR && nextWindowIndex != C.INDEX_UNSET) {
             player.seekTo(nextWindowIndex, C.TIME_UNSET)
@@ -1349,6 +1351,20 @@ class MusicService :
 
     private fun stopOnError() {
         player.pause()
+        announceStreamFailure()
+    }
+
+    private var lastPlaybackError: PlaybackException? = null
+
+    /** The top toast for a stream that couldn't be played, with a plain reason. */
+    private fun announceStreamFailure() {
+        val e = lastPlaybackError
+        val reason = when {
+            !isNetworkConnected.value || (e != null && isNetworkRelatedError(e)) -> "no internet connection"
+            e != null && getHttpResponseCode(e) != null -> "server error ${getHttpResponseCode(e)}"
+            else -> e?.errorCodeName?.removePrefix("ERROR_CODE_")?.lowercase()?.replace('_', ' ') ?: "unknown error"
+        }
+        com.example.musicfy.ui.component.TopToaster.error("Stream failed: $reason")
     }
 
     private fun updateNotification() {
@@ -2637,6 +2653,7 @@ class MusicService :
             return
         }
 
+        lastPlaybackError = error
         val mediaId = player.currentMediaItem?.mediaId
         Timber.tag(TAG).w(error, "Player error occurred for $mediaId: errorCode=${error.errorCode}, message=${error.message}")
         reportException(error)

@@ -78,7 +78,6 @@ import com.example.musicfy.R
 import com.example.musicfy.constants.ProfilePicUriKey
 import com.example.musicfy.ui.component.BlurDirection
 import com.example.musicfy.ui.component.GlassState
-import com.example.musicfy.ui.component.HomeContentInset
 import com.example.musicfy.ui.component.LocalBottomSheetPageState
 import com.example.musicfy.ui.component.PopupSheetHandle
 import com.example.musicfy.ui.component.ProgressiveGlassBackground
@@ -96,6 +95,7 @@ import java.util.Locale
 
 private val StatsCard = Color(0xFF0F0F0F)
 private val ChipBg = Color(0xFF2A2A2A)
+private val PagePadding = 20.dp
 
 private fun statsText(size: Float, weight: FontWeight = FontWeight.Bold, color: Color = StatsInk, tracking: Float = -0.02f * size) =
     TextStyle(fontFamily = InterFontFamily, fontWeight = weight, fontSize = size.sp, letterSpacing = tracking.sp, color = color)
@@ -181,7 +181,7 @@ fun StatsScreen(navController: NavController) {
                     Row(
                         verticalAlignment = Alignment.Bottom,
                         modifier = Modifier
-                            .padding(horizontal = HomeContentInset)
+                            .padding(horizontal = PagePadding)
                             .graphicsLayer { alpha = 1f - collapse },
                     ) {
                         Text("Stats", style = statsText(44f, tracking = -1.6f))
@@ -212,7 +212,7 @@ fun StatsScreen(navController: NavController) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .padding(start = HomeContentInset, top = 4.dp, bottom = 14.dp)
+                            .padding(start = PagePadding, top = 4.dp, bottom = 14.dp)
                             .clip(CircleShape)
                             .background(ChipBg)
                             .clickable { val open = !allOpen; CardKeys.forEach { expanded[it] = open } }
@@ -247,7 +247,7 @@ fun StatsScreen(navController: NavController) {
                         Text(
                             "Let's see how often you like to listen to music",
                             style = statsText(16f),
-                            modifier = Modifier.padding(start = HomeContentInset, end = HomeContentInset, top = 18.dp, bottom = 12.dp),
+                            modifier = Modifier.padding(start = PagePadding, end = PagePadding, top = 18.dp, bottom = 12.dp),
                         )
                     }
                     item(key = "weekday") { WeekdayCard(s, thisWhat, expanded) }
@@ -257,7 +257,7 @@ fun StatsScreen(navController: NavController) {
                             "Everything here is collected by your usage on this app and WILL NEVER BE SENT to some random server! " +
                                 "(Genres are looked up by artist name only.)",
                             style = statsText(11f, FontWeight.SemiBold, StatsInkMuted, 0f),
-                            modifier = Modifier.padding(horizontal = HomeContentInset + 4.dp, vertical = 10.dp),
+                            modifier = Modifier.padding(horizontal = PagePadding + 4.dp, vertical = 10.dp),
                         )
                     }
                 }
@@ -296,7 +296,7 @@ fun StatsScreen(navController: NavController) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = HomeContentInset, end = HomeContentInset, top = topInset + 32.dp),
+                .padding(start = PagePadding, end = PagePadding, top = topInset + 32.dp),
         ) {
             Box(contentAlignment = Alignment.CenterStart) {
                 Icon(
@@ -365,9 +365,9 @@ private fun StatsCardBox(
     val open = expandKey != null && expanded?.get(expandKey) == true
     Column(
         modifier = Modifier
-            .padding(horizontal = HomeContentInset, vertical = 7.dp)
+            .padding(horizontal = PagePadding, vertical = 7.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(StatsCard)
             .then(if (expandKey != null && expanded != null) Modifier.clickable { expanded[expandKey] = !open } else Modifier)
             .padding(start = 20.dp, end = 16.dp, top = 18.dp, bottom = 14.dp),

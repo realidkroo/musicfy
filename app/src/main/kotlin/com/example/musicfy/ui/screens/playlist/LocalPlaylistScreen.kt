@@ -644,23 +644,23 @@ fun LocalPlaylistScreen(
                 fun removeWithUndo() {
                     val removed = currentItem
                     deleteFromPlaylist()
-                    coroutineScope.launch {
-                        val result = snackbarHostState.showSnackbar(
-                            message = context.getString(R.string.removed_song_from_playlist, removed.song.song.title),
-                            actionLabel = context.getString(R.string.undo),
-                            duration = SnackbarDuration.Short,
-                        )
-                        if (result == SnackbarResult.ActionPerformed) {
-                            database.transaction {
-                                insert(removed.map.copy(position = Int.MAX_VALUE))
-                                move(removed.map.playlistId, Int.MAX_VALUE, removed.map.position)
+                    val browseId = playlist?.playlist?.browseId
+                    com.example.musicfy.ui.component.TopToaster.show(
+                        text = "Removed ${removed.song.song.title} from ${playlist?.playlist?.name ?: "playlist"}",
+                        thumbnail = removed.song.song.thumbnailUrl,
+                        iconRes = R.drawable.playlist_add,
+                        actionLabel = context.getString(R.string.undo),
+                        onAction = {
+                            coroutineScope.launch {
+                                database.transaction {
+                                    insert(removed.map.copy(position = Int.MAX_VALUE))
+                                    move(removed.map.playlistId, Int.MAX_VALUE, removed.map.position)
+                                }
+                                // a synced playlist gets it back on YouTube too (at the end there)
+                                browseId?.let { launch(Dispatchers.IO) { YouTube.addToPlaylist(it, removed.map.songId) } }
                             }
-                            // a synced playlist gets it back on YouTube too (at the end there)
-                            playlist?.playlist?.browseId?.let { browseId ->
-                                launch(Dispatchers.IO) { YouTube.addToPlaylist(browseId, removed.map.songId) }
-                            }
-                        }
-                    }
+                        },
+                    )
                 }
 
                 val onCheckedChange: (Boolean) -> Unit = {

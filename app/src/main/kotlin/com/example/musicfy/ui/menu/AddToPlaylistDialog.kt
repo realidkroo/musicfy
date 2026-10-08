@@ -56,6 +56,7 @@ import com.example.musicfy.ui.component.SheetPillButton
 import com.example.musicfy.ui.component.SheetSearchField
 import com.example.musicfy.viewmodels.PlaylistsViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import java.text.Collator
 import java.time.LocalDateTime
@@ -73,6 +74,22 @@ private const val RecentCount = 4
  * @param topSongId when the songs are being added to a playlist made right here, the first of
  *   them with its [topSongArtworkUrl]: the new playlist's cover takes its colours from it.
  */
+/** The top toast for songs just added to [playlist]: what went in, and Undo (not for a synced playlist, which YouTube has already been told about). */
+private fun announceAddedToPlaylist(database: com.example.musicfy.db.MusicDatabase, playlist: Playlist, ids: List<String>) {
+    if (ids.isEmpty()) return
+    kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+        val first = database.song(ids.first()).firstOrNull()?.song
+        val name = playlist.playlist.name
+        com.example.musicfy.ui.component.TopToaster.show(
+            text = if (ids.size == 1) "Added ${first?.title ?: "song"} to $name" else "Added ${ids.size} songs to $name",
+            thumbnail = first?.thumbnailUrl,
+            iconRes = R.drawable.playlist_add,
+            actionLabel = if (playlist.playlist.browseId == null) "Undo" else null,
+            onAction = { database.query { removeAddedSongs(playlist.id, ids, playlist.songCount) } },
+        )
+    }
+}
+
 @Composable
 fun AddToPlaylistDialog(
     isVisible: Boolean,
@@ -116,6 +133,7 @@ fun AddToPlaylistDialog(
                 sheet[0]?.dismiss()
                 currentOnDismiss()
                 database.addSongToPlaylist(playlist, ids)
+                announceAddedToPlaylist(database, playlist, ids)
 
                 playlist.playlist.browseId?.let { browseId ->
                     ids.forEach { YouTube.addToPlaylist(browseId, it) }
@@ -168,12 +186,11 @@ fun AddToPlaylistDialog(
                         showDuplicate = false
                         sheet[0]?.dismiss()
                         currentOnDismiss()
+                        val keep = songIds!!.filter { !duplicates.contains(it) }
                         database.transaction {
-                            addSongToPlaylist(
-                                selectedPlaylist!!,
-                                songIds!!.filter { !duplicates.contains(it) }
-                            )
+                            addSongToPlaylist(selectedPlaylist!!, keep)
                         }
+                        announceAddedToPlaylist(database, selectedPlaylist!!, keep)
                     }
                 ) {
                     Text(stringResource(R.string.skip_duplicates))
@@ -187,6 +204,7 @@ fun AddToPlaylistDialog(
                         database.transaction {
                             addSongToPlaylist(selectedPlaylist!!, songIds!!)
                         }
+                        announceAddedToPlaylist(database, selectedPlaylist!!, songIds!!)
                     }
                 ) {
                     Text(stringResource(R.string.add_anyway))
