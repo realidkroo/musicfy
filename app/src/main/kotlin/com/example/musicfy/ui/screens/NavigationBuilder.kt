@@ -298,6 +298,37 @@ fun NavGraphBuilder.navigationBuilder(
         com.example.musicfy.ui.screens.settings.ExperimentalSettingsScreen(navController = navController)
     }
 
+    composable(com.example.musicfy.ui.screens.settings.importsync.ImportSyncRoute) {
+        com.example.musicfy.ui.screens.settings.importsync.ImportSyncScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.importsync.ImportProvidersRoute) {
+        com.example.musicfy.ui.screens.settings.importsync.ImportProvidersScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.importsync.ImportTuneMyMusicRoute) {
+        com.example.musicfy.ui.screens.settings.importsync.TuneMyMusicImportScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.importsync.ImportProgressRoute) {
+        com.example.musicfy.ui.screens.settings.importsync.ImportProgressScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.importsync.YouTubeSyncRoute) {
+        com.example.musicfy.ui.screens.settings.importsync.YouTubeSyncScreen(navController = navController)
+    }
+
+    composable(
+        route = com.example.musicfy.ui.screens.settings.importsync.AccountImportRoutePattern,
+        arguments = listOf(navArgument("service") { type = NavType.StringType }),
+    ) {
+        com.example.musicfy.ui.screens.settings.importsync.AccountImportScreen(navController = navController)
+    }
+
+    composable(com.example.musicfy.ui.screens.settings.importsync.YouTubeLoginRoute) {
+        com.example.musicfy.ui.screens.settings.importsync.YouTubeLoginScreen(navController = navController)
+    }
+
     composable("equalizer") {
         com.example.musicfy.ui.screens.equalizer.EqualizerScreen(navController = navController)
     }

@@ -55,6 +55,8 @@ import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -62,6 +64,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -590,16 +593,24 @@ private fun sheetSurfaceShape(isTablet: Boolean): Shape =
         bottomEnd = if (isTablet) 28.dp else 0.dp,
     )
 
+@Composable
 private fun BoxWithConstraintsScope.sheetSizeModifier(isTablet: Boolean): Modifier =
     if (isTablet) {
         Modifier
             .widthIn(max = 460.dp)
             .fillMaxHeight(0.84f)
     } else {
+        // On short screens 86% reaches the status bar once a covered sheet rises to peek above
+        // this one; keep the whole stack, peek strip included, below it.
+        val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val belowStatusBar = maxHeight - statusBar - StatusBarGap - PeekHeight
         Modifier
             .fillMaxWidth()
-            .heightIn(max = maxHeight * MaxSheetHeightFraction)
+            .heightIn(max = minOf(maxHeight * MaxSheetHeightFraction, belowStatusBar).coerceAtLeast(0.dp))
     }
+
+/** Space kept between the status bar and the highest a sheet's peek strip can reach. */
+private val StatusBarGap = 6.dp
 
 /**
  * Handle + content at the top, the button bar pinned to the bottom. The two only separate when

@@ -139,6 +139,13 @@ class HomeRecommender(
         ).first()
             .filter { it.artist.isYouTubeArtist && it.artist.name.lowercase() !in avoidArtists }
             .sortedByDescending { it.timeListened ?: 0 }
+            .ifEmpty {
+                // nothing played yet: the artists picked during onboarding (saved to the library)
+                // stand in until listening history takes over
+                database.artists(com.example.musicfy.constants.ArtistSortType.CREATE_DATE, true).first()
+                    .filter { it.artist.isYouTubeArtist && it.artist.name.lowercase() !in avoidArtists }
+                    .take(14)
+            }
 
         return TasteProfile(
             heard = scores.keys,

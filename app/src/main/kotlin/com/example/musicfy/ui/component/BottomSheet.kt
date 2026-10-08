@@ -61,6 +61,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
@@ -91,13 +92,13 @@ fun BottomSheet(
     isExpandable: Boolean = true,
     isPillTransition: Boolean = false,
     pureBlack: Boolean = false,
-    /** Takes upward swipes on the fully expanded sheet (pill transition only). */
-    expandedSwipeUp: ExpandedSwipeUp? = null,
+    /** Offered vertical swipes on the fully expanded sheet first (pill transition only). */
+    expandedSwipe: ExpandedSwipe? = null,
     sharedContent: @Composable (BoxScope.() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
-    val currentSwipeUp by androidx.compose.runtime.rememberUpdatedState(expandedSwipeUp)
+    val currentSwipe by androidx.compose.runtime.rememberUpdatedState(expandedSwipe)
 
     if (!isPillTransition) {
         Box(
@@ -210,6 +211,8 @@ fun BottomSheet(
             var dragStartTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
             var totalHorizontalDrag by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
 
+            val sheetCoordinates = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
+
             val sheetClipShape = remember {
                 object : androidx.compose.ui.graphics.Shape {
                     var hp = 0f
@@ -282,29 +285,38 @@ fun BottomSheet(
                                 }
                             )
                         }
+                        // Where the sheet's own coordinates are, so a drag's start can be handed
+                        // to the swipe handler in root coordinates. Stored, not state: it is only
+                        // read when a drag starts.
+                        .onPlaced { sheetCoordinates[0] = it }
                         .pointerInput(state, isExpandable) {
                             if (!isExpandable) return@pointerInput
                             val velocityTracker = VelocityTracker()
-                            // Set once an upward swipe on the expanded sheet has been handed over;
-                            // from then on the whole drag, down included, goes to that handler.
-                            var swipeUp: ExpandedSwipeUp? = null
+                            // Set once a swipe on the expanded sheet has been handed over; from then
+                            // on the whole drag, both directions, goes to that handler.
+                            var swipe: ExpandedSwipe? = null
+                            // Where the drag began, in root coordinates.
+                            var swipeStart = Offset.Zero
 
                             detectDragGestures(
-                                onDragStart = {
+                                onDragStart = { start ->
                                     dragStartTime = System.currentTimeMillis()
                                     totalHorizontalDrag = 0f
                                     velocityTracker.resetTracking()
-                                    swipeUp = null
+                                    swipe = null
+                                    val coordinates = sheetCoordinates[0]
+                                    swipeStart = if (coordinates != null && coordinates.isAttached) {
+                                        coordinates.localToRoot(start)
+                                    } else {
+                                        start
+                                    }
                                 },
                                 onDrag = { change, dragAmount ->
                                     velocityTracker.addPointerInputChange(change)
 
-                                    val claimed = swipeUp ?: currentSwipeUp?.takeIf { handler ->
-                                        state.isExpanded &&
-                                            dragAmount.y < 0f &&
-                                            kotlin.math.abs(dragAmount.y) > kotlin.math.abs(dragAmount.x) &&
-                                            handler.onStart()
-                                    }?.also { swipeUp = it }
+                                    val claimed = swipe ?: currentSwipe?.takeIf { handler ->
+                                        state.isExpanded && handler.onStart(swipeStart, dragAmount)
+                                    }?.also { swipe = it }
 
                                     if (claimed != null) {
                                         claimed.onDrag(dragAmount.y)
@@ -317,7 +329,10 @@ fun BottomSheet(
                                         if (dragAmount.y < -2f && state.isCollapsed) {
                                             state.expandSoft()
                                             change.consume()
-                                        } else if (dragAmount.y > 2f && state.isExpanded) {
+                                        } else if (
+                                            dragAmount.y > 2f && state.isExpanded &&
+                                            currentSwipe?.canCollapseFrom(swipeStart) != false
+                                        ) {
                                             state.collapseSoft()
                                             change.consume()
                                         } else if (dragAmount.y > 2f && state.isCollapsed && onDismiss != null) {
@@ -329,17 +344,17 @@ fun BottomSheet(
                                 },
                                 onDragCancel = {
                                     velocityTracker.resetTracking()
-                                    swipeUp?.onEnd(0f)
-                                    swipeUp = null
+                                    swipe?.onEnd(0f)
+                                    swipe = null
                                     coroutineScope.launch {
                                         state.animateHorizontalOffsetTo(0f)
                                     }
                                 },
                                 onDragEnd = {
-                                    swipeUp?.let { handler ->
+                                    swipe?.let { handler ->
                                         handler.onEnd(velocityTracker.calculateVelocity().y)
                                         velocityTracker.resetTracking()
-                                        swipeUp = null
+                                        swipe = null
                                         return@detectDragGestures
                                     }
                                     velocityTracker.resetTracking()
@@ -662,17 +677,28 @@ fun rememberBottomSheetState(
 }
 
 /**
- * Receives an upward swipe on the fully expanded sheet - the player uses it to pull a page up out
- * of its bottom card. Children that handle their own vertical drags (the card's flip, a list)
- * consume them first, so only the free parts of the sheet get here.
+ * Offered every vertical swipe on the fully expanded sheet before the sheet itself acts on it. The
+ * player uses it to pull a page up out of its bottom card, to send a page back down, and to keep
+ * swipes over its controls from closing it. Children that handle their own drags (the card's flip,
+ * a list, the seek bar, the cover's skip swipe) consume them first, so only the free parts of the
+ * sheet get here.
  */
-interface ExpandedSwipeUp {
-    /** A swipe up has begun. Return false to leave it alone. */
-    fun onStart(): Boolean
+interface ExpandedSwipe {
+    /**
+     * A swipe has begun at [start] (root coordinates) and moved by [drag] (px) so far. Called on
+     * each move until it returns true; once it does, the whole drag goes here.
+     */
+    fun onStart(start: Offset, drag: Offset): Boolean
 
     /** [dy] in px, negative going up. */
     fun onDrag(dy: Float)
 
     /** [velocityY] in px/s, negative going up; 0 when the gesture was cancelled. */
     fun onEnd(velocityY: Float)
+
+    /**
+     * False where a swipe down must not close the sheet even though [onStart] didn't take it -
+     * a diagonal drag over controls that have swipes of their own, say.
+     */
+    fun canCollapseFrom(start: Offset): Boolean = true
 }

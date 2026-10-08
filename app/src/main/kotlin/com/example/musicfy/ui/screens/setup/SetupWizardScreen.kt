@@ -5,432 +5,524 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.musicfy.constants.EnableMonochromeBackendKey
-import com.example.musicfy.importer.ParsedImport
-import com.example.musicfy.ui.screens.settings.MonochromeOnboardingContent
+import com.example.musicfy.constants.CrossmixMode
+import com.example.musicfy.constants.CrossmixModeKey
+import com.example.musicfy.constants.DisableAiFilterKey
+import com.example.musicfy.constants.DisableBlurKey
+import com.example.musicfy.importer.account.AccountImportState
+import com.example.musicfy.importer.account.AccountService
+import com.example.musicfy.ui.screens.settings.importsync.onSignInTick
+import com.example.musicfy.ui.screens.settings.importsync.CaptureWebContent
+import com.example.musicfy.ui.screens.settings.importsync.YouTubeLoginWebContent
+import com.example.musicfy.ui.screens.settings.importsync.clearWebSession
+import com.example.musicfy.ui.screens.setup.onboarding.BehindScale
+import com.example.musicfy.ui.screens.setup.onboarding.BlurCapability
+import com.example.musicfy.ui.screens.setup.onboarding.BlurWarningPage
+import com.example.musicfy.ui.screens.setup.onboarding.BrowserSpring
+import com.example.musicfy.ui.screens.setup.onboarding.BuildHomePage
+import com.example.musicfy.ui.screens.setup.onboarding.CardInfo
+import com.example.musicfy.ui.screens.setup.onboarding.DoneStep
+import com.example.musicfy.ui.screens.setup.onboarding.HelloCardStep
+import com.example.musicfy.ui.screens.setup.onboarding.ImportAskPage
+import com.example.musicfy.ui.screens.setup.onboarding.ImportModePage
+import com.example.musicfy.ui.screens.setup.onboarding.LastOnePage
+import com.example.musicfy.ui.screens.setup.onboarding.MinArtists
+import com.example.musicfy.ui.screens.setup.onboarding.Onb
+import com.example.musicfy.ui.screens.setup.onboarding.OnbButton
+import com.example.musicfy.ui.screens.setup.onboarding.OnboardingBrowserSheet
+import com.example.musicfy.ui.screens.setup.onboarding.ProfilePage
+import com.example.musicfy.ui.screens.setup.onboarding.ProviderListPage
+import com.example.musicfy.ui.screens.setup.onboarding.ProviderSetupPage
+import com.example.musicfy.ui.screens.setup.onboarding.SyncOptionsPage
+import com.example.musicfy.ui.screens.setup.onboarding.WhatToSyncPage
+import com.example.musicfy.utils.rememberEnumPreference
 import com.example.musicfy.utils.rememberPreference
-import com.example.musicfy.importer.parseTuneMyMusicCsv
-import com.example.musicfy.viewmodels.SetupImportViewModel
-import kotlinx.coroutines.Dispatchers
+import com.example.musicfy.viewmodels.OnboardingViewModel
+import com.example.musicfy.viewmodels.YouTubeSyncChoices
+import com.music.innertube.models.ArtistItem
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlin.math.roundToInt
 
-private const val PAGE_WELCOME = 0
-private const val PAGE_PROFILE = 1
-private const val PAGE_GREETING = 2
-private const val PAGE_SETUP_FURTHER = 3
-private const val PAGE_IMPORT_PROVIDER = 4
-private const val PAGE_TMM_INSTRUCTIONS = 5
-private const val PAGE_SELECT_CSV = 6
-private const val PAGE_REVIEW_IMPORT = 7
-private const val PAGE_TOGGLES = 8
-private const val PAGE_MONOCHROME_CHOICE = 9
-private const val PAGE_MONOCHROME_INFO = 10
-private const val PAGE_THANK_YOU = 11
-private const val PAGE_COUNT = 12
+private enum class Step {
+    Welcome, ImportAsk, ImportMode, Providers, ProviderSetup, WhatToSync, SyncOptions,
+    Profile, Hello, BuildHome, BlurWarning, LastOne, Done,
+}
 
+/** Pages that play once and move on by themselves; back never returns to them. */
+private val AutoSteps = setOf(Step.Hello, Step.Done)
+
+/**
+ * Onboarding. The welcome page is the original; everything after it follows the "edit page"
+ * mocks: import (or sync) → provider → sign in, in a browser sheet inside this sheet → pick
+ * playlists → profile card → Hello → (artists, if nothing was imported) → (blur warning, on slow
+ * phones) → Last one → Done.
+ */
 @Composable
 fun SetupWizardScreen(
     onComplete: (String, Uri?) -> Unit,
     onDrag: (Float) -> Unit,
-    onDragRelease: () -> Unit
+    onDragRelease: () -> Unit,
 ) {
-    val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val importViewModel: SetupImportViewModel = hiltViewModel()
+    val vm: OnboardingViewModel = hiltViewModel()
+    val scope = rememberCoroutineScope()
 
-    var username by remember { mutableStateOf("") }
-    var profilePicUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedUncroppedUri by remember { mutableStateOf<Uri?>(null) }
+    val history = remember { mutableStateListOf(Step.Welcome) }
+    var forward by remember { mutableStateOf(true) }
+    val step = history.last()
 
-    var lastPickedUri by remember { mutableStateOf<Uri?>(null) }
-    var isLeavingWelcome by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { vm.reset() }
 
-    /** Scroll of the profile page, so the morph overlay's circle tracks the content under it. */
-    val profileScrollState = androidx.compose.foundation.rememberScrollState()
-
-    val (_, onEnableMonochromeBackendChange) = rememberPreference(
-        EnableMonochromeBackendKey,
-        defaultValue = false
-    )
-
-    var parsedImport by remember { mutableStateOf<ParsedImport?>(null) }
-    var csvLoading by remember { mutableStateOf(false) }
-    var csvError by remember { mutableStateOf<String?>(null) }
-
-    fun goTo(page: Int) {
-        coroutineScope.launch { pagerState.animateScrollToPage(page) }
+    fun go(next: Step, replaceCurrent: Boolean = false) {
+        forward = true
+        if (replaceCurrent && history.size > 1) history.removeAt(history.lastIndex)
+        history.add(next)
     }
 
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { picked: Uri? ->
+    // ---- profile ----
+    var username by rememberSaveable { mutableStateOf("") }
+    var profilePicUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedUncroppedUri by remember { mutableStateOf<Uri?>(null) }
+    var lastPickedUri by remember { mutableStateOf<Uri?>(null) }
+    var prefilled by remember { mutableStateOf(false) }
+    var isLeavingWelcome by remember { mutableStateOf(false) }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { picked ->
         if (picked != null) {
             lastPickedUri = picked
             selectedUncroppedUri = picked
         }
     }
+    fun openPhotoPicker() = photoPicker.launch(
+        androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+    )
 
-    fun openPhotoPicker() {
-        photoPickerLauncher.launch(
-            androidx.activity.result.PickVisualMediaRequest(
-                ActivityResultContracts.PickVisualMedia.ImageOnly
-            )
-        )
-    }
-
-    val csvPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        csvLoading = true
-        csvError = null
-        coroutineScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                        ?: throw IllegalStateException("Couldn't open that file")
-                }.mapCatching { text -> parseTuneMyMusicCsv(text) }
-            }
-            csvLoading = false
-            result.onSuccess { parsed ->
-                if (parsed.totalSongs == 0) {
-                    csvError = "Couldn't find any songs in that file — make sure it's the CSV exported from tunemymusic.com."
-                } else {
-                    parsedImport = parsed
-                    goTo(PAGE_REVIEW_IMPORT)
-                }
-            }.onFailure {
-                csvError = "Couldn't read that file. Make sure it's a valid .csv export."
+    // ---- import ----
+    var backupError by remember { mutableStateOf<String?>(null) }
+    val backupPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val error = vm.importBackup(uri)
+                backupError = error
+                if (error == null) go(Step.Profile)
             }
         }
     }
 
-    LaunchedEffect(pagerState.settledPage) {
-        if (pagerState.settledPage == PAGE_WELCOME) {
-            isLeavingWelcome = false
-        }
-        if (pagerState.settledPage == PAGE_GREETING) {
-            kotlinx.coroutines.delay(3000)
-            pagerState.animateScrollToPage(PAGE_SETUP_FURTHER)
+    val session = vm.session
+    val stateFlow: StateFlow<AccountImportState?> = remember(session) { session?.state ?: MutableStateFlow(null) }
+    val sessionState by stateFlow.collectAsState()
+    val readyFlow = remember(session) { session?.ready ?: MutableStateFlow(null) }
+    val readyImport by readyFlow.collectAsState()
+    var syncChoices by remember { mutableStateOf(YouTubeSyncChoices()) }
+
+    // ---- the browser sheet ----
+    val browserPresence = remember { Animatable(0f) }
+    var browserShown by remember { mutableStateOf(false) }
+    var browserWanted by remember { mutableStateOf(false) }
+
+    fun openBrowser() {
+        if (session == null || browserWanted) return
+        browserWanted = true
+        browserShown = true
+        scope.launch { browserPresence.animateTo(1f, BrowserSpring) }
+    }
+
+    fun closeBrowser() {
+        if (!browserWanted) return
+        browserWanted = false
+        scope.launch {
+            browserPresence.animateTo(0f, BrowserSpring)
+            if (!browserWanted) browserShown = false
         }
     }
 
-    BackHandler {
-        if (selectedUncroppedUri != null) {
-            selectedUncroppedUri = null
-        } else if (pagerState.currentPage > 0) {
-            coroutineScope.launch {
-                pagerState.animateScrollToPage(pagerState.currentPage - 1)
-            }
+    fun back() {
+        if (history.size <= 1 || step in AutoSteps) return
+        forward = false
+        val leaving = history.removeAt(history.lastIndex)
+        // leaving the sign-in or its playlists returns to choosing a provider, signed out of this one
+        if (leaving == Step.ProviderSetup || leaving == Step.WhatToSync) {
+            closeBrowser()
+            vm.closeProvider()
         }
+    }
+
+    // the provider page opens its browser after a beat, once the user has read what's about to happen
+    LaunchedEffect(step, session) {
+        if (step != Step.ProviderSetup || session == null) return@LaunchedEffect
+        delay(900)
+        val state = session.state.value
+        if (state is AccountImportState.SigningIn || state is AccountImportState.NeedsYouTubeSignIn) openBrowser()
+    }
+
+    // signed in and the library is read: close the browser and show the playlists
+    LaunchedEffect(sessionState, step) {
+        if (step == Step.ProviderSetup && sessionState is AccountImportState.Choosing) {
+            closeBrowser()
+            delay(250)
+            go(Step.WhatToSync, replaceCurrent = true)
+        }
+    }
+
+    // the picked playlists are read: the importer takes them from here, onboarding moves on
+    LaunchedEffect(readyImport) {
+        val parsed = readyImport ?: return@LaunchedEffect
+        vm.startImport(parsed)
+        session?.consumeReady()
+        go(Step.Profile)
+    }
+
+    // the account's own name and picture start the profile, once
+    LaunchedEffect(step) {
+        if (step != Step.Profile || prefilled) return@LaunchedEffect
+        prefilled = true
+        if (username.isBlank()) vm.accountName()?.let { username = it }
+        if (profilePicUri == null) {
+            val photo = vm.accountPhoto()
+            if (profilePicUri == null && photo != null) profilePicUri = photo
+        }
+    }
+
+    // ---- artists ----
+    var artistQuery by rememberSaveable { mutableStateOf("") }
+    val pickedArtists = remember { mutableStateMapOf<String, ArtistItem>() }
+    val suggestions by vm.artistSuggestions.collectAsState()
+    val searchResults by vm.artistResults.collectAsState()
+    LaunchedEffect(step) { if (step == Step.BuildHome) vm.loadArtistSuggestions() }
+    LaunchedEffect(artistQuery) {
+        delay(350)
+        vm.searchArtists(artistQuery)
+    }
+
+    // ---- settings the last pages flip ----
+    val (disableBlur, onDisableBlurChange) = rememberPreference(DisableBlurKey, defaultValue = false)
+    val (crossmixMode, onCrossmixModeChange) = rememberEnumPreference(CrossmixModeKey, defaultValue = CrossmixMode.AUTO_CROSSFADE)
+    val (disableAiFilter, onDisableAiFilterChange) = rememberPreference(DisableAiFilterKey, defaultValue = false)
+
+    val card = CardInfo(username = username, photo = profilePicUri, cardNumber = vm.cardNumber, joinedText = vm.joinedText)
+
+    fun afterHome(): Step = if (vm.blur?.verdict == BlurCapability.Verdict.Laggy) Step.BlurWarning else Step.LastOne
+
+    BackHandler(enabled = !browserWanted) {
+        if (selectedUncroppedUri != null) selectedUncroppedUri = null else back()
     }
 
     PhotoCropperContainer(
         uri = selectedUncroppedUri,
-        onDone = { croppedUri ->
-            profilePicUri = croppedUri
+        onDone = { cropped ->
+            profilePicUri = cropped
             selectedUncroppedUri = null
         },
-        onCancel = {
-            selectedUncroppedUri = null
-        },
-        onSelectNewImage = { openPhotoPicker() }
+        onCancel = { selectedUncroppedUri = null },
+        onSelectNewImage = { openPhotoPicker() },
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onVerticalDrag = { change, dragAmount ->
-                            change.consume()
-                            onDrag(dragAmount)
-                        },
-                        onDragEnd = {
-                            onDragRelease()
-                        },
-                        onDragCancel = {
-                            onDragRelease()
-                        }
-                    )
-                }
                 .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                .background(Color(0xFF121212))
+                .background(Onb.Page),
         ) {
+            // the page, receding like a covered sheet while the browser is open over it
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val p = browserPresence.value
+                        val s = 1f - (1f - BehindScale) * p
+                        scaleX = s
+                        scaleY = s
+                        transformOrigin = TransformOrigin(0.5f, 0f)
+                        if (p > 0f) {
+                            shape = RoundedCornerShape(32.dp)
+                            clip = true
+                        }
+                    },
+            ) {
+                AnimatedContent(
+                    targetState = step,
+                    transitionSpec = {
+                        val auto = targetState in AutoSteps || initialState in AutoSteps
+                        when {
+                            auto -> (fadeIn(tween(420)) + scaleIn(tween(520), initialScale = 0.96f)) togetherWith fadeOut(tween(260))
+                            forward -> slideInHorizontally(tween(380)) { it / 3 } + fadeIn(tween(320)) togetherWith
+                                slideOutHorizontally(tween(380)) { -it / 4 } + fadeOut(tween(220))
+                            else -> slideInHorizontally(tween(380)) { -it / 3 } + fadeIn(tween(320)) togetherWith
+                                slideOutHorizontally(tween(380)) { it / 4 } + fadeOut(tween(220))
+                        }.using(SizeTransform(clip = false))
+                    },
+                    label = "onboardingStep",
+                    modifier = Modifier.fillMaxSize(),
+                ) { current ->
+                    when (current) {
+                        // black like the welcome page itself, so no grey strip shows above it
+                        Step.Welcome -> Box(Modifier.fillMaxSize().background(Color.Black)) {
+                            Box(Modifier.fillMaxSize().padding(top = 56.dp)) { WelcomeStep(isHiding = isLeavingWelcome) }
+                            OnbButton(
+                                text = "Next",
+                                onClick = {
+                                    isLeavingWelcome = true
+                                    scope.launch {
+                                        delay(400)
+                                        go(Step.ImportAsk)
+                                        isLeavingWelcome = false
+                                    }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .navigationBarsPadding()
+                                    .padding(horizontal = 28.dp, vertical = 18.dp),
+                            )
+                        }
 
-            HorizontalPager(
-                state = pagerState,
-                userScrollEnabled = false,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
+                        Step.ImportAsk -> ImportAskPage(
+                            onYes = { go(Step.ImportMode) },
+                            onSkip = { go(Step.Profile) },
+                        )
 
-                val pageModifier = Modifier.fillMaxSize().padding(top = 56.dp)
-                when (page) {
-                    PAGE_WELCOME -> WelcomeStep(isHiding = isLeavingWelcome)
-                    PAGE_PROFILE -> Box(pageModifier) {
-                        ProfileSetupStep(
+                        Step.ImportMode -> ImportModePage(
+                            onImport = { go(Step.Providers) },
+                            onBackup = {
+                                backupError = null
+                                backupPicker.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel", "application/octet-stream"))
+                            },
+                            onBack = ::back,
+                            backupError = backupError,
+                        )
+
+                        Step.Providers -> ProviderListPage(
+                            onPick = { service ->
+                                vm.startProvider(service)
+                                go(Step.ProviderSetup)
+                            },
+                            onBack = ::back,
+                        )
+
+                        Step.ProviderSetup -> {
+                            val service = session?.service ?: AccountService.SPOTIFY
+                            ProviderSetupPage(
+                                service = service,
+                                state = sessionState,
+                                browserOpen = browserWanted,
+                                onOpenBrowser = ::openBrowser,
+                                onRetry = {
+                                    clearWebSession(service.webOrigins)
+                                    session?.signInAgain()
+                                    openBrowser()
+                                },
+                                onBack = ::back,
+                            )
+                        }
+
+                        Step.WhatToSync -> WhatToSyncPage(
+                            service = session?.service ?: AccountService.SPOTIFY,
+                            state = sessionState,
+                            onToggle = { session?.toggle(it) },
+                            onSelectAll = { session?.selectAll() },
+                            onSelectNone = { session?.selectNone() },
+                            onConfirm = {
+                                // YouTube Music can also stay in sync; the others just import
+                                if (session?.service == AccountService.YOUTUBE_MUSIC) go(Step.SyncOptions) else session?.readSelected()
+                            },
+                            onCancelReading = { session?.cancelReading() },
+                            onBack = ::back,
+                        )
+
+                        Step.SyncOptions -> SyncOptionsPage(
+                            choices = syncChoices,
+                            onChange = { syncChoices = it },
+                            reading = sessionState as? AccountImportState.Reading,
+                            onSync = {
+                                // synced playlists come in through sync itself, linked rather than copied
+                                val selected = (sessionState as? AccountImportState.Choosing)?.selected.orEmpty()
+                                vm.startYouTubeSync(selected, likedId = "LM", choices = syncChoices)
+                                go(Step.Profile)
+                            },
+                            onJustImport = { session?.readSelected() },
+                            onBack = { if (sessionState is AccountImportState.Reading) session?.cancelReading() else back() },
+                        )
+
+                        Step.Profile -> ProfilePage(
                             username = username,
                             onUsernameChange = { username = it },
-                            profilePicUri = profilePicUri,
-                            onProfileTap = {
-
+                            photo = profilePicUri,
+                            onPhotoClick = {
                                 val existing = lastPickedUri
                                 if (existing != null) selectedUncroppedUri = existing else openPhotoPicker()
                             },
-                            scrollState = profileScrollState,
+                            cardNumber = vm.cardNumber,
+                            joinedText = vm.joinedText,
+                            onNext = { if (username.isNotBlank()) go(Step.Hello) },
                         )
-                    }
-                    PAGE_GREETING -> Box(pageModifier) {
-                        GreetingStep(username = username, profilePicUri = profilePicUri)
-                    }
-                    PAGE_SETUP_FURTHER -> Box(pageModifier) {
-                        SetupFurtherStep(profilePicUri = profilePicUri)
-                    }
-                    PAGE_IMPORT_PROVIDER -> Box(pageModifier) {
-                        ImportProviderStep()
-                    }
-                    PAGE_TMM_INSTRUCTIONS -> Box(pageModifier) {
-                        TuneMyMusicInstructionsStep()
-                    }
-                    PAGE_SELECT_CSV -> Box(pageModifier) {
-                        SelectCsvStep(
-                            isLoading = csvLoading,
-                            errorMessage = csvError,
-                            onPickFile = { csvPickerLauncher.launch("text/*") }
+
+                        Step.Hello -> HelloCardStep(
+                            card = card,
+                            onProbe = vm::onBlurProbe,
+                            onFinished = {
+                                go(if (!vm.broughtMusicIn) Step.BuildHome else afterHome(), replaceCurrent = true)
+                            },
                         )
-                    }
-                    PAGE_REVIEW_IMPORT -> Box(pageModifier) {
-                        parsedImport?.let { ReviewImportStep(parsed = it) }
-                    }
-                    PAGE_TOGGLES -> Box(pageModifier) {
-                        WouldYouLikeToggles()
-                    }
-                    PAGE_MONOCHROME_CHOICE -> Box(pageModifier) {
-                        MonochromeChoiceStep()
-                    }
-                    PAGE_MONOCHROME_INFO -> MonochromeOnboardingContent(
-                        onEnabled = { onEnableMonochromeBackendChange(true) },
-                        onDismiss = { goTo(PAGE_THANK_YOU) }
-                    )
-                    PAGE_THANK_YOU -> Box(pageModifier) {
-                        ThankYouStep()
+
+                        Step.BuildHome -> BuildHomePage(
+                            query = artistQuery,
+                            onQueryChange = { artistQuery = it },
+                            artists = (searchResults ?: suggestions).let { shown ->
+                                // picked ones stay visible even when a search doesn't include them
+                                (pickedArtists.values.filter { picked -> shown.none { it.id == picked.id } } + shown)
+                            },
+                            loading = suggestions.isEmpty() && searchResults == null,
+                            selected = pickedArtists.keys,
+                            onToggle = { artist ->
+                                if (artist.id in pickedArtists) pickedArtists.remove(artist.id) else pickedArtists[artist.id] = artist
+                            },
+                            onNext = {
+                                if (pickedArtists.size >= MinArtists) {
+                                    vm.saveArtists(pickedArtists.values.toList())
+                                    go(afterHome())
+                                }
+                            },
+                        )
+
+                        Step.BlurWarning -> BlurWarningPage(
+                            disableBlur = disableBlur,
+                            onDisableBlurChange = onDisableBlurChange,
+                            detected = vm.blur?.summary,
+                            onContinue = { go(Step.LastOne) },
+                        )
+
+                        Step.LastOne -> LastOnePage(
+                            autoCrossfade = crossmixMode != CrossmixMode.OFF,
+                            onAutoCrossfadeChange = { on -> onCrossmixModeChange(if (on) CrossmixMode.AUTO_CROSSFADE else CrossmixMode.OFF) },
+                            aiArtistFilter = !disableAiFilter,
+                            onAiArtistFilterChange = { on -> onDisableAiFilterChange(!on) },
+                            onNext = { go(Step.Done) },
+                        )
+
+                        Step.Done -> DoneStep(
+                            card = card,
+                            onFinished = {
+                                vm.saveCard()
+                                vm.closeProvider()
+                                onComplete(username.trim(), profilePicUri)
+                            },
+                        )
                     }
                 }
             }
 
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val screenHeight = maxHeight
-                val screenWidth = maxWidth
-
-                val pageOffset = pagerState.currentPage + pagerState.currentPageOffsetFraction
-
-                if (pageOffset > 0f && pageOffset < 3f) {
-                    val progress = (pageOffset - 1f).coerceIn(0f, 1f)
-
-                    // Subtracting the page's scroll keeps the drawn circle glued to its
-                    // placeholder now that the profile step scrolls. It only affects page 1, and
-                    // the lerp below fades that out as the morph moves to page 2.
-                    val profileScroll = with(androidx.compose.ui.platform.LocalDensity.current) {
-                        profileScrollState.value.toDp()
-                    }
-                    val page1Y = 242.dp - profileScroll
-                    val page1X = 32.dp
-                    val page1Size = 140.dp
-
-                    val page2Y = screenHeight - 333.dp
-                    val page2X = 32.dp
-                    val page2Size = 110.dp
-
-                    val currentY = androidx.compose.ui.unit.lerp(page1Y, page2Y, progress)
-                    val currentSize = androidx.compose.ui.unit.lerp(page1Size, page2Size, progress)
-
-                    var currentX = androidx.compose.ui.unit.lerp(page1X, page2X, progress)
-
-                    if (pageOffset < 1f) {
-                        currentX += (screenWidth * (1f - pageOffset))
-                    }
-
-                    else if (pageOffset > 2f) {
-                        currentX -= (screenWidth * (pageOffset - 2f))
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .offset(x = currentX, y = currentY)
-                            .size(currentSize)
-                            .clip(CircleShape)
-                            .background(Color(0xFF707070)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (profilePicUri != null) {
-                            coil3.compose.AsyncImage(
-                                model = profilePicUri,
-                                contentDescription = "Profile Picture",
-                                modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else if (progress == 0f) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add Picture",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp)
-                            )
-                        }
+            if (browserShown && session != null) {
+                // dims the page behind, and a tap on that strip closes the browser
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = browserPresence.value }
+                        .background(Color.Black.copy(alpha = 0.45f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = ::closeBrowser,
+                        ),
+                )
+                OnboardingBrowserSheet(
+                    service = session.service,
+                    presence = browserPresence,
+                    onClose = ::closeBrowser,
+                ) { onUrlChange, onLoadingChange, modifier ->
+                    if (session.service == AccountService.YOUTUBE_MUSIC) {
+                        YouTubeLoginWebContent(
+                            onSignedIn = {
+                                closeBrowser()
+                                session.refreshYouTube()
+                            },
+                            onExit = ::closeBrowser,
+                            onUrlChange = onUrlChange,
+                            onLoadingChange = onLoadingChange,
+                            modifier = modifier,
+                        )
+                    } else {
+                        CaptureWebContent(
+                            startUrl = session.service.loginUrl.orEmpty(),
+                            playerOrigins = session.service.playerOrigins,
+                            desktopSite = session.service.desktopSite,
+                            onHeader = session::onHeader,
+                            onTick = { view -> session.service.onSignInTick(view, session::onApplePageProbe, session::onCookies) },
+                            onExit = ::closeBrowser,
+                            onUrlChange = onUrlChange,
+                            onLoadingChange = onLoadingChange,
+                            modifier = modifier,
+                        )
                     }
                 }
             }
 
+            // the onboarding sheet's own handle; dragging it rubber-bands the whole sheet
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
+                    .height(40.dp)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, amount ->
+                                change.consume()
+                                onDrag(amount)
+                            },
+                            onDragEnd = onDragRelease,
+                            onDragCancel = onDragRelease,
+                        )
+                    },
+                contentAlignment = Alignment.Center,
             ) {
                 Box(
                     modifier = Modifier
                         .width(100.dp)
                         .height(4.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.5f))
+                        .background(Color.White.copy(alpha = 0.5f)),
                 )
             }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(24.dp)
-                .navigationBarsPadding(),
-            contentAlignment = Alignment.Center
-        ) {
-            when (pagerState.currentPage) {
-                PAGE_THANK_YOU -> WizardButton(text = "Done", onClick = { onComplete(username, profilePicUri) })
-
-                PAGE_GREETING -> {
-
-                }
-
-                PAGE_PROFILE -> WizardButton(
-                    text = "Next",
-                    enabled = username.isNotBlank(),
-                    onClick = { if (username.isNotBlank()) goTo(PAGE_GREETING) }
-                )
-
-                PAGE_WELCOME -> WizardButton(
-                    text = "Next",
-                    onClick = {
-                        isLeavingWelcome = true
-                        coroutineScope.launch {
-                            kotlinx.coroutines.delay(400)
-                            pagerState.animateScrollToPage(PAGE_PROFILE)
-                        }
-                    }
-                )
-
-                PAGE_SETUP_FURTHER -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    WizardButton(text = "Continue", onClick = { goTo(PAGE_IMPORT_PROVIDER) })
-                    WizardButton(text = "Skip", secondary = true, onClick = { goTo(PAGE_TOGGLES) })
-                }
-
-                PAGE_IMPORT_PROVIDER -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    WizardButton(text = "Continue", onClick = { goTo(PAGE_TMM_INSTRUCTIONS) })
-                    WizardButton(text = "Skip", secondary = true, onClick = { goTo(PAGE_TOGGLES) })
-                }
-
-                PAGE_TMM_INSTRUCTIONS -> WizardButton(text = "Next", onClick = { goTo(PAGE_SELECT_CSV) })
-
-                PAGE_SELECT_CSV -> WizardButton(text = "Skip Wizard", secondary = true, onClick = { goTo(PAGE_TOGGLES) })
-
-                PAGE_REVIEW_IMPORT -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val songCount = parsedImport?.totalSongs ?: 0
-                    WizardButton(
-                        text = "Import $songCount song${if (songCount == 1) "" else "s"}",
-                        onClick = {
-                            parsedImport?.let { importViewModel.startImport(it) }
-                            goTo(PAGE_TOGGLES)
-                        }
-                    )
-                    WizardButton(text = "Skip Wizard", secondary = true, onClick = { goTo(PAGE_TOGGLES) })
-                }
-
-                PAGE_TOGGLES -> WizardButton(text = "Continue", onClick = { goTo(PAGE_MONOCHROME_CHOICE) })
-
-                PAGE_MONOCHROME_CHOICE -> Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    WizardButton(text = "this thing does not work rn go tap the no button", secondary = true, onClick = { goTo(PAGE_MONOCHROME_INFO) })
-                    WizardButton(text = "No (recommended)", highlighted = true, onClick = { goTo(PAGE_THANK_YOU) })
-                }
-
-                PAGE_MONOCHROME_INFO -> {
-
-                }
-            }
         }
-        }
-    }
-}
-
-@Composable
-private fun WizardButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    secondary: Boolean = false,
-    highlighted: Boolean = false,
-) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth().height(56.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = when {
-                highlighted -> Color.White
-                secondary -> Color(0xFF2A2A2A)
-                else -> Color(0xFF333333)
-            },
-            disabledContainerColor = Color(0xFF222222)
-        ),
-        shape = CircleShape
-    ) {
-        Text(
-            text,
-            color = when {
-                !enabled -> Color.Gray
-                highlighted -> Color.Black
-                else -> Color.White
-            },
-            fontWeight = FontWeight.Bold
-        )
     }
 }

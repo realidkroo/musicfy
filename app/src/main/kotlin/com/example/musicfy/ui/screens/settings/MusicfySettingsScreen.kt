@@ -98,6 +98,7 @@ private val SettingsIndex = listOf(
     SettingsEntry("Local song auto metadata", "General", "general_settings", "match tags id3 covers lyrics"),
 
     // Experimental
+    SettingsEntry("Import & sync", "Experimental", "experimental_settings", "import spotify apple music deezer tidal tunemymusic csv youtube sync export backup transfer"),
     SettingsEntry("Big disc cover styles", "Experimental", "experimental_settings", "disc vinyl cover"),
     SettingsEntry("Music haptics", "Experimental", "experimental_settings", "vibration haptic"),
     SettingsEntry("Advanced audio settings", "Experimental", "experimental_settings", "monochrome lossless hi-res atmos"),

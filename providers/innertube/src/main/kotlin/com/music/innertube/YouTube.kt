@@ -1097,11 +1097,12 @@ object YouTube {
         }
     }
 
-    suspend fun musicHistory() = runCatching {
+    suspend fun musicHistory(hlOverride: String? = null) = runCatching {
         val response = innerTube.browse(
             client = WEB_REMIX,
             browseId = "FEmusic_history",
-            setLogin = true
+            setLogin = true,
+            hlOverride = hlOverride,
         ).body<BrowseResponse>()
 
         HistoryPage(
@@ -1145,6 +1146,14 @@ object YouTube {
 
     suspend fun addToPlaylist(playlistId: String, videoId: String) = runCatching {
         innerTube.addToPlaylist(WEB_REMIX, playlistId, videoId)
+    }
+
+    /** Adds [videoIds] in batches of [batchSize] — one edit_playlist call each instead of one per song. */
+    suspend fun addVideosToPlaylist(playlistId: String, videoIds: List<String>, batchSize: Int = 50) = runCatching {
+        videoIds.chunked(batchSize).forEach { batch ->
+            val response = innerTube.addVideosToPlaylist(WEB_REMIX, playlistId, batch)
+            check(response.status.value in 200..299) { "edit_playlist failed with HTTP ${response.status.value}" }
+        }
     }
 
     suspend fun addPlaylistToPlaylist(playlistId: String, addPlaylistId: String) = runCatching {

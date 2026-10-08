@@ -99,6 +99,7 @@ class HomeViewModel @Inject constructor(
     @ApplicationContext val context: Context,
     val database: MusicDatabase,
     val syncUtils: SyncUtils,
+    musicImportService: com.example.musicfy.importer.MusicImportService,
 ) : ViewModel() {
     private val homeFeedCache = HomeFeedCache(context)
 
@@ -117,6 +118,11 @@ class HomeViewModel @Inject constructor(
     val similarRecommendations = MutableStateFlow<List<SimilarRecommendation>?>(null)
     val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
     val localPlaylists = MutableStateFlow<List<com.example.musicfy.db.entities.Playlist>?>(null)
+
+    /** Library artists (onboarding's picks on a new install), for the hero before there's any history. */
+    val libraryArtists = database.artists(com.example.musicfy.constants.ArtistSortType.CREATE_DATE, true)
+        .map { artists -> artists.filter { it.artist.isYouTubeArtist }.take(5) }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, emptyList())
     val homePage = MutableStateFlow<HomePage?>(null)
     val explorePage = MutableStateFlow<ExplorePage?>(null)
     val communityPlaylists = MutableStateFlow<List<CommunityPlaylistItem>?>(null)
@@ -1143,6 +1149,14 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+
+        // every finished import brings new songs, playlists and likes: rebuild Home around them
+        viewModelScope.launch {
+            musicImportService.progress
+                .map { it.isDone && it.matchedTracks > 0 }
+                .distinctUntilChanged()
+                .collect { finishedWithSongs -> if (finishedWithSongs) refresh() }
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
             homeFeedCache.loadHomePage()?.let { homePage.value = it }

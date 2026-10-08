@@ -14,12 +14,14 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,7 +45,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -81,6 +85,9 @@ private const val RecedeScale = 0.9f
  * this leaves the same ~8dp of strip above the front sheet's edge under the pill.
  */
 private val PeekHeight = 32.dp
+
+/** Space kept between the status bar and the highest a sheet (or its peek strip) can reach. */
+private val StatusBarGap = 6.dp
 
 /**
  * The player's sheets opened from one another - the action menu, then "Change device output",
@@ -232,10 +239,21 @@ fun MenuSheetSurface(
 
     val measuredHeightPx = remember { mutableFloatStateOf(0f) }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    val statusBarBottomPx = WindowInsets.statusBars.getTop(density).toFloat() + with(density) { StatusBarGap.toPx() }
+    var parentTopInWindowPx by remember { mutableFloatStateOf(0f) }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { parentTopInWindowPx = it.positionInWindow().y },
+    ) {
         val parentHeightPx = constraints.maxHeight.toFloat()
-        val detentSheetPx = with(density) { (maxHeight * fullDetent).toPx() }
-        val maxSheetPx = maxOf(detentSheetPx, coveredVisiblePx)
+        // No sheet edge ever goes above the status bar. A sheet covering another stops a peek strip
+        // lower still, so the one behind can rise to peek above it and stay below the status bar.
+        val safeTopPx = (statusBarBottomPx - parentTopInWindowPx).coerceAtLeast(0f)
+        val capPx = (parentHeightPx - safeTopPx - if (isCovering) peekPx else 0f).coerceAtLeast(0f)
+        val detentSheetPx = minOf(with(density) { (maxHeight * fullDetent).toPx() }, capPx)
+        val maxSheetPx = minOf(maxOf(detentSheetPx, coveredVisiblePx), capPx)
         val fullHeightPx = if (wrapHeight) {
             measuredHeightPx.floatValue.takeIf { it > 0f } ?: maxSheetPx
         } else {

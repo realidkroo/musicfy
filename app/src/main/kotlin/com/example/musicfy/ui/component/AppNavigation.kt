@@ -122,6 +122,13 @@ private val RouteOwners: List<Pair<String, String>> = listOf(
     "appearance_settings" to "settings",
     "playback_settings" to "settings",
     "experimental_settings" to "settings",
+    "import_sync" to "settings",
+    "import_providers" to "settings",
+    "import_tunemymusic" to "settings",
+    "import_progress" to "settings",
+    "youtube_sync" to "settings",
+    "youtube_login" to "settings",
+    "account_import/" to "settings",
     "player_customize" to "settings",
     "equalizer" to "settings",
 )

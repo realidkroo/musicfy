@@ -27,6 +27,7 @@ import com.music.innertube.YouTube
 import com.example.musicfy.LocalDatabase
 import com.example.musicfy.R
 import com.example.musicfy.constants.InnerTubeCookieKey
+import com.example.musicfy.constants.YtSyncNewPlaylistsKey
 import com.example.musicfy.db.entities.PlaylistEntity
 import com.example.musicfy.extensions.isSyncEnabled
 import com.example.musicfy.utils.rememberPreference
@@ -45,11 +46,14 @@ fun CreatePlaylistDialog(
 ) {
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
-    var syncedPlaylist by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val isSignedIn = innerTubeCookie.isNotEmpty()
+    val syncNewPlaylists by rememberPreference(YtSyncNewPlaylistsKey, false)
+    var syncedPlaylist by remember(syncNewPlaylists, isSignedIn) {
+        mutableStateOf(allowSyncing && syncNewPlaylists && isSignedIn)
+    }
 
     TextFieldDialog(
         icon = { Icon(painter = painterResource(R.drawable.add), contentDescription = null) },
@@ -59,7 +63,8 @@ fun CreatePlaylistDialog(
         onDone = { playlistName ->
             coroutineScope.launch(Dispatchers.IO) {
                 val browseId = if (syncedPlaylist && isSignedIn) {
-                    YouTube.createPlaylist(playlistName)
+                    // a failed YouTube create still leaves the user a local playlist
+                    runCatching { YouTube.createPlaylist(playlistName) }.getOrNull()
                 } else if (syncedPlaylist) {
                     Logger.getLogger("CreatePlaylistDialog").warning("Not signed in")
                     return@launch
@@ -104,6 +109,11 @@ fun CreatePlaylistDialog(
                         AppSwitch(
                             checked = syncedPlaylist,
                             onCheckedChange = {
+                                if (syncedPlaylist) {
+                                    // switching off is always allowed
+                                    syncedPlaylist = false
+                                    return@AppSwitch
+                                }
                                 val isYtmSyncEnabled = context.isSyncEnabled()
                                 if (!isSignedIn && !syncedPlaylist) {
                                     Toast.makeText(

@@ -255,21 +255,29 @@ fun LibraryScaffold(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(SearchColors.page(pureBlack))
-            .glassRoot(glassState, isActive = { !listState.isScrollInProgress && collapseProvider() > 0.01f }),
+            .background(SearchColors.page(pureBlack)),
     ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                top = searchTopBarHeight(
-                    withTitle = true,
-                    titleBlockHeight = if (subtitle != null) LibraryTitleBlockHeight else 62.dp,
+        // Only the list is recorded. The top bar draws this recording as its glass, so recording
+        // the bar too made the node draw itself: a native stack overflow the moment a scroll
+        // settled with the title collapsed. The bar stays a sibling, as on Search.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glassRoot(glassState, isActive = { !listState.isScrollInProgress && collapseProvider() > 0.01f }),
+        ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = searchTopBarHeight(
+                        withTitle = true,
+                        titleBlockHeight = if (subtitle != null) LibraryTitleBlockHeight else 62.dp,
+                    ),
+                    bottom = bottomInset + 24.dp,
                 ),
-                bottom = bottomInset + 24.dp,
-            ),
-            content = content,
-        )
+                content = content,
+            )
+        }
 
         SearchGlassTopBar(
             glassState = glassState,

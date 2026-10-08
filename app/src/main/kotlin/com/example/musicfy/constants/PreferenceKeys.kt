@@ -92,6 +92,22 @@ val ProxyPasswordKey = stringPreferencesKey("proxyPassword")
 val YtmSyncKey = booleanPreferencesKey("ytmSync")
 val SelectedYtmPlaylistsKey = stringPreferencesKey("selectedYtmPlaylists")
 
+// Import & sync (Experimental)
+/** New playlists start with "Sync with YouTube" switched on in the create dialog. */
+val YtSyncNewPlaylistsKey = booleanPreferencesKey("ytSyncNewPlaylists")
+/** Plays long enough to count go to the signed-in account's YouTube history. */
+val YtReportPlaysKey = booleanPreferencesKey("ytReportPlays")
+/** YouTube Music history is copied into Musicfy's own listening history. */
+val YtPullHistoryKey = booleanPreferencesKey("ytPullHistory")
+/** Newest YouTube history entry already copied, so the next pull stops there. */
+val YtHistoryLastSeenKey = stringPreferencesKey("ytHistoryLastSeen")
+/** Whether YouTube sync keeps Liked music in step (onboarding's "What to sync" can leave it out). */
+val YtSyncLikedSongsKey = booleanPreferencesKey("ytSyncLikedSongs")
+
+/** The profile ID card's "USR#" number and join date (epoch day), fixed when onboarding finishes. */
+val ProfileCardNumberKey = stringPreferencesKey("profileCardNumber")
+val ProfileJoinedEpochDayKey = longPreferencesKey("profileJoinedEpochDay")
+
 val AudioQualityKey = stringPreferencesKey("audioQuality")
 val IpVersionKey = stringPreferencesKey("ipVersion")
 
@@ -231,7 +247,6 @@ val ShowWrappedCardKey = booleanPreferencesKey("show_wrapped_card")
 val WrappedSeenKey = booleanPreferencesKey("wrapped_seen")
 val RandomizeHomeOrderKey = booleanPreferencesKey("randomizeHomeOrder")
 val AlbumCanvasEnabledKey = booleanPreferencesKey("albumCanvasEnabled")
-val BetaNoticeDismissedKey = booleanPreferencesKey("beta_notice_dismissed")
 
 val UpdatePromptSnoozedAtKey = longPreferencesKey("update_prompt_snoozed_at")
 

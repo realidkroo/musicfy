@@ -11,7 +11,7 @@ import com.example.musicfy.R
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.db.entities.PlaylistEntity
 import com.example.musicfy.db.entities.PlaylistSongMap
-import com.example.musicfy.db.entities.SongEntity
+import com.example.musicfy.extensions.isUserLoggedIn
 import com.example.musicfy.models.toMediaMetadata
 import com.music.innertube.YouTube
 import com.music.innertube.models.SongItem
@@ -22,22 +22,24 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
+import java.time.LocalDateTime
+import kotlin.coroutines.coroutineContext
 import javax.inject.Inject
 import javax.inject.Singleton
-
-data class ImportProgress(
-    val isRunning: Boolean = false,
-    val totalTracks: Int = 0,
-    val processedTracks: Int = 0,
-    val matchedTracks: Int = 0,
-    val currentLabel: String = "",
-    val isDone: Boolean = false,
-)
 
 @Singleton
 class MusicImportService @Inject constructor(
@@ -56,65 +58,181 @@ class MusicImportService @Inject constructor(
     private val _progress = MutableStateFlow(ImportProgress())
     val progress: StateFlow<ImportProgress> = _progress.asStateFlow()
 
-    fun startImport(parsed: ParsedImport) {
-        if (runningJob?.isActive == true) return
+    val isRunning: Boolean get() = runningJob?.isActive == true
+
+    /** Starts an import in the background; false if one is already running. */
+    fun startImport(parsed: ParsedImport, options: ImportOptions = ImportOptions()): Boolean {
+        if (isRunning) return false
+        _progress.value = ImportProgress(isRunning = true, totalTracks = parsed.totalSongs)
         runningJob = importScope.launch {
-            val total = parsed.totalSongs
-            _progress.value = ImportProgress(isRunning = true, totalTracks = total)
-            var processed = 0
-            var matched = 0
-
-            for (track in parsed.likedSongs) {
-                _progress.value = _progress.value.copy(currentLabel = track.title)
-                if (importLikedTrack(track)) matched++
-                processed++
-                _progress.value = _progress.value.copy(processedTracks = processed, matchedTracks = matched)
-            }
-
-            for ((playlistName, tracks) in parsed.playlists) {
-                val playlistEntity = PlaylistEntity(name = playlistName, isEditable = true)
-                database.withTransaction { insert(playlistEntity) }
-                var position = 0
-                for (track in tracks) {
-                    _progress.value = _progress.value.copy(currentLabel = "$playlistName — ${track.title}")
-                    val song = importTrack(track)
-                    if (song != null) {
-                        matched++
-                        database.withTransaction {
-                            insert(PlaylistSongMap(songId = song.id, playlistId = playlistEntity.id, position = position))
-                        }
-                        position++
-                    }
-                    processed++
-                    _progress.value = _progress.value.copy(processedTracks = processed, matchedTracks = matched)
+            try {
+                runImport(parsed, options)
+                _progress.update { it.copy(isRunning = false, isDone = true, currentLabel = "") }
+                val done = _progress.value
+                notifyImportComplete(done.matchedTracks, done.totalTracks)
+            } catch (e: CancellationException) {
+                _progress.update { it.copy(isRunning = false, isDone = true, cancelled = true, currentLabel = "") }
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Import failed")
+                _progress.update {
+                    it.copy(isRunning = false, isDone = true, currentLabel = "", error = e.message ?: "Import failed")
                 }
             }
-
-            _progress.value = _progress.value.copy(isRunning = false, isDone = true, currentLabel = "")
-            notifyImportComplete(matched, total)
         }
-    }
-
-    private suspend fun importTrack(track: ImportedTrack): SongEntity? {
-        val best = searchBestMatch(track) ?: return null
-        val mediaMetadata = best.toMediaMetadata()
-        database.withTransaction { insert(mediaMetadata) }
-        return mediaMetadata.toSongEntity()
-    }
-
-    private suspend fun importLikedTrack(track: ImportedTrack): Boolean {
-        val best = searchBestMatch(track) ?: return false
-        val mediaMetadata = best.toMediaMetadata()
-        database.withTransaction { insert(mediaMetadata, SongEntity::toggleLike) }
         return true
     }
 
-    private suspend fun searchBestMatch(track: ImportedTrack): SongItem? {
-        val results = runCatching {
-            YouTube.search("${track.title} ${track.artist}", YouTube.SearchFilter.FILTER_SONG)
-                .getOrNull()?.items?.filterIsInstance<SongItem>().orEmpty()
-        }.getOrDefault(emptyList())
-        return pickBestMatch(track, results)
+    /** Stops after the current song; everything imported so far stays. */
+    fun cancel() {
+        runningJob?.cancel()
+    }
+
+    /** Forgets a finished import's summary so the next one starts clean. */
+    fun clearFinished() {
+        if (!isRunning) _progress.value = ImportProgress()
+    }
+
+    private suspend fun runImport(parsed: ParsedImport, options: ImportOptions) {
+        val matcher = TrackMatcher()
+        val signedIn = context.isUserLoggedIn()
+        val mirror = options.mirrorToYouTube && signedIn
+
+        if (parsed.likedSongs.isNotEmpty()) importLiked(matcher, parsed.likedSongs, mirror)
+
+        for ((name, tracks) in parsed.playlists) {
+            coroutineContext.ensureActive()
+            importPlaylist(matcher, name, tracks, mirror, signedIn)
+        }
+    }
+
+    private suspend fun importLiked(matcher: TrackMatcher, tracks: List<ImportedTrack>, mirror: Boolean) {
+        val matched = matchAll(matcher, tracks, playlistName = null, label = "Liked songs").distinctBy { it.id }
+        if (matched.isEmpty()) return
+
+        database.withTransaction {
+            matched.forEach { insert(it.toMediaMetadata()) }
+        }
+
+        // the source lists newest first; spacing the dates keeps that order in Liked songs
+        val now = LocalDateTime.now()
+        val newlyLiked = mutableListOf<String>()
+        matched.forEachIndexed { index, item ->
+            val song = database.getSongById(item.id)?.song ?: return@forEachIndexed
+            if (!song.liked) {
+                // inLibrary stays untouched: YouTube library sync unlikes local-library songs it doesn't know
+                database.update(song.copy(liked = true, likedDate = now.minusSeconds(index.toLong())))
+                newlyLiked += item.id
+            }
+        }
+        _progress.update { it.copy(likedAdded = it.likedAdded + newlyLiked.size) }
+
+        // remembered either way: a like that fails now (or before signing in) goes up on the next sync
+        PendingYouTubeLikes.add(context, newlyLiked)
+        if (mirror && newlyLiked.isNotEmpty()) {
+            _progress.update { it.copy(currentLabel = "Liking songs on YouTube") }
+            val pushed = mutableListOf<String>()
+            newlyLiked.forEach { id ->
+                coroutineContext.ensureActive()
+                if (YouTube.likeVideo(id, true).isSuccess) pushed += id
+                delay(LIKE_DELAY_MS)
+            }
+            PendingYouTubeLikes.remove(context, pushed)
+            if (pushed.size < newlyLiked.size) {
+                _progress.update { it.copy(youtubeFailures = it.youtubeFailures + "Liked songs (${newlyLiked.size - pushed.size} will retry on next sync)") }
+            }
+        }
+    }
+
+    private suspend fun importPlaylist(
+        matcher: TrackMatcher,
+        name: String,
+        tracks: List<ImportedTrack>,
+        mirror: Boolean,
+        signedIn: Boolean,
+    ) {
+        val matched = matchAll(matcher, tracks, playlistName = name, label = name)
+        val songIds = matched.map { it.id }.distinct()
+        // nothing found: don't leave an empty playlist behind (an intentionally empty one has no tracks at all)
+        if (songIds.isEmpty() && tracks.isNotEmpty()) return
+
+        // re-importing the same playlist (e.g. a Musicfy backup) tops it up instead of duplicating it
+        val existing = database.playlistsByNameAsc().first()
+            .firstOrNull { it.playlist.name == name && it.playlist.isEditable }
+            ?.playlist
+
+        val playlist = existing ?: PlaylistEntity(
+            name = name,
+            bookmarkedAt = LocalDateTime.now(),
+            isEditable = true,
+        )
+
+        val start = if (existing == null) 0 else database.playlistSongs(playlist.id).first().size
+        var newIds: List<String> = emptyList()
+        database.withTransaction {
+            if (existing == null) insert(playlist)
+            matched.distinctBy { it.id }.forEach { insert(it.toMediaMetadata()) }
+            val already = if (existing == null || songIds.isEmpty()) emptySet() else playlistDuplicates(playlist.id, songIds).toSet()
+            newIds = songIds.filterNot { it in already }
+            newIds.forEachIndexed { index, songId ->
+                insert(PlaylistSongMap(songId = songId, playlistId = playlist.id, position = start + index))
+            }
+        }
+        if (existing == null) _progress.update { it.copy(playlistsCreated = it.playlistsCreated + 1) }
+
+        val browseId = existing?.browseId
+        when {
+            // already linked to YouTube: keep both sides in step
+            browseId != null && signedIn && newIds.isNotEmpty() -> {
+                _progress.update { it.copy(currentLabel = "Adding to \"$name\" on YouTube") }
+                YouTube.addVideosToPlaylist(browseId, newIds).onFailure {
+                    _progress.update { p -> p.copy(youtubeFailures = p.youtubeFailures + name) }
+                }
+            }
+            browseId == null && mirror && (newIds.isNotEmpty() || existing == null) -> {
+                _progress.update { it.copy(currentLabel = "Creating \"$name\" on YouTube") }
+                mirrorPlaylist(playlist.id, name)
+            }
+        }
+    }
+
+    private suspend fun mirrorPlaylist(playlistId: String, name: String) {
+        if (!YouTubePlaylistMirror.mirror(database, playlistId, name)) {
+            _progress.update { it.copy(youtubeFailures = it.youtubeFailures + name) }
+        }
+    }
+
+    /** Matches in parallel (a few searches at a time) and keeps the source order. */
+    private suspend fun matchAll(
+        matcher: TrackMatcher,
+        tracks: List<ImportedTrack>,
+        playlistName: String?,
+        label: String,
+    ): List<SongItem> = coroutineScope {
+        val semaphore = Semaphore(MATCH_PARALLELISM)
+        tracks.map { track ->
+            async {
+                semaphore.withPermit {
+                    val item = try {
+                        matcher.match(track)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.w(e, "Match failed for ${track.title}")
+                        null
+                    }
+                    _progress.update { p ->
+                        p.copy(
+                            processedTracks = p.processedTracks + 1,
+                            matchedTracks = p.matchedTracks + if (item != null) 1 else 0,
+                            currentLabel = "$label — ${track.title}",
+                            unmatched = if (item == null) p.unmatched + UnmatchedTrack(track, playlistName) else p.unmatched,
+                        )
+                    }
+                    item
+                }
+            }
+        }.awaitAll().filterNotNull()
     }
 
     private fun notifyImportComplete(matched: Int, total: Int) {
@@ -141,32 +259,9 @@ class MusicImportService @Inject constructor(
             .build()
         runCatching { notificationManager.notify(4242, notification) }
     }
-}
 
-private val TOKEN_REGEX = Regex("[\\p{L}\\p{N}]+")
-private const val MIN_TITLE_SIMILARITY = 0.3
-
-private fun pickBestMatch(track: ImportedTrack, candidates: List<SongItem>): SongItem? {
-    if (candidates.isEmpty()) return null
-    val targetTitle = tokenize(track.title)
-    val targetArtist = tokenize(track.artist)
-
-    val scored = candidates.map { candidate ->
-        val titleScore = jaccardSimilarity(targetTitle, tokenize(candidate.title))
-        val artistScore = candidate.artists.maxOfOrNull { jaccardSimilarity(targetArtist, tokenize(it.name)) } ?: 0.0
-        candidate to (titleScore * 0.7 + artistScore * 0.3)
+    private companion object {
+        const val MATCH_PARALLELISM = 4
+        const val LIKE_DELAY_MS = 120L
     }
-    val best = scored.maxByOrNull { it.second } ?: return null
-    val bestTitleScore = jaccardSimilarity(targetTitle, tokenize(best.first.title))
-    return best.first.takeIf { bestTitleScore >= MIN_TITLE_SIMILARITY }
-}
-
-private fun tokenize(text: String): Set<String> =
-    TOKEN_REGEX.findAll(text.lowercase()).map { it.value }.toSet()
-
-private fun jaccardSimilarity(a: Set<String>, b: Set<String>): Double {
-    if (a.isEmpty() || b.isEmpty()) return 0.0
-    val intersection = a.intersect(b).size
-    val union = a.size + b.size - intersection
-    return if (union == 0) 0.0 else intersection.toDouble() / union
 }

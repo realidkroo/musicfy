@@ -182,6 +182,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.example.musicfy.ui.component.navigateToTab
 
@@ -525,6 +526,58 @@ fun HomeScreen(
     val keepListening by viewModel.keepListening.collectAsState()
     val accountPlaylists by viewModel.accountPlaylists.collectAsState()
     val localPlaylists by viewModel.localPlaylists.collectAsState()
+    val libraryArtists by viewModel.libraryArtists.collectAsState()
+    // playlists the user made (or imported), put forward in the hero; Play loads and queues them
+    val heroScope = rememberCoroutineScope()
+    val playlistPicks = remember(localPlaylists) {
+        localPlaylists.orEmpty()
+            .filter { it.playlist.isEditable && it.songCount > 0 && it.id != "liked" }
+            .shuffled()
+            .take(2)
+            .map { playlist ->
+                com.example.musicfy.ui.component.PlaylistPickItem(
+                    id = playlist.id,
+                    name = playlist.playlist.name,
+                    thumbnailUrl = playlist.playlist.thumbnailUrl ?: playlist.thumbnails.firstOrNull(),
+                ) {
+                    heroScope.launch(Dispatchers.IO) {
+                        val songs = viewModel.database.playlistSongs(playlist.id).first()
+                            .sortedBy { it.map.position }
+                            .map { it.song.toMediaItem() }
+                        if (songs.isEmpty()) return@launch
+                        withContext(Dispatchers.Main) {
+                            playerConnection.playQueue(ListQueue(title = playlist.playlist.name, items = songs))
+                        }
+                    }
+                }
+            }
+    }
+    // a new install's hero: what was just imported, or else the artists picked in onboarding
+    val starterItems = remember(localPlaylists, libraryArtists) {
+        val imported = localPlaylists.orEmpty()
+            .filter { it.songCount > 0 && it.id != "liked" }
+            .take(5)
+            .map {
+                com.example.musicfy.ui.component.StarterItem(
+                    kind = com.example.musicfy.ui.component.StarterItem.Kind.Playlist,
+                    id = it.id,
+                    title = it.playlist.name,
+                    detail = "${it.songCount} songs",
+                    thumbnailUrl = it.thumbnails.firstOrNull() ?: it.playlist.thumbnailUrl,
+                )
+            }
+        imported.ifEmpty {
+            libraryArtists.map {
+                com.example.musicfy.ui.component.StarterItem(
+                    kind = com.example.musicfy.ui.component.StarterItem.Kind.Artist,
+                    id = it.id,
+                    title = it.artist.name,
+                    detail = "",
+                    thumbnailUrl = it.artist.thumbnailUrl,
+                )
+            }
+        }
+    }
     val homePage by viewModel.homePage.collectAsState()
     val dailyDiscover by viewModel.dailyDiscover.collectAsState()
     val communityPlaylists by viewModel.communityPlaylists.collectAsState()
@@ -1010,6 +1063,8 @@ fun HomeScreen(
                         heroScrollProgressProvider = heroScrollProgressProvider,
                         isLoading = isFirstLoad,
                         gachaPool = gachaPool,
+                        starterItems = starterItems,
+                        playlistPicks = playlistPicks,
                     )
                 }
 

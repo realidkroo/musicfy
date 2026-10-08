@@ -27,7 +27,7 @@ extensions.configure<ApplicationExtension> {
         minSdk = 26
         targetSdk = 36
         versionCode = 71
-        versionName = "7.1.1 build#1084"
+        versionName = "7.1.1 build#1090"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -393,6 +393,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation(libs.work.runtime.ktx)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.webkit)
 
     testImplementation(libs.junit)
 }

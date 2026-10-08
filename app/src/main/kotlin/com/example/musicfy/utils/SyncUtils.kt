@@ -16,6 +16,8 @@ import com.example.musicfy.constants.InnerTubeCookieKey
 import com.example.musicfy.constants.LastFMUseSendLikes
 import com.example.musicfy.constants.LastFullSyncKey
 import com.example.musicfy.constants.SYNC_COOLDOWN
+import com.example.musicfy.constants.SelectedYtmPlaylistsKey
+import com.example.musicfy.constants.YtSyncLikedSongsKey
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.db.entities.ArtistEntity
 import com.example.musicfy.db.entities.PlaylistEntity
@@ -24,6 +26,7 @@ import com.example.musicfy.db.entities.SongEntity
 import com.example.musicfy.extensions.collectLatest
 import com.example.musicfy.extensions.isInternetConnected
 import com.example.musicfy.extensions.isSyncEnabled
+import com.example.musicfy.importer.PendingYouTubeLikes
 import com.example.musicfy.models.toMediaMetadata
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -352,8 +355,10 @@ class SyncUtils @Inject constructor(
 
         try {
 
-            executeSyncLikedSongs()
-            delay(DB_OPERATION_DELAY_MS)
+            if (context.dataStore.get(YtSyncLikedSongsKey, true)) {
+                executeSyncLikedSongs()
+                delay(DB_OPERATION_DELAY_MS)
+            }
 
             executeSyncLibrarySongs()
             delay(DB_OPERATION_DELAY_MS)
@@ -428,7 +433,22 @@ class SyncUtils @Inject constructor(
                     val remoteIds = remoteSongs.map { it.id }.toSet()
                     val localSongs = database.likedSongsByNameAsc().first()
 
-                    localSongs.filterNot { it.id in remoteIds }.forEach { song ->
+                    // likes from an import aren't "unliked on YouTube" — they're new; push them up
+                    // instead of unliking them here. Ones unliked locally since are just dropped.
+                    val pendingLikes = PendingYouTubeLikes.read(context)
+                    val pushedLikes = mutableSetOf<String>()
+                    val keptLikes = mutableSetOf<String>()
+                    if (pendingLikes.isNotEmpty()) {
+                        val localIds = localSongs.map { it.id }.toSet()
+                        PendingYouTubeLikes.remove(context, pendingLikes.filter { it !in localIds || it in remoteIds })
+                        localSongs.filter { it.id in pendingLikes && it.id !in remoteIds }.forEach { song ->
+                            if (YouTube.likeVideo(song.id, true).isSuccess) pushedLikes += song.id else keptLikes += song.id
+                            delay(150)
+                        }
+                        PendingYouTubeLikes.remove(context, pushedLikes)
+                    }
+
+                    localSongs.filterNot { it.id in remoteIds || it.id in pushedLikes || it.id in keptLikes }.forEach { song ->
                         try {
                             database.update(song.song.localToggleLike())
                             delay(DB_OPERATION_DELAY_MS)
@@ -835,12 +855,20 @@ class SyncUtils @Inject constructor(
         }.onSuccess { result ->
             result.onSuccess { page ->
                 try {
-                    val remotePlaylists = page.items.filterIsInstance<PlaylistItem>()
+                    val allRemotePlaylists = page.items.filterIsInstance<PlaylistItem>()
                         .filterNot { it.id == "LM" || it.id == "SE" }
                         .reversed()
-                    val remoteIds = remotePlaylists.map { it.id }.toSet()
+                    val remoteIds = allRemotePlaylists.map { it.id }.toSet()
 
                     val localPlaylists = database.playlistsByNameAsc().first()
+
+                    // Onboarding's "What to sync" picks which saved playlists come in; ones already
+                    // linked (made here, or picked before) keep syncing. Nothing picked = all of them.
+                    val picked = context.dataStore.get(SelectedYtmPlaylistsKey, "")
+                        .split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                    val linkedIds = localPlaylists.mapNotNull { it.playlist.browseId }.toSet()
+                    val remotePlaylists = if (picked.isEmpty()) allRemotePlaylists
+                    else allRemotePlaylists.filter { it.id in picked || it.id in linkedIds }
                     localPlaylists.filterNot { it.playlist.browseId in remoteIds }
                         .filterNot { it.playlist.browseId == null }
                         .forEach { playlist ->

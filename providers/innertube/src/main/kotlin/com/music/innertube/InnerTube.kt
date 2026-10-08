@@ -282,13 +282,15 @@ class InnerTube {
         params: String? = null,
         continuation: String? = null,
         setLogin: Boolean = false,
+        /** Forces the response language (e.g. "en" so section titles can be parsed). */
+        hlOverride: String? = null,
     ) = withRetry {
         httpClient.post("browse") {
             ytClient(client, setLogin = setLogin || useLoginForBrowse)
             setBody(
                 BrowseBody(
                     context = client.toContext(
-                        locale,
+                        hlOverride?.let { locale.copy(hl = it) } ?: locale,
                         visitorData,
                         if (setLogin || useLoginForBrowse) dataSyncId else null
                     ),
@@ -505,6 +507,23 @@ class InnerTube {
                     actions = listOf(
                         Action.AddVideoAction(addedVideoId = videoId)
                     )
+                )
+            )
+        }
+    }
+
+    suspend fun addVideosToPlaylist(
+        client: YouTubeClient,
+        playlistId: String,
+        videoIds: List<String>,
+    ) = withRetry {
+        httpClient.post("browse/edit_playlist") {
+            ytClient(client, setLogin = true)
+            setBody(
+                EditPlaylistBody(
+                    context = client.toContext(locale, visitorData, dataSyncId),
+                    playlistId = playlistId.removePrefix("VL"),
+                    actions = videoIds.map { Action.AddVideoAction(addedVideoId = it) }
                 )
             )
         }

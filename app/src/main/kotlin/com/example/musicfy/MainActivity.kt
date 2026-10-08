@@ -815,8 +815,6 @@ class MainActivity : ComponentActivity() {
                 // finishing the wizard writes the marker and must dismiss it right away.
                 var onboardedHere by remember { mutableStateOf(hasOnboardedOnThisInstall(context)) }
 
-                val betaDismissed by rememberPreference(com.example.musicfy.constants.BetaNoticeDismissedKey, false)
-                var showBetaNotice by remember { mutableStateOf(!betaDismissed) }
 
                 CompositionLocalProvider(
                     LocalDatabase provides database,
@@ -847,26 +845,10 @@ class MainActivity : ComponentActivity() {
                         requests = openUpdateRequests,
                     )
                     com.example.musicfy.ui.screens.donate.DonatePromptScheduler(
-                        enabled = setupCompleted && onboardedHere && !forceShowSetup && !showBetaNotice,
+                        enabled = setupCompleted && onboardedHere && !forceShowSetup,
                     )
-                    com.example.musicfy.ui.screens.beta.BetaNoticeContainer(
-                        isVisible = showBetaNotice,
-                        onDismiss = { dontShowAgain ->
-                            if (dontShowAgain) {
-                                coroutineScope.launch(Dispatchers.IO) {
-                                    dataStore.updateData { prefs ->
-                                        prefs.toMutablePreferences().apply {
-                                            set(com.example.musicfy.constants.BetaNoticeDismissedKey, true)
-                                        }
-                                    }
-                                }
-                            }
-                            showBetaNotice = false
-                        }
-                    ) {
                         SetupWizardContainer(
                             isVisible = !setupCompleted || !onboardedHere || forceShowSetup,
-                            isStacked = showBetaNotice,
                             onSetupCompleted = { username, uri ->
                                 markOnboardedOnThisInstall(context)
                                 onboardedHere = true
@@ -1255,7 +1237,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     }
-                    }
 
                     HomeUpdatePrompt(currentRoute = currentRoute)
 
@@ -1396,6 +1377,11 @@ val SubSettingsRoutes = setOf(
     "playback_diagnostics",
     "musicfy_settings",
     "other_settings",
+    "import_sync",
+    "import_providers",
+    "import_tunemymusic",
+    "import_progress",
+    "youtube_sync",
 )
 
 val LocalDatabase = staticCompositionLocalOf<MusicDatabase> { error("No database provided") }

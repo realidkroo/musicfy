@@ -79,6 +79,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -284,6 +285,58 @@ data object GachaItem : HeroCarouselItem {
     override fun onPlay(playerConnection: PlayerConnection, navController: NavController) = Unit
 }
 
+/**
+ * One of the user's own playlists, put forward like any other recommendation; the pill plays it.
+ * [play] does the loading, since the songs live in the database and this runs on a tap.
+ */
+class PlaylistPickItem(
+    val id: String,
+    val name: String,
+    override val thumbnailUrl: String?,
+    private val play: () -> Unit,
+) : HeroCarouselItem {
+    override fun label(isPlaying: Boolean): HeroLabel = HeroLabel("From your playlists")
+    override val mainText: String = name
+    override val subText: String = ""
+    override val mediaId: String? = null
+    override val songTitle: String? = null
+    override val artistName: String? = null
+    override val albumTitle: String? = null
+
+    override fun onPlay(playerConnection: PlayerConnection, navController: NavController) = play()
+
+    override fun equals(other: Any?): Boolean = other is PlaylistPickItem && other.id == id
+    override fun hashCode(): Int = id.hashCode()
+}
+
+/**
+ * A brand-new install has nothing played yet, so the hero starts from what onboarding brought in:
+ * the playlists just imported, or else the artists picked on "Let's build your home".
+ */
+data class StarterItem(
+    val kind: Kind,
+    val id: String,
+    val title: String,
+    val detail: String,
+    override val thumbnailUrl: String?,
+) : HeroCarouselItem {
+    enum class Kind { Playlist, Artist }
+
+    override fun label(isPlaying: Boolean): HeroLabel =
+        HeroLabel(if (kind == Kind.Playlist) "From your import" else "Recommended from")
+    override val mainText: String = title
+    override val subText: String = ""
+    override val mediaId: String? = null
+    override val songTitle: String? = null
+    override val artistName: String? = null
+    override val albumTitle: String? = null
+    override val opensPage: Boolean = true
+
+    override fun onPlay(playerConnection: PlayerConnection, navController: NavController) {
+        navController.navigate(if (kind == Kind.Playlist) "local_playlist/$id" else "artist/$id")
+    }
+}
+
 /** an artist the recommendation shares with the song it came from, if there is one */
 private fun sharedArtist(item: DailyDiscoverItem): String? {
     val rec = item.recommendation as? SongItem ?: return null
@@ -328,9 +381,11 @@ fun HeroCarousel(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     gachaPool: List<MediaMetadata> = emptyList(),
+    starterItems: List<StarterItem> = emptyList(),
+    playlistPicks: List<PlaylistPickItem> = emptyList(),
 ) {
     val showGacha = gachaPool.size >= GachaMinPool
-    val carouselItems = remember(keepListening, lastPlayedSong, dailyDiscover, showGacha) {
+    val carouselItems = remember(keepListening, lastPlayedSong, dailyDiscover, showGacha, starterItems, playlistPicks) {
         buildList {
             lastPlayedSong?.let { add(KeepListeningItem(it, isLastPlayed = true)) }
 
@@ -344,6 +399,9 @@ fun HeroCarousel(
                 add(DiscoverItem(item, reasons[index]))
             }
 
+            // the user's own playlists between the recommendations, a couple at a time
+            addAll(playlistPicks.take(2))
+
             val regular = count { it !is GachaItem }
             if (regular < 5) {
                 keepListening?.filterIsInstance<com.example.musicfy.db.entities.Song>()
@@ -353,6 +411,9 @@ fun HeroCarousel(
                         add(KeepListeningItem(song.toMediaMetadata(), isLastPlayed = false))
                     }
             }
+
+            // nothing played yet: start from the imported playlists or the picked artists
+            if (none { it !is GachaItem }) addAll(starterItems.take(5))
         }
     }
 
@@ -1041,6 +1102,51 @@ private const val GachaMaxRollMillis = 9000
 // quick off the mark, then a long slow-down so the last few covers crawl past the pointer
 private val GachaRollEasing = CubicBezierEasing(0.15f, 0.45f, 0.2f, 1f)
 
+private const val IdleStepSeconds = 1f / 30f
+private const val IdleWakeMillis = 28L
+
+private const val TopShadeEnd = 0.44f
+private const val BottomShadeStart = 0.56f
+
+private val WashStops = floatArrayOf(0f, 0.5f, 1f)
+private val WanderStops = floatArrayOf(0f, 0.5f, 1f)
+private val GlowStops = floatArrayOf(0f, 0.45f, 1f)
+
+/**
+ * A gradient made once at unit size and placed by its local matrix; it's only made again when one
+ * of its three colours changes, so a still card stops allocating shaders.
+ */
+private class UnitShader(private val make: (IntArray) -> android.graphics.Shader) {
+    private var cached: android.graphics.Shader? = null
+    private var c0 = 0
+    private var c1 = 0
+    private var c2 = 0
+
+    fun shader(a: Int, b: Int, c: Int, matrix: android.graphics.Matrix): android.graphics.Shader {
+        val current = cached
+        val shader = if (current != null && a == c0 && b == c1 && c == c2) {
+            current
+        } else {
+            make(intArrayOf(a, b, c)).also {
+                cached = it
+                c0 = a
+                c1 = b
+                c2 = c
+            }
+        }
+        shader.setLocalMatrix(matrix)
+        return shader
+    }
+}
+
+/** Eases [from] toward [to], landing exactly once it's within a shade, so the colour stops changing. */
+private fun settle(from: Color, to: Color, fraction: Float): Color {
+    val next = lerp(from, to, fraction)
+    return if (abs(next.red - to.red) < 0.002f && abs(next.green - to.green) < 0.002f &&
+        abs(next.blue - to.blue) < 0.002f && abs(next.alpha - to.alpha) < 0.002f
+    ) to else next
+}
+
 private val GachaPointerColor = Color(0xFFF0908D)
 private val GachaPipColor = Color(0xFF3C3C3C)
 
@@ -1224,7 +1330,8 @@ private fun GachaPage(
     LaunchedEffect(state) {
         var lastNanos = 0L
         var lastReel = state.reel.value
-        var frame = 0
+        var idleTime = 0f
+        var wasBusy = false
         while (isActive) {
             // the pager keeps its neighbours composed; a card off to the side doesn't need frames
             if (abs(pageOffset()) >= 0.999f || obscured.value) {
@@ -1253,16 +1360,22 @@ private fun GachaPage(
                     val to = state.tints[state.candidates[(base + 1).mod(count)].id] ?: from
                     GachaTint(lerp(from.light, to.light, between), lerp(from.deep, to.deep, between))
                 }
-                val follow = 1f - exp(-dt / 0.22f)
                 val busy = speed.floatValue > 0.05f || state.burst.value > 0f
-                // at rest the slow drift only needs every other frame
-                frame++
-                if (busy || frame % 2 == 0) {
-                    light.value = lerp(light.value, target.light, follow)
-                    deep.value = lerp(deep.value, target.deep, follow)
-                    clock.floatValue += if (busy) dt else dt * 2f
+                // at rest the slow sway and breathing only need ~30 steps a second: a step is
+                // under 2px of a soft gradient, too small to see, at a quarter of 120 Hz's redraws
+                idleTime += dt
+                if (busy || idleTime >= IdleStepSeconds) {
+                    val step = if (busy) dt else idleTime
+                    idleTime = 0f
+                    val follow = 1f - exp(-step / 0.22f)
+                    light.value = settle(light.value, target.light, follow)
+                    deep.value = settle(deep.value, target.deep, follow)
+                    clock.floatValue += step
                 }
+                wasBusy = busy
             }
+            // idle, there's no need to wake on every vsync just to wait out the step
+            if (!wasBusy) delay(IdleWakeMillis)
         }
     }
 
@@ -1278,10 +1391,14 @@ private fun GachaPage(
             val coverShape = RoundedCornerShape(unit * GachaCornerRadius)
             val count = candidates.size
 
-            // the wash, the glows and the win ring
+            // the wash, the glows and the win ring. Its own layer, so its per-frame redraw doesn't
+            // re-record the reel or the shading. The gradients are built once at unit size and only
+            // re-coloured when the colours actually move; position and size change through each
+            // shader's matrix, so an idle card allocates nothing per frame.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer()
                     .drawWithCache {
                         val w = size.width
                         val h = size.height
@@ -1290,10 +1407,16 @@ private fun GachaPage(
                         val glowX = w + overhangPx - focusPx / 2f
                         val glowY = (unit * GachaCenterY).toPx()
                         val washPaint = android.graphics.Paint().apply { isDither = true }
+                        val wanderPaint = android.graphics.Paint().apply { isDither = true }
                         val glowPaint = android.graphics.Paint().apply { isDither = true }
                         val ringPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                             style = android.graphics.Paint.Style.STROKE
                         }
+                        val wash = UnitShader { colors -> android.graphics.LinearGradient(0f, 0f, 1f, 0f, colors, WashStops, Shader.TileMode.CLAMP) }
+                        val wander = UnitShader { colors -> android.graphics.RadialGradient(0f, 0f, 1f, colors, WanderStops, Shader.TileMode.CLAMP) }
+                        val glow = UnitShader { colors -> android.graphics.RadialGradient(0f, 0f, 1f, colors, GlowStops, Shader.TileMode.CLAMP) }
+                        val matrix = android.graphics.Matrix()
+                        val values = FloatArray(9)
                         onDrawBehind {
                             val lit = light.value
                             val dark = deep.value
@@ -1305,15 +1428,19 @@ private fun GachaPage(
                                 // the deep colour fills the card and lightens towards the top right,
                                 // the light swaying slowly so the card never sits still
                                 val sway = sin(t * 0.35f) * w * 0.12f
-                                washPaint.shader = android.graphics.LinearGradient(
-                                    w * 0.85f + sway, 0f, w * 0.15f - sway, h,
-                                    intArrayOf(
-                                        lerp(dark, lit, 0.55f).toArgb(),
-                                        lerp(dark, lit, 0.22f).toArgb(),
-                                        dark.toArgb(),
-                                    ),
-                                    floatArrayOf(0f, 0.5f, 1f),
-                                    Shader.TileMode.CLAMP,
+                                val x0 = w * 0.85f + sway
+                                val dx = (w * 0.15f - sway) - x0
+                                val dy = h
+                                // a similarity transform keeps the unit gradient's bands at right angles
+                                values[0] = dx; values[1] = -dy; values[2] = x0
+                                values[3] = dy; values[4] = dx; values[5] = 0f
+                                values[6] = 0f; values[7] = 0f; values[8] = 1f
+                                matrix.setValues(values)
+                                washPaint.shader = wash.shader(
+                                    lerp(dark, lit, 0.55f).toArgb(),
+                                    lerp(dark, lit, 0.22f).toArgb(),
+                                    dark.toArgb(),
+                                    matrix,
                                 )
                                 native.drawRect(0f, 0f, w, h, washPaint)
 
@@ -1321,13 +1448,15 @@ private fun GachaPage(
                                 val wanderX = w * (0.18f + 0.08f * sin(t * 0.23f))
                                 val wanderY = h * (0.55f + 0.1f * sin(t * 0.31f + 1.3f))
                                 val wanderR = w * 0.7f
-                                glowPaint.shader = android.graphics.RadialGradient(
-                                    wanderX, wanderY, wanderR,
-                                    intArrayOf(lit.copy(alpha = 0.32f).toArgb(), lit.copy(alpha = 0.1f).toArgb(), Color.Transparent.toArgb()),
-                                    floatArrayOf(0f, 0.5f, 1f),
-                                    Shader.TileMode.CLAMP,
+                                matrix.setScale(wanderR, wanderR)
+                                matrix.postTranslate(wanderX, wanderY)
+                                wanderPaint.shader = wander.shader(
+                                    lit.copy(alpha = 0.32f).toArgb(),
+                                    lit.copy(alpha = 0.1f).toArgb(),
+                                    Color.Transparent.toArgb(),
+                                    matrix,
                                 )
-                                native.drawCircle(wanderX, wanderY, wanderR, glowPaint)
+                                native.drawCircle(wanderX, wanderY, wanderR, wanderPaint)
 
                                 // the glow behind the big cover: breathing at rest, swelling with the
                                 // spin, flaring on a win
@@ -1335,15 +1464,13 @@ private fun GachaPage(
                                 val flare = if (win > 0f) sin(win * PI.toFloat()) * 0.55f else 0f
                                 val glowR = focusPx * (1.05f + breathe + rush * 0.35f + flare)
                                 val glowY2 = glowY + sin(t * 0.8f) * focusPx * 0.04f
-                                glowPaint.shader = android.graphics.RadialGradient(
-                                    glowX, glowY2, glowR,
-                                    intArrayOf(
-                                        lit.copy(alpha = (0.75f + rush * 0.2f).coerceAtMost(1f)).toArgb(),
-                                        lit.copy(alpha = 0.32f).toArgb(),
-                                        Color.Transparent.toArgb(),
-                                    ),
-                                    floatArrayOf(0f, 0.45f, 1f),
-                                    Shader.TileMode.CLAMP,
+                                matrix.setScale(glowR, glowR)
+                                matrix.postTranslate(glowX, glowY2)
+                                glowPaint.shader = glow.shader(
+                                    lit.copy(alpha = (0.75f + rush * 0.2f).coerceAtMost(1f)).toArgb(),
+                                    lit.copy(alpha = 0.32f).toArgb(),
+                                    Color.Transparent.toArgb(),
+                                    matrix,
                                 )
                                 native.drawCircle(glowX, glowY2, glowR, glowPaint)
 
@@ -1358,12 +1485,19 @@ private fun GachaPage(
                     }
             )
 
+            // white until a cover loads, as a painter rather than a background behind it: one draw
+            // per cover means a fading cover can simply draw at lower alpha, instead of being
+            // rendered offscreen and composited every frame (each one a full tile flush on Mali)
+            val blankCover = remember { ColorPainter(Color.White) }
             candidates.forEachIndexed { index, song ->
                 key(song.id) {
                     AsyncImage(
                         model = song.thumbnailUrl?.resize(544, 544),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        placeholder = blankCover,
+                        error = blankCover,
+                        fallback = blankCover,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .offset(x = unit * GachaOverhang, y = unit * GachaCenterY - focus / 2)
@@ -1386,29 +1520,32 @@ private fun GachaPage(
                                 cameraDistance = 14f * density
                                 // fade out towards the ends instead of popping out of sight
                                 alpha = (2.7f - abs(d)).coerceIn(0f, 1f)
+                                compositingStrategy = CompositingStrategy.ModulateAlpha
                                 shape = coverShape
                                 clip = true
-                            }
-                            .background(Color.White),
+                            },
                     )
                 }
             }
 
-            // the hero's own top and bottom shading, over the reel
+            // the hero's own top and bottom shading, over the reel. Never changes, so it's recorded
+            // once in its own layer. Each shade is clear beyond 44% of the height, so it's only
+            // drawn over its own part: under half the area of two full-height fills
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer()
                     .drawWithCache {
                         val h = size.height
                         val shadePaint = android.graphics.Paint().apply { isDither = true }
-                        val top = easedShade(h) { y -> 0.85f * (1f - smoothstep(0f, 0.44f, y)).let { it * it } }
-                        val bottom = easedShade(h) { y -> smoothstep(0.56f, 1f, y) }
+                        val top = easedShade(h) { y -> 0.85f * (1f - smoothstep(0f, TopShadeEnd, y)).let { it * it } }
+                        val bottom = easedShade(h) { y -> smoothstep(BottomShadeStart, 1f, y) }
                         onDrawBehind {
                             drawIntoCanvas { canvas ->
                                 shadePaint.shader = top
-                                canvas.nativeCanvas.drawRect(0f, 0f, size.width, h, shadePaint)
+                                canvas.nativeCanvas.drawRect(0f, 0f, size.width, h * TopShadeEnd, shadePaint)
                                 shadePaint.shader = bottom
-                                canvas.nativeCanvas.drawRect(0f, 0f, size.width, h, shadePaint)
+                                canvas.nativeCanvas.drawRect(0f, h * BottomShadeStart, size.width, h, shadePaint)
                             }
                         }
                     }

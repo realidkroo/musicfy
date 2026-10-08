@@ -23,7 +23,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.musicfy.R
-import com.example.musicfy.constants.BetaNoticeDismissedKey
 import com.example.musicfy.constants.ForceYtBackdropBlur1500Key
 import com.example.musicfy.constants.HapticFocus
 import com.example.musicfy.constants.HapticFocusKey
@@ -69,6 +68,16 @@ fun ExperimentalSettingsScreen(navController: NavController) {
             SettingsGroup(
                 style = SettingsGroupStyle.Grouped,
                 items = buildList {
+                    add(
+                        SettingsItem(
+                            title = { Text("Import & sync") },
+                            highlightKey = "Import & sync",
+                            descriptionText = "Bring playlists from other services, sync with YouTube, export a backup",
+                            icon = painterResource(R.drawable.sync),
+                            iconShape = androidx.compose.foundation.shape.CircleShape,
+                            onClick = { navController.navigate(com.example.musicfy.ui.screens.settings.importsync.ImportSyncRoute) }
+                        )
+                    )
                     add(
                         SettingsItem(
                             title = { Text("Force 1500 px YouTube blur") },
@@ -226,23 +235,6 @@ fun ExperimentalSettingsScreen(navController: NavController) {
                                     context.dataStore.updateData { prefs ->
                                         prefs.toMutablePreferences().apply {
                                             set(SetupCompletedKey, false)
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                    )
-                    add(
-                        SettingsItem(
-                            title = { Text("Show beta warning on launch") },
-                            descriptionText = "Show the beta popup on launch",
-                            icon = painterResource(R.drawable.warning),
-                            iconShape = androidx.compose.foundation.shape.CircleShape,
-                            onClick = {
-                                coroutineScope.launch {
-                                    context.dataStore.updateData { prefs ->
-                                        prefs.toMutablePreferences().apply {
-                                            set(BetaNoticeDismissedKey, false)
                                         }
                                     }
                                 }
