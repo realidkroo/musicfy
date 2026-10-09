@@ -421,6 +421,15 @@ private const val LOG_TAG = "SignInWeb"
 internal fun chromeUserAgent(webViewAgent: String): String =
     webViewAgent.replace("; wv", "").replace(Regex("""\s?Version/\d+(\.\d+)*"""), "")
 
+/** True once this view shows desktop sites, from the start or after [useDesktopSite]. */
+internal fun WebView.isDesktopSite(): Boolean = settings.userAgentString == DESKTOP_USER_AGENT
+
+/** Switches a phone-site view to desktop sites from its next page load on, zoomed out to fit. */
+internal fun WebView.useDesktopSite() {
+    settings.userAgentString = DESKTOP_USER_AGENT
+    settings.loadWithOverviewMode = true
+}
+
 /**
  * WebView names the app in an X-Requested-With header on every request, which is how sites spot an
  * embedded browser. Android lets an app opt out; sign-in pages get no app name.
