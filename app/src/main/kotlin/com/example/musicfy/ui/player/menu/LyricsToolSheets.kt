@@ -280,7 +280,7 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
                         LyricsUtils.SyncKind.WORD -> "Word synced"
                         LyricsUtils.SyncKind.LINE -> "Line synced"
                         else -> "Plain"
-                    }
+                    } + if (available.candidate.hasDuet) " · duet" else ""
                     state == LyricsMenuViewModel.SourceState.Unavailable -> "Not found"
                     state == LyricsMenuViewModel.SourceState.Off -> "Off"
                     else -> "Checking…"

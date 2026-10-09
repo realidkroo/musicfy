@@ -48,4 +48,11 @@ class LyricsUtilsTest {
         val lines = LyricsUtils.parsePlainLyrics("[ar:Someone]\nfirst line\n\nsecond line\n")
         assertEquals(listOf("first line", "second line"), lines.map { it.text })
     }
+
+    @Test
+    fun `duet needs two voices, not just tags`() {
+        assertTrue(LyricsUtils.hasDistinctVoices("[00:01.00]{agent:v1}one\n[00:03.00]{agent:v2}two"))
+        assertFalse(LyricsUtils.hasDistinctVoices("[00:01.00]{agent:v1}one\n[00:03.00]{agent:v1}two"))
+        assertTrue(LyricsUtils.hasDistinctVoices("[00:01.00]one\n[00:03.00]{agent:v2}two"))
+    }
 }
