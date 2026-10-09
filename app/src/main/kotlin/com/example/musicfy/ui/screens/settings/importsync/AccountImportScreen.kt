@@ -2,7 +2,9 @@
 
 package com.example.musicfy.ui.screens.settings.importsync
 
+import android.net.Uri
 import android.webkit.CookieManager
+import android.webkit.WebView
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +41,7 @@ import com.example.musicfy.utils.rememberPreference
 import com.example.musicfy.importer.account.AccountImportState
 import com.example.musicfy.viewmodels.AccountImportViewModel
 import com.example.musicfy.viewmodels.ImportSyncViewModel
+import timber.log.Timber
 
 const val AccountImportRoutePattern = "account_import/{service}"
 fun accountImportRoute(service: AccountService) = "account_import/${service.route}"
@@ -74,16 +77,45 @@ internal const val AppleAutoSignInJs = """
 })();
 """
 
+private const val SpotifyPlayerOrigin = "https://open.spotify.com"
+private const val SpotifyLibraryUrl = "https://open.spotify.com/collection/tracks"
+
+/** Spotify's sign-in cookie, set on .spotify.com once the account is signed in. */
+private const val SpotifySignedInCookie = "sp_dc"
+
+/**
+ * Spotify's phone site has no library (it says to use the app), so its web player never asks for
+ * one and never sends the signed-in token. Once the sign-in cookie is there and the login pages are
+ * done, the view switches to the desktop site and opens Liked Songs, which loads the library and
+ * sends the token. Runs once: after the switch the view is already a desktop one.
+ */
+private fun openSpotifyLibraryWhenSignedIn(view: WebView) {
+    if (view.isDesktopSite()) return
+    val host = view.url?.let(Uri::parse)?.host ?: return
+    // still on the login, captcha or another site's sign-in page: let it finish first
+    if (!host.endsWith("spotify.com") || host == "accounts.spotify.com" || host == "challenge.spotify.com") return
+    val cookies = CookieManager.getInstance().getCookie(SpotifyPlayerOrigin).orEmpty()
+    if (cookies.split(';').none { it.substringBefore('=').trim() == SpotifySignedInCookie }) return
+    Timber.tag("SignInWeb").d("Spotify signed in, opening the desktop library")
+    view.useDesktopSite()
+    view.loadUrl(SpotifyLibraryUrl)
+}
+
 /** Everything a sign-in page's periodic tick does for [service]. */
 internal fun AccountService.onSignInTick(
-    view: android.webkit.WebView,
+    view: WebView,
     onApplePageProbe: (String?) -> Unit,
     onCookies: (String?) -> Unit,
 ) {
-    if (this != AccountService.APPLE_MUSIC) return
-    view.evaluateJavascript(AppleAutoSignInJs, null)
-    view.evaluateJavascript(ApplePageProbeJs, onApplePageProbe)
-    onCookies(CookieManager.getInstance().getCookie("https://music.apple.com"))
+    when (this) {
+        AccountService.SPOTIFY -> openSpotifyLibraryWhenSignedIn(view)
+        AccountService.APPLE_MUSIC -> {
+            view.evaluateJavascript(AppleAutoSignInJs, null)
+            view.evaluateJavascript(ApplePageProbeJs, onApplePageProbe)
+            onCookies(CookieManager.getInstance().getCookie("https://music.apple.com"))
+        }
+        AccountService.TIDAL, AccountService.YOUTUBE_MUSIC -> Unit
+    }
 }
 
 @Composable
