@@ -83,7 +83,7 @@ fun ImportProvidersScreen(
                     onClick = { linkSource = source },
                 )
             },
-        )
+    }
 
         Spacer(Modifier.height(16.dp))
 
