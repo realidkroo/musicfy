@@ -93,19 +93,17 @@ fun parseCookieString(cookie: String): Map<String, String> =
         }
         .toMap()
 
+// Some languages write durations with a dot instead of a colon (Indonesian "3.45", Finnish,
+// Danish), so either separator is accepted.
+private val DURATION_REGEX = Regex("^(?:(\\p{Nd}+)[:.])?(\\p{Nd}+)[:.](\\p{Nd}{2})$")
+
 fun String.parseTime(): Int? {
-    try {
-        val parts = split(":").map { it.toInt() }
-        if (parts.size == 2) {
-            return parts[0] * 60 + parts[1]
-        }
-        if (parts.size == 3) {
-            return parts[0] * 3600 + parts[1] * 60 + parts[2]
-        }
-    } catch (e: Exception) {
-        return null
+    val (hours, minutes, seconds) = DURATION_REGEX.matchEntire(trim())?.destructured ?: return null
+    return try {
+        (hours.toIntOrNull() ?: 0) * 3600 + minutes.toInt() * 60 + seconds.toInt()
+    } catch (e: NumberFormatException) {
+        null
     }
-    return null
 }
 
 fun isPrivateId(browseId: String): Boolean {

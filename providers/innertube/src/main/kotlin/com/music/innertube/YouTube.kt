@@ -1247,7 +1247,8 @@ object YouTube {
             return@runCatching next(watchPlaylistEndpoint).getOrThrow().let { result ->
                 result.copy(
                     title = title,
-                    items = songs + result.items,
+                    // The automix usually opens with the song it was made from, which is already in songs.
+                    items = songs + result.items.filter { item -> songs.none { it.id == item.id } },
                     lyricsEndpoint = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(1)?.tabRenderer?.endpoint?.browseEndpoint,
                     relatedEndpoint = response.contents.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer?.watchNextTabbedResultsRenderer?.tabs?.getOrNull(2)?.tabRenderer?.endpoint?.browseEndpoint,
                     currentIndex = currentIndex,

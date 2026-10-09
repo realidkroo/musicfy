@@ -60,7 +60,7 @@ object NextPage {
                     ?.runs
                     ?.firstOrNull()
                     ?.text
-                    ?.parseTime() ?: return null,
+                    ?.parseTime(),
             musicVideoType = renderer.navigationEndpoint.musicVideoType,
             thumbnail =
                 renderer.thumbnail.thumbnails
