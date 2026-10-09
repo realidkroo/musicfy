@@ -3,32 +3,79 @@
 ---
 <div align="center">
 
-  <img width="100" height="100" alt="Musicfy Icon" src="assets/icon.png" />
-
-  # Musicfy
-
-  <sub>cool music player for android, open source, packed with features and doesn’t collect ur data >_<</sub>
-
-  <br/><br/>
-
+  Sleek modern cool music player for android, open source, packed with features and doesn’t collect ur data >_<
+  <br/>
+<p align="center">
   <a href="https://github.com/realidkroo/musicfy/releases">
-    <img alt="Total downloads" src="https://img.shields.io/github/downloads/realidkroo/musicfy/total?style=for-the-badge&label=Total%20downloads" />
+    <img src="https://shieldcn.dev/github/downloads/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=fab387" alt="Downloads">
+  </a>
+  <a href="https://github.com/realidkroo/musicfy/stargazers">
+    <img src="https://shieldcn.dev/github/stars/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=f9e2af" alt="Stars">
+  </a>
+  <a href="https://github.com/realidkroo/musicfy/network/members">
+    <img src="https://shieldcn.dev/github/forks/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=89b4fa" alt="Forks">
+      <a href="https://github.com/realidkroo/musicfy/releases">
+    <img src="https://shieldcn.dev/badge/Android-8.0%2B-313244.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logo=android&logoColor=94e2d5" alt="Android 8.0+">
+  </a>
+  </a>
+  <a href="https://github.com/realidkroo/musicfy/commits">
+    <img src="https://shieldcn.dev/github/commits/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=a6e3a1" alt="Commits">
   </a>
   <a href="https://github.com/realidkroo/musicfy/releases/latest">
-    <img alt="Latest release" src="https://img.shields.io/github/v/release/realidkroo/musicfy?style=for-the-badge&label=Latest" />
+    <img src="https://shieldcn.dev/github/release/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=cba6f7" alt="Release">
   </a>
-
+  <a href="https://github.com/realidkroo/musicfy/issues">
+    <img src="https://shieldcn.dev/github/issues/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=f38ba8" alt="Issues">
+  </a>
+  <a href="https://github.com/realidkroo/musicfy/blob/main/LICENSE">
+    <img src="https://shieldcn.dev/github/license/realidkroo/musicfy.svg?mode=dark&radius=999&font=geist&split=true&height=28&fontSize=13&labelColor=1e1e2e&labelTextColor=ffffff&color=313244&valueColor=ffffff&logoColor=b4befe" alt="License">
+  </a>
+</p>
 </div>
 
 ---
 
 > [!WARNING]
 > Support for android 8+ is available but won’t get many features as on android 13+.
->
-> Musicfy is an open source music player, with cool clean user interface and customizable. It’s a yt music wrapper, and Monochrome ( unstable ).
 
 > [!WARNING]
-> This app still on beta!
+> This app still on beta! or developer preview, expect some bugs! reporting it will be useful too.
+
+
+> [!WARNING]
+> player customization on 7.xx rn is broken pls wait for fix
+
+---
+## How to install? 
+Go to https://github.com/realidkroo/musicfy/releases/latest
+Pick the latest version, and the correct architecture of your phone, normally it will be arm64
+
+---
+## Other notes
+you can straightly compile using build.sh type build.sh --help for more info.
+its a script to make the day easier.
+you can fork it but I dont support unofficial fork
+
+---
+## Preview
+
+<details>
+  <summary><b>Preview (click to expand)</b></summary>
+  <br>
+  <table>
+    <tr>
+      <td align="center"><img height="390" alt="Preview 1" src="https://github.com/user-attachments/assets/83f753b4-5dec-45f6-bf66-c00023b3b961" /></td>
+      <td align="center"><img height="390" alt="Preview 2" src="https://github.com/user-attachments/assets/bc2e001e-4b5e-421e-af96-b86c8d2a8bbb" /></td>
+      <td align="center"><img height="390" alt="Preview 3" src="https://github.com/user-attachments/assets/06499690-1168-477f-8924-d767c8216b5f" /></td>
+    </tr>
+    <tr>
+      <td align="center"><img height="390" alt="Preview 4" src="https://github.com/user-attachments/assets/ca84b924-8705-403c-83a5-e3a74e7d74c7" /></td>
+      <td align="center"><img height="390" alt="Preview 5" src="https://github.com/user-attachments/assets/a2ed32b6-2cbe-4b6e-8e1e-3bb82211f26d" /></td>
+      <td align="center"><img height="390" alt="Preview 6" src="https://github.com/user-attachments/assets/bbf05596-eb66-40ab-a1e1-32c51a8cd940" /></td>
+    </tr>
+  </table>
+</details>
+
 
 ---
 
