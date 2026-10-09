@@ -21,6 +21,11 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -75,7 +80,12 @@ object GoogleTranslateEngine {
 
         suspend fun flush(): Boolean {
             if (batch.isEmpty()) return true
-            val translated = translateBatch(batch, targetLanguage, sourceLanguage) ?: return false
+            // A batch can come back with the markers mangled ("@@ @", merged lines), which used to
+            // throw away the whole song's translation. Fall back to asking line by line for that
+            // batch only: slower, but it cannot misalign.
+            val translated = translateBatch(batch, targetLanguage, sourceLanguage)
+                ?: translateLineByLine(batch, targetLanguage, sourceLanguage)
+                ?: return false
             out += translated
             batch = ArrayList()
             budget = 0
@@ -95,6 +105,23 @@ object GoogleTranslateEngine {
         // mis-attribute translations to the wrong lyrics.
         if (out.size == lines.size) out else null
     }
+
+    private suspend fun translateLineByLine(
+        lines: List<String>,
+        targetLanguage: String,
+        sourceLanguage: String,
+    ): List<String>? = coroutineScope {
+        val gate = Semaphore(LineByLineParallelism)
+        lines.map { line ->
+            async { gate.withPermit { translateBatch(listOf(line), targetLanguage, sourceLanguage)?.single() } }
+        }.awaitAll().let { results ->
+            // A single line that still fails keeps its original text rather than sinking the rest.
+            results.mapIndexed { index, translated -> translated ?: lines[index] }
+                .takeIf { results.any { it != null } }
+        }
+    }
+
+    private const val LineByLineParallelism = 4
 
     private suspend fun translateBatch(
         lines: List<String>,

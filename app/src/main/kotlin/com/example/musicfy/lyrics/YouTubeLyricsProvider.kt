@@ -7,7 +7,9 @@ import com.music.innertube.YouTube
 import com.music.innertube.models.WatchEndpoint
 
 object YouTubeLyricsProvider : LyricsProvider {
-    override val name = "YouTube Music"
+    // Must match the registry key (see YouTubeSubtitleLyricsProvider): a spaced name never
+    // matched the registry, so this source could not be picked or marked as in use.
+    override val name = "YouTubeMusic"
 
     override fun isEnabled(context: Context) = true
 

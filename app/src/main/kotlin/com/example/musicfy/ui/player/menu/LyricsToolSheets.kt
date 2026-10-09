@@ -49,9 +49,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.musicfy.LocalPlayerConnection
-import com.example.musicfy.constants.LyricsProviderOrderKey
 import com.example.musicfy.constants.TranslateLanguageKey
 import com.example.musicfy.constants.TranslateLyricsKey
+import com.example.musicfy.constants.TranslateSourceLanguageKey
 import com.example.musicfy.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.example.musicfy.lyrics.LyricsProviderRegistry
 import com.example.musicfy.lyrics.LyricsTranslationHelper
@@ -213,11 +213,13 @@ internal fun buildLrc(times: List<Long>, texts: List<String>): String = buildStr
 // ---------------------------------------------------------------------------------------------
 
 /**
- * Picks which source to prefer for this song, then refetches.
+ * Picks which source this song's lyrics come from.
  *
- * Choosing a provider moves it to the front of the saved order rather than pinning it as the only
- * source: providers routinely have no entry for a given track, and a hard pin would leave the song
- * with no lyrics at all instead of falling through to the next one.
+ * Every source is asked as soon as the sheet opens, and each row says what it found: checking,
+ * word / line synced, plain, not found, or switched off. Tapping a source that has lyrics applies
+ * the copy already fetched, so the switch is instant. This used to move the tapped source to the
+ * front of the global order and search again, but provider order only breaks ties in the grading,
+ * so the same result usually came straight back and the pick appeared to do nothing.
  */
 @Composable
 fun LyricsProviderSheet(onDismiss: () -> Unit) {
@@ -225,10 +227,26 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
     val viewModel: LyricsMenuViewModel = hiltViewModel()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
-    val (order, setOrder) = rememberPreference(LyricsProviderOrderKey, defaultValue = "")
+    val sources by viewModel.sources.collectAsState()
 
-    val names = remember(order) {
-        LyricsProviderRegistry.deserializeProviderOrder(order)
+    androidx.compose.runtime.LaunchedEffect(mediaMetadata?.id) {
+        mediaMetadata?.let(viewModel::checkSources)
+    }
+
+    // Sources with lyrics first, in the order they would be preferred; then the rest.
+    val names = remember(sources) {
+        val rank = { state: LyricsMenuViewModel.SourceState? ->
+            when (state) {
+                is LyricsMenuViewModel.SourceState.Available -> 0
+                LyricsMenuViewModel.SourceState.Checking, null -> 1
+                LyricsMenuViewModel.SourceState.Unavailable -> 2
+                LyricsMenuViewModel.SourceState.Off -> 3
+            }
+        }
+        LyricsProviderRegistry.providerNames.sortedWith(
+            compareBy<String> { rank(sources[it]) }
+                .thenBy { (sources[it] as? LyricsMenuViewModel.SourceState.Available)?.candidate?.order ?: Int.MAX_VALUE }
+        )
     }
     val active = lyricsEntity?.provider
 
@@ -253,7 +271,20 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
             // so they read down a common left edge like every other menu in the app; centred pills
             // made a list of eight providers into eight floating buttons with no scan line.
             names.forEach { name ->
+                val state = sources[name]
+                val available = state as? LyricsMenuViewModel.SourceState.Available
                 val isActive = name == active
+                val status = when {
+                    isActive -> "In use"
+                    available != null -> when (available.candidate.sync) {
+                        LyricsUtils.SyncKind.WORD -> "Word synced"
+                        LyricsUtils.SyncKind.LINE -> "Line synced"
+                        else -> "Plain"
+                    }
+                    state == LyricsMenuViewModel.SourceState.Unavailable -> "Not found"
+                    state == LyricsMenuViewModel.SourceState.Off -> "Off"
+                    else -> "Checking…"
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -262,39 +293,47 @@ fun LyricsProviderSheet(onDismiss: () -> Unit) {
                         .clip(RoundedCornerShape(16.dp))
                         .background(MenuRowSurface)
                         .clickable(
+                            enabled = available != null && !isActive,
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                         ) {
-                            setOrder(
-                                LyricsProviderRegistry.serializeProviderOrder(
-                                    listOf(name) + names.filter { it != name }
-                                )
-                            )
-                            mediaMetadata?.let { viewModel.refetchLyrics(it, lyricsEntity) }
-                            closeSheet()
+                            val metadata = mediaMetadata
+                            if (available != null && metadata != null) {
+                                viewModel.useSource(metadata, available.candidate)
+                                closeSheet()
+                            }
                         }
                         .padding(horizontal = 14.dp, vertical = 14.dp),
                 ) {
+                    // Availability dot: green has lyrics, grey is still checking, red found nothing.
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(
+                                when {
+                                    available != null -> Color(0xFF4CD964)
+                                    state == LyricsMenuViewModel.SourceState.Unavailable -> Color(0xFFFF5A5F)
+                                    else -> Color(0xFF6A6A6A)
+                                }
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = LyricsProviderRegistry.getDisplayName(name),
-                        color = Color.White,
+                        color = Color.White.copy(alpha = if (available != null) 1f else 0.5f),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    // The source actually in use is marked, rather than the whole row changing
-                    // colour — a filled row reads as "selected control", but this list is a set of
-                    // actions where one happens to be current.
-                    if (isActive) {
-                        Text(
-                            text = "In use",
-                            color = Color(0xFF9A9A9A),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
+                    Text(
+                        text = status,
+                        color = if (isActive) Color.White else Color(0xFF9A9A9A),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
@@ -344,12 +383,16 @@ private val TranslationTargets = listOf(
 
 @Composable
 fun LyricsTranslationSheet(onDismiss: () -> Unit) {
-    val (target, setTarget) = rememberPreference(TranslateLanguageKey, defaultValue = "")
+    // Same default as the lyrics screen. The sheet used to default to "" while the screen
+    // defaulted to "en", so the two disagreed about what language was selected.
+    val (target, setTarget) = rememberPreference(TranslateLanguageKey, defaultValue = "en")
+    val (source, setSource) = rememberPreference(TranslateSourceLanguageKey, defaultValue = "auto")
     val (sessionWide, setSessionWide) = rememberPreference(TranslateLyricsKey, defaultValue = false)
     var picking by remember { mutableStateOf(false) }
+    var pickingSource by remember { mutableStateOf(false) }
 
     val status by LyricsTranslationHelper.status.collectAsState()
-    val hasTranslations by LyricsTranslationHelper.hasActiveTranslations.collectAsState()
+    val translationOn by LyricsTranslationHelper.translationOn.collectAsState()
     val isTranslating = status is LyricsTranslationHelper.TranslationStatus.Translating
 
     MenuSheetSurface(onDismiss = onDismiss, wrapHeight = true) { _ ->
@@ -370,9 +413,16 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // The source is whatever the lyrics are already in — detected, not chosen. Offering a
-            // picker here would only let the user tell the translator something wrong.
-            PillButton(label = "Source", enabled = false, onClick = {})
+            // Detected by default. Detection guesses wrong on short or mixed-language lyrics, and
+            // then nothing could be done about it, so the source can be set by hand too.
+            PillButton(
+                label = if (source.isBlank() || source == "auto") {
+                    "Detect automatically"
+                } else {
+                    TranslationTargets.firstOrNull { it.first == source }?.second ?: source
+                },
+                onClick = { pickingSource = true },
+            )
 
             Spacer(modifier = Modifier.height(14.dp))
             Text(text = "To", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -430,11 +480,13 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
                         }
                     )
                     .clickable(
-                        enabled = target.isNotBlank() && !isTranslating,
+                        // Still tappable while translating, so a slow or stuck translation can be
+                        // switched off instead of locking the button.
+                        enabled = target.isNotBlank(),
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) {
-                        if (hasTranslations) {
+                        if (translationOn) {
                             LyricsTranslationHelper.triggerClearTranslations()
                         } else {
                             LyricsTranslationHelper.triggerManualTranslation()
@@ -446,8 +498,8 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
             ) {
                 Text(
                     text = when {
-                        isTranslating -> "Translating…"
-                        hasTranslations -> "Show original"
+                        isTranslating -> "Translating… (tap to stop)"
+                        translationOn -> "Show original"
                         target.isBlank() -> "Pick a language first"
                         else -> "Translate!"
                     },
@@ -456,15 +508,36 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                 )
             }
+
+            // A failed translation used to leave the lines quietly untranslated with no reason.
+            (status as? LyricsTranslationHelper.TranslationStatus.Error)?.let { error ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Couldn't translate: ${error.message}",
+                    color = Color(0xFFFF8A8A),
+                    fontSize = 12.sp,
+                )
+            }
         }
     }
 
     if (picking) {
         LanguagePickerSheet(
+            title = "Translate to",
             selected = target,
-            // The picker closes itself (animated) after a pick; onDismiss then drops it.
+            // The picker closes itself (animated) after a pick; onDismiss then drops it. While a
+            // translation is showing, the lyrics screen re-translates into the new language.
             onPick = { setTarget(it) },
             onDismiss = { picking = false },
+        )
+    }
+    if (pickingSource) {
+        LanguagePickerSheet(
+            title = "Translate from",
+            selected = source.ifBlank { "auto" },
+            options = listOf("auto" to "Detect automatically") + TranslationTargets,
+            onPick = { setSource(it) },
+            onDismiss = { pickingSource = false },
         )
     }
 }
@@ -477,16 +550,18 @@ fun LyricsTranslationSheet(onDismiss: () -> Unit) {
  */
 @Composable
 private fun LanguagePickerSheet(
+    title: String,
     selected: String,
     onPick: (String) -> Unit,
     onDismiss: () -> Unit,
+    options: List<Pair<String, String>> = TranslationTargets,
 ) {
     var query by remember { mutableStateOf("") }
-    val filtered = remember(query) {
+    val filtered = remember(query, options) {
         if (query.isBlank()) {
-            TranslationTargets
+            options
         } else {
-            TranslationTargets.filter { it.second.contains(query, ignoreCase = true) }
+            options.filter { it.second.contains(query, ignoreCase = true) }
         }
     }
 
@@ -499,7 +574,7 @@ private fun LanguagePickerSheet(
                 .padding(top = 16.dp)
         ) {
             Text(
-                text = "Translate to",
+                text = title,
                 color = Color.White,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
