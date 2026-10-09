@@ -26,9 +26,6 @@ jobs:
           cache-read-only: true
           cache-cleanup: on-success
 
-      - name: Setup FFTW for Android
-        uses: ./.github/actions/setup-fftw
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 

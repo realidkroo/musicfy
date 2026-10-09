@@ -1204,7 +1204,7 @@ fun HomeScreen(
                         HomeSection.MostPlayed -> {
                             mostPlayedSongsForHome?.takeIf { it.isNotEmpty() }?.let { mostPlayed ->
                                 homeItem("most_played_title", revealSeen) {
-                                    val mostPlayedTitle = stringResource(R.string.vivi_quick_picks)
+                                    val mostPlayedTitle = stringResource(R.string.home_most_played)
                                     HomeSectionTitle(
                                         title = mostPlayedTitle,
                                         onClick = { navController.navigate("section_detail/most_played") },
@@ -1245,7 +1245,7 @@ fun HomeScreen(
                             recentHistorySongs?.takeIf { it.isNotEmpty() }?.let { history ->
                                 homeItem("history_title", revealSeen) {
                                     HomeSectionTitle(
-                                        title = stringResource(R.string.vivi_on_heavy_rotation),
+                                        title = stringResource(R.string.home_history),
                                         onClick = { navController.navigate("history") }
                                     )
                                 }

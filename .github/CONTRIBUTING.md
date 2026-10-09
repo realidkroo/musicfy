@@ -1,52 +1,70 @@
-# 🤝 Contributing to Vivi Music
+# Contributing to Musicfy
 
-Thank you for your interest in contributing to **Vivi Music Enterprise Edition**.
+Thanks for wanting to help out. Musicfy is a small, open source Android music player, so the process here is kept light.
 
-> [!IMPORTANT]
-> This project follows strict engineering standards. Before writing code, you **MUST** read our [Technical Manual](../docs/Technical_Manual.md). It is the **Single Source of Truth** for architecture and workflows.
+> [!NOTE]
+> Musicfy is an independent project. It is not affiliated with, endorsed by, or sponsored by YouTube, Google, Spotify, Apple, Last.fm, Shazam or any other service it can talk to. See the [Disclaimer](#disclaimer) below.
 
-## 🛠️ The Workflow (Strict TDD)
+## Getting set up
 
-We follow the **Red-Green-Refactor** cycle described in our [TDD Blueprint](../docs/tdd_quality_blueprint.md).
+- Android Studio (latest stable) and JDK 21
+- The project is Kotlin + Jetpack Compose, split into the `app` module and a set of `providers:*` modules (InnerTube, lyrics providers, Last.fm, Discord RPC, etc.)
+- Build from the terminal with the helper script:
 
-1.  **🔴 Red**: Write a failing test (JUnit 5 / MockK / Turbine) covering the requirement.
-2.  **🟢 Green**: Implement the *minimal* code to pass the test.
-3.  **🔵 Refactor**: Optimize architecture and clean up code.
+  ```bash
+  ./build.sh --help      # all options
+  ./build.sh --debug     # debug build, fastest to iterate on
+  ```
 
-**PRs without tests will be rejected immediately.**
+  Prefer debug builds while working. A release build runs R8 without incremental support and takes noticeably longer.
 
-## 📐 Coding Standards & Governance
+## Making a change
 
-Please refer to [Governance](../docs/governance.md) for detailed style guides.
+1. **Fork and branch.** Use a short descriptive branch name, for example `fix/player-crash` or `feature/lyrics-sync`.
+2. **Keep it focused.** One fix or feature per pull request makes it much easier to review.
+3. **Match the surrounding code.** Follow the naming, structure and comment style of the files you are touching. Don't reformat code you aren't changing.
+4. **Check older devices.** Musicfy supports Android 8.0+, so anything that uses a newer platform API needs an `SDK_INT` guard. Default arguments and property types count too, because they can load the class on old devices.
+5. **Don't trade features for speed.** Performance work should keep every existing animation, blur and visual. Include before/after screenshots if you changed UI.
+6. **Test it.** Run it on a real device or an emulator, and run the unit tests if you touched logic that has them:
 
-* **Architecture**: Clean Architecture + MVVM (Unidirectional Data Flow).
-* **Components**: Single File Components (SFC) for Jetpack Compose.
-* **Style**: Google Android Style Guide (enforced via `ktlint` and `detekt`).
-* **Language**: Kotlin 2.3 (No Java).
-* **Warnings**: Treat warnings as errors.
+   ```bash
+   ./gradlew testDebugUnitTest
+   ```
 
-## 🚀 Pull Request Process
+7. **Open the pull request.** Fill in the PR template, link the issue it fixes, and add screenshots or a screen recording for anything visual.
 
-1.  **Fork & Branch**: Use semantic branch names (e.g., `feature/lyrics-sync`, `fix/player-crash`).
-2.  **Commit Messages**: Follow **Conventional Commits**:
-    * `feat: ...` for new features
-    * `fix: ...` for bug fixes
-    * `refactor: ...` for code cleanup
-    * `test: ...` for adding tests
-3.  **Verification**: Run the following commands locally before pushing:
-    ```bash
-    ./gradlew lintDebug       # Must be free of errors
-    ./gradlew testDebugUnitTest # Must pass
-    ```
-4.  **Coverage**: Ensure you meet the **80% coverage goal** for business logic.
+Commit messages should be short and say what changed. Conventional prefixes (`fix:`, `feat:`, `refactor:`) are welcome but not required.
 
-## 🐞 Reporting Bugs
+## Reporting bugs
 
-Please use the [Bug Report Template](ISSUE_TEMPLATE/bug_report.yml). Attach logs (`adb logcat`) and screenshots.
+Open an [issue](https://github.com/realidkroo/musicfy/issues) and include:
+
+- Musicfy version and your Android version and device
+- What you did, what you expected, and what happened instead
+- Logs (`adb logcat`) and a screenshot or recording when you can
+
+Musicfy is still in beta, so bug reports are very useful.
+
+## Third-party services and content
+
+- Don't commit API keys, tokens, cookies or account credentials.
+- Don't add code whose purpose is to bypass DRM, paywalls or access controls.
+- Don't add trackers or analytics. Musicfy does not collect user data and that is a project goal.
+- Playback and metadata come from third-party services that can change or break at any time. Keep that in mind when sending fixes that depend on a specific endpoint.
+
+## Licensing
+
+Musicfy is licensed under the [GNU General Public License v3.0](../LICENSE). By contributing you agree that your contribution is released under the same license. Keep the existing copyright and attribution notices in files you modify, and credit the source of any code you bring in from another project (it must be GPL-3.0 compatible).
+
+## Disclaimer
+
+Musicfy is provided as is, without warranty of any kind. It is an unofficial client built for personal and educational use.
+
+- It is **not affiliated with or endorsed by** YouTube, YouTube Music, Google, Spotify, Apple, Last.fm, Shazam, Discord or any other third-party service or rights holder. All product names, logos and brands belong to their respective owners.
+- Musicfy does not host, store or distribute any music. Content is fetched from third-party services at the user's request.
+- You are responsible for how you use the app, including following the terms of service of the services you connect to and the copyright laws that apply where you live.
+- Unofficial forks and builds are not supported by the maintainer.
 
 ---
 
-**Quick Links:**
-* 📖 [Technical Manual](../docs/Technical_Manual.md)
-* ⚖️ [Governance & Style](../docs/governance.md)
-* 🧪 [TDD & Quality Blueprint](../docs/tdd_quality_blueprint.md)
+Thanks for contributing!

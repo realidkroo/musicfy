@@ -208,8 +208,8 @@
     <string name="proxy">Proxy</string>
     <string name="default_lib_chips">Change default library chip</string>
     <string name="set_quick_picks">Set most played</string>
-    <string name="vivi_quick_picks">Most Played</string>
-    <string name="vivi_quick_picks_empty">Listen to songs to generate your most played</string>
+    <string name="home_most_played">Most Played</string>
+    <string name="home_most_played_empty">Listen to songs to generate your most played</string>
     <string name="last_song_listened">Based on last song listened</string>
     <string name="app_language">App language</string>
     <string name="configure_app_language">Configure app languages</string>
@@ -927,7 +927,7 @@
     <string name="build_stable">STABLE</string>
     <string name="build_nightly">NIGHTLY</string>
     <string name="recently_played">Recently Played</string>
-    <string name="vivi_on_heavy_rotation">History</string>
+    <string name="home_history">History</string>
     <string name="your_library">Your Library</string>
     <string name="downloaded">Downloaded</string>
     <string name="uploaded">Uploaded</string>

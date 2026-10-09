@@ -1012,7 +1012,7 @@ class MainActivity : ComponentActivity() {
 
                                 val navBarTotalHeight = bottomInset + NavigationBarHeight
 
-                                if (!showRail && currentRoute != "wrapped" && currentRoute != "update" && currentRoute != "listen_together/chat") {
+                                if (!showRail && currentRoute != "wrapped" && currentRoute != "update") {
 
                                     val detailAccent = LocalDetailAccentColor.current.value
                                     val navScrimTint by androidx.compose.animation.animateColorAsState(
@@ -1097,7 +1097,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 } else {
-                                    if (currentRoute != "wrapped" && currentRoute != "update" && currentRoute != "listen_together/chat") {
+                                    if (currentRoute != "wrapped" && currentRoute != "update") {
                                         BottomSheetPlayer(
                                             state = playerBottomSheetState,
                                             navController = navController,

@@ -172,15 +172,3 @@
 -keepclasseswithmembers class com.music.shazamkit.models.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
-
-## Listen Together Serialization
--keep class com.example.musicfy.listentogether.** { *; }
--keepclassmembers class com.example.musicfy.listentogether.** {
-    *;
-}
--keepclassmembers class com.example.musicfy.listentogether.** {
-    *** Companion;
-}
--keepclasseswithmembers class com.example.musicfy.listentogether.** {
-    kotlinx.serialization.KSerializer serializer(...);
-}

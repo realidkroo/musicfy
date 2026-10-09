@@ -111,7 +111,6 @@ fun OldPlayerMenu(
     }
 
     var showChoosePlaylistDialog by rememberSaveable { mutableStateOf(false) }
-    var showListenTogetherDialog by rememberSaveable { mutableStateOf(false) }
     var showSelectArtistDialog by rememberSaveable { mutableStateOf(false) }
     var showPitchTempoDialog by rememberSaveable { mutableStateOf(false) }
 

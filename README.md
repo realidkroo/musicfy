@@ -56,6 +56,18 @@ you can straightly compile using build.sh type build.sh --help for more info.
 its a script to make the day easier.
 you can fork it but I dont support unofficial fork
 
+Want to help? Read [CONTRIBUTING.md](.github/CONTRIBUTING.md) first.
+
+---
+## Disclaimer
+
+Musicfy is an independent, unofficial project made for personal and educational use. It is provided as is, without warranty of any kind.
+
+- It is **not affiliated with, endorsed by, or sponsored by** YouTube, YouTube Music, Google, Spotify, Apple, Last.fm, Shazam, Discord or any other service it can connect to. All names, logos and brands belong to their respective owners.
+- Musicfy does not host, store or distribute any music. Everything is fetched from third-party services when you ask for it, and those services can change or stop working at any time.
+- You are responsible for how you use the app, including the terms of service of the accounts and services you connect and the copyright laws where you live.
+- Importing from other services (Spotify, etc.) uses your own account. Don't share your login data or tokens with anyone.
+
 ---
 ## Preview
 
