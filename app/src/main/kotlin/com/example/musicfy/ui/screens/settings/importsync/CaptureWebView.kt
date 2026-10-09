@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.os.Message
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -123,6 +124,25 @@ private val HOOK_JS = """
       report(name, value, this.__musicfyUrl);
       return originalSet.apply(this, arguments);
     };
+  } catch (e) {}
+  // Spotify's web player won't start without DRM (Widevine) and shows "Playback disabled" instead,
+  // so it never fetches the session we need. The app grants protected media, which is enough where
+  // WebView has Widevine; where it doesn't, the request is answered with a stand-in so the player
+  // loads anyway. Nothing is played here, so its keys are never actually needed.
+  try {
+    var originalAccess = navigator.requestMediaKeySystemAccess;
+    if (originalAccess) {
+      navigator.requestMediaKeySystemAccess = function(keySystem, configs) {
+        return originalAccess.apply(navigator, arguments).catch(function(error) {
+          if (!configs || !configs.length) throw error;
+          return {
+            keySystem: keySystem,
+            getConfiguration: function() { return configs[0]; },
+            createMediaKeys: function() { return Promise.reject(error); }
+          };
+        });
+      };
+    }
   } catch (e) {}
 })();
 """.trimIndent()
@@ -283,6 +303,16 @@ fun CaptureWebContent(
                 transport.webView = popup
                 resultMsg.sendToTarget()
                 return true
+            }
+
+            // the web players check for DRM before they start; WebView refuses it unless the app agrees
+            override fun onPermissionRequest(request: PermissionRequest) {
+                val protectedMedia = arrayOf(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID)
+                if (request.resources.any { it == PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID }) {
+                    request.grant(protectedMedia)
+                } else {
+                    request.deny()
+                }
             }
 
             override fun onConsoleMessage(message: android.webkit.ConsoleMessage): Boolean {
