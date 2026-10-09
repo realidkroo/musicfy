@@ -4,11 +4,16 @@
 *.ap_
 *.aab
 *.dex
+*.dm
 *.class
 bin/
 gen/
 out/
 app/release
+app/universal*/
+app/arm64*/
+app/armeabi*/
+app/x86*/
 
 # Gradle files & caches
 .gradle/
@@ -31,10 +36,21 @@ captures/
 assetscon/
 apk-generated/
 .build_number
-plan.md
 
-# Log & Keystore files
+# Notes & plans
+plan.md
+implementation_plan.md
+transcript_*.txt
+
+# Logs, crash dumps & API response dumps
 *.log
+logcat*.txt
+*_log.txt
+*_logs.txt
+crash*.txt
+app/*.json
+
+# Keystores
 app/persistent-debug.keystore
 
 # Native & C++ build outputs
@@ -43,8 +59,21 @@ app/persistent-debug.keystore
 *.so
 *.bin
 
+# Scratch files in the repo root (not part of the build)
+/test_*
+/Test*.kt
+/fix_*
+/get_*.py
+/*.svg
+/app_src_*
+/NEW-UI/
+/old-player/
+/jadx/
+/jadx.zip
+
 # Misc
 *.py
+!scripts/*.py
 .env
 output-metadata.json
 vcs.xml
