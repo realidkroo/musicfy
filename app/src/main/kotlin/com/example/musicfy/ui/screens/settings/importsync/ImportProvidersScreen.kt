@@ -47,7 +47,7 @@ fun ImportProvidersScreen(
             title = "Sign in and choose",
             style = SettingsGroupStyle.Grouped,
             items = listOf(
-                //AccountService.SPOTIFY to "[borked-notworking] This one -  blocked from spotify, stil you can use csv, later will ",
+                AccountService.SPOTIFY to "Liked Songs and your playlists",
                 AccountService.APPLE_MUSIC to "Library playlists, Favorite Songs and your whole library",
                 AccountService.YOUTUBE_MUSIC to "Liked music and your playlists, exact songs · also supports sync",
                 AccountService.TIDAL to "My Tracks and your playlists",
