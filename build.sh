@@ -48,6 +48,7 @@ while [[ "$#" -gt 0 ]]; do
             echo "                           (Works with --debug, --release, or -commit)"
             echo "  -a                       Build all package styles (arm64, armeabi, x86, x86_64, universal)."
             echo "                           If omitted, defaults to building only the universal APK."
+            echo "  -cc                      Build arm64 and universal package styles."
             echo "  -c <version>             Change the base app version (e.g., -c 6.0.2)"
             echo "  -g <date,ver,attempt>    Temporarily scope custom build date, version, and attempt number,"
             echo "                           then automatically restore original files when done."
@@ -60,6 +61,7 @@ while [[ "$#" -gt 0 ]]; do
             echo "  ./build.sh --debug -i                              # Build debug universal APK & install"
             echo "  ./build.sh --debug -i -g \"2026-08-12,6.0.2,999\"  # Temp custom build date, ver & attempt & restore"
             echo "  ./build.sh --release -a                            # Build release for all architectures (self-updating)"
+            echo "  ./build.sh --release -cc                           # Build release arm64 and universal APKs"
             echo "  ./build.sh -fd --release -a                        # Build F-Droid release for all architectures"
             echo "  ./build.sh --release -a -commit \"lyrics fix\"       # Build all & publish to GitHub dev tag"
             echo "  ./build.sh --install-only --release -commit \"notes\" # Publish existing release APKs"
@@ -74,6 +76,7 @@ while [[ "$#" -gt 0 ]]; do
             SKIP_BUILD=true
             ;;
         -a) PACKAGE_STYLE="all" ;;
+        -cc) PACKAGE_STYLE="arm64-universal" ;;
         -c)
             CHANGE_VERSION="$2"
             shift
@@ -160,6 +163,9 @@ if [ "$SKIP_BUILD" = false ]; then
     if [ "$PACKAGE_STYLE" == "all" ]; then
         echo "Building ALL $FLAVOR package styles for $VARIANT..."
         TASK=":app:assembleArm64${CAP_FLAVOR}${CAP_VARIANT} :app:assembleArmeabi${CAP_FLAVOR}${CAP_VARIANT} :app:assembleX86${CAP_FLAVOR}${CAP_VARIANT} :app:assembleX86_64${CAP_FLAVOR}${CAP_VARIANT} :app:assembleUniversal${CAP_FLAVOR}${CAP_VARIANT}"
+    elif [ "$PACKAGE_STYLE" == "arm64-universal" ]; then
+        echo "Building arm64 and universal $FLAVOR package styles for $VARIANT..."
+        TASK=":app:assembleArm64${CAP_FLAVOR}${CAP_VARIANT} :app:assembleUniversal${CAP_FLAVOR}${CAP_VARIANT}"
     else
         echo "Building universal $FLAVOR package style for $VARIANT..."
         TASK="assembleUniversal${CAP_FLAVOR}${CAP_VARIANT}"
