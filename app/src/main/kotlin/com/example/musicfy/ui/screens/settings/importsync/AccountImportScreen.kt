@@ -84,13 +84,40 @@ private const val SpotifyLibraryUrl = "https://open.spotify.com/collection/track
 private const val SpotifySignedInCookie = "sp_dc"
 
 /**
+ * On the desktop site, a few ticks after Liked Songs started loading (so its own query has gone
+ * out): open a playlist, so the sign-in page also sees the query the web player reads a playlist
+ * with. The user's first playlist in the sidebar if there is one, otherwise a public one. Once.
+ */
+private const val SpotifyOpenPlaylistJs = """
+(function() {
+  try {
+    var names = Object.keys(window.__musicfyQueries || {});
+    if (names.some(function(name) { return name.indexOf('fetchPlaylist') === 0; })) return 'done';
+    if (!names.length) return 'waiting';
+    if (window.__musicfyOpenedPlaylist) return 'opened';
+    window.__musicfyPlaylistLooks = (window.__musicfyPlaylistLooks || 0) + 1;
+    if (window.__musicfyPlaylistLooks < 3) return 'looking';
+    window.__musicfyOpenedPlaylist = true;
+    var link = document.querySelector('a[href^="/playlist/"]');
+    if (link) { link.click(); return 'clicked'; }
+    location.assign('/playlist/37i9dQZF1DXcBWIGoYBM5M');
+    return 'opened';
+  } catch (e) { return 'error'; }
+})();
+"""
+
+/**
  * Spotify's phone site has no library (it says to use the app), so its web player never asks for
  * one and never sends the signed-in token. Once the sign-in cookie is there and the login pages are
  * done, the view switches to the desktop site and opens Liked Songs, which loads the library and
- * sends the token. Runs once: after the switch the view is already a desktop one.
+ * sends the token. Switches once: after that the view is already a desktop one, and only opens a
+ * playlist (see [SpotifyOpenPlaylistJs]).
  */
 private fun openSpotifyLibraryWhenSignedIn(view: WebView) {
-    if (view.isDesktopSite()) return
+    if (view.isDesktopSite()) {
+        view.evaluateJavascript(SpotifyOpenPlaylistJs, null)
+        return
+    }
     val host = view.url?.let(Uri::parse)?.host ?: return
     // still on the login, captcha or another site's sign-in page: let it finish first
     if (!host.endsWith("spotify.com") || host == "accounts.spotify.com" || host == "challenge.spotify.com") return

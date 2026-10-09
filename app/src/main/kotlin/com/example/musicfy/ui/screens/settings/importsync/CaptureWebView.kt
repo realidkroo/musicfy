@@ -57,24 +57,27 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.R
+import com.example.musicfy.importer.account.DESKTOP_USER_AGENT
+import com.example.musicfy.importer.account.WEB_PLAYER_QUERY_HEADER
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
-/** Desktop Chrome: Tidal's web player refuses phones, and the others show their full web player. */
-private const val DESKTOP_USER_AGENT =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-
 private const val BRIDGE_NAME = "MusicfyCapture"
+
+/** Headers the web players send with their session: the token itself, and Spotify's client details. */
+private val SESSION_HEADERS = setOf("authorization", "media-user-token", "client-token", "app-platform", "spotify-app-version")
 
 /**
  * Wraps fetch and XHR so the headers the web player sends (its own session token) reach the app.
- * Only the header names below are reported, each value once.
+ * Only the header names below are reported, each value once. Spotify's library queries are
+ * reported too (name, hash, variables), once per query.
  */
 private val HOOK_JS = """
 (function() {
   if (window.__musicfyHooked) return;
   window.__musicfyHooked = true;
-  var wanted = { 'authorization': 1, 'media-user-token': 1 };
+  window.__musicfyQueries = window.__musicfyQueries || {};
+  var wanted = { 'authorization': 1, 'media-user-token': 1, 'client-token': 1, 'app-platform': 1, 'spotify-app-version': 1 };
   var seen = {};
   var seenCount = 0;
   function report(name, value, url) {
@@ -86,6 +89,37 @@ private val HOOK_JS = """
       if (seenCount > 200) { seen = {}; seenCount = 0; }
       seen[key] = 1; seenCount++;
       window.$BRIDGE_NAME.onHeader(name, String(value), String(url || location.href));
+    } catch (e) {}
+  }
+  // Spotify's web player asks its GraphQL endpoint ("pathfinder") for the library by query name and
+  // hash; seeing them here means the app can ask for the next pages the same way.
+  function reportQuery(url, body) {
+    try {
+      url = String(url || '');
+      if (url.indexOf('/pathfinder/') < 0) return;
+      var address = new URL(url, location.href);
+      var name, hash, variables, post;
+      if (typeof body === 'string' && body.charAt(0) === '{') {
+        var parsed = JSON.parse(body);
+        name = parsed.operationName;
+        variables = parsed.variables || {};
+        hash = parsed.extensions && parsed.extensions.persistedQuery && parsed.extensions.persistedQuery.sha256Hash;
+        post = true;
+      } else {
+        name = address.searchParams.get('operationName');
+        variables = JSON.parse(address.searchParams.get('variables') || '{}');
+        var extensions = JSON.parse(address.searchParams.get('extensions') || '{}');
+        hash = extensions.persistedQuery && extensions.persistedQuery.sha256Hash;
+        post = false;
+      }
+      if (!name || !hash) return;
+      window.__musicfyQueries[name] = 1;
+      address.search = '';
+      var key = 'query|' + name + '|' + hash;
+      if (seen[key]) return;
+      seen[key] = 1; seenCount++;
+      var query = { name: name, hash: hash, variables: variables, url: address.toString(), post: post };
+      window.$BRIDGE_NAME.onHeader('$WEB_PLAYER_QUERY_HEADER', JSON.stringify(query), address.toString());
     } catch (e) {}
   }
   function scan(headers, url) {
@@ -108,6 +142,7 @@ private val HOOK_JS = """
           var url = (typeof input === 'string') ? input : (input && input.url);
           if (input && typeof input === 'object' && input.headers) scan(input.headers, url);
           if (init && init.headers) scan(init.headers, url);
+          reportQuery(url, init && init.body);
         } catch (e) {}
         return originalFetch.apply(this, arguments);
       };
@@ -123,6 +158,11 @@ private val HOOK_JS = """
     XMLHttpRequest.prototype.setRequestHeader = function(name, value) {
       report(name, value, this.__musicfyUrl);
       return originalSet.apply(this, arguments);
+    };
+    var originalSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function(body) {
+      reportQuery(this.__musicfyUrl, body);
+      return originalSend.apply(this, arguments);
     };
   } catch (e) {}
   // Spotify's web player won't start without DRM (Widevine) and shows "Playback disabled" instead,
@@ -280,9 +320,7 @@ fun CaptureWebContent(
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val url = request.url?.toString().orEmpty()
                 request.requestHeaders?.forEach { (name, value) ->
-                    if (name.equals("authorization", true) || name.equals("media-user-token", true)) {
-                        currentOnHeader(name, value, url)
-                    }
+                    if (name.lowercase() in SESSION_HEADERS) currentOnHeader(name, value, url)
                 }
                 return null
             }

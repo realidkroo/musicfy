@@ -7,7 +7,11 @@ import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.content.TextContent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
@@ -32,6 +36,18 @@ internal object AccountHttp {
 
     suspend fun get(url: String, headers: Map<String, String>, service: String): Response = try {
         val response = client.get(url) { headers.forEach { (name, value) -> header(name, value) } }
+        Response(response.status.value, response.bodyAsText(), response.headers["Retry-After"]?.trim()?.toLongOrNull())
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        throw AccountImportException("Couldn't reach $service. Check your connection.")
+    }
+
+    suspend fun post(url: String, headers: Map<String, String>, body: String, service: String): Response = try {
+        val response = client.post(url) {
+            headers.forEach { (name, value) -> header(name, value) }
+            setBody(TextContent(body, ContentType.Application.Json))
+        }
         Response(response.status.value, response.bodyAsText(), response.headers["Retry-After"]?.trim()?.toLongOrNull())
     } catch (e: CancellationException) {
         throw e
