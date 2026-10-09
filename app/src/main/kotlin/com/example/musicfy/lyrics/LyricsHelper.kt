@@ -118,7 +118,10 @@ constructor(
         val order: Int,
         val sync: LyricsUtils.SyncKind,
         val script: LyricsUtils.Script,
-    )
+    ) {
+        /** Carries real left/right voice tags, which is what lays a duet out on both sides. */
+        val hasDuet: Boolean get() = LyricsUtils.hasDistinctVoices(lyrics)
+    }
 
     /**
      * Asks every enabled provider at once. They used to be asked one after another, so a song
@@ -208,11 +211,23 @@ constructor(
                 mediaMetadata.album?.title,
             ).joinToString(" ")
         )
-        val referenceScript = metadataScript.takeIf(::isNative)
-            ?: candidates
-                .filter { it.providerName in LanguageReferenceProviders }
-                .map { it.script }
-                .firstOrNull(::isNative)
+        val referenceScript = (
+            metadataScript.takeIf(::isNative)
+                ?: candidates
+                    .filter { it.providerName in LanguageReferenceProviders }
+                    .map { it.script }
+                    .firstOrNull(::isNative)
+            )?.let { script ->
+            // All-kanji names ("米津玄師") read as Han, but so does a Japanese song's credit line.
+            // Chinese sources don't put kana into Chinese songs, so when any result has kana, the
+            // song is Japanese. Without this, a Chinese translation scored as an exact match and
+            // beat the Japanese original, along with its duet tags.
+            if (script == LyricsUtils.Script.HAN && candidates.any { it.script == LyricsUtils.Script.KANA }) {
+                LyricsUtils.Script.KANA
+            } else {
+                script
+            }
+        }
 
         val trustedNative: Set<LyricsUtils.Script> = if (referenceScript != null) {
             emptySet()
@@ -257,7 +272,13 @@ constructor(
             // ttm:agent) and Paxsenix emit it — YouLyPlus never does. Without this term an
             // agent-less result that ties on script and sync would win purely on provider order
             // and the song would silently render flush-left with no way to tell why.
-            val duetScore = if (LyricsUtils.hasVoiceTags(c.lyrics)) 1 else 0
+            // Real two-sided voices count most; tags on every line with a single voice still beat
+            // none, as before.
+            val duetScore = when {
+                c.hasDuet -> 2
+                LyricsUtils.hasVoiceTags(c.lyrics) -> 1
+                else -> 0
+            }
 
             scriptScore * ScriptWeight +
                 syncScore * SyncWeight +
@@ -336,8 +357,13 @@ constructor(
     companion object {
         private const val MAX_CACHE_SIZE = 3
 
-        /** One slow provider must not hold the whole lookup hostage. */
-        private const val ProviderTimeoutMs = 15_000L
+        /**
+         * One hung provider must not hold the whole lookup hostage. Kept above the providers' own
+         * HTTP timeouts: Apple Music (BetterLyrics) alone allows 10s to connect plus 15s for the
+         * request, and it is the main source of duet tags. A 15s cap here cut it off on slow
+         * days, so songs like duets lost their left/right layout to an untagged copy.
+         */
+        private const val ProviderTimeoutMs = 35_000L
 
         /**
          * Providers whose answer comes from this exact video rather than a title search, so their

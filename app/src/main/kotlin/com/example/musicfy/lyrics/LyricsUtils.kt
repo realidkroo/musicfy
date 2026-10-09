@@ -770,6 +770,21 @@ object LyricsUtils {
     fun hasVoiceTags(rawLyrics: String): Boolean = rawLyrics.contains("{agent:")
 
     /**
+     * Whether a payload would actually lay out on both sides: two or more voices among its lead
+     * lines, counting untagged lines as the lead voice. Same rule as the lyrics screen. A provider
+     * that tags every line {agent:v1} has voice tags but nothing to put on the right.
+     */
+    fun hasDistinctVoices(rawLyrics: String): Boolean {
+        if (!hasVoiceTags(rawLyrics)) return false
+        val lines = try {
+            parseLyrics(rawLyrics)
+        } catch (_: Exception) {
+            return false
+        }
+        return lines.filter { !it.isBackground }.map { it.agent ?: "v1" }.distinct().size > 1
+    }
+
+    /**
      * Character range each timed word occupies inside [text].
      *
      * Word timings arrive as bare strings with no offsets, so the position has to be recovered by

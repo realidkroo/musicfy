@@ -1176,10 +1176,27 @@ internal fun splitBackingVocal(
     return LyricLineParts(
         lead = leadText,
         backing = backingText,
-        leadWords = leadWords.ifEmpty { null },
-        backingWords = backingWords.ifEmpty { null },
+        leadWords = leadWords.withoutBrackets().ifEmpty { null },
+        backingWords = backingWords.withoutBrackets().ifEmpty { null },
     )
 }
+
+/**
+ * The timed words with their brackets removed, to match the split texts, which have none.
+ *
+ * Timed words keep the brackets of the original line ("(ooh", "yeah)"). The sweep finds each word
+ * by searching the text it draws, and "(ooh" is not in "ooh yeah", so the first and last backing
+ * words were never found: the sweep sat still until the middle word and stopped before the end.
+ */
+private fun List<com.example.musicfy.lyrics.WordTimestamp>.withoutBrackets() =
+    mapNotNull { word ->
+        val bare = word.text.filterNot { it == '(' || it == ')' || it == '[' || it == ']' }
+        when {
+            bare == word.text -> word
+            bare.isBlank() -> null
+            else -> word.copy(text = bare)
+        }
+    }
 
 private val WhitespaceRun = Regex("\\s{2,}")
 
@@ -1203,22 +1220,43 @@ private fun BackingVocalLine(
     val expand = rememberBackingExpand(words, positionProvider, expandProvider)
     val wordMotion = motionStyle == com.example.musicfy.constants.LyricsMotionStyle.MOTION
 
-    // Keep the sweep while the backing line is still on screen. It used to drop back to the plain
-    // copy the moment the main line finished, while a backing vocal that trails the line was
-    // still being sung, so it flashed from half-lit to fully bright mid-phrase.
+    // Keep the sweep for as long as the backing line is on screen. It used to drop back to the
+    // plain copy the moment the main line finished, while a backing vocal that trails the line
+    // was still being sung, so the sweep stopped halfway and the text flashed to full brightness.
     val visible by remember(expand) { derivedStateOf { expand.floatValue > 0.01f } }
     val useSweep = !words.isNullOrEmpty() && (sweep || visible)
 
     Box(
         modifier = Modifier
-            // Always takes its full height. It used to grow from nothing when its line started and
-            // collapse when the line ended, so every line change resized two rows at once and the
-            // list jumped under the recenter scroll. Now it only fades and settles into place.
-            .graphicsLayer {
+            // Clipped only while it opens, and only on the edge it opens from. A permanent clip to
+            // its bounds cut the backing words' descenders off as they dropped, and their tops as
+            // they swelled, with no room at all around the text.
+            .drawWithContent {
+                val e = expand.floatValue
+                if (e >= 1f) {
+                    drawContent()
+                } else {
+                    val room = size.width + size.height
+                    clipRect(
+                        left = -room,
+                        top = if (slide) 0f else -room,
+                        right = size.width + room,
+                        bottom = if (slide) size.height + room else size.height,
+                    ) { this@drawWithContent.drawContent() }
+                }
+            }
+            // Hidden until it is sung and folded away after: it opens to its full height while
+            // its words are being sung and closes again once they are done.
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
                 val e = expand.floatValue.coerceIn(0f, 1f)
-                alpha = BackingRestAlpha + (1f - BackingRestAlpha) * e
-                translationY = (1f - e) * (if (slide) -1f else 1f) * BackingRestOffset.toPx()
-            },
+                val height = (placeable.height * e).roundToInt()
+                layout(placeable.width, height) {
+
+                    placeable.place(0, if (slide) height - placeable.height else 0)
+                }
+            }
+            .graphicsLayer { alpha = expand.floatValue.coerceIn(0f, 1f) },
     ) {
 
         if (useSweep) {
@@ -1254,12 +1292,6 @@ private fun BackingVocalLine(
     }
 }
 
-/** How visible a backing line is while it isn't being sung, relative to its own line. */
-private const val BackingRestAlpha = 0.45f
-
-/** How far a resting backing line sits from its place; it settles in as it is sung. */
-private val BackingRestOffset = 4.dp
-
 private const val BackingLeadInSec = 0.35
 private const val BackingTailSec = 0.6
 
@@ -1288,7 +1320,14 @@ private fun rememberBackingExpand(
                         else -> 1f - smoothstep(((sec - lastEnd) / BackingTailSec).toFloat())
                     }
                 }
-                val next = maxOf(own, lineAmplitudeProvider().coerceIn(0f, 1f))
+                // Timed backing vocals follow their own words: they open just before they are sung
+                // and fold away once done. Taking the larger of this and the main line's state kept
+                // them open for the whole line and they never hid. Untimed ones still follow the line.
+                val next = if (firstStart == null || lastEnd == null) {
+                    lineAmplitudeProvider().coerceIn(0f, 1f)
+                } else {
+                    own
+                }
                 if (next != state.floatValue) state.floatValue = next
             }
         }
