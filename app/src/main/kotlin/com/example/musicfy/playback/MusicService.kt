@@ -1780,27 +1780,36 @@ class MusicService :
     }
 
     private suspend fun loadInfiniteQueueItems(): List<MediaItem> {
+        // Only songs that aren't queued yet count: a radio that repeats the queue (or just its own
+        // seed, which is all a signed-out radio sometimes returns) has to fall through to the next source.
+        val queued = HashSet<String>()
+        for (i in 0 until player.mediaItemCount) queued += player.getMediaItemAt(i).mediaId
+        fun List<MediaItem>.fresh() = filter { it.mediaId !in queued }
+
         infiniteSource?.takeIf { it.hasNextPage() }?.let { source ->
             runCatching { withContext(Dispatchers.IO) { source.nextPage() } }
                 .onFailure { Timber.tag(TAG).w(it, "Failed to load next infinite queue page") }
                 .getOrNull()
+                ?.fresh()
                 ?.takeIf { it.isNotEmpty() }
                 ?.let { return it }
         }
 
         // Seed a fresh radio from the most recent online song we haven't seeded from yet, so the
         // queue keeps drifting forward instead of looping on the same mix.
-        val seed = (player.mediaItemCount - 1 downTo 0)
+        val seedItem = (player.mediaItemCount - 1 downTo 0)
             .asSequence()
-            .map { player.getMediaItemAt(it).mediaId }
-            .firstOrNull { !it.startsWith("LOCAL_") && it !in usedInfiniteSeeds }
+            .map { player.getMediaItemAt(it) }
+            .firstOrNull { !it.mediaId.startsWith("LOCAL_") && it.mediaId !in usedInfiniteSeeds }
             ?: return emptyList()
+        val seed = seedItem.mediaId
         usedInfiniteSeeds += seed
 
         val radio = YouTubeQueue(WatchEndpoint(videoId = seed, playlistId = "RDAMVM$seed"))
         val radioItems = runCatching { withContext(Dispatchers.IO) { radio.getInitialStatus().items } }
             .onFailure { Timber.tag(TAG).w(it, "Failed to start infinite queue radio for $seed") }
             .getOrDefault(emptyList())
+            .fresh()
         infiniteSource = radio
         if (radioItems.isNotEmpty()) return radioItems
 
@@ -1810,11 +1819,27 @@ class MusicService :
                     ?: return@withContext emptyList()
                 YouTube.related(relatedEndpoint).getOrNull()?.songs.orEmpty().map { it.toMediaItem() }
             }
-        }.getOrDefault(emptyList())
+        }.getOrDefault(emptyList()).fresh()
+        if (relatedItems.isNotEmpty()) return relatedItems
+
+        // Last resort, for when YouTube gives a signed-out session neither a radio nor related
+        // songs: the seed's artist's own songs.
+        val artistItems = runCatching {
+            withContext(Dispatchers.IO) {
+                val artistId = seedItem.metadata?.artists?.firstNotNullOfOrNull { it.id }
+                    ?: return@withContext emptyList()
+                YouTube.artist(artistId).getOrNull()?.sections.orEmpty()
+                    .flatMap { it.items }
+                    .filterIsInstance<SongItem>()
+                    .map { it.toMediaItem() }
+            }
+        }.getOrDefault(emptyList()).fresh().distinctBy { it.mediaId }
+        if (artistItems.isNotEmpty()) return artistItems
+
         // Nothing came back for this seed: keep it out of this round, but let a retry use it again
         // (for a song played from search it's the only seed there is).
-        if (relatedItems.isEmpty()) failedInfiniteSeeds += seed
-        return relatedItems
+        failedInfiniteSeeds += seed
+        return emptyList()
     }
 
     fun setInfiniteQueueEnabled(enabled: Boolean) {

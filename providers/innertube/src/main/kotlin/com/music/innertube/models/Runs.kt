@@ -44,6 +44,6 @@ fun List<Run>.oddElements() =
         index % 2 == 0
     }
 
-private val TIMESTAMP_TEXT_REGEX = Regex("^\\d{1,2}:\\d{2}(:\\d{2})?$")
+private val TIMESTAMP_TEXT_REGEX = Regex("^\\d{1,2}[:.]\\d{2}([:.]\\d{2})?$")
 
 fun String.looksLikeTimestamp(): Boolean = TIMESTAMP_TEXT_REGEX.matches(trim())
