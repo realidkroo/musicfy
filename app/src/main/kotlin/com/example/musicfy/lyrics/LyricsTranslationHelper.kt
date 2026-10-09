@@ -123,13 +123,52 @@ object LyricsTranslationHelper {
         return false
     }
 
+    /**
+     * Whether translations should be on screen. This is the toggle the translate button flips.
+     *
+     * It used to be implicit: "on" meant "some line currently has a translation", and "off" only
+     * blanked the lines. Nothing remembered the choice, so the stored translation reappeared on
+     * the next database emission, a new song never translated, and changing the language had
+     * nothing to re-run against.
+     */
+    private val _translationOn = MutableStateFlow(false)
+    val translationOn: StateFlow<Boolean> = _translationOn.asStateFlow()
+
+    private var lastSongId: String? = null
+
+    /**
+     * What a stored translation is filed under. Just the target when the source is detected
+     * (as before, so existing stored translations still match), "source>target" when the user
+     * picked the source, so picking one after a bad detection really translates again instead of
+     * reloading the stored copy.
+     */
+    fun languageTag(sourceLanguage: String, targetLanguage: String): String =
+        if (sourceLanguage.isBlank() || sourceLanguage == "auto") targetLanguage else "$sourceLanguage>$targetLanguage"
+
     fun triggerManualTranslation() {
+        _translationOn.value = true
         _manualTrigger.tryEmit(Unit)
     }
 
     fun triggerClearTranslations() {
+        _translationOn.value = false
         _hasActiveTranslations.value = false
+        translationJob?.cancel()
+        _status.value = TranslationStatus.Idle
         _clearTranslationsTrigger.tryEmit(Unit)
+    }
+
+    /**
+     * Called when the playing song changes. Translation carries over to the next song only when
+     * "translate this whole session" is on; otherwise each song starts untranslated.
+     */
+    fun onSongChanged(songId: String?, sessionWide: Boolean) {
+        if (songId == null) return
+        if (lastSongId != null && lastSongId != songId && !sessionWide) {
+            _translationOn.value = false
+            _hasActiveTranslations.value = false
+        }
+        lastSongId = songId
     }
 
     fun hasTranslations(lyricsEntity: LyricsEntity?): Boolean = !lyricsEntity?.translatedLyrics.isNullOrBlank()
@@ -159,26 +198,27 @@ object LyricsTranslationHelper {
         translationJob = null
     }
 
+    /** @return true when a stored translation matching [targetLanguage] and [mode] was applied. */
     fun loadTranslationsFromDatabase(
         lyrics: List<LyricsEntry>,
         lyricsEntity: LyricsEntity?,
         targetLanguage: String,
         mode: String,
-    ) {
+    ): Boolean {
 
         lyrics.forEach { it.translatedTextFlow.value = null }
 
         if (lyricsEntity?.translatedLyrics.isNullOrBlank()) {
             _hasActiveTranslations.value = false
-            return
+            return false
         }
         if (lyricsEntity.translationLanguage != targetLanguage) {
             _hasActiveTranslations.value = false
-            return
+            return false
         }
         if (lyricsEntity.translationMode != mode) {
             _hasActiveTranslations.value = false
-            return
+            return false
         }
 
         val translatedLines = lyricsEntity.translatedLyrics.lines()
@@ -196,6 +236,7 @@ object LyricsTranslationHelper {
         val cacheKey = getCacheKey(lyricsText, mode, targetLanguage)
         translationCache[cacheKey] = translatedLines
         _hasActiveTranslations.value = true
+        return true
     }
 
     fun translateLyrics(
@@ -219,18 +260,18 @@ object LyricsTranslationHelper {
 
         lyrics.forEach { it.translatedTextFlow.value = null }
 
-        translationJob = scope.launch(Dispatchers.IO) {
+        translationJob = scope.launchTranslation {
             try {
 
                 val effectiveApiKey = if (provider == "DeepL") deeplApiKey else apiKey
                 if (effectiveApiKey.isBlank()) {
                     _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_api_key_required))
-                    return@launch
+                    return@launchTranslation
                 }
 
                 if (lyrics.isEmpty()) {
                     _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_no_lyrics))
-                    return@launch
+                    return@launchTranslation
                 }
 
                 val nonEmptyEntries = lyrics.mapIndexedNotNull { index, entry ->
@@ -239,7 +280,7 @@ object LyricsTranslationHelper {
 
                 if (nonEmptyEntries.isEmpty()) {
                     _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_lyrics_empty))
-                    return@launch
+                    return@launchTranslation
                 }
 
                 val fullText = nonEmptyEntries.joinToString("\n") { it.second.text }
@@ -280,12 +321,12 @@ object LyricsTranslationHelper {
                     if (_status.value is TranslationStatus.Success && isCompositionActive) {
                         _status.value = TranslationStatus.Idle
                     }
-                    return@launch
+                    return@launchTranslation
                 }
 
                 if (targetLanguage.isBlank()) {
                     _status.value = TranslationStatus.Error(context.getString(com.example.musicfy.R.string.ai_error_language_required))
-                    return@launch
+                    return@launchTranslation
                 }
 
                 val fullLanguageName = LanguageCodeToName[targetLanguage]
@@ -463,6 +504,7 @@ object LyricsTranslationHelper {
         lyrics: List<LyricsEntry>,
         targetLanguage: String,
         mode: String,
+        sourceLanguage: String = "auto",
         scope: CoroutineScope,
         songId: String = "",
         database: MusicDatabase? = null,
@@ -471,32 +513,36 @@ object LyricsTranslationHelper {
         _status.value = TranslationStatus.Translating
         lyrics.forEach { it.translatedTextFlow.value = null }
 
-        translationJob = scope.launch(Dispatchers.IO) {
+        translationJob = scope.launchTranslation {
             val indexed = lyrics.mapIndexedNotNull { index, entry ->
                 if (entry.text.isNotBlank()) index to entry else null
             }
             if (indexed.isEmpty()) {
                 _status.value = TranslationStatus.Idle
-                return@launch
+                return@launchTranslation
             }
 
             val translated = GoogleTranslateEngine.translate(
                 lines = indexed.map { it.second.text },
                 targetLanguage = targetLanguage,
+                sourceLanguage = sourceLanguage.ifBlank { "auto" },
             )
             if (translated == null) {
                 _status.value = TranslationStatus.Error("Translation failed")
-                return@launch
+                return@launchTranslation
             }
 
-            indexed.forEachIndexed { idx, (originalIndex, _) ->
+            indexed.forEachIndexed { idx, (originalIndex, entry) ->
+                // A line already in the target language comes back unchanged; showing it twice
+                // only doubles the line.
                 lyrics[originalIndex].translatedTextFlow.value = translated.getOrNull(idx)
+                    ?.takeUnless { it.trim().equals(entry.text.trim(), ignoreCase = true) }
             }
             _hasActiveTranslations.value = true
             _status.value = TranslationStatus.Success
 
             val lyricsText = indexed.joinToString("\n") { it.second.text }
-            translationCache[getCacheKey(lyricsText, mode, targetLanguage)] = translated
+            translationCache[getCacheKey(lyricsText, mode, languageTag(sourceLanguage, targetLanguage))] = translated
 
             if (songId.isNotBlank() && database != null) {
                 try {
@@ -506,7 +552,7 @@ object LyricsTranslationHelper {
                             upsert(
                                 current.copy(
                                     translatedLyrics = translated.joinToString("\n"),
-                                    translationLanguage = targetLanguage,
+                                    translationLanguage = languageTag(sourceLanguage, targetLanguage),
                                     translationMode = mode,
                                 ),
                             )
@@ -518,6 +564,24 @@ object LyricsTranslationHelper {
                 }
             }
         }
+    }
+
+    /**
+     * Launches a translation job that cannot leave the status stuck on Translating. Jobs run in
+     * the lyrics screen's scope, so leaving the screen or switching language cancels them; before,
+     * a cancelled job left "Translating…" up for good, which disabled the translate button.
+     */
+    private fun CoroutineScope.launchTranslation(block: suspend CoroutineScope.() -> Unit): Job {
+        val job = launch(Dispatchers.IO, block = block)
+        job.invokeOnCompletion { cause ->
+            if (cause is kotlinx.coroutines.CancellationException &&
+                translationJob === job &&
+                _status.value is TranslationStatus.Translating
+            ) {
+                _status.value = TranslationStatus.Idle
+            }
+        }
+        return job
     }
 
     sealed class TranslationStatus {

@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -208,7 +209,13 @@ fun LyricsGlowLine(
     )
 
     val baseColor = LocalContentColor.current
-    val textColor = if (state == LyricsLineState.ACTIVE) Color.White else baseColor
+    // Eased like the line's alpha and scale, so the line and the small text under it change
+    // colour together instead of snapping while everything else is still fading.
+    val textColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (state == LyricsLineState.ACTIVE) Color.White else baseColor,
+        animationSpec = tween(durationMillis = 600),
+        label = "lyricsLineColor",
+    )
 
     val textAlign = when (alignment) {
         LyricsAlignment.START -> TextAlign.Start
@@ -306,7 +313,10 @@ fun LyricsGlowLine(
                 baseColor = textColor.copy(alpha = ActiveUnsungAlpha),
 
                 highlightColor = Color.White,
-                subLine = subLine,
+                // The reading is drawn below, in one place for both paths. It used to move into
+                // the karaoke block when the line went active (above any backing vocal, and at a
+                // dimmer colour) and back out when it ended, so it jumped every line change.
+                subLine = null,
                 highBloom = highBloom,
                 textAlign = textAlign,
                 ruby = ruby,
@@ -352,6 +362,12 @@ fun LyricsGlowLine(
             )
         }
 
+        FadingSubText(
+            text = subLine,
+            color = textColor.copy(alpha = 0.6f),
+            textAlign = textAlign,
+        )
+
         parts.backing?.let { backing ->
             BackingVocalLine(
                 text = backing,
@@ -371,39 +387,54 @@ fun LyricsGlowLine(
             )
         }
 
-        if (!karaokeActive && !subLine.isNullOrBlank()) {
-            Text(
-                text = subLine,
-                style = MaterialTheme.typography.bodyLarge,
-                color = textColor.copy(alpha = 0.6f),
-                textAlign = textAlign,
-                overflow = TextOverflow.Clip,
-                modifier = Modifier.padding(top = 3.dp),
-            )
-        }
-
         // The translation sits below both the line and its romanisation. It is written by
         // LyricsTranslationHelper, which until now had no reader in the live player at all — the
         // menu toggle wrote into flows nothing was collecting.
-        when {
-            !translation.isNullOrBlank() -> Text(
-                text = translation,
-                style = MaterialTheme.typography.bodyLarge,
-                color = textColor.copy(alpha = 0.5f),
-                textAlign = textAlign,
-                overflow = TextOverflow.Clip,
-                modifier = Modifier.padding(top = 3.dp),
-            )
-
-            translationLoading -> TranslationLoadingDots(
+        if (translationLoading && translation.isNullOrBlank()) {
+            TranslationLoadingDots(
                 color = textColor.copy(alpha = 0.5f),
                 modifier = Modifier.padding(top = 7.dp),
+            )
+        } else {
+            FadingSubText(
+                text = translation,
+                color = textColor.copy(alpha = 0.5f),
+                textAlign = textAlign,
             )
         }
     }
     }
     }
 }
+
+/**
+ * A small line under the lyric (romanisation or translation) that fades and unfolds in when its
+ * text arrives and folds away when it is cleared, instead of popping in and shoving the rows below.
+ */
+@Composable
+private fun FadingSubText(text: String?, color: Color, textAlign: TextAlign) {
+    // Keep the last text while folding away, or the exit would animate an empty line.
+    val shown = remember { arrayOfNulls<String>(1) }
+    if (!text.isNullOrBlank()) shown[0] = text
+    androidx.compose.animation.AnimatedVisibility(
+        visible = !text.isNullOrBlank(),
+        enter = androidx.compose.animation.fadeIn(tween(SubTextFadeMs)) +
+            androidx.compose.animation.expandVertically(tween(SubTextFadeMs)),
+        exit = androidx.compose.animation.fadeOut(tween(SubTextFadeMs)) +
+            androidx.compose.animation.shrinkVertically(tween(SubTextFadeMs)),
+    ) {
+        Text(
+            text = shown[0].orEmpty(),
+            style = MaterialTheme.typography.bodyLarge,
+            color = color,
+            textAlign = textAlign,
+            overflow = TextOverflow.Clip,
+            modifier = Modifier.padding(top = 3.dp),
+        )
+    }
+}
+
+private const val SubTextFadeMs = 350
 
 /** Three dots pulsing in sequence, sized to sit in the translation's place. */
 @Composable
@@ -1170,42 +1201,30 @@ private fun BackingVocalLine(
 ) {
 
     val expand = rememberBackingExpand(words, positionProvider, expandProvider)
+    val wordMotion = motionStyle == com.example.musicfy.constants.LyricsMotionStyle.MOTION
+
+    // Keep the sweep while the backing line is still on screen. It used to drop back to the plain
+    // copy the moment the main line finished, while a backing vocal that trails the line was
+    // still being sung, so it flashed from half-lit to fully bright mid-phrase.
+    val visible by remember(expand) { derivedStateOf { expand.floatValue > 0.01f } }
+    val useSweep = !words.isNullOrEmpty() && (sweep || visible)
 
     Box(
         modifier = Modifier
-            // Clipped only while it opens, and only on the edge it opens from. A permanent clip to
-            // its bounds cut the backing words' descenders off as they dropped, and their tops as
-            // they swelled, with no room at all around the text.
-            .drawWithContent {
-                val e = expand.floatValue
-                if (e >= 1f) {
-                    drawContent()
-                } else {
-                    val room = size.width + size.height
-                    clipRect(
-                        left = -room,
-                        top = if (slide) 0f else -room,
-                        right = size.width + room,
-                        bottom = if (slide) size.height + room else size.height,
-                    ) { this@drawWithContent.drawContent() }
-                }
-            }
-            .layout { measurable, constraints ->
-                val placeable = measurable.measure(constraints)
+            // Always takes its full height. It used to grow from nothing when its line started and
+            // collapse when the line ended, so every line change resized two rows at once and the
+            // list jumped under the recenter scroll. Now it only fades and settles into place.
+            .graphicsLayer {
                 val e = expand.floatValue.coerceIn(0f, 1f)
-                val height = (placeable.height * e).roundToInt()
-                layout(placeable.width, height) {
-
-                    placeable.place(0, if (slide) height - placeable.height else 0)
-                }
-            }
-            .graphicsLayer { alpha = expand.floatValue.coerceIn(0f, 1f) },
+                alpha = BackingRestAlpha + (1f - BackingRestAlpha) * e
+                translationY = (1f - e) * (if (slide) -1f else 1f) * BackingRestOffset.toPx()
+            },
     ) {
 
-        if (sweep && !words.isNullOrEmpty()) {
+        if (useSweep) {
             KaraokeSweepText(
                 text = text,
-                words = words,
+                words = words!!,
                 positionProvider = positionProvider,
                 waveAmplitudeProvider = waveAmplitudeProvider,
                 baseColor = color.copy(alpha = ActiveUnsungAlpha),
@@ -1220,10 +1239,12 @@ private fun BackingVocalLine(
         } else {
             Text(
                 text = text,
+                // Same font features as the karaoke copy, so the line keeps its width (and its
+                // wrapping) when it switches between the two.
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontSize = BackingVocalFontSize,
                     lineHeight = BackingVocalLineHeight,
-                ),
+                ).withLetterMotionFeatures(wordMotion),
                 fontWeight = FontWeight.Bold,
                 color = color,
                 textAlign = textAlign,
@@ -1232,6 +1253,12 @@ private fun BackingVocalLine(
         }
     }
 }
+
+/** How visible a backing line is while it isn't being sung, relative to its own line. */
+private const val BackingRestAlpha = 0.45f
+
+/** How far a resting backing line sits from its place; it settles in as it is sung. */
+private val BackingRestOffset = 4.dp
 
 private const val BackingLeadInSec = 0.35
 private const val BackingTailSec = 0.6

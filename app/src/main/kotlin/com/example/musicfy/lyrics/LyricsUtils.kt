@@ -16,6 +16,7 @@ object LyricsUtils {
 
     private val RICH_SYNC_LINE_REGEX = "\\[(\\d{1,2}):(\\d{2})\\.(\\d{2,3})\\](.+)".toRegex()
     private val RICH_SYNC_WORD_REGEX = "<(\\d{1,2}):(\\d{2})\\.(\\d{2,3})>\\s*([^<]+)".toRegex()
+    private val RICH_SYNC_TAG_REGEX = "<\\d{1,2}:\\d{2}\\.\\d{2,3}>".toRegex()
 
     private val AGENT_REGEX = "\\{agent:([^}]+)\\}".toRegex()
     private val BACKGROUND_REGEX = "^\\{bg\\}".toRegex()
@@ -426,8 +427,12 @@ object LyricsUtils {
 
                 val wordTimings = parseRichSyncWords(content, index, lines)
 
+                // Strip the word tags and nothing else. The old pattern also ate the whitespace
+                // after each tag, and some sources carry the gap between words as its own timed
+                // piece ("<t>I<t> <t>love<t> <t>you") or put it after the tag ("<t> love"), so the
+                // spaces went with the tags and the line read "Iloveyou".
                 val plainText = repairRichSyncPlainText(
-                    content.replace(Regex("<\\d{1,2}:\\d{2}\\.\\d{2,3}>\\s*"), "").trim()
+                    content.replace(RICH_SYNC_TAG_REGEX, "").trim()
                 )
 
                 if (plainText.isNotBlank()) {
@@ -439,15 +444,29 @@ object LyricsUtils {
         return result.sorted()
     }
 
-    private fun repairRichSyncPlainText(text: String): String {
+    /**
+     * Undoes the old syllable-split cache format ("wa nt  yo u": syllables single-spaced, words
+     * double-spaced) and otherwise only normalises whitespace.
+     *
+     * The rejoin used to fire on ANY double space in a line, and it glues together every run of
+     * short words, so one stray double space turned "I love you  baby" into "Iloveyou baby". It
+     * now needs the line to actually look syllable-split: most double-spaced groups have to be
+     * made of several pieces. Real text with an odd double space has mostly single-word groups.
+     */
+    internal fun repairRichSyncPlainText(text: String): String {
         val compacted = text.replace(Regex("[\\t\\u00A0]+"), " ").trim()
         if (compacted.isBlank()) return compacted
         if (!Regex(" {2,}").containsMatchIn(compacted)) {
             return compacted.replace(Regex(" +"), " ")
         }
 
-        return compacted
-            .split(Regex(" {2,}"))
+        val groups = compacted.split(Regex(" {2,}")).filter { it.isNotBlank() }
+        val multiPiece = groups.count { it.trim().contains(' ') }
+        if (multiPiece * 2 <= groups.size) {
+            return compacted.replace(Regex(" +"), " ")
+        }
+
+        return groups
             .joinToString(" ") { wordGroup ->
                 val parts = wordGroup.trim().split(Regex(" +")).filter { it.isNotBlank() }
                 if (parts.size > 1 && parts.all { part -> part.length <= 4 && part.any(Char::isLetter) }) {
@@ -649,6 +668,35 @@ object LyricsUtils {
     // parsing it once and looking at what actually came out.
     // ---------------------------------------------------------------------------------------
 
+    /**
+     * Whether parsed [lines] carry no usable timing: several lines, no word timings, and every
+     * line on the same timestamp. Some providers hand back unsynced lyrics as LRC with each line
+     * stamped [00:00.00]; played as synced, the whole song counted as "already sung" a few seconds
+     * in and every line sat blurred and dimmed.
+     */
+    fun isUnsynced(lines: List<LyricsEntry>): Boolean {
+        if (lines.size < 2) return false
+        if (lines.any { !it.words.isNullOrEmpty() }) return false
+        val first = lines.first().time
+        return lines.all { it.time == first }
+    }
+
+    private val LRC_TIME_TAG_REGEX = "\\[\\d{1,2}:\\d{2}(?:[.:]\\d{1,3})?\\]".toRegex()
+    private val LRC_META_LINE_REGEX = "^\\[[a-zA-Z#]+:.*\\]$".toRegex()
+
+    /**
+     * Plain lyrics with no timing at all, one entry per non-blank line, all at time 0. Used for
+     * display only, where [parseLyrics] would drop every line for lacking a timestamp.
+     */
+    fun parsePlainLyrics(lyrics: String): List<LyricsEntry> =
+        decodeHtmlEntities(lyrics.trim().replace("\\n", "\n").replace("\\r", "\r"))
+            .lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !LRC_META_LINE_REGEX.matches(it) }
+            .map { it.replace(LRC_TIME_TAG_REGEX, "").replace(RICH_SYNC_TAG_REGEX, "").trim() }
+            .filter { it.isNotEmpty() }
+            .map { LyricsEntry(0L, it) }
+
     /** How finely a lyrics payload is timed. Ordered worst to best; compared by ordinal. */
     enum class SyncKind { NONE, PLAIN, LINE, WORD }
 
@@ -663,6 +711,9 @@ object LyricsUtils {
             // Parsed to nothing but has text in it — unsynced plain lyrics.
             return if (rawLyrics.any(Char::isLetter)) SyncKind.PLAIN else SyncKind.NONE
         }
+        // Every line on the same stamp (usually [00:00.00]) is plain text wearing LRC syntax.
+        // Grading it as line-synced let it beat genuinely timed lyrics.
+        if (isUnsynced(entries)) return SyncKind.PLAIN
         // One word timing on one line is noise; a genuinely word-synced payload has them
         // throughout. Requiring half the lines keeps a stray <00:12.34> from promoting a
         // line-synced file.

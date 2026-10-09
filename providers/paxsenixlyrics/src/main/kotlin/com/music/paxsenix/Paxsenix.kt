@@ -298,11 +298,26 @@ object Paxsenix {
         Timber.d("Using content array as source, hasWordLevel=$hasWordLevel")
 
         if (!hasWordLevel) {
-            val plain = response.content
-                .map { line -> line.text.joinedLineText() }
-                .filter { it.isNotBlank() }
+            // "Line" lyrics still carry a start time per line. Dropping it turned line-synced
+            // lyrics into plain text; only fall back to plain when there is genuinely no timing.
+            val timed = response.content.any { it.timestamp > 0 }
+            val text = response.content
+                .mapNotNull { line ->
+                    val lineText = line.text.joinedLineText()
+                    if (lineText.isBlank()) return@mapNotNull null
+                    if (!timed) return@mapNotNull lineText
+                    val timeMs = line.timestamp
+                    String.format(
+                        Locale.US,
+                        "[%02d:%02d.%02d]%s",
+                        timeMs / 1000 / 60,
+                        (timeMs / 1000) % 60,
+                        (timeMs % 1000) / 10,
+                        lineText,
+                    )
+                }
                 .joinToString("\n")
-            return@runCatching plain
+            return@runCatching text
         }
 
         val lrc = buildString {

@@ -18,6 +18,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -58,11 +62,7 @@ constructor(
      * back — so a Chinese translation of an English song scored the same as the real thing and won
      * on provider order alone. Grading compares three things, in this order of importance:
      *
-     *  1. **Original script.** A Latin result sitting next to a non-Latin one is a translation or
-     *     a romanisation of it. Neither "matches the song title's script" nor "whatever most
-     *     providers returned" works here — both were tried and both pick the English release of a
-     *     Japanese song, because a popular Japanese track has more English renderings available
-     *     than Japanese ones. See the comment at [hasNativeScript].
+     *  1. **Original script.** Decided from evidence about the song; see [pickBest].
      *  2. **Sync quality.** Word > line > plain. This is what "flowing lyrics" means.
      *  3. **Voice tags.** Duet attribution, which drives left/right layout.
      *  4. **Provider order.** Only breaks ties.
@@ -97,19 +97,58 @@ constructor(
         }
 
         val providers = resolveLyricsProviders()
+        val candidates = fetchCandidates(mediaMetadata, providers)
+            .filter { it.sync != LyricsUtils.SyncKind.NONE }
 
-        data class Candidate(
-            val providerName: String,
-            val lyrics: String,
-            val order: Int,
-            val sync: LyricsUtils.SyncKind,
-            val script: LyricsUtils.Script,
-        )
+        if (candidates.isEmpty()) return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
 
-        val candidates = ArrayList<Candidate>(providers.size)
-        for ((order, provider) in providers.withIndex()) {
-            if (!provider.isEnabled(context)) continue
-            val lyrics = try {
+        val best = pickBest(mediaMetadata, candidates, providers.size)
+        val result = LyricsWithProvider(best.lyrics, best.providerName)
+        bestCache.put(mediaMetadata.id, result)
+        return result
+    }
+
+    /**
+     * One provider's answer for [mediaMetadata], graded. Used by the source picker so it can show
+     * which providers actually have lyrics for this song before the user picks one.
+     */
+    data class ProviderCandidate(
+        val providerName: String,
+        val lyrics: String,
+        val order: Int,
+        val sync: LyricsUtils.SyncKind,
+        val script: LyricsUtils.Script,
+    )
+
+    /**
+     * Asks every enabled provider at once. They used to be asked one after another, so a song
+     * waited on the sum of eight network round trips (each with its own timeouts) before anything
+     * was shown, and switching source felt like nothing happened.
+     */
+    suspend fun fetchCandidates(
+        mediaMetadata: MediaMetadata,
+        providers: List<LyricsProvider>? = null,
+    ): List<ProviderCandidate> = coroutineScope {
+        val ordered = providers ?: resolveLyricsProviders()
+        ordered.mapIndexed { order, provider ->
+            async { fetchCandidate(mediaMetadata, provider, order) }
+        }.awaitAll().filterNotNull()
+    }
+
+    /** The enabled providers, in the user's preferred order. */
+    suspend fun orderedProviders(): List<LyricsProvider> = resolveLyricsProviders()
+
+    fun isProviderEnabled(provider: LyricsProvider): Boolean = provider.isEnabled(context)
+
+    /** Asks one provider. Null when it is switched off, has nothing, fails or times out. */
+    suspend fun fetchCandidate(
+        mediaMetadata: MediaMetadata,
+        provider: LyricsProvider,
+        order: Int,
+    ): ProviderCandidate? {
+        if (!provider.isEnabled(context)) return null
+        val lyrics = try {
+            withTimeoutOrNull(ProviderTimeoutMs) {
                 provider.getLyrics(
                     mediaMetadata.id,
                     mediaMetadata.title,
@@ -117,52 +156,94 @@ constructor(
                     mediaMetadata.duration,
                     mediaMetadata.album?.title,
                 ).onFailure { reportException(it) }.getOrNull()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                reportException(e)
-                null
-            } ?: continue
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            reportException(e)
+            null
+        }
+        if (lyrics.isNullOrBlank() || lyrics == LYRICS_NOT_FOUND) return null
+        return ProviderCandidate(
+            providerName = provider.name,
+            lyrics = lyrics,
+            order = order,
+            sync = LyricsUtils.syncKind(lyrics),
+            script = LyricsUtils.lyricsScript(lyrics),
+        ).takeIf { it.sync != LyricsUtils.SyncKind.NONE }
+    }
 
-            if (lyrics.isBlank() || lyrics == LYRICS_NOT_FOUND) continue
-            val sync = LyricsUtils.syncKind(lyrics)
-            if (sync == LyricsUtils.SyncKind.NONE) continue
+    /** Remembers a source the user picked by hand, so the next lookup returns it. */
+    fun rememberChoice(mediaId: String, choice: LyricsWithProvider) {
+        bestCache.put(mediaId, choice)
+    }
 
-            candidates += Candidate(
-                providerName = provider.name,
-                lyrics = lyrics,
-                order = order,
-                sync = sync,
-                script = LyricsUtils.lyricsScript(lyrics),
-            )
+    /**
+     * Picks the lyrics most likely to be the song as sung.
+     *
+     * Language comes first, and it is decided from evidence about the SONG rather than from the
+     * candidates alone:
+     *
+     *  1. A non-Latin title, artist or album ("夜に駆ける", "아이유") says what script the song is in.
+     *  2. Otherwise, YouTube's own lyrics or captions for this exact video, when they are in a
+     *     non-Latin script. They come from the video itself, not from a title search, so they
+     *     cannot be a different song or a translation fetched by mistake.
+     *  3. Otherwise the old rule, narrowed: a non-Latin result beats a Latin one (the Latin one
+     *     being a translation or romanisation) only when it is Japanese or Korean, or when two
+     *     providers agree on it. A lone Chinese result for a song with a Latin title is far more
+     *     often a mismatched search hit than the original, and it used to win outright, which is
+     *     how English and Indonesian songs ended up showing Chinese lyrics.
+     *
+     * Then sync quality (word > line > plain), then duet tags, then provider order.
+     */
+    private fun pickBest(
+        mediaMetadata: MediaMetadata,
+        candidates: List<ProviderCandidate>,
+        providerCount: Int,
+    ): ProviderCandidate {
+        val metadataScript = LyricsUtils.dominantScript(
+            listOfNotNull(
+                mediaMetadata.title,
+                mediaMetadata.artists.joinToString(" ") { it.name },
+                mediaMetadata.album?.title,
+            ).joinToString(" ")
+        )
+        val referenceScript = metadataScript.takeIf(::isNative)
+            ?: candidates
+                .filter { it.providerName in LanguageReferenceProviders }
+                .map { it.script }
+                .firstOrNull(::isNative)
+
+        val trustedNative: Set<LyricsUtils.Script> = if (referenceScript != null) {
+            emptySet()
+        } else {
+            candidates.map { it.script }
+                .filter(::isNative)
+                .groupingBy { it }
+                .eachCount()
+                .filter { (script, count) ->
+                    count >= 2 || script == LyricsUtils.Script.KANA || script == LyricsUtils.Script.HANGUL
+                }
+                .keys
         }
 
-        if (candidates.isEmpty()) return LyricsWithProvider(LYRICS_NOT_FOUND, "Unknown")
-
-        // Prefer the original script over a Latin one whenever both come back.
-        //
-        // Verified against the live APIs rather than assumed. Asking YouLyPlus for YOASOBI's
-        // "Idol" returns Apple Music's official ENGLISH release (metadata.language == "en"), and
-        // LrcLib returns an English translation too — while QQ Music returns the actual Japanese.
-        // So the English versions are the majority, which is why counting votes picks the wrong
-        // one: a popular Japanese song has *more* English renderings available than Japanese ones.
-        //
-        // The asymmetry that does hold: these APIs serve original lyrics plus, sometimes, English
-        // translations and romanisations. They do not translate English songs into Japanese or
-        // Korean. So a non-Latin candidate is essentially always the original, and a Latin one
-        // alongside it is a translation or a transliteration — both of which are derivatives the
-        // user did not ask for.
-        val hasNativeScript = candidates.any {
-            it.script != LyricsUtils.Script.LATIN && it.script != LyricsUtils.Script.UNKNOWN
-        }
-
-        val best = candidates.maxByOrNull { c ->
+        return candidates.maxByOrNull { c ->
             val scriptScore = when {
-                // Everything came back Latin — nothing to prefer, stay neutral.
-                !hasNativeScript -> 1
-                c.script == LyricsUtils.Script.UNKNOWN -> 1
-                c.script != LyricsUtils.Script.LATIN -> 2
-                else -> 0
+                referenceScript != null -> when {
+                    c.script == referenceScript -> 3
+                    sameLanguageFamily(c.script, referenceScript) -> 2
+                    c.script == LyricsUtils.Script.UNKNOWN -> 1
+                    else -> 0
+                }
+                trustedNative.isNotEmpty() -> when {
+                    c.script in trustedNative -> 2
+                    c.script == LyricsUtils.Script.UNKNOWN -> 1
+                    else -> 0
+                }
+                // Nothing points at a non-Latin original: an untrusted non-Latin result is the
+                // odd one out, not the preferred one.
+                isNative(c.script) -> 0
+                else -> 1
             }
             // Syllable-split payloads are word timings smeared across single letters; they
             // render as gibberish word-by-word, so demote them to the level of line-synced.
@@ -181,12 +262,17 @@ constructor(
             scriptScore * ScriptWeight +
                 syncScore * SyncWeight +
                 duetScore * DuetWeight +
-                (providers.size - c.order)
+                (providerCount - c.order)
         }!!
+    }
 
-        val result = LyricsWithProvider(best.lyrics, best.providerName)
-        bestCache.put(mediaMetadata.id, result)
-        return result
+    private fun isNative(script: LyricsUtils.Script) =
+        script != LyricsUtils.Script.LATIN && script != LyricsUtils.Script.UNKNOWN
+
+    /** Kanji-only Japanese titles read as Han; Japanese lyrics read as kana. Same song either way. */
+    private fun sameLanguageFamily(a: LyricsUtils.Script, b: LyricsUtils.Script): Boolean {
+        val cjk = setOf(LyricsUtils.Script.HAN, LyricsUtils.Script.KANA)
+        return a in cjk && b in cjk
     }
 
     suspend fun getAllLyrics(
@@ -249,6 +335,15 @@ constructor(
 
     companion object {
         private const val MAX_CACHE_SIZE = 3
+
+        /** One slow provider must not hold the whole lookup hostage. */
+        private const val ProviderTimeoutMs = 15_000L
+
+        /**
+         * Providers whose answer comes from this exact video rather than a title search, so their
+         * language is the song's language.
+         */
+        private val LanguageReferenceProviders = setOf("YouTubeMusic", "YouTubeSubtitle")
 
         // Spread far enough apart that a script match always outranks any amount of sync
         // quality, and sync quality always outranks provider order.

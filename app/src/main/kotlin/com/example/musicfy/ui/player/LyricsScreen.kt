@@ -104,6 +104,8 @@ import com.example.musicfy.constants.LyricsRomanizeSerbianKey
 import com.example.musicfy.constants.LyricsRomanizeUkrainianKey
 import com.example.musicfy.constants.LyricsWaveAnimationKey
 import com.example.musicfy.constants.TranslateLanguageKey
+import com.example.musicfy.constants.TranslateLyricsKey
+import com.example.musicfy.constants.TranslateSourceLanguageKey
 import com.example.musicfy.constants.TranslateModeKey
 import com.example.musicfy.lyrics.LyricsEntry
 import com.example.musicfy.lyrics.LyricsTranslationHelper
@@ -248,10 +250,24 @@ fun LyricsScreen(
         }
     }
 
-    val lines = remember(lyricsEntity?.lyrics) {
+    // Lyrics with no timing (plain text, or LRC with every line on [00:00.00]) are shown as a
+    // static sheet: every line readable, nothing blurred, no follow-playback scrolling. Played as
+    // synced, all lines counted as "already sung" a few seconds in and the whole page sat blurred.
+    val parsedLyrics = remember(lyricsEntity?.lyrics) {
         val raw = lyricsEntity?.lyrics
-        if (raw.isNullOrBlank() || raw == LYRICS_NOT_FOUND) emptyList() else LyricsUtils.parseLyrics(raw)
+        if (raw.isNullOrBlank() || raw == LYRICS_NOT_FOUND) {
+            emptyList<LyricsEntry>() to false
+        } else {
+            val timed = LyricsUtils.parseLyrics(raw)
+            when {
+                timed.isEmpty() -> LyricsUtils.parsePlainLyrics(raw) to true
+                LyricsUtils.isUnsynced(timed) -> timed to true
+                else -> timed to false
+            }
+        }
     }
+    val lines = parsedLyrics.first
+    val unsynced = parsedLyrics.second
 
     // Romanisation preferences. Every one of these keys existed already and none of them were
     // read by this screen — it romanised unconditionally, so turning any of them off did nothing.
@@ -342,30 +358,19 @@ fun LyricsScreen(
         }
     }
 
-    // Translations. LyricsTranslationHelper has always written these flows and the lyrics menu has
-    // always offered the toggle, but nothing in the live player collected either the flows or the
-    // trigger — the menu was emitting into a void. Both ends are connected here.
+    // Translations. One effect owns them: whenever the lyrics, the on/off toggle, or any
+    // translation setting changes, it shows the stored translation if one matches and otherwise
+    // translates. Before, translating only happened inside a collector of the button's trigger
+    // that had captured the language at the moment the screen opened, so after switching from
+    // English to Indonesian it went on translating into English; the "whole session" switch was
+    // saved but never read; and "show original" only blanked the lines until the next database
+    // emission put the stored translation back.
     val (translateLanguage) = rememberPreference(TranslateLanguageKey, defaultValue = "en")
+    val (translateSourceLanguage) = rememberPreference(TranslateSourceLanguageKey, defaultValue = "auto")
     val (translateMode) = rememberPreference(TranslateModeKey, defaultValue = "line")
+    val (translateSessionWide) = rememberPreference(TranslateLyricsKey, defaultValue = false)
+    val translationOn by LyricsTranslationHelper.translationOn.collectAsState()
 
-    LaunchedEffect(lines, lyricsEntity, translateLanguage, translateMode) {
-        if (lines.isEmpty()) return@LaunchedEffect
-        LyricsTranslationHelper.loadTranslationsFromDatabase(
-            lyrics = lines,
-            lyricsEntity = lyricsEntity,
-            targetLanguage = translateLanguage,
-            mode = translateMode,
-        )
-    }
-
-    LaunchedEffect(lines) {
-        LyricsTranslationHelper.clearTranslationsTrigger.collect {
-            lines.forEach { it.translatedTextFlow.value = null }
-        }
-    }
-
-    // The other half: the menu's "AI lyrics translation" button emits manualTrigger, and until now
-    // nothing collected it, so tapping it did nothing at all.
     val (aiProvider) = rememberPreference(AiProviderKey, defaultValue = "OpenRouter")
     val (openRouterKey) = rememberPreference(OpenRouterApiKey, defaultValue = "")
     val (openRouterBaseUrl) = rememberPreference(
@@ -376,28 +381,53 @@ fun LyricsScreen(
     val (deeplKey) = rememberPreference(DeeplApiKey, defaultValue = "")
     val (deeplFormality) = rememberPreference(DeeplFormalityKey, defaultValue = "default")
 
-    LaunchedEffect(lines, mediaMetadata?.id) {
-        LyricsTranslationHelper.manualTrigger.collect {
-            if (lines.isEmpty()) return@collect
+    LaunchedEffect(mediaMetadata?.id, translateSessionWide) {
+        LyricsTranslationHelper.onSongChanged(mediaMetadata?.id, translateSessionWide)
+    }
 
-            // No AI key configured is the common case, and it used to mean the toggle did nothing.
-            // Google Translate needs no account, so fall back to it rather than failing silently.
-            val hasAiKey = openRouterKey.isNotBlank() || deeplKey.isNotBlank()
-            if (!hasAiKey) {
-                LyricsTranslationHelper.translateWithGoogle(
-                    lyrics = lines,
-                    targetLanguage = translateLanguage.ifBlank { "en" },
-                    mode = translateMode,
-                    scope = this,
-                    songId = mediaMetadata?.id.orEmpty(),
-                    database = viewModel.database,
-                )
-                return@collect
-            }
+    // Read, not keyed: saving a translation writes this row, and restarting on that write would
+    // cancel the translation that just finished.
+    val latestLyricsEntity by androidx.compose.runtime.rememberUpdatedState(lyricsEntity)
 
+    LaunchedEffect(
+        lines, translationOn, translateLanguage, translateSourceLanguage, translateMode,
+        aiProvider, openRouterKey, deeplKey,
+    ) {
+        if (lines.isEmpty()) return@LaunchedEffect
+        if (!translationOn) {
+            lines.forEach { it.translatedTextFlow.value = null }
+            return@LaunchedEffect
+        }
+        val target = translateLanguage.ifBlank { "en" }
+        if (LyricsTranslationHelper.loadTranslationsFromDatabase(
+                lyrics = lines,
+                lyricsEntity = latestLyricsEntity,
+                targetLanguage = if (hasAiKeyFor(aiProvider, openRouterKey, deeplKey)) {
+                    target
+                } else {
+                    LyricsTranslationHelper.languageTag(translateSourceLanguage, target)
+                },
+                mode = translateMode,
+            )
+        ) return@LaunchedEffect
+
+        // Google Translate needs no account, so it is used whenever the chosen AI provider has no
+        // key. (This used to check for ANY key, so DeepL picked with only an OpenRouter key saved
+        // went to DeepL and failed with "API key required".)
+        if (!hasAiKeyFor(aiProvider, openRouterKey, deeplKey)) {
+            LyricsTranslationHelper.translateWithGoogle(
+                lyrics = lines,
+                targetLanguage = target,
+                mode = translateMode,
+                sourceLanguage = translateSourceLanguage,
+                scope = this,
+                songId = mediaMetadata?.id.orEmpty(),
+                database = viewModel.database,
+            )
+        } else {
             LyricsTranslationHelper.translateLyrics(
                 lyrics = lines,
-                targetLanguage = translateLanguage,
+                targetLanguage = target,
                 apiKey = openRouterKey,
                 baseUrl = openRouterBaseUrl,
                 model = openRouterModel,
@@ -413,12 +443,19 @@ fun LyricsScreen(
         }
     }
 
-    val currentIndex by remember(lines) {
-        derivedStateOf { LyricsUtils.findCurrentLineIndex(lines, progress.position) }
+    LaunchedEffect(lines) {
+        LyricsTranslationHelper.clearTranslationsTrigger.collect {
+            lines.forEach { it.translatedTextFlow.value = null }
+        }
     }
 
-    val anchorIndex by remember(lines) {
+    val currentIndex by remember(lines, unsynced) {
+        derivedStateOf { if (unsynced) -1 else LyricsUtils.findCurrentLineIndex(lines, progress.position) }
+    }
+
+    val anchorIndex by remember(lines, unsynced) {
         derivedStateOf {
+            if (unsynced) return@derivedStateOf -1
             var i = LyricsUtils.findCurrentLineIndex(lines, progress.position)
             // findCurrentLineIndex returns lines.size once playback is past the final line. Don't
             // walk back from there looking for an anchor — there is no active line to anchor.
@@ -783,6 +820,9 @@ fun LyricsScreen(
                                     else -> 0
                                 }
                                 val state = when {
+                                    // No timing: every line is equally "current", so all of them
+                                    // read at full strength.
+                                    unsynced -> LyricsLineState.ACTIVE
 
                                     currentIndex >= 0 && index in anchorIndex..currentIndex ->
                                         if (interludeActive) LyricsLineState.PAST else LyricsLineState.ACTIVE
@@ -792,6 +832,7 @@ fun LyricsScreen(
                                 }
 
                                 val blurStage = when {
+                                    unsynced -> 0
                                     suppressEffects -> 0
                                     distance == 0 -> 0
                                     kotlin.math.abs(distance) == 1 -> 1
@@ -868,8 +909,11 @@ fun LyricsScreen(
                                     motionStyle = motionStyle,
                                     highBloom = lyricsHighBloom,
                                     onClick = {
-                                        playerConnection.player.seekTo(entry.time)
-                                        followPlayback = true
+                                        // Untimed lines have nowhere to seek to.
+                                        if (!unsynced) {
+                                            playerConnection.player.seekTo(entry.time)
+                                            followPlayback = true
+                                        }
                                     },
                                 )
                             }
@@ -884,6 +928,9 @@ fun LyricsScreen(
 
     }
 }
+
+private fun hasAiKeyFor(provider: String, openRouterKey: String, deeplKey: String): Boolean =
+    if (provider == "DeepL") deeplKey.isNotBlank() else openRouterKey.isNotBlank()
 
 /** Sentinel for "no instrumental gap is playing right now". */
 private const val NoInterlude = Int.MIN_VALUE
