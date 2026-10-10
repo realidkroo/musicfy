@@ -10,6 +10,7 @@ import com.music.innertube.models.AlbumItem
 import com.example.musicfy.db.MusicDatabase
 import com.example.musicfy.utils.reportException
 import com.example.musicfy.utils.ArtistImageResolver
+import com.example.musicfy.utils.ArtistPageCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,7 +26,7 @@ import javax.inject.Inject
 class AlbumViewModel
 @Inject
 constructor(
-    database: MusicDatabase,
+    private val database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     val albumId = savedStateHandle.get<String>("albumId")!!
@@ -39,16 +40,38 @@ constructor(
     var description = MutableStateFlow<String?>(null)
     var descriptionRuns = MutableStateFlow<List<com.music.innertube.models.Run>?>(null)
 
+    /** the main artist's other albums and singles, newest first, without this one */
+    val moreByArtist = MutableStateFlow<List<AlbumItem>>(emptyList())
+
+    /** YouTube couldn't be reached and nothing was saved to show instead: the page offers a retry */
+    val loadFailed = MutableStateFlow(false)
+
     init {
+        load()
+    }
+
+    fun retry() {
+        loadFailed.value = false
+        load()
+    }
+
+    private fun load() {
         viewModelScope.launch {
             val album = database.album(albumId).first()
             if (album?.description != null) {
                 description.value = album.description
             }
+            // a saved album can start its automix before YouTube has answered
+            album?.album?.playlistId?.let { if (playlistId.value.isEmpty()) playlistId.value = it }
+            album?.artists?.firstOrNull()?.id?.let(::loadMoreByArtist)
             YouTube
                 .album(albumId)
                 .onSuccess {
+                    loadFailed.value = false
                     playlistId.value = it.album.playlistId
+                    if (moreByArtist.value.isEmpty()) {
+                        it.album.artists?.firstOrNull()?.id?.let(::loadMoreByArtist)
+                    }
                     otherVersions.value = it.otherVersions
                     releasesForYou.value = it.releasesForYou
                     if (it.description != null) {
@@ -119,6 +142,9 @@ constructor(
                     }
                 }.onFailure {
                     reportException(it)
+                    if (album == null || database.albumWithSongs(albumId).first()?.songs.isNullOrEmpty()) {
+                        loadFailed.value = true
+                    }
                     if (it.message?.contains("NOT_FOUND") == true) {
                         val albumToDelete = album?.album
                         if (albumToDelete != null) {
@@ -128,6 +154,25 @@ constructor(
                         }
                     }
                 }
+        }
+    }
+
+    private var moreByArtistFor: String? = null
+
+    private fun loadMoreByArtist(artistId: String) {
+        if (moreByArtistFor == artistId) return
+        moreByArtistFor = artistId
+        viewModelScope.launch(Dispatchers.IO) {
+            val page = ArtistPageCache.page(artistId)
+                ?: YouTube.artist(artistId).getOrNull()?.also { ArtistPageCache.putPage(artistId, it) }
+                ?: return@launch
+            moreByArtist.value = page.sections
+                .filter { it.items.firstOrNull() is AlbumItem }
+                .flatMap { section -> section.items.filterIsInstance<AlbumItem>() }
+                .filter { it.browseId != albumId }
+                .distinctBy { it.browseId }
+                .sortedByDescending { it.year ?: 0 }
+                .take(16)
         }
     }
 }

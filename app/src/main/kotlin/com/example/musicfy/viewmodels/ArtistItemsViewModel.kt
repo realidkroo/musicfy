@@ -30,13 +30,25 @@ constructor(
     @ApplicationContext val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+    val artistId: String? = savedStateHandle.get<String>("artistId")
     private val browseId = savedStateHandle.get<String>("browseId")!!
     private val params = savedStateHandle.get<String>("params")
 
     val title = MutableStateFlow("")
     val itemsPage = MutableStateFlow<ItemsPage?>(null)
+    val loadFailed = MutableStateFlow(false)
+    private var loadingMore = false
 
     init {
+        load()
+    }
+
+    fun retry() {
+        loadFailed.value = false
+        load()
+    }
+
+    private fun load() {
         viewModelScope.launch {
             YouTube
                 .artistItems(
@@ -57,15 +69,19 @@ constructor(
                             continuation = artistItemsPage.continuation,
                         )
                 }.onFailure {
+                    loadFailed.value = true
                     reportException(it)
                 }
         }
     }
 
     fun loadMore() {
+        // the list asks again on every frame the last row is in view; one page at a time
+        if (loadingMore) return
+        val oldItemsPage = itemsPage.value ?: return
+        val continuation = oldItemsPage.continuation ?: return
+        loadingMore = true
         viewModelScope.launch {
-            val oldItemsPage = itemsPage.value ?: return@launch
-            val continuation = oldItemsPage.continuation ?: return@launch
             YouTube
                 .artistItemsContinuation(continuation)
                 .onSuccess { artistItemsContinuationPage ->
@@ -84,6 +100,7 @@ constructor(
                 }.onFailure {
                     reportException(it)
                 }
+            loadingMore = false
         }
     }
 }

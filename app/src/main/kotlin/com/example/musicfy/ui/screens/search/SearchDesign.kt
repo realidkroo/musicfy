@@ -78,6 +78,7 @@ import com.example.musicfy.ui.component.BlurDirection
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.component.ProgressiveGlassBackground
 import com.example.musicfy.ui.utils.resize
+import com.example.musicfy.ui.component.containerTransformSource
 
 val SearchHorizontalPadding = 24.dp
 
@@ -822,6 +823,8 @@ fun SearchArtwork(
     modifier: Modifier = Modifier,
     circle: Boolean = false,
     corner: Dp = 6.dp,
+    /** an album or playlist's page grows out of this cover, as from Home */
+    sharedElementKey: String? = null,
 ) {
 
     val density = LocalDensity.current
@@ -833,6 +836,11 @@ fun SearchArtwork(
     Box(
         modifier = modifier
             .size(size)
+            .containerTransformSource(
+                key = sharedElementKey,
+                cornerRadius = if (circle) size / 2 else corner,
+                coverUrl = url,
+            )
             .clip(if (circle) CircleShape else RoundedCornerShape(corner))
             .background(SearchColors.TileHigh),
         contentAlignment = Alignment.Center,

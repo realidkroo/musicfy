@@ -1292,17 +1292,18 @@ fun HomeScreen(
                         HomeSection.ArtistList -> {
                             artistListItems?.takeIf { it.isNotEmpty() }?.let { items ->
                                 homeItem("artist_list_title", revealSeen) {
-                                    HomeSectionTitle(
-                                        title = stringResource(R.string.artist_list),
-                                        onClick = { navController.navigate("artist_list_detail") }
-                                    )
+                                    // just a title: each box below is its own artist's page
+                                    HomeSectionTitle(title = stringResource(R.string.artist_list))
                                 }
                                 homeItem("artist_list_content", revealSeen) {
                                     HomeCardRow("artist_list", items, revealSeen, key = { "${it.artistId}_${it.artistName}" }) { group ->
                                         ArtistListCard(
                                             group = group,
                                             onClick = {
-                                                group.artistId?.let { navController.navigate("artist/$it") }
+                                                group.artistId?.let {
+                                                    com.example.musicfy.utils.ArtistPageCache.putPicks(it, group)
+                                                    navController.navigate("artist/$it/similar")
+                                                }
                                             },
                                             onItemClick = { item ->
                                                 when (item) {

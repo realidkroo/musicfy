@@ -152,13 +152,23 @@ object YouTube {
 
         val shelfSummaries = contents.mapNotNull { it ->
             if (it.musicCardShelfRenderer != null) {
+                val top = SearchSummaryPage.fromMusicCardShelfRenderer(it.musicCardShelfRenderer)
+                // an artist card's songs omit the artist; the card itself is the artist
+                val cardArtist = it.musicCardShelfRenderer.onTap.browseEndpoint
+                    ?.takeIf { endpoint -> endpoint.isArtistEndpoint }
+                    ?.let { endpoint ->
+                        it.musicCardShelfRenderer.title.runs?.firstOrNull()?.text
+                            ?.let { name -> Artist(name = name, id = endpoint.browseId) }
+                    }
                 SearchSummary(
                     title = it.musicCardShelfRenderer.header?.musicCardShelfHeaderBasicRenderer?.title?.runs?.firstOrNull()?.text ?: YouTubeConstants.DEFAULT_TOP_RESULT,
-                    items = listOfNotNull(SearchSummaryPage.fromMusicCardShelfRenderer(it.musicCardShelfRenderer))
+                    items = listOfNotNull(top)
                         .plus(
                             it.musicCardShelfRenderer.contents
                                 ?.mapNotNull { it.musicResponsiveListItemRenderer }
-                                ?.mapNotNull(SearchSummaryPage.Companion::fromMusicResponsiveListItemRenderer)
+                                ?.mapNotNull { renderer ->
+                                    SearchSummaryPage.fromMusicResponsiveListItemRenderer(renderer, cardArtist)
+                                }
                                 .orEmpty()
                         )
                         .distinctBy { it.id }
@@ -437,7 +447,8 @@ object YouTube {
                     ?: response.header?.musicImmersiveHeaderRenderer?.subscriptionButton?.subscribeButtonRenderer
                         ?.shortSubscriberCountText?.runs?.firstOrNull()?.text,
             monthlyListenerCount = response.header?.musicImmersiveHeaderRenderer?.monthlyListenerCount?.runs?.firstOrNull()?.text,
-            descriptionRuns = descriptionRuns
+            descriptionRuns = descriptionRuns,
+            subscribed = response.header?.musicImmersiveHeaderRenderer?.subscriptionButton?.subscribeButtonRenderer?.subscribed,
         )
     }
 
@@ -583,9 +594,10 @@ object YouTube {
                     )
                 },
                 songCountText = header.secondSubtitle?.runs?.firstOrNull()?.text,
-                thumbnail = header.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.lastOrNull()?.url!!,
+                // both optional: Liked music's header can come without them, and the songs still count
+                thumbnail = header.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.lastOrNull()?.url,
                 playEndpoint = null,
-                shuffleEndpoint = header.buttons.lastOrNull()?.menuRenderer?.items?.firstOrNull()?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint!!,
+                shuffleEndpoint = header.buttons.lastOrNull()?.menuRenderer?.items?.firstOrNull()?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint,
                 radioEndpoint = header.buttons.getOrNull(2)?.menuRenderer?.items?.find {
                     it.menuNavigationItemRenderer?.icon?.iconType == "MIX"
                 }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint,

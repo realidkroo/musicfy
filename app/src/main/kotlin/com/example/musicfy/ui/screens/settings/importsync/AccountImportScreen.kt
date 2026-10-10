@@ -29,9 +29,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil3.compose.rememberAsyncImagePainter
 import com.example.musicfy.R
 import com.example.musicfy.constants.YtmSyncKey
 import com.example.musicfy.importer.account.AccountService
+import com.example.musicfy.importer.account.WEB_PLAYER_QUERY_HEADER
 import com.example.musicfy.ui.component.DefaultDialog
 import com.example.musicfy.ui.component.SettingsGroup
 import com.example.musicfy.ui.component.SettingsGroupStyle
@@ -84,24 +86,42 @@ private const val SpotifyLibraryUrl = "https://open.spotify.com/collection/track
 private const val SpotifySignedInCookie = "sp_dc"
 
 /**
- * On the desktop site, a few ticks after Liked Songs started loading (so its own query has gone
- * out): open a playlist, so the sign-in page also sees the query the web player reads a playlist
- * with. The user's first playlist in the sidebar if there is one, otherwise a public one. Once.
+ * Reads the queries the web player reads the library with (name and hash) straight out of its own
+ * script, and reports them as if they'd been sent. Liked Songs comes out of the web player's cache,
+ * so its query is often never sent at all, and a playlist's only goes out once one is opened.
+ * Looks at each script once; done once Liked Songs' query has turned up.
  */
-private const val SpotifyOpenPlaylistJs = """
+private val SpotifyFindQueriesJs = """
 (function() {
   try {
-    var names = Object.keys(window.__musicfyQueries || {});
-    if (names.some(function(name) { return name.indexOf('fetchPlaylist') === 0; })) return 'done';
-    if (!names.length) return 'waiting';
-    if (window.__musicfyOpenedPlaylist) return 'opened';
-    window.__musicfyPlaylistLooks = (window.__musicfyPlaylistLooks || 0) + 1;
-    if (window.__musicfyPlaylistLooks < 3) return 'looking';
-    window.__musicfyOpenedPlaylist = true;
-    var link = document.querySelector('a[href^="/playlist/"]');
-    if (link) { link.click(); return 'clicked'; }
-    location.assign('/playlist/37i9dQZF1DXcBWIGoYBM5M');
-    return 'opened';
+    if (window.__musicfyQueriesFound) return 'done';
+    if (window.__musicfyFinding) return 'finding';
+    var scanned = window.__musicfyScanned = window.__musicfyScanned || {};
+    var sources = [];
+    [].forEach.call(document.scripts, function(s) { if (s.src) sources.push(s.src); });
+    (performance.getEntriesByType('resource') || []).forEach(function(e) { sources.push(e.name); });
+    sources = sources.filter(function(src, i) {
+      return /spotifycdn\.com\/cdn\/build\/web-player\/.*\.js/.test(src) && !scanned[src] && sources.indexOf(src) === i;
+    });
+    if (!sources.length) return 'waiting';
+    window.__musicfyFinding = true;
+    var found = {};
+    Promise.all(sources.map(function(src) {
+      scanned[src] = true;
+      return fetch(src).then(function(r) { return r.text(); }).then(function(text) {
+        var wanted = /"(libraryV\d+|fetchLibraryTracks|fetchPlaylistContents|fetchPlaylist)","query","([0-9a-f]{64})"/g;
+        var m;
+        while ((m = wanted.exec(text))) found[m[1]] = m[2];
+      }).catch(function() {});
+    })).then(function() {
+      Object.keys(found).forEach(function(name) {
+        var query = { name: name, hash: found[name], url: 'https://api-partner.spotify.com/pathfinder/v2/query', post: true, guessed: true };
+        window.$BRIDGE_NAME.onHeader('$WEB_PLAYER_QUERY_HEADER', JSON.stringify(query), location.href);
+      });
+      if (found.fetchLibraryTracks) window.__musicfyQueriesFound = true;
+      window.__musicfyFinding = false;
+    });
+    return 'finding';
   } catch (e) { return 'error'; }
 })();
 """
@@ -110,12 +130,12 @@ private const val SpotifyOpenPlaylistJs = """
  * Spotify's phone site has no library (it says to use the app), so its web player never asks for
  * one and never sends the signed-in token. Once the sign-in cookie is there and the login pages are
  * done, the view switches to the desktop site and opens Liked Songs, which loads the library and
- * sends the token. Switches once: after that the view is already a desktop one, and only opens a
- * playlist (see [SpotifyOpenPlaylistJs]).
+ * sends the token. Switches once: after that the view is already a desktop one, and only looks for
+ * the web player's queries (see [SpotifyFindQueriesJs]).
  */
 private fun openSpotifyLibraryWhenSignedIn(view: WebView) {
     if (view.isDesktopSite()) {
-        view.evaluateJavascript(SpotifyOpenPlaylistJs, null)
+        if (view.url?.startsWith(SpotifyPlayerOrigin) == true) view.evaluateJavascript(SpotifyFindQueriesJs, null)
         return
     }
     val host = view.url?.let(Uri::parse)?.host ?: return
@@ -383,7 +403,10 @@ private fun ChoosingContent(
                     playlist.trackCount?.let { if (it == 1) "1 song" else "$it songs" },
                     playlist.subtitle,
                 ).joinToString(" · ").ifEmpty { null },
-                icon = painterResource(if (playlist.isLiked) R.drawable.favorite else R.drawable.playlist_play),
+                // the playlist's own cover from the service, when it has one
+                icon = playlist.coverUrl?.let { rememberAsyncImagePainter(it) }
+                    ?: painterResource(if (playlist.isLiked) R.drawable.favorite else R.drawable.playlist_play),
+                tintIcon = playlist.coverUrl == null,
                 iconShape = CircleShape,
                 onClick = { onToggle(playlist.id) },
                 trailingContent = { Checkbox(checked = checked, onCheckedChange = { onToggle(playlist.id) }) },

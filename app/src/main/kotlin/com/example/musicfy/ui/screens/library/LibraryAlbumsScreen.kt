@@ -27,6 +27,7 @@ fun LibraryAlbumsScreen(
                 title = it.title,
                 subtitle = it.artists.joinToString { a -> a.name }.ifBlank { null },
                 thumbnailUrl = it.album.thumbnailUrl,
+                sharedElementKey = "album-${it.id}",
             )
         }
     }

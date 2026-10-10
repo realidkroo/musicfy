@@ -183,6 +183,7 @@ fun LibraryDownloadedScreen(
                         label = likedSongs.size.toString(),
                         covers = likedSongs.map { it.song.thumbnailUrl },
                         onClick = { navController.navigate("auto_playlist/liked") },
+                        sharedElementKey = "playlist-liked",
                         modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -198,6 +199,7 @@ fun LibraryDownloadedScreen(
                         label = localSongs.size.toString(),
                         covers = localSongs.map { it.song.thumbnailUrl },
                         onClick = { navController.navigate("auto_playlist/local") },
+                        sharedElementKey = "playlist-local",
                         modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
                     )
                 }

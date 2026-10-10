@@ -173,6 +173,7 @@ fun LibraryHomeScreen(
                             row.forEach { item ->
                                 LibraryPinnedTile(
                                     thumbnailUrl = item.thumbnail,
+                                    sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
                                     onClick = { openLibraryItem(item, navController, playerConnection) },
                                     onLongClick = { viewModel.unpin(item.id) },
                                     modifier = Modifier.weight(1f),
@@ -229,6 +230,7 @@ fun LibraryHomeScreen(
                     label = likedSongs.size.toString(),
                     covers = likedSongs.map { it.song.thumbnailUrl },
                     onClick = { navController.navigate("auto_playlist/liked") },
+                    sharedElementKey = "playlist-liked",
                     modifier = Modifier.padding(horizontal = SearchHorizontalPadding),
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -427,8 +429,8 @@ internal fun androidx.compose.foundation.lazy.LazyListScope.librarySearchResults
             onClick = { onOpen(item) },
             onLongClick = { onOpen(item) },
             round = item is ArtistItem,
-            // the Library's own playlists open growing out of their cover, as from Home
-            sharedElementKey = if (item is PlaylistItem && item.id.startsWith("LP")) "playlist-${item.id}" else null,
+            // albums and playlists open growing out of their cover, as from Home
+            sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
         )
     }
 }

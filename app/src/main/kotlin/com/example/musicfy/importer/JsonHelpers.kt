@@ -29,3 +29,12 @@ internal fun JsonObject.idString(key: String): String? =
 internal fun JsonElement?.obj(): JsonObject? = this as? JsonObject
 
 internal fun JsonElement?.array(): List<JsonElement> = (this as? JsonArray).orEmpty()
+
+private val OFFSET_WITHOUT_COLON = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSS]Z")
+
+/** A timestamp as services send them ("2024-06-06T22:39:08Z", Tidal's "...08.587+0000"), in epoch ms. */
+internal fun dateMs(text: String?): Long? {
+    if (text.isNullOrBlank()) return null
+    return runCatching { java.time.OffsetDateTime.parse(text).toInstant().toEpochMilli() }.getOrNull()
+        ?: runCatching { java.time.OffsetDateTime.parse(text, OFFSET_WITHOUT_COLON).toInstant().toEpochMilli() }.getOrNull()
+}

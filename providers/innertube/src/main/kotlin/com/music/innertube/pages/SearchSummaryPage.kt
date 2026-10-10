@@ -15,7 +15,9 @@ import com.music.innertube.models.clean
 import com.music.innertube.models.filterExplicit
 import com.music.innertube.models.filterVideoSongs
 import com.music.innertube.models.filterYoutubeShorts
+import com.music.innertube.models.looksLikeTimestamp
 import com.music.innertube.models.oddElements
+import com.music.innertube.models.Run
 import com.music.innertube.models.splitBySeparator
 import com.music.innertube.utils.parseTime
 
@@ -209,7 +211,29 @@ data class SearchSummaryPage(
             }
         }
 
-        fun fromMusicResponsiveListItemRenderer(renderer: MusicResponsiveListItemRenderer): YTItem? {
+        // Songs inside an artist's top-result card read "Song • 3:02" with no artist, so
+        // clean() used to promote the duration into the artist slot. Prefer the segment that
+        // links to an artist, never take a timestamp, and let the card supply its own artist.
+        private fun songArtists(segments: List<List<Run>>, fallback: Artist?): List<Artist> {
+            val linked = segments.firstOrNull { seg ->
+                seg.any { it.navigationEndpoint?.browseEndpoint?.isArtistEndpoint == true }
+            }
+            if (linked == null && fallback != null) return listOf(fallback)
+            val segment = linked ?: segments.firstOrNull() ?: return emptyList()
+            return segment.oddElements()
+                .filterNot { it.text.looksLikeTimestamp() }
+                .map {
+                    Artist(
+                        name = it.text,
+                        id = it.navigationEndpoint?.browseEndpoint?.browseId,
+                    )
+                }
+        }
+
+        fun fromMusicResponsiveListItemRenderer(
+            renderer: MusicResponsiveListItemRenderer,
+            fallbackArtist: Artist? = null,
+        ): YTItem? {
             val secondaryLine =
                 renderer.flexColumns
                     .getOrNull(1)
@@ -242,12 +266,7 @@ data class SearchSummaryPage(
                                 ?.runs
                                 ?.firstOrNull()
                                 ?.text ?: return null,
-                        artists = listRun.getOrNull(0)?.oddElements()?.map {
-                            Artist(
-                                name = it.text,
-                                id = it.navigationEndpoint?.browseEndpoint?.browseId
-                            )
-                        } ?: return null,
+                        artists = songArtists(listRun, fallbackArtist),
                         album = listRun.getOrNull(1)?.firstOrNull()?.takeIf { it.navigationEndpoint?.browseEndpoint != null }?.let {
                             Album(
                                 name = it.text,

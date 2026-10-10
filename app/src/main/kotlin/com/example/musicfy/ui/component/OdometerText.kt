@@ -5,10 +5,8 @@ package com.example.musicfy.ui.component
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
@@ -19,8 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -104,7 +105,21 @@ private fun SingleOdometerDigit(
         modifier = Modifier
             .width(digitWidthDp)
             .height(digitHeightDp)
-            .clipToBounds(),
+            .clipToBounds()
+            // Fade the digits themselves at the reel edges (no painted colour, so any background stays clean)
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.22f to Color.Black,
+                        0.78f to Color.Black,
+                        1f to Color.Transparent,
+                    ),
+                    blendMode = BlendMode.DstIn,
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         val currentVal = animatable.value
@@ -141,30 +156,5 @@ private fun SingleOdometerDigit(
                 )
             }
         }
-
-        // Top and bottom motion blur gradient mask for reel effect
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(digitHeightDp * 0.22f)
-                .align(Alignment.TopCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.60f), Color.Transparent)
-                    )
-                )
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(digitHeightDp * 0.22f)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.60f))
-                    )
-                )
-        )
     }
 }

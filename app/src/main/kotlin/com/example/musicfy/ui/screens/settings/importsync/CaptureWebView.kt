@@ -62,7 +62,8 @@ import com.example.musicfy.importer.account.WEB_PLAYER_QUERY_HEADER
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
-private const val BRIDGE_NAME = "MusicfyCapture"
+/** The page-side name of [CaptureBridge]; scripts the app runs in the page report through it too. */
+internal const val BRIDGE_NAME = "MusicfyCapture"
 
 /** Headers the web players send with their session: the token itself, and Spotify's client details. */
 private val SESSION_HEADERS = setOf("authorization", "media-user-token", "client-token", "app-platform", "spotify-app-version")
@@ -187,11 +188,15 @@ private val HOOK_JS = """
 })();
 """.trimIndent()
 
-private class CaptureBridge(private val onHeader: (String, String, String) -> Unit) {
+/**
+ * [report] must not share the method's name: Kotlin resolves a call to the member function first,
+ * so the method called itself until the stack overflowed and nothing the page sent ever arrived.
+ */
+private class CaptureBridge(private val report: (String, String, String) -> Unit) {
     @JavascriptInterface
     fun onHeader(name: String?, value: String?, url: String?) {
         if (name.isNullOrBlank() || value.isNullOrBlank()) return
-        onHeader(name, value, url.orEmpty())
+        report(name, value, url.orEmpty())
     }
 }
 

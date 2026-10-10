@@ -269,12 +269,17 @@ fun OnlineSearchResult(
                             }
                         }
 
+                        var renderedSection = false
                         page.summaries.forEachIndexed { index, section ->
                             val rows = section.items.filter { it.id != top?.id }
                             if (rows.isNotEmpty()) {
+                                // a row's own rule already closes the previous section
+                                val ruleAbove = !renderedSection
+                                renderedSection = true
                                 item(key = "summary_header_${index}_${section.title}") {
                                     SearchSectionHeader(
                                         title = if (index == 0) "Exact matches" else section.title,
+                                        ruleAbove = ruleAbove,
                                     )
                                 }
                                 items(
@@ -473,6 +478,7 @@ private fun TopResultCard(
             size = 108.dp,
             circle = item is ArtistItem,
             corner = 8.dp,
+            sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
         )
         Spacer(modifier = Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -563,6 +569,7 @@ private fun ResultRow(
                 url = item.thumbnail,
                 size = 46.dp,
                 circle = item is ArtistItem,
+                sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
             )
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {

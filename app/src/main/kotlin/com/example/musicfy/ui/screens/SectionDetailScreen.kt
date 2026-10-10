@@ -1,76 +1,71 @@
 package com.example.musicfy.ui.screens
 
-import com.example.musicfy.ui.utils.stableSystemBars
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.musicfy.extensions.toMediaItem
-import com.example.musicfy.models.toMediaMetadata
-import androidx.compose.ui.graphics.RectangleShape
-import com.example.musicfy.playback.PlayerConnection
+import com.example.musicfy.LocalPlayerAwareWindowInsets
 import com.example.musicfy.LocalPlayerConnection
 import com.example.musicfy.R
 import com.example.musicfy.db.entities.Album
+import com.example.musicfy.db.entities.Artist
+import com.example.musicfy.db.entities.Playlist
 import com.example.musicfy.db.entities.Song
+import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.models.toMediaMetadata
 import com.example.musicfy.playback.queues.ListQueue
-import com.example.musicfy.playback.queues.YouTubeQueue
-import com.example.musicfy.ui.component.AlbumListItem
 import com.example.musicfy.ui.component.LocalMenuState
-import com.example.musicfy.ui.component.PlaylistListItem
-import com.example.musicfy.ui.component.SongListItem
-import com.example.musicfy.ui.component.YouTubeListItem
+import com.example.musicfy.ui.component.SwipeActionsBox
+import com.example.musicfy.ui.component.containerTransformSource
+import com.example.musicfy.ui.component.detail.FeaturedArtistUi
+import com.example.musicfy.ui.component.detail.FeaturedArtistsRow
+import com.example.musicfy.ui.component.detail.PlaylistEndOfLine
+import com.example.musicfy.ui.component.detail.PlaylistTrackRow
+import com.example.musicfy.ui.component.librarySwipeAction
+import com.example.musicfy.ui.component.queueSwipeAction
+import com.example.musicfy.ui.component.rememberRevealSeenState
+import com.example.musicfy.ui.component.revealOnAppear
+import com.example.musicfy.ui.menu.AlbumMenu
+import com.example.musicfy.ui.menu.ArtistMenu
+import com.example.musicfy.ui.menu.PlaylistMenu
 import com.example.musicfy.ui.menu.SongMenu
+import com.example.musicfy.ui.menu.YouTubeAlbumMenu
+import com.example.musicfy.ui.menu.YouTubeArtistMenu
+import com.example.musicfy.ui.menu.YouTubePlaylistMenu
 import com.example.musicfy.ui.menu.YouTubeSongMenu
+import com.example.musicfy.ui.screens.playlist.GeneratedNoResults
+import com.example.musicfy.ui.screens.playlist.GeneratedPlaylistPage
+import com.example.musicfy.ui.screens.playlist.generatedStats
+import com.example.musicfy.ui.utils.backToMain
+import com.example.musicfy.utils.makeTimeString
 import com.example.musicfy.viewmodels.HomeViewModel
 import com.music.innertube.models.AlbumItem
-import com.music.innertube.models.Artist
 import com.music.innertube.models.ArtistItem
 import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
-import com.music.innertube.models.YTItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,6 +86,14 @@ fun SectionDetailScreen(
     val liveShows by homeViewModel.liveRow.collectAsState()
     val musicVideos by homeViewModel.musicVideoRow.collectAsState()
 
+    val playerConnection = LocalPlayerConnection.current ?: return
+    val menuState = LocalMenuState.current
+    val haptic = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
+    val isPlaying by playerConnection.isEffectivelyPlaying.collectAsState()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val queueTitle by playerConnection.queueTitle.collectAsState()
+
     val title = when (sectionId) {
         "speed_dial" -> stringResource(R.string.speed_dial)
         "quick_picks" -> stringResource(R.string.quick_picks)
@@ -103,18 +106,6 @@ fun SectionDetailScreen(
         "live_shows" -> stringResource(R.string.live_shows)
         "music_videos" -> stringResource(R.string.music_videos_for_you)
         else -> ""
-    }
-
-    val iconRes = when (sectionId) {
-        "speed_dial" -> R.drawable.history
-        "quick_picks" -> R.drawable.speed
-        "forgotten_favorites" -> R.drawable.favorite
-        "history" -> R.drawable.history
-        "recently_played" -> R.drawable.history
-        "most_played" -> R.drawable.speed
-        "from_the_community" -> R.drawable.favorite
-        "all_time_hits" -> R.drawable.speed
-        else -> R.drawable.history
     }
 
     val items = remember(
@@ -137,277 +128,235 @@ fun SectionDetailScreen(
         }
     }
 
-    val totalDuration = remember(items) {
-        items.sumOf {
-            when (it) {
-                is SongItem -> it.duration ?: 0
-                is Song -> it.song.duration
-                else -> 0
-            }
-        }.toLong()
+    var query by remember { mutableStateOf(TextFieldValue()) }
+    val lazyListState = rememberLazyListState()
+    val revealSeen = rememberRevealSeenState()
+
+    // the playable part of the section, in order, as one queue: local songs or YouTube songs
+    val localSongs = remember(items) { items.filterIsInstance<Song>() }
+    val ytSongs = remember(items) { items.filterIsInstance<SongItem>() }
+    val songCount = localSongs.size + ytSongs.size
+    val totalSeconds = remember(items) {
+        localSongs.sumOf { it.song.duration } + ytSongs.sumOf { it.duration ?: 0 }
+    }
+    val featuredArtists = remember(items) {
+        val ids = LinkedHashMap<String, Pair<String, Int>>()
+        localSongs.flatMap { it.artists }.forEach { a -> ids[a.id] = a.name to ((ids[a.id]?.second ?: 0) + 1) }
+        ytSongs.flatMap { it.artists }.forEach { a ->
+            val id = a.id ?: return@forEach
+            ids[id] = a.name to ((ids[id]?.second ?: 0) + 1)
+        }
+        ids.entries.sortedByDescending { it.value.second }.take(10).map { FeaturedArtistUi(it.key, it.value.first) }
+    }
+    val visible = remember(items, query.text) {
+        val q = query.text.trim()
+        if (q.isEmpty()) items else items.filter { item ->
+            val (name, sub) = rowText(item)
+            name.contains(q, ignoreCase = true) || sub.contains(q, ignoreCase = true)
+        }
+    }
+    val coverUrl = remember(items) { items.firstNotNullOfOrNull { rowThumbnail(it) } }
+    val isThisQueue = queueTitle == title
+
+    fun playAll(startItem: Any? = null, shuffled: Boolean = false) {
+        if (localSongs.isNotEmpty()) {
+            val list = if (shuffled) localSongs.shuffled() else localSongs
+            playerConnection.playQueue(
+                ListQueue(
+                    title = title,
+                    items = list.map { it.toMediaItem() },
+                    startIndex = (startItem as? Song)?.let { list.indexOf(it).coerceAtLeast(0) } ?: 0,
+                )
+            )
+        } else if (ytSongs.isNotEmpty()) {
+            val list = if (shuffled) ytSongs.shuffled() else ytSongs
+            playerConnection.playQueue(
+                ListQueue(
+                    title = title,
+                    items = list.map { it.toMediaMetadata().toMediaItem() },
+                    startIndex = (startItem as? SongItem)?.let { list.indexOf(it).coerceAtLeast(0) } ?: 0,
+                )
+            )
+        }
     }
 
-    val uniqueArtists = remember(items) {
-        val artists = mutableMapOf<String, Artist>()
-        items.forEach { item ->
+    fun open(item: Any) {
+        when (item) {
+            is Song, is SongItem -> {
+                val id = if (item is Song) item.id else (item as SongItem).id
+                if (id == mediaMetadata?.id) playerConnection.togglePlayPause() else playAll(item)
+            }
+            is Album -> navController.navigate("album/${item.id}")
+            is Artist -> navController.navigate("artist/${item.id}")
+            is Playlist -> navController.navigate(if (item.id == "liked") "auto_playlist/liked" else "local_playlist/${item.id}")
+            is AlbumItem -> navController.navigate("album/${item.id}")
+            is ArtistItem -> navController.navigate("artist/${item.id}")
+            is PlaylistItem -> navController.navigate("online_playlist/${item.id}")
+        }
+    }
+
+    fun showMenu(item: Any) {
+        menuState.show {
             when (item) {
-                is SongItem -> item.artists.forEach { artist -> if (artist.id != null) artists[artist.id!!] = artist }
-                is Song -> item.artists.forEach { artist -> artists[artist.id] = Artist(name = artist.name, id = artist.id) }
+                is Song -> SongMenu(originalSong = item, navController = navController, onDismiss = menuState::dismiss)
+                is SongItem -> YouTubeSongMenu(song = item, navController = navController, onDismiss = menuState::dismiss)
+                is Album -> AlbumMenu(originalAlbum = item, navController = navController, onDismiss = menuState::dismiss)
+                is Artist -> ArtistMenu(originalArtist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                is Playlist -> PlaylistMenu(playlist = item, coroutineScope = coroutineScope, onDismiss = menuState::dismiss)
+                is AlbumItem -> YouTubeAlbumMenu(albumItem = item, navController = navController, onDismiss = menuState::dismiss)
+                is ArtistItem -> YouTubeArtistMenu(artist = item, onDismiss = menuState::dismiss)
+                is PlaylistItem -> YouTubePlaylistMenu(
+                    playlist = item,
+                    coroutineScope = coroutineScope,
+                    onDismiss = menuState::dismiss,
+                    onImportedPlaylist = { navController.navigate("local_playlist/$it") },
+                )
+                else -> {}
             }
         }
-        artists.values.toList()
     }
 
-    val playerConnection = LocalPlayerConnection.current
-    val menuState = LocalMenuState.current
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+    GeneratedPlaylistPage(
+        title = title,
+        coverUrl = coverUrl,
+        stats = if (songCount > 0) generatedStats(songCount, totalSeconds) else "${items.size} items",
+        lazyListState = lazyListState,
+        contentPadding = LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Bottom)
+            .union(WindowInsets.ime).asPaddingValues(),
+        isPlaying = isThisQueue && isPlaying,
+        onPlayClick = { if (isThisQueue) playerConnection.togglePlayPause() else playAll() },
+        onShuffleClick = { playAll(shuffled = true) },
+        query = query,
+        onQueryChange = { query = it },
+        searchPlaceholder = "Search in $title",
+        onBackClick = { navController.navigateUp() },
+        onBackLongClick = { navController.backToMain() },
+        creator = accountName,
     ) {
+        if (visible.isEmpty() && query.text.isNotBlank()) {
+            item(key = "no_results") { GeneratedNoResults(query.text) }
+        }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    top = WindowInsets.stableSystemBars.only(WindowInsetsSides.Top).asPaddingValues().calculateTopPadding(),
-                    bottom = 8.dp
-                )
-                .padding(horizontal = 4.dp, vertical = 8.dp)
-        ) {
-            IconButton(onClick = { navController.navigateUp() }) {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_back_ios),
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
+        itemsIndexed(
+            items = visible,
+            key = { index, item -> "${rowKey(item)}_$index" },
+            contentType = { _, item -> if (item is Song || item is SongItem) "track" else "entity" },
+        ) { position, item ->
+            val (name, sub) = rowText(item)
+            val id = rowKey(item)
+            val row: @Composable () -> Unit = {
+                PlaylistTrackRow(
+                    thumbnailUrl = rowThumbnail(item),
+                    title = name,
+                    subtitle = sub,
+                    isActive = id == mediaMetadata?.id || (item is AlbumItem && item.id == mediaMetadata?.album?.id),
+                    isPlaying = isPlaying,
+                    coverShape = if (item is ArtistItem || item is Artist) CircleShape else com.example.musicfy.ui.component.detail.TrackShape,
+                    // albums and playlists open growing out of their cover, as from Home
+                    coverModifier = Modifier.containerTransformSource(
+                        key = when (item) {
+                            is Album -> "album-${item.id}"
+                            is Playlist -> "playlist-${item.id}"
+                            is AlbumItem -> "album-${item.id}"
+                            is PlaylistItem -> "playlist-${item.id}"
+                            else -> null
+                        },
+                        cornerRadius = 9.dp,
+                        coverUrl = rowThumbnail(item),
+                    ),
+                    modifier = Modifier.revealOnAppear(
+                        key = "row_$id",
+                        seenState = revealSeen,
+                        delayMillis = minOf(position, 8) * 28,
+                    ),
+                    onClick = { open(item) },
+                    onLongClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showMenu(item)
+                    },
+                    onMenuClick = { showMenu(item) },
                 )
             }
-            Spacer(modifier = Modifier.width(4.dp))
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
+            // songs slide like everywhere else: right into the library, left onto the queue
+            when (item) {
+                is Song -> SwipeActionsBox(
+                    modifier = Modifier.animateItem(),
+                    start = { librarySwipeAction(item.song) },
+                    end = { queueSwipeAction { item.toMediaItem() } },
+                ) { row() }
+                is SongItem -> SwipeActionsBox(
+                    modifier = Modifier.animateItem(),
+                    start = { librarySwipeAction(item) },
+                    end = { queueSwipeAction { item.toMediaMetadata().toMediaItem() } },
+                ) { row() }
+                else -> androidx.compose.foundation.layout.Box(modifier = Modifier.animateItem()) { row() }
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = accountName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+        }
+
+        if (query.text.isBlank() && items.isNotEmpty()) {
+            item(key = "end_of_line") {
+                PlaylistEndOfLine(songCount = if (songCount > 0) songCount else items.size, totalSeconds = totalSeconds)
+            }
+        }
+
+        if (query.text.isBlank() && featuredArtists.isNotEmpty() && sectionId != "history") {
+            item(key = "featured_artists") {
+                FeaturedArtistsRow(
+                    artists = featuredArtists,
+                    onArtistClick = { navController.navigate("artist/${it.id}") },
+                    modifier = Modifier.padding(top = 25.dp),
                 )
             }
         }
 
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(bottom = 120.dp)
-        ) {
-            itemsIndexed(items) { index, item ->
-                when (item) {
-                    is SongItem -> {
-                        YouTubeListItem(
-                            item = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    val ytItems = items.filterIsInstance<SongItem>()
-                                    val mappedIndex = ytItems.indexOf(item)
-                                    if (mappedIndex != -1) {
-                                        playerConnection?.playQueue(
-                                            ListQueue(
-                                                title = title,
-                                                items = ytItems.map { it.toMediaMetadata().toMediaItem() },
-                                                startIndex = mappedIndex
-                                            )
-                                        )
-                                    }
-                                },
-                            trailingContent = {
-                                IconButton(
-                                    onClick = {
-                                        menuState.show {
-                                            YouTubeSongMenu(song = item, navController = navController, onDismiss = { menuState.dismiss() })
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.more_horiz),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onBackground
-                                    )
-                                }
-                            }
-                        )
-                    }
-                    is Song -> {
-                        SongListItem(
-                            song = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    val songItems = items.filterIsInstance<Song>()
-                                    val mappedIndex = songItems.indexOf(item)
-                                    if (mappedIndex != -1) {
-                                        playerConnection?.playQueue(
-                                            ListQueue(
-                                                title = title,
-                                                items = songItems.map { it.toMediaItem() },
-                                                startIndex = mappedIndex
-                                            )
-                                        )
-                                    }
-                                },
-                            trailingContent = {
-                                IconButton(
-                                    onClick = {
-                                        menuState.show {
-                                            SongMenu(originalSong = item, navController = navController, onDismiss = { menuState.dismiss() })
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.more_horiz),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onBackground
-                                    )
-                                }
-                            }
-                        )
-                    }
-                    is Album -> {
-                        AlbumListItem(
-                            album = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { navController.navigate("album/${item.id}") }
-                        )
-                    }
-                    is com.example.musicfy.db.entities.Playlist -> {
-                        PlaylistListItem(
-                            playlist = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    if (item.id == "liked") {
-                                        navController.navigate("auto_playlist/liked")
-                                    } else {
-                                        navController.navigate("local_playlist/${item.id}")
-                                    }
-                                }
-                        )
-                    }
-                    is AlbumItem -> {
-                        YouTubeListItem(
-                            item = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { navController.navigate("album/${item.id}") }
-                        )
-                    }
-                    is ArtistItem -> {
-                        YouTubeListItem(
-                            item = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { navController.navigate("artist/${item.id}") }
-                        )
-                    }
-                    is PlaylistItem -> {
-                        YouTubeListItem(
-                            item = item,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { navController.navigate("online_playlist/${item.id}") }
-                        )
-                    }
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Total : ${(totalDuration).formatAsDuration()} - ${items.size} songs",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-
-            if (uniqueArtists.isNotEmpty() && sectionId != "history") {
-                item {
-                    Text(
-                        text = "Featured Artist",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-                    )
-                }
-                item {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(uniqueArtists) { artist ->
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .width(80.dp)
-                                    .clickable {
-                                        artist.id?.let { artistId ->
-                                            navController.navigate("artist/$artistId")
-                                        }
-                                    }
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.person),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.align(Alignment.Center).size(32.dp)
-                                    )
-
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = artist.name,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+        item(key = "bottom_spacer") {
+            Spacer(Modifier.height(50.dp))
         }
     }
+}
+
+private fun rowKey(item: Any): String = when (item) {
+    is com.example.musicfy.db.entities.LocalItem -> item.id
+    is SongItem -> item.id
+    is AlbumItem -> item.id
+    is ArtistItem -> item.id
+    is PlaylistItem -> item.id
+    else -> item.hashCode().toString()
+}
+
+private fun rowThumbnail(item: Any): String? = when (item) {
+    is Song -> item.song.thumbnailUrl
+    is SongItem -> item.thumbnail
+    is Album -> item.album.thumbnailUrl
+    // a library playlist's own thumbnailUrl is always null; its covers live in thumbnails
+    is Playlist -> item.thumbnails.firstOrNull()
+    is com.example.musicfy.db.entities.LocalItem -> item.thumbnailUrl
+    is AlbumItem -> item.thumbnail
+    is ArtistItem -> item.thumbnail
+    is PlaylistItem -> item.thumbnail
+    else -> null
+}?.takeIf { it.isNotEmpty() }
+
+/** title and the line under it */
+private fun rowText(item: Any): Pair<String, String> = when (item) {
+    is Song -> item.song.title to "${item.artists.joinToString { it.name }} • ${makeTimeString(item.song.duration * 1000L)}"
+    is SongItem -> item.title to listOfNotNull(
+        item.artists.joinToString { it.name }.ifBlank { null },
+        item.duration?.let { makeTimeString(it * 1000L) },
+    ).joinToString(" • ")
+    is Album -> item.album.title to listOfNotNull(
+        item.artists.joinToString { it.name }.ifBlank { null },
+        item.album.year?.toString(),
+    ).joinToString(" • ")
+    is Playlist -> item.playlist.name to "${item.songCount} songs"
+    is Artist -> item.title to "Artist"
+    is AlbumItem -> item.title to listOfNotNull(
+        item.artists?.joinToString { it.name }?.ifBlank { null },
+        item.year?.toString(),
+    ).joinToString(" • ")
+    is ArtistItem -> item.title to "Artist"
+    is PlaylistItem -> item.title to listOfNotNull(item.author?.name, item.songCountText).joinToString(" • ")
+    else -> "" to ""
 }
 
 fun Long.formatAsDuration(): String {

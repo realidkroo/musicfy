@@ -155,7 +155,17 @@ object LinkImporter {
                 add("Spotify only shares the first $SPOTIFY_EMBED_LIMIT songs of a playlist through links. For the whole playlist, use the TuneMyMusic CSV option.")
             }
         }
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), warnings = warnings, provider = ImportSource.SPOTIFY)
+        val cover = (entity.path("coverArt", "sources") as? JsonArray).orEmpty()
+            .mapNotNull { it as? JsonObject }
+            .maxByOrNull { it.long("width") ?: 0 }
+            ?.string("url")
+        return ParsedImport(
+            likedSongs = emptyList(),
+            playlists = mapOf(name to tracks),
+            warnings = warnings,
+            provider = ImportSource.SPOTIFY,
+            playlistCovers = coverFor(name, cover),
+        )
     }
 
     private const val SPOTIFY_EMBED_LIMIT = 100
@@ -207,7 +217,16 @@ object LinkImporter {
                 add("Apple Music's page only listed ${tracks.size} of $declaredCount songs. For the whole playlist, use the TuneMyMusic CSV option.")
             }
         }
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), warnings = warnings, provider = ImportSource.APPLE_MUSIC)
+        // a template: {w}x{h}, and {c}/{f} for crop and format
+        val cover = (header?.path("artwork", "dictionary", "url") as? JsonPrimitive)?.contentOrNull
+            ?.replace("{w}", "600")?.replace("{h}", "600")?.replace("{c}", "bb")?.replace("{f}", "jpg")
+        return ParsedImport(
+            likedSongs = emptyList(),
+            playlists = mapOf(name to tracks),
+            warnings = warnings,
+            provider = ImportSource.APPLE_MUSIC,
+            playlistCovers = coverFor(name, cover),
+        )
     }
 
     // ---- Deezer: public API, no key needed ----
@@ -239,7 +258,8 @@ object LinkImporter {
             pages++
         }
         if (tracks.isEmpty()) throw LinkImportException("That Deezer $type has no songs we can read.")
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), provider = ImportSource.DEEZER)
+        val cover = info.string("picture_xl") ?: info.string("cover_xl")
+        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(name to tracks), provider = ImportSource.DEEZER, playlistCovers = coverFor(name, cover))
     }
 
     private suspend fun deezerJson(url: String): JsonObject {
@@ -272,7 +292,12 @@ object LinkImporter {
         }
         val tracks = page.songs.map { it.toImportedTrack() }
         if (tracks.isEmpty()) throw LinkImportException("That YouTube playlist is empty.")
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(page.playlist.title to tracks), provider = ImportSource.YOUTUBE_MUSIC)
+        return ParsedImport(
+            likedSongs = emptyList(),
+            playlists = mapOf(page.playlist.title to tracks),
+            provider = ImportSource.YOUTUBE_MUSIC,
+            playlistCovers = coverFor(page.playlist.title, page.playlist.thumbnail),
+        )
     }
 
     private suspend fun fetchYouTubeAlbum(browseId: String): ParsedImport {
@@ -281,6 +306,14 @@ object LinkImporter {
         }
         val tracks = page.songs.map { it.toImportedTrack() }
         if (tracks.isEmpty()) throw LinkImportException("That album has no songs.")
-        return ParsedImport(likedSongs = emptyList(), playlists = mapOf(page.album.title to tracks), provider = ImportSource.YOUTUBE_MUSIC)
+        return ParsedImport(
+            likedSongs = emptyList(),
+            playlists = mapOf(page.album.title to tracks),
+            provider = ImportSource.YOUTUBE_MUSIC,
+            playlistCovers = coverFor(page.album.title, page.album.thumbnail),
+        )
     }
+
+    private fun coverFor(name: String, cover: String?): Map<String, String> =
+        if (cover.isNullOrBlank()) emptyMap() else mapOf(name to cover)
 }

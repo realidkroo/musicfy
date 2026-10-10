@@ -36,6 +36,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicfy.LocalPlayerAwareWindowInsets
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import coil3.compose.AsyncImage
+import com.example.musicfy.R
+import com.example.musicfy.ui.component.BoneColor
+import com.example.musicfy.ui.component.HomeCardCornerRadius
+import com.example.musicfy.ui.component.HomeCardHighlight
+import com.example.musicfy.ui.component.HomeCardSpacing
+import com.example.musicfy.ui.component.containerTransformSource
+import com.example.musicfy.ui.component.detail.TrackSubtitleStyle
+import com.example.musicfy.ui.component.detail.TrackTitleStyle
+import com.example.musicfy.ui.utils.resize
 import com.example.musicfy.ui.component.GlassState
 import com.example.musicfy.ui.screens.search.SearchColors
 import com.example.musicfy.ui.screens.search.SearchHorizontalPadding
@@ -47,6 +64,8 @@ data class LibraryGridEntry(
     val title: String,
     val subtitle: String?,
     val thumbnailUrl: String?,
+    /** an album's "album-<id>": its page grows out of the tile, as from Home */
+    val sharedElementKey: String? = null,
 )
 
 @Composable
@@ -110,43 +129,78 @@ fun LibraryGridScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = SearchHorizontalPadding),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(HomeCardSpacing),
             ) {
                 row.forEach { entry ->
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onOpen(entry) },
-                    ) {
-                        LibraryGridArtwork(
-                            url = entry.thumbnailUrl,
-                            corner = 14.dp,
-                            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = entry.title,
-                            color = SearchColors.Primary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (!entry.subtitle.isNullOrBlank()) {
-                            Text(
-                                text = entry.subtitle,
-                                color = SearchColors.Secondary,
-                                fontSize = 10.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
+                    LibraryGridTile(entry = entry, onClick = { onOpen(entry) }, modifier = Modifier.weight(1f))
                 }
                 // Half-filled last row keeps its tile at column width instead of stretching.
                 if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
+        }
+    }
+}
+
+/**
+ * a tile in Home's card language: the same 20dp corner as every cover card, the soft press
+ * highlight instead of a square ripple, and the cards' type
+ */
+@Composable
+private fun LibraryGridTile(entry: LibraryGridEntry, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(HomeCardCornerRadius)
+    Column(
+        modifier = modifier.clickable(
+            interactionSource = null,
+            indication = HomeCardHighlight,
+            onClick = onClick,
+        ),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .containerTransformSource(
+                    key = entry.sharedElementKey,
+                    cornerRadius = HomeCardCornerRadius,
+                    coverUrl = entry.thumbnailUrl,
+                )
+                .clip(shape)
+                .background(BoneColor),
+        ) {
+            if (entry.thumbnailUrl != null) {
+                AsyncImage(
+                    model = entry.thumbnailUrl.resize(544, 544),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.music_note),
+                    contentDescription = null,
+                    tint = SearchColors.Secondary,
+                    modifier = Modifier.fillMaxSize(0.3f),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = entry.title,
+            style = TrackTitleStyle,
+            color = Color.White.copy(alpha = 0.92f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (!entry.subtitle.isNullOrBlank()) {
+            Text(
+                text = entry.subtitle,
+                style = TrackSubtitleStyle,
+                color = Color.White.copy(alpha = 0.5f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

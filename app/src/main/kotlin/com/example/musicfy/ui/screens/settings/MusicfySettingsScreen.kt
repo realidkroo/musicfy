@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.screens.settings
 
+import com.example.musicfy.ui.component.navigateToTab
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -433,7 +434,10 @@ fun MusicfySettingsScreen(navController: NavController) {
             trailing = {
                 SearchAvatar(
                     imageUrl = profilePicUri.ifBlank { null },
-                    onClick = { navController.navigate("settings") },
+                    onClick = {
+                        // back to the profile page these were opened from, not a second copy of it on top
+                        if (!navController.popBackStack("settings", inclusive = false)) navController.navigateToTab("settings")
+                    },
                 )
             },
         ) {

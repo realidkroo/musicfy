@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -129,70 +130,71 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
-// geometry and type from the Figma playlist frames (16:1162 open, 16:1354 scrolled)
-private val PlaylistInset = 36.dp
-private val PlaylistTracking = (-0.06).em
-private val PillContent = Color(0xFF2F2F2F)
-private val PillFill = Color.White.copy(alpha = 0.64f)
-private val TrackShape = RoundedCornerShape(9.dp)
+// geometry and type from the Figma playlist frames (16:1162 open, 16:1354 scrolled). internal so
+// the album, artist and generated pages line up on the same inset and type
+internal val PlaylistInset = 36.dp
+internal val PlaylistTracking = (-0.06).em
+internal val PillContent = Color(0xFF2F2F2F)
+internal val PillFill = Color.White.copy(alpha = 0.64f)
+internal val TrackShape = RoundedCornerShape(9.dp)
 
 // a pressed track lights a pill from one side of the screen to the other, like the swipe slab
 private val TrackHighlight = RoundedHighlight(cornerRadius = 100.dp, spillX = (-10).dp)
 
-private val PlaylistTitleStyle = TextStyle(
+internal val PlaylistTitleStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 24.sp,
     lineHeight = 28.sp,
     letterSpacing = PlaylistTracking,
 )
-private val PlaylistCreatorStyle = TextStyle(
+internal val PlaylistCreatorStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 15.sp,
     lineHeight = 18.sp,
     letterSpacing = (-0.04).em,
 )
-private val PlaylistStatsStyle = TextStyle(
+internal val PlaylistStatsStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = 11.sp,
     lineHeight = 14.sp,
     letterSpacing = (-0.02).em,
 )
-private val PillLabelStyle = TextStyle(
+internal val PillLabelStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 16.sp,
     letterSpacing = PlaylistTracking,
 )
-private val TrackTitleStyle = TextStyle(
+internal val TrackTitleStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.SemiBold,
     fontSize = 14.sp,
     lineHeight = 17.sp,
     letterSpacing = (-0.03).em,
 )
-private val TrackSubtitleStyle = TextStyle(
+internal val TrackSubtitleStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 11.5.sp,
     lineHeight = 14.sp,
     letterSpacing = (-0.02).em,
 )
-private val SectionTitleStyle = TextStyle(
+internal val SectionTitleStyle = TextStyle(
     fontFamily = InterFontFamily,
     fontWeight = FontWeight.Bold,
     fontSize = 16.sp,
     letterSpacing = PlaylistTracking,
 )
-private val ReceiptSmallStyle = TextStyle(
+internal val ReceiptSmallStyle = TextStyle(
     fontFamily = FontFamily.Monospace,
     fontWeight = FontWeight.Medium,
     fontSize = 8.5.sp,
     letterSpacing = 0.04.em,
 )
-private val ReceiptCenterStyle = TextStyle(
+internal val ReceiptCenterStyle = TextStyle(
     fontFamily = FontFamily.Monospace,
     fontWeight = FontWeight.Medium,
     fontSize = 10.sp,
@@ -209,6 +211,8 @@ data class CreatorUi(
 data class FeaturedArtistUi(
     val id: String,
     val name: String,
+    /** when the caller already has the photo (an artist page's shelves do), no lookup is made */
+    val thumbnailUrl: String? = null,
 )
 
 /**
@@ -252,6 +256,16 @@ fun PlaylistDetailScaffold(
     contentPadding: PaddingValues = PaddingValues(),
     topBarOverride: (@Composable () -> Unit)? = null,
     overlay: @Composable BoxScope.() -> Unit = {},
+    /**
+     * how far the list scrolls before the top bar turns to glass. the cover band by default; a
+     * page without a cover passes its shorter header so the bar frosts as the title slides under it
+     */
+    headerHeight: Dp? = null,
+    /**
+     * the generated pages (no cover of their own): the collapsed pill is a full capsule with a round
+     * cover, like the Library's search capsule, and the theme colour sinks to black down the page
+     */
+    roundCapsule: Boolean = false,
     content: LazyListScope.() -> Unit,
 ) {
     // the tapped card's cover comes first: the screen grows out of that image, so it has to be
@@ -266,19 +280,20 @@ fun PlaylistDetailScaffold(
         label = "playlistTheme",
     )
 
-    // the bottom nav scrim picks this up, so the whole screen reads as one colour
+    // the bottom nav scrim picks this up, so the whole screen reads as one colour. a page that
+    // sinks to black hands it black, or the nav would sit in a band of the theme colour
     val accent = LocalDetailAccentColor.current
-    SideEffect { accent.value = themeColor }
+    SideEffect { accent.value = if (roundCapsule) Color.Black else themeColor }
     DisposableEffect(Unit) { onDispose { accent.value = null } }
 
     val coverHeight = playlistCoverHeight()
-    val coverHeightPx = with(LocalDensity.current) { coverHeight.toPx() }
-    val scrollProgress = remember(lazyListState, coverHeightPx) {
+    val collapseHeightPx = with(LocalDensity.current) { (headerHeight ?: coverHeight).toPx() }
+    val scrollProgress = remember(lazyListState, collapseHeightPx) {
         derivedStateOf {
             if (lazyListState.firstVisibleItemIndex > 0) {
                 1f
             } else {
-                (lazyListState.firstVisibleItemScrollOffset / coverHeightPx).coerceIn(0f, 1f)
+                (lazyListState.firstVisibleItemScrollOffset / collapseHeightPx).coerceIn(0f, 1f)
             }
         }
     }
@@ -300,7 +315,25 @@ fun PlaylistDetailScaffold(
         modifier = Modifier
             .fillMaxSize()
             .containerTransformTarget(sharedElementKey)
-            .drawBehind { drawRect(background.value) }
+            .then(
+                if (roundCapsule) {
+                    // pinned to the screen, not the list: the colour holds at the top and settles
+                    // into black over the lower half, wherever the rows have scrolled to
+                    Modifier.drawBehind {
+                        drawRect(Color.Black)
+                        drawRect(
+                            Brush.verticalGradient(
+                                0f to background.value,
+                                0.34f to background.value.copy(alpha = 0.86f),
+                                0.78f to background.value.copy(alpha = 0.18f),
+                                1f to Color.Transparent,
+                            )
+                        )
+                    }
+                } else {
+                    Modifier.drawBehind { drawRect(background.value) }
+                }
+            )
             .then(modifier)
     ) {
         // the frosted top bar samples the cover and the list together. it sits beside this box,
@@ -339,6 +372,7 @@ fun PlaylistDetailScaffold(
                 onBackLongClick = onBackLongClick,
                 onMoreClick = onMoreClick,
                 onMiniCoverClick = { scope.launch { lazyListState.animateScrollToItem(0) } },
+                roundCapsule = roundCapsule,
             )
         }
 
@@ -450,6 +484,7 @@ private fun PlaylistTopBar(
     onBackLongClick: () -> Unit,
     onMoreClick: (() -> Unit)?,
     onMiniCoverClick: () -> Unit,
+    roundCapsule: Boolean = false,
 ) {
     val showChrome by remember { derivedStateOf { morph() > 0.01f } }
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -488,6 +523,7 @@ private fun PlaylistTopBar(
                 onBackClick = onBackClick,
                 onBackLongClick = onBackLongClick,
                 onMiniCoverClick = onMiniCoverClick,
+                round = roundCapsule,
             )
             Spacer(Modifier.weight(1f))
             if (onMoreClick != null) {
@@ -529,9 +565,12 @@ private fun BackPill(
     onBackClick: () -> Unit,
     onBackLongClick: () -> Unit,
     onMiniCoverClick: () -> Unit,
+    round: Boolean = false,
 ) {
     val density = LocalDensity.current
-    val pillShape = RoundedCornerShape(17.dp)
+    // the round one is a true capsule, ends fully rounded like the Library's search field
+    val pillShape = if (round) RoundedCornerShape(50) else RoundedCornerShape(17.dp)
+    val miniShape = if (round) CircleShape else TrackShape
 
     Box(
         modifier = Modifier
@@ -608,7 +647,7 @@ private fun BackPill(
                         scaleX = s
                         scaleY = s
                         alpha = m.coerceIn(0f, 1f)
-                        shape = TrackShape
+                        shape = miniShape
                         clip = true
                     }
                     .size(37.dp)
@@ -618,7 +657,14 @@ private fun BackPill(
     }
 }
 
-/** title, who made it, a stats line, then Play / shuffle (sf) / add to library (rn) */
+/**
+ * title, who made it, a stats line, then Play / shuffle (sf) / add to library (rn).
+ *
+ * with a [description] (albums) the line under the creator is the description and the stats move
+ * below it. [compact] is for the pages with no cover of their own: the block sits at the top under
+ * the bar instead of at the foot of a cover band, with a bigger title, and [below] can hang a search
+ * capsule under the buttons.
+ */
 @Composable
 fun PlaylistHeader(
     title: String,
@@ -631,31 +677,36 @@ fun PlaylistHeader(
     isSaved: Boolean? = null,
     onSaveClick: () -> Unit = {},
     sortControl: (@Composable () -> Unit)? = null,
+    description: String? = null,
+    onCreatorClick: ((CreatorUi) -> Unit)? = null,
+    compact: Boolean = false,
+    below: (@Composable () -> Unit)? = null,
 ) {
-    val coverHeight = playlistCoverHeight()
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(coverHeight * 0.975f)
-    ) {
+    val body: @Composable () -> Unit = {
         Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = PlaylistInset + 1.dp, end = PlaylistInset, bottom = 14.dp)
+            modifier = Modifier.padding(
+                start = PlaylistInset + 1.dp,
+                end = PlaylistInset,
+                bottom = 14.dp,
+            )
         ) {
             Text(
                 text = title,
-                style = PlaylistTitleStyle,
+                style = if (compact) PlaylistCompactTitleStyle else PlaylistTitleStyle,
                 color = Color.White,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             if (creators.isNotEmpty()) {
                 Spacer(Modifier.height(3.dp))
-                CreatorRow(creators)
+                CreatorRow(creators, onCreatorClick)
+            }
+            if (!description.isNullOrBlank()) {
+                Spacer(Modifier.height(5.dp))
+                PlaylistDescription(description)
             }
             if (stats.isNotEmpty()) {
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(if (description.isNullOrBlank()) 3.dp else 6.dp))
                 Text(
                     text = stats,
                     style = PlaylistStatsStyle,
@@ -688,12 +739,79 @@ fun PlaylistHeader(
                 sortControl()
             }
         }
+        if (below != null) {
+            Spacer(Modifier.height(4.dp))
+            below()
+            Spacer(Modifier.height(10.dp))
+        }
     }
+
+    if (compact) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(top = playlistCompactHeaderTop())
+        ) {
+            body()
+        }
+    } else {
+        val coverHeight = playlistCoverHeight()
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .heightIn(min = coverHeight * 0.975f),
+            contentAlignment = Alignment.BottomStart,
+        ) {
+            Column { body() }
+        }
+    }
+}
+
+/** where a compact header's title starts: under the status bar and the back button's row */
+@Composable
+fun playlistCompactHeaderTop(): Dp =
+    WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 78.dp
+
+/** a compact header's rough height, for [PlaylistDetailScaffold]'s headerHeight */
+@Composable
+fun playlistCompactHeaderHeight(): Dp = playlistCompactHeaderTop() + 120.dp
+
+internal val PlaylistCompactTitleStyle = TextStyle(
+    fontFamily = InterFontFamily,
+    fontWeight = FontWeight.Bold,
+    fontSize = 32.sp,
+    lineHeight = 36.sp,
+    letterSpacing = PlaylistTracking,
+)
+
+/**
+ * an album's description where the stats line used to be: two lines, and a tap opens the rest in
+ * place. the height eases with the text so the rows below glide down instead of jumping.
+ */
+@Composable
+internal fun PlaylistDescription(text: String, modifier: Modifier = Modifier) {
+    var expanded by remember(text) { mutableStateOf(false) }
+    var overflows by remember(text) { mutableStateOf(false) }
+    Text(
+        text = text,
+        style = PlaylistStatsStyle.copy(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
+        color = Color.White.copy(alpha = 0.74f),
+        maxLines = if (expanded) Int.MAX_VALUE else 2,
+        overflow = TextOverflow.Ellipsis,
+        onTextLayout = { if (!expanded) overflows = it.hasVisualOverflow },
+        modifier = modifier
+            .animateContentSize(spring(dampingRatio = 0.9f, stiffness = 420f))
+            .clickable(
+                enabled = overflows || expanded,
+                interactionSource = null,
+                indication = null,
+            ) { expanded = !expanded },
+    )
 }
 
 /** play and pause swap with a little pop, and the pill eases to the new label's width */
 @Composable
-private fun PlayPill(isPlaying: Boolean, onClick: () -> Unit) {
+internal fun PlayPill(isPlaying: Boolean, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -735,7 +853,7 @@ private fun PlayPill(isPlaying: Boolean, onClick: () -> Unit) {
 
 /** the round buttons squish when pressed; shuffle gives its arrows a spin, and a changed icon pops in */
 @Composable
-private fun CircleAction(
+internal fun CircleAction(
     icon: Int,
     contentDescription: String,
     onClick: () -> Unit,
@@ -792,11 +910,21 @@ private fun <S> AnimatedContentTransitionScope<S>.labelSwap(): ContentTransform 
 
 /** creator avatars side by side, overlapping when there's more than one */
 @Composable
-private fun CreatorRow(creators: List<CreatorUi>) {
+private fun CreatorRow(creators: List<CreatorUi>, onClick: ((CreatorUi) -> Unit)? = null) {
     val shown = creators.take(3)
     val avatar = 16.dp
     val step = 11.dp
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        // the lead creator opens; an album by several artists leads with the first of them
+        modifier = if (onClick != null) {
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { onClick(creators.first()) }
+        } else {
+            Modifier
+        },
+    ) {
         Box(modifier = Modifier.size(width = avatar + step * (shown.size - 1), height = avatar)) {
             shown.forEachIndexed { index, creator ->
                 CreatorAvatar(
@@ -940,6 +1068,10 @@ fun PlaylistTrackRow(
     onMenuClick: () -> Unit,
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
+    /** an artist's row: a round photo instead of the rounded square */
+    coverShape: androidx.compose.ui.graphics.Shape = TrackShape,
+    /** applied to the cover itself, e.g. to open an album growing out of it */
+    coverModifier: Modifier = Modifier,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -956,14 +1088,15 @@ fun PlaylistTrackRow(
         Box(
             modifier = Modifier
                 .size(39.dp)
-                .clip(TrackShape)
+                .then(coverModifier)
+                .clip(coverShape)
                 .background(BoneColor)
         ) {
             ItemThumbnail(
                 thumbnailUrl = thumbnailUrl,
                 isActive = isActive,
                 isPlaying = isPlaying,
-                shape = TrackShape,
+                shape = coverShape,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -1100,6 +1233,7 @@ fun PlaylistSectionTitle(
     title: String,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    showChevron: Boolean = true,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1110,13 +1244,15 @@ fun PlaylistSectionTitle(
             .padding(horizontal = 4.dp, vertical = 4.dp)
     ) {
         Text(text = title, style = SectionTitleStyle, color = Color.White, maxLines = 1)
-        Spacer(Modifier.width(6.dp))
-        Icon(
-            painter = painterResource(R.drawable.ic_chevron_right),
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.6f),
-            modifier = Modifier.size(18.dp),
-        )
+        if (showChevron) {
+            Spacer(Modifier.width(6.dp))
+            Icon(
+                painter = painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -1126,16 +1262,20 @@ fun FeaturedArtistsRow(
     artists: List<FeaturedArtistUi>,
     onArtistClick: (FeaturedArtistUi) -> Unit,
     modifier: Modifier = Modifier,
+    title: String = "Featured Artist",
+    onTitleClick: (() -> Unit)? = null,
+    showChevron: Boolean = true,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        PlaylistSectionTitle(title = "Featured Artist")
+        PlaylistSectionTitle(title = title, onClick = onTitleClick, showChevron = showChevron)
         Spacer(Modifier.height(9.dp))
         LazyRow(
             contentPadding = PaddingValues(horizontal = PlaylistInset),
             horizontalArrangement = Arrangement.spacedBy(15.dp),
         ) {
             items(items = artists, key = { it.id }) { artist ->
-                val thumbnail = rememberArtistThumbnail(artist.id, artist.name)
+                val looked = rememberArtistThumbnail(artist.id.takeIf { artist.thumbnailUrl == null }, artist.name)
+                val thumbnail = artist.thumbnailUrl ?: looked.value
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
@@ -1150,7 +1290,7 @@ fun FeaturedArtistsRow(
                             .clip(CircleShape)
                             .background(BoneColor)
                     ) {
-                        val url = thumbnail.value
+                        val url = thumbnail
                         if (url != null) {
                             AsyncImage(
                                 model = url.resize(300, 300),

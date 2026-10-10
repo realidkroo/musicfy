@@ -104,6 +104,11 @@ class WebPlayerQuery(
     val variables: JsonObject,
     val url: String,
     val post: Boolean,
+    /**
+     * Read out of the web player's script rather than seen being sent, so [variables] are our own
+     * defaults. A query the page actually sends replaces it.
+     */
+    val guessed: Boolean = false,
     val seenAtMs: Long = System.currentTimeMillis(),
 )
 
@@ -114,6 +119,8 @@ class WebPlayerQuery(
  */
 class CapturedCredentials {
     private val bearers = LinkedHashMap<String, String>()
+    /** When each token was first seen. */
+    private val bearerSeenAt = HashMap<String, Long>()
     private val tried = HashSet<String>()
     private val sessionHeaders = HashMap<String, String>()
     private val queries = LinkedHashMap<String, WebPlayerQuery>()
@@ -131,14 +138,23 @@ class CapturedCredentials {
                 synchronized(this) {
                     bearers.remove(token)
                     bearers[token] = hostOf(url)
-                    while (bearers.size > MAX_TOKENS) bearers.remove(bearers.keys.first())
+                    bearerSeenAt.getOrPut(token) { System.currentTimeMillis() }
+                    while (bearers.size > MAX_TOKENS) {
+                        val oldest = bearers.keys.first()
+                        bearers.remove(oldest)
+                        bearerSeenAt.remove(oldest)
+                    }
                 }
             }
             "media-user-token" -> if (trimmed.length >= 20) appleUserToken = trimmed
             "client-token", "app-platform", "spotify-app-version" ->
                 if (trimmed.isNotEmpty()) synchronized(this) { sessionHeaders[name.trim().lowercase()] = trimmed }
             WEB_PLAYER_QUERY_HEADER -> parseQuery(trimmed)?.let { query ->
-                synchronized(this) { if (query.name !in queries) queries[query.name] = query }
+                synchronized(this) {
+                    val known = queries[query.name]
+                    // the first one sent wins; one sent beats one read out of the script
+                    if (known == null || (known.guessed && !query.guessed)) queries[query.name] = query
+                }
             }
         }
     }
@@ -157,6 +173,7 @@ class CapturedCredentials {
             variables = json["variables"].obj() ?: JsonObject(emptyMap()),
             url = json.string("url")?.takeIf { it.startsWith("https://") } ?: return null,
             post = (json["post"] as? JsonPrimitive)?.booleanOrNull ?: false,
+            guessed = (json["guessed"] as? JsonPrimitive)?.booleanOrNull ?: false,
         )
     }
 
@@ -171,6 +188,16 @@ class CapturedCredentials {
         bearers.entries.lastOrNull { (_, host) -> host.isEmpty() || host.endsWith(hostSuffix) }?.key
     }
 
+    /** Every token seen for [hostSuffix], tried or not, newest first. */
+    fun bearers(hostSuffix: String): List<String> = synchronized(this) {
+        bearers.entries.filter { (_, host) -> host.isEmpty() || host.endsWith(hostSuffix) }.map { it.key }.asReversed()
+    }
+
+    /** How long ago [token] was first seen; 0 for one never seen. */
+    fun bearerAgeMs(token: String): Long = synchronized(this) {
+        bearerSeenAt[token]?.let { System.currentTimeMillis() - it } ?: 0
+    }
+
     fun isTried(key: String): Boolean = synchronized(this) { key in tried }
 
     fun markTried(key: String) {
@@ -180,6 +207,7 @@ class CapturedCredentials {
     fun clear() {
         synchronized(this) {
             bearers.clear()
+            bearerSeenAt.clear()
             tried.clear()
             sessionHeaders.clear()
             queries.clear()

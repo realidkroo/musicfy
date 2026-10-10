@@ -33,6 +33,8 @@ data class ArtistPage(
     val subscriberCountText: String?,
     val monthlyListenerCount: String? = null,
     val descriptionRuns: List<Run>? = null,
+    /** whether the signed-in account follows this channel; null when signed out or not said */
+    val subscribed: Boolean? = null,
 ) {
     companion object {
         fun fromSectionListRendererContent(content: SectionListRenderer.Content): ArtistSection? {

@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -104,6 +105,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.musicfy.ui.component.BlurEffectCache
+import com.example.musicfy.ui.component.rememberCoverBlurAvailable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -383,6 +385,10 @@ fun MorphingCover(
     }
 
     val isDiscStyle = coverStyle.isDisc
+
+    // Without blur the seam can't soften the edge-to-edge cover's bottom into the backdrop, so the
+    // cover fades its own bottom edge out instead - picture, canvas and video alike.
+    val fadeCoverEdge = !rememberCoverBlurAvailable() && coverStyle == PlayerCoverStyle.EDGE_TO_EDGE
 
     val playVideoPref by rememberPreference(PlayVideoBackgroundKey, defaultValue = false)
     val disableVideoAutoplay by rememberPreference(DisableVideoAutoplayKey, defaultValue = false)
@@ -861,6 +867,16 @@ fun MorphingCover(
                                 }
                             } else Modifier
                         )
+                        .then(
+                            if (fadeCoverEdge) {
+                                Modifier.coverEdgeFade {
+                                    // Only on the full-size cover, never the mini player's or the
+                                    // lyrics header's thumbnail.
+                                    val open = ((progressProvider() - 0.5f) / 0.45f).coerceIn(0f, 1f)
+                                    open * (1f - lyricsProgressProvider()).coerceIn(0f, 1f)
+                                }
+                            } else Modifier
+                        )
                 ) {
 
                 CoverArtworkCrossfade(
@@ -1239,7 +1255,10 @@ private fun PlayerBackdropCrossfade(
     lyricsProgressProvider: () -> Float = { 0f },
     modifier: Modifier = Modifier,
 ) {
-    val isVideoActive = playVideoBackground && videoInfo != null
+    // The video's backdrop is a blurred reflection of it. Without blur there's nothing to draw it
+    // with, so the cover's gradient stays up under the video rather than fading to a bare surface.
+    val blurAvailable = rememberCoverBlurAvailable()
+    val isVideoActive = playVideoBackground && videoInfo != null && blurAvailable
     val videoAlpha by animateFloatAsState(
         targetValue = if (isVideoActive) 1f else 0f,
         animationSpec = tween(durationMillis = 650, easing = androidx.compose.animation.core.FastOutSlowInEasing),
@@ -1456,6 +1475,38 @@ private fun VideoBackdropBlur(
         }
     }
 }
+
+/**
+ * Fades the bottom of the cover out into the backdrop, by [strength] (0 is none). The stand-in for
+ * the seam blur when there's no blur. Everything inside fades - picture, canvas and video - since
+ * the mask goes over the whole layer. That layer is offscreen only while the fade shows.
+ */
+private fun Modifier.coverEdgeFade(strength: () -> Float): Modifier = this
+    .graphicsLayer {
+        compositingStrategy = if (strength() > 0f) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+    }
+    .drawWithContent {
+        drawContent()
+        val s = strength()
+        if (s <= 0f) return@drawWithContent
+        // Eased, so the fade has no visible start or end.
+        val start = size.height * (1f - CoverEdgeFadeFraction)
+        val steps = 8
+        val stops = Array(steps + 1) { i ->
+            val t = i / steps.toFloat()
+            val eased = t * t * (3f - 2f * t)
+            t to Color.Black.copy(alpha = 1f - eased * s)
+        }
+        drawRect(
+            brush = Brush.verticalGradient(*stops, startY = start, endY = size.height),
+            topLeft = androidx.compose.ui.geometry.Offset(0f, start),
+            size = androidx.compose.ui.geometry.Size(size.width, size.height - start),
+            blendMode = BlendMode.DstIn,
+        )
+    }
+
+/** How much of the cover, from its bottom up, [coverEdgeFade] fades. */
+private const val CoverEdgeFadeFraction = 0.3f
 
 @androidx.annotation.RequiresApi(33)
 private fun Modifier.liquidWarpEffect(

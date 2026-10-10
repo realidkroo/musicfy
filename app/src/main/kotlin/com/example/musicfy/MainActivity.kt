@@ -67,6 +67,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -176,6 +177,7 @@ import com.example.musicfy.playback.MusicService.MusicBinder
 import com.example.musicfy.playback.PlayerConnection
 import com.example.musicfy.playback.queues.YouTubeQueue
 import com.example.musicfy.ui.component.AppNavigationBar
+import com.example.musicfy.ui.component.onTabTapped
 import com.example.musicfy.ui.component.AppNavigationRail
 import com.example.musicfy.ui.component.LocalBottomSheetPageState
 import com.example.musicfy.ui.component.LocalMenuState
@@ -621,6 +623,19 @@ class MainActivity : ComponentActivity() {
                     derivedStateOf { navBackStackEntry?.destination?.route }
                 }
 
+                // the tab lit in the bar is read off the back stack every time, never remembered:
+                // a page belongs to the tab page under it, however it was reached
+                val backStack by navController.currentBackStack.collectAsState()
+                val selectedTabRoute by remember(navigationItems) {
+                    derivedStateOf { com.example.musicfy.ui.component.owningTab(backStack, navigationItems) }
+                }
+                val tabOwnership = remember(navigationItems) {
+                    com.example.musicfy.ui.component.TabOwnership(navigationItems)
+                }
+                // every page's tab is noted while it's on the stack, so the slide still knows it
+                // after a tab switch has saved the page away
+                SideEffect { tabOwnership.update(backStack) }
+
                 val inSearchScreen by remember {
                     derivedStateOf {
                         currentRoute?.startsWith("search/") == true
@@ -984,19 +999,9 @@ class MainActivity : ComponentActivity() {
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
-
-                                        if (isSelected) {
-                                            navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                        navController.onTabTapped(screen, isSelected) {
                                             coroutineScope.launch {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
-                                            }
-                                        } else {
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.startDestinationId) {
-                                                    saveState = true
-                                                }
-                                                launchSingleTop = true
-                                                restoreState = true
                                             }
                                         }
                                     }
@@ -1068,6 +1073,7 @@ class MainActivity : ComponentActivity() {
                                         AppNavigationBar(
                                             navigationItems = navigationItems,
                                             currentRoute = currentRoute,
+                                            selectedTabRoute = selectedTabRoute,
                                             onItemClick = onNavItemClick,
                                             pureBlack = pureBlack,
                                             slimNav = slimNav,
@@ -1117,19 +1123,9 @@ class MainActivity : ComponentActivity() {
                                         if (playerBottomSheetState.isExpanded) {
                                             playerBottomSheetState.collapseSoft()
                                         }
-
-                                        if (isSelected) {
-                                            navController.currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+                                        navController.onTabTapped(screen, isSelected) {
                                             coroutineScope.launch {
                                                 topAppBarScrollBehavior.state.resetHeightOffset()
-                                            }
-                                        } else {
-                                            navController.navigate(screen.route) {
-                                                popUpTo(navController.graph.startDestinationId) {
-                                                    saveState = true
-                                                }
-                                                launchSingleTop = true
-                                                restoreState = true
                                             }
                                         }
                                     }
@@ -1147,6 +1143,7 @@ class MainActivity : ComponentActivity() {
                                     AppNavigationRail(
                                         navigationItems = navigationItems,
                                         currentRoute = currentRoute,
+                                        selectedTabRoute = selectedTabRoute,
                                         onItemClick = onRailItemClick,
                                         pureBlack = pureBlack,
                                         onSearchLongClick = onRailSearchLongClick
@@ -1197,41 +1194,34 @@ class MainActivity : ComponentActivity() {
                                             else -> Screens.Home
                                         }.route,
 
+                                        // each page slides by the tab it belongs to, not by its own route: an
+                                        // album open in the Library moves like the Library when you switch tabs
                                         enterTransition = {
-                                            val currentRouteIndex = navigationItems.indexOfFirst {
-                                                it.route == targetState.destination.route
-                                            }
-                                            val previousRouteIndex = navigationItems.indexOfFirst {
-                                                it.route == initialState.destination.route
-                                            }
+                                            val stack = navController.currentBackStack.value
+                                            val currentRouteIndex = tabOwnership.indexOf(targetState, stack)
+                                            val previousRouteIndex = tabOwnership.indexOf(initialState, stack)
 
-                                            if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex)
+                                            if (currentRouteIndex == -1 || currentRouteIndex >= previousRouteIndex)
                                                 slideInHorizontally { it / 8 } + fadeIn(tween(200))
                                             else
                                                 slideInHorizontally { -it / 8 } + fadeIn(tween(200))
                                         },
 
                                         exitTransition = {
-                                            val currentRouteIndex = navigationItems.indexOfFirst {
-                                                it.route == initialState.destination.route
-                                            }
-                                            val targetRouteIndex = navigationItems.indexOfFirst {
-                                                it.route == targetState.destination.route
-                                            }
+                                            val stack = navController.currentBackStack.value
+                                            val currentRouteIndex = tabOwnership.indexOf(initialState, stack)
+                                            val targetRouteIndex = tabOwnership.indexOf(targetState, stack)
 
-                                            if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex)
+                                            if (targetRouteIndex == -1 || targetRouteIndex >= currentRouteIndex)
                                                 slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
                                             else
                                                 slideOutHorizontally { it / 8 } + fadeOut(tween(200))
                                         },
 
                                         popEnterTransition = {
-                                            val currentRouteIndex = navigationItems.indexOfFirst {
-                                                it.route == targetState.destination.route
-                                            }
-                                            val previousRouteIndex = navigationItems.indexOfFirst {
-                                                it.route == initialState.destination.route
-                                            }
+                                            val stack = navController.currentBackStack.value
+                                            val currentRouteIndex = tabOwnership.indexOf(targetState, stack)
+                                            val previousRouteIndex = tabOwnership.indexOf(initialState, stack)
 
                                             if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex)
                                                 slideInHorizontally { it / 8 } + fadeIn(tween(200))
@@ -1240,12 +1230,9 @@ class MainActivity : ComponentActivity() {
                                         },
 
                                         popExitTransition = {
-                                            val currentRouteIndex = navigationItems.indexOfFirst {
-                                                it.route == initialState.destination.route
-                                            }
-                                            val targetRouteIndex = navigationItems.indexOfFirst {
-                                                it.route == targetState.destination.route
-                                            }
+                                            val stack = navController.currentBackStack.value
+                                            val currentRouteIndex = tabOwnership.indexOf(initialState, stack)
+                                            val targetRouteIndex = tabOwnership.indexOf(targetState, stack)
 
                                             if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex)
                                                 slideOutHorizontally { -it / 8 } + fadeOut(tween(200))

@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.musicfy.ui.screens.Screens
@@ -98,6 +99,24 @@ fun NavController.navigateToTab(route: String) {
     }
 }
 
+/**
+ * a tap on a tab. another tab: switch to it, back on the page you left it on. the tab you're in:
+ * from one of its pages, back to the tab's own page (as every tab bar does); already there, the
+ * page scrolls to its top.
+ */
+fun NavController.onTabTapped(screen: Screens, isSelectedTab: Boolean, scrollToTop: () -> Unit) {
+    if (!isSelectedTab) {
+        navigateToTab(screen.route)
+        return
+    }
+    if (currentDestination?.route == screen.route) {
+        currentBackStackEntry?.savedStateHandle?.set("scrollToTop", true)
+        scrollToTop()
+        return
+    }
+    if (!popBackStack(screen.route, inclusive = false)) navigateToTab(screen.route)
+}
+
 @Stable
 private fun isRouteSelected(currentRoute: String?, screenRoute: String, navigationItems: List<Screens>): Boolean {
     if (currentRoute == null) return false
@@ -142,31 +161,71 @@ private fun owningTabRoute(currentRoute: String?, navigationItems: List<Screens>
         currentRoute == prefix || currentRoute.startsWith(prefix)
     }?.let { return it.second }
 
-    // Catch-all so RouteOwners does not have to stay exhaustive. Every settings sub-screen added
-    // from here on is owned by the settings tab without anyone having to remember to list it —
-    // forgetting to leaves the bar highlighting the wrong tab, and (before the isCurrent fix
-    // below) made that tab's button stop working entirely.
+    // Catch-all so RouteOwners does not have to stay exhaustive: every settings sub-screen is
+    // owned by the settings tab without anyone having to list it. Only a fallback now; the back
+    // stack decides the tab whenever it has a tab page in it (see owningTab).
     if (currentRoute.endsWith("_settings") || currentRoute.startsWith("settings")) return "settings"
     return null
 }
 
-@Composable
-private fun rememberSelectedTabRoute(
-    currentRoute: String?,
-    navigationItems: List<Screens>,
-): String {
-    val fallback = navigationItems.firstOrNull()?.route.orEmpty()
-    var selected by rememberSaveable { mutableStateOf(fallback) }
-    LaunchedEffect(currentRoute) {
-        owningTabRoute(currentRoute, navigationItems)?.let { selected = it }
+/**
+ * the tab the page on screen belongs to: the nearest tab page under it in the back stack.
+ *
+ * the bar used to remember the last tab it could name from the current route alone, and keep it
+ * for routes no tab claims (albums, playlists, artists). that went wrong two ways: switching back
+ * to a tab restores the page you left it on, so coming back to the Library's album kept Home lit;
+ * and the remembered value was dropped whenever the bar left the screen (the player's full view,
+ * the recap), so it came back as Home. the back stack always knows: a tab is entered with
+ * [navigateToTab], so every page sits above the tab page it was opened from.
+ */
+fun owningTab(backStack: List<NavBackStackEntry>, navigationItems: List<Screens>): String {
+    val tabRoutes = navigationItems.mapTo(HashSet()) { it.route }
+    backStack.asReversed().firstOrNull { it.destination.route in tabRoutes }
+        ?.destination?.route
+        ?.let { return it }
+    // a stack without a tab page under it (a deep link): go by the route, else the first tab
+    return owningTabRoute(backStack.lastOrNull()?.destination?.route, navigationItems)
+        ?: navigationItems.firstOrNull()?.route.orEmpty()
+}
+
+/**
+ * which tab each page belongs to, kept by entry so a page that has already left the stack (the
+ * one a tab switch saved away) can still be placed. the tab slide reads this: an album open in
+ * the Library slides like the Library, not like a page no tab owns.
+ */
+class TabOwnership(private val navigationItems: List<Screens>) {
+    private val tabRoutes = navigationItems.map { it.route }
+    private val owners = HashMap<String, String>()
+
+    fun update(backStack: List<NavBackStackEntry>) {
+        var owner: String? = null
+        backStack.forEach { entry ->
+            val route = entry.destination.route
+            if (route != null && route in tabRoutes) owner = route
+            owner?.let { owners[entry.id] = it }
+        }
+        // saved tab stacks keep their entries' ids, so only trim when it has clearly grown stale
+        if (owners.size > 400) {
+            val live = backStack.mapTo(HashSet()) { it.id }
+            owners.keys.retainAll(live)
+        }
     }
-    return selected
+
+    /** the tab's position in the bar, or -1 when nothing places it */
+    fun indexOf(entry: NavBackStackEntry, backStack: List<NavBackStackEntry>): Int {
+        update(backStack)
+        val owner = owners[entry.id] ?: entry.destination.route?.takeIf { it in tabRoutes }
+            ?: owningTabRoute(entry.destination.route, navigationItems)
+        return tabRoutes.indexOf(owner)
+    }
 }
 
 @Composable
 fun AppNavigationRail(
     navigationItems: List<Screens>,
     currentRoute: String?,
+    /** from [owningTab]: the tab the page on screen belongs to */
+    selectedTabRoute: String,
     onItemClick: (Screens, Boolean) -> Unit,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
@@ -183,15 +242,14 @@ fun AppNavigationRail(
         Spacer(modifier = Modifier.weight(1f))
 
         navigationItems.forEach { screen ->
-            val isSelected = remember(currentRoute, screen.route) {
-                isRouteSelected(currentRoute, screen.route, navigationItems)
-            }
+            val isSelected = screen.route == selectedTabRoute
             val iconRes = remember(isSelected, screen) {
                 if (isSelected) screen.iconIdActive else screen.iconIdInactive
             }
 
             val isSearchItem = screen == Screens.Search && onSearchLongClick != null
             val interactionSource = remember { MutableInteractionSource() }
+            val currentSelected by androidx.compose.runtime.rememberUpdatedState(isSelected)
 
             if (isSearchItem) {
                 LaunchedEffect(interactionSource) {
@@ -207,7 +265,7 @@ fun AppNavigationRail(
                             }
                             is PressInteraction.Release -> {
                                 if (!isLongClick) {
-                                    onItemClick(screen, isSelected)
+                                    onItemClick(screen, currentSelected)
                                 }
                             }
                             is PressInteraction.Cancel -> {
@@ -245,6 +303,8 @@ fun AppNavigationRail(
 fun AppNavigationBar(
     navigationItems: List<Screens>,
     currentRoute: String?,
+    /** from [owningTab]: the tab the page on screen belongs to */
+    selectedTabRoute: String,
     onItemClick: (Screens, Boolean) -> Unit,
     modifier: Modifier = Modifier,
     pureBlack: Boolean = false,
@@ -256,7 +316,6 @@ fun AppNavigationBar(
     val playerConnection = com.example.musicfy.LocalPlayerConnection.current
     val currentSong by playerConnection?.service?.currentMediaMetadata?.collectAsState(initial = null) ?: androidx.compose.runtime.mutableStateOf(null)
 
-    val selectedTabRoute = rememberSelectedTabRoute(currentRoute, navigationItems)
 
     androidx.compose.foundation.layout.Box(modifier = modifier) {
         val containerColor = if (pureBlack) Color.Black else GlassChromeColor
@@ -292,22 +351,9 @@ fun AppNavigationBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 navigationItems.forEach { screen ->
-                    // Two different questions, which were being answered by one value:
-                    //
-                    //   isSelected — should this tab LOOK lit? Sticky, so a detail page opened
-                    //     from a tab keeps that tab lit rather than clearing the bar.
-                    //   isCurrent  — are we ACTUALLY on this tab right now? Decides whether a tap
-                    //     navigates or just scrolls to top.
-                    //
-                    // Feeding the sticky value to onItemClick is what made the bar feel broken.
-                    // Reach a screen no tab claims (settings from the profile page) and the
-                    // highlight stays stuck on the previous tab; tapping that tab then reported
-                    // "already selected", so it scrolled to top instead of navigating and you were
-                    // left sitting on settings wondering why Home did nothing.
+                    // lit = the tab this page belongs to. what a tap on it does (scroll to the top
+                    // on the tab's own page, back to that page from deeper in) is the caller's call
                     val isSelected = screen.route == selectedTabRoute
-                    val isCurrent = remember(currentRoute, screen.route) {
-                        isRouteSelected(currentRoute, screen.route, navigationItems)
-                    }
                     val iconRes = remember(isSelected, screen) {
                         if (isSelected) screen.iconIdActive else screen.iconIdInactive
                     }
@@ -315,6 +361,9 @@ fun AppNavigationBar(
                     val isSearchItem = screen == Screens.Search && onSearchLongClick != null
                     val interactionSource = remember { MutableInteractionSource() }
                     val isPressed by interactionSource.collectIsPressedAsState()
+                    // the long-press listener below is started once; it reads this so a tap
+                    // never acts on whichever tab was lit when it started
+                    val currentSelected by androidx.compose.runtime.rememberUpdatedState(isSelected)
 
                     val scale by animateFloatAsState(
                         targetValue = if (isPressed) 0.85f else 1f,
@@ -358,7 +407,7 @@ fun AppNavigationBar(
                                     }
                                     is androidx.compose.foundation.interaction.PressInteraction.Release -> {
                                         if (!isLongClick) {
-                                            onItemClick(screen, isCurrent)
+                                            onItemClick(screen, currentSelected)
                                         }
                                     }
                                     is androidx.compose.foundation.interaction.PressInteraction.Cancel -> {
@@ -382,7 +431,7 @@ fun AppNavigationBar(
                                 indication = null,
                                 onClick = {
                                     if (!isSearchItem) {
-                                        onItemClick(screen, isCurrent)
+                                        onItemClick(screen, isSelected)
                                     }
                                 }
                             ),

@@ -78,7 +78,11 @@ import androidx.compose.material3.IconButton
 import com.example.musicfy.extensions.toMediaItem
 import com.example.musicfy.ui.component.LocalMenuState
 import com.example.musicfy.ui.component.SwipeActionsBox
-import com.example.musicfy.ui.component.YouTubeGridItem
+import com.example.musicfy.ui.component.HomeCardHighlight
+import com.example.musicfy.ui.component.HomeCardSpacing
+import com.example.musicfy.ui.component.HomeCoverCard
+import com.example.musicfy.ui.component.coverTransitionKey
+import com.example.musicfy.ui.component.detail.PlaylistInset
 import com.example.musicfy.ui.component.librarySwipeAction
 import com.example.musicfy.ui.component.queueSwipeAction
 import com.example.musicfy.ui.component.detail.CreatorUi
@@ -423,22 +427,37 @@ fun OnlinePlaylistScreen(
                 item(key = "related_title") {
                     PlaylistSectionTitle(
                         title = "Related Playlists",
-                        modifier = Modifier.padding(top = 28.dp, bottom = 6.dp),
+                        modifier = Modifier.padding(top = 28.dp, bottom = 8.dp),
                     )
                 }
 
+                // Home's cards on the page's own inset: the same corners, type and spacing as
+                // every other row of covers, and each one grows into its page like from Home
                 item(key = "related_items") {
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(horizontal = PlaylistInset),
+                        horizontalArrangement = Arrangement.spacedBy(HomeCardSpacing),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        items(relatedItems) { item ->
-                            YouTubeGridItem(
-                                item = item,
+                        items(relatedItems.distinctBy { it.id }, key = { it.id }) { item ->
+                            HomeCoverCard(
+                                title = item.title,
+                                subtitle = when (item) {
+                                    is PlaylistItem -> listOfNotNull(item.author?.name, item.songCountText).joinToString(" · ").ifBlank { null }
+                                    is AlbumItem -> listOfNotNull(
+                                        item.artists?.joinToString { it.name }?.ifBlank { null },
+                                        item.year?.toString(),
+                                    ).joinToString(" · ").ifBlank { null }
+                                    is SongItem -> item.artists.joinToString { it.name }
+                                    is ArtistItem -> null
+                                },
+                                thumbnailUrl = item.thumbnail,
+                                circular = item is ArtistItem,
+                                sharedElementKey = coverTransitionKey(item),
                                 modifier = Modifier
-                                    .width(160.dp)
                                     .combinedClickable(
+                                        interactionSource = null,
+                                        indication = HomeCardHighlight,
                                         onClick = {
                                             when (item) {
                                                 is PlaylistItem -> navController.navigate("online_playlist/${item.id}")

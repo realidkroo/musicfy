@@ -2,7 +2,6 @@
 
 package com.example.musicfy.ui.component
 
-import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -105,9 +104,7 @@ fun ArtistListCard(
             .width(276.dp)
             .height(344.dp)
             .clip(RoundedCornerShape(20.dp))
-            .clickable {
-                Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
-            }
+            .clickable(onClick = onClick)
     ) {
         val premiumDarkColors = listOf(
             listOf(Color(0xFF2B1B38), Color(0xFF151521), Color.Black),

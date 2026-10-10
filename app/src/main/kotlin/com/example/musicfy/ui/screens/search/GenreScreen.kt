@@ -497,6 +497,7 @@ private fun GenreItemCard(
             size = 146.dp,
             circle = item is ArtistItem,
             corner = 10.dp,
+            sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(

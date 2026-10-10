@@ -14,6 +14,8 @@ data class ImportedTrack(
     val thumbnailUrl: String? = null,
     /** Full YouTube item when the source is YouTube itself, so nothing is lost converting back. */
     val ytItem: SongItem? = null,
+    /** When it was added to the source's list (liked, saved to the library), so imports keep that order. */
+    val addedAtMs: Long? = null,
 )
 
 /**
@@ -47,6 +49,8 @@ data class ParsedImport(
     val warnings: List<String> = emptyList(),
     /** Which service this came from; null when that isn't known (a plain CSV). */
     val provider: ImportSource? = null,
+    /** Each playlist's own cover on the source service, by its name in [playlists]. */
+    val playlistCovers: Map<String, String> = emptyMap(),
 ) {
     val totalSongs: Int get() = likedSongs.size + librarySongs.size + playlists.values.sumOf { it.size }
     val totalPlaylists: Int get() = playlists.size

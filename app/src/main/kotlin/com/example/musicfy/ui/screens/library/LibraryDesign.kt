@@ -162,10 +162,13 @@ fun LibraryPinnedTile(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** a pinned album or playlist opens growing out of its tile, as from Home */
+    sharedElementKey: String? = null,
 ) {
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .containerTransformSource(key = sharedElementKey, cornerRadius = 18.dp, coverUrl = thumbnailUrl)
             .clip(RoundedCornerShape(18.dp))
             .background(SearchColors.TileHigh)
             .combinedClickable(
@@ -374,11 +377,18 @@ fun LibraryWideCard(
     covers: List<String?>,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** a card that opens a playlist page (Liked, Downloaded...) grows into it, as from Home */
+    sharedElementKey: String? = null,
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(112.dp)
+            .containerTransformSource(
+                key = sharedElementKey,
+                cornerRadius = 18.dp,
+                coverUrl = covers.firstOrNull { it != null },
+            )
             .clip(RoundedCornerShape(18.dp))
             .background(SearchColors.Tile)
             .clickable(onClick = onClick),
@@ -481,7 +491,7 @@ fun LibraryLetterHeader(label: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** "Play" + overflow, above the Albums and Recently-added grids. */
+/** Play and shuffle above the Albums and Recently-added grids: the playlist page's pill and circle */
 @Composable
 fun LibraryPlayBar(
     onPlay: () -> Unit,
@@ -492,37 +502,13 @@ fun LibraryPlayBar(
         modifier = modifier.fillMaxWidth().padding(horizontal = SearchHorizontalPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .weight(1f)
-                .height(44.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(SearchColors.Tile)
-                .clickable(onClick = onPlay),
-        ) {
-            Text(
-                text = "Play",
-                color = SearchColors.Primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(SearchColors.Tile)
-                .clickable(onClick = onMore),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.shuffle),
-                contentDescription = "Shuffle",
-                tint = SearchColors.Secondary,
-                modifier = Modifier.size(18.dp),
-            )
-        }
+        com.example.musicfy.ui.component.detail.PlayPill(isPlaying = false, onClick = onPlay)
+        Spacer(modifier = Modifier.width(9.dp))
+        com.example.musicfy.ui.component.detail.CircleAction(
+            icon = R.drawable.shuffle,
+            contentDescription = "Shuffle",
+            onClick = onMore,
+            spinOnClick = true,
+        )
     }
 }

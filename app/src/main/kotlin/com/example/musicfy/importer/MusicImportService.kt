@@ -37,7 +37,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import kotlin.coroutines.coroutineContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -108,26 +110,26 @@ class MusicImportService @Inject constructor(
 
         for ((name, tracks) in parsed.playlists) {
             coroutineContext.ensureActive()
-            importPlaylist(matcher, name, tracks, mirror, signedIn)
+            importPlaylist(matcher, name, tracks, parsed.playlistCovers[name], mirror, signedIn)
         }
     }
 
     private suspend fun importLiked(matcher: TrackMatcher, tracks: List<ImportedTrack>, mirror: Boolean) {
-        val matched = matchAll(matcher, tracks, playlistName = null, label = "Liked songs").distinctBy { it.id }
+        val matched = matchAll(matcher, tracks, playlistName = null, label = "Liked songs").distinctBy { it.item.id }
         if (matched.isEmpty()) return
 
         database.withTransaction {
-            matched.forEach { insert(it.toMediaMetadata()) }
+            matched.forEach { insert(it.item.toMediaMetadata()) }
         }
-        fileIntoLibrary(matched.map { it.id })
+        val dates = sourceDates(matched)
+        fileIntoLibrary(matched.map { it.item.id }, dates)
 
-        // the source lists newest first; spacing the dates keeps that order in Liked songs
-        val now = LocalDateTime.now()
+        // liked when they were liked on the source, so they sit among the existing likes in that order
         val newlyLiked = mutableListOf<String>()
-        matched.forEachIndexed { index, item ->
-            val song = database.getSongById(item.id)?.song ?: return@forEachIndexed
+        matched.forEach { (_, item) ->
+            val song = database.getSongById(item.id)?.song ?: return@forEach
             if (!song.liked) {
-                database.update(song.copy(liked = true, likedDate = now.minusSeconds(index.toLong())))
+                database.update(song.copy(liked = true, likedDate = dates.getValue(item.id)))
                 newlyLiked += item.id
             }
         }
@@ -152,12 +154,31 @@ class MusicImportService @Inject constructor(
 
     /** An account's whole song library: into the Library's Songs, and nowhere else. */
     private suspend fun importLibrarySongs(matcher: TrackMatcher, tracks: List<ImportedTrack>) {
-        val matched = matchAll(matcher, tracks, playlistName = null, label = "Library songs").distinctBy { it.id }
+        val matched = matchAll(matcher, tracks, playlistName = null, label = "Library songs").distinctBy { it.item.id }
         if (matched.isEmpty()) return
         database.withTransaction {
-            matched.forEach { insert(it.toMediaMetadata()) }
+            matched.forEach { insert(it.item.toMediaMetadata()) }
         }
-        fileIntoLibrary(matched.map { it.id })
+        fileIntoLibrary(matched.map { it.item.id }, sourceDates(matched))
+    }
+
+    /**
+     * When each song was added on the source, so the Library and Liked songs list them in the
+     * source's order. A song the source gave no date gets one just before the song above it - a
+     * source without dates lists newest first.
+     */
+    private fun sourceDates(matched: List<Matched>): Map<String, LocalDateTime> {
+        val now = LocalDateTime.now()
+        val dates = HashMap<String, LocalDateTime>()
+        var previous: LocalDateTime? = null
+        matched.forEach { (track, item) ->
+            val date = track.addedAtMs?.let { LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()) }
+                ?: previous?.minusSeconds(1)
+                ?: now
+            dates[item.id] = date
+            previous = date
+        }
+        return dates
     }
 
     /**
@@ -184,14 +205,16 @@ class MusicImportService @Inject constructor(
         source = ImportSource.OTHER
     }
 
+    /** [cover] is the playlist's own picture on the source; without one the app shows its songs' covers. */
     private suspend fun importPlaylist(
         matcher: TrackMatcher,
         name: String,
         tracks: List<ImportedTrack>,
+        cover: String?,
         mirror: Boolean,
         signedIn: Boolean,
     ) {
-        val matched = matchAll(matcher, tracks, playlistName = name, label = name)
+        val matched = matchAll(matcher, tracks, playlistName = name, label = name).map { it.item }
         val songIds = matched.map { it.id }.distinct()
         // nothing found: don't leave an empty playlist behind (an intentionally empty one has no tracks at all)
         if (songIds.isEmpty() && tracks.isNotEmpty()) return
@@ -205,12 +228,15 @@ class MusicImportService @Inject constructor(
             name = name,
             bookmarkedAt = LocalDateTime.now(),
             isEditable = true,
+            thumbnailUrl = cover,
         )
 
         val start = if (existing == null) 0 else database.playlistSongs(playlist.id).first().size
         var newIds: List<String> = emptyList()
         database.withTransaction {
             if (existing == null) insert(playlist)
+            // topping up one that has no picture of its own: it gets the source's
+            else if (existing.thumbnailUrl == null && cover != null) update(existing.copy(thumbnailUrl = cover))
             matched.distinctBy { it.id }.forEach { insert(it.toMediaMetadata()) }
             val already = if (existing == null || songIds.isEmpty()) emptySet() else playlistDuplicates(playlist.id, songIds).toSet()
             newIds = songIds.filterNot { it in already }
@@ -245,14 +271,14 @@ class MusicImportService @Inject constructor(
      *
      * Local only: this does not touch the user's YouTube library (see mirrorToYouTube for that).
      */
-    private suspend fun fileIntoLibrary(songIds: List<String>) {
+    private suspend fun fileIntoLibrary(songIds: List<String>, addedAt: Map<String, LocalDateTime> = emptyMap()) {
         if (songIds.isEmpty()) return
         val now = LocalDateTime.now()
         val from = source.key
         database.withTransaction {
             songIds.distinct().forEach { id ->
                 val song = getSongById(id)?.song ?: return@forEach
-                if (song.inLibrary == null) update(song.copy(inLibrary = now))
+                if (song.inLibrary == null) update(song.copy(inLibrary = addedAt[id] ?: now))
                 insert(ImportedSong(songId = id, source = from, importedAt = now))
             }
         }
@@ -264,13 +290,16 @@ class MusicImportService @Inject constructor(
         }
     }
 
+    /** A source track and the YouTube Music song found for it. */
+    private data class Matched(val track: ImportedTrack, val item: SongItem)
+
     /** Matches in parallel (a few searches at a time) and keeps the source order. */
     private suspend fun matchAll(
         matcher: TrackMatcher,
         tracks: List<ImportedTrack>,
         playlistName: String?,
         label: String,
-    ): List<SongItem> = coroutineScope {
+    ): List<Matched> = coroutineScope {
         val semaphore = Semaphore(MATCH_PARALLELISM)
         tracks.map { track ->
             async {
@@ -291,7 +320,7 @@ class MusicImportService @Inject constructor(
                             unmatched = if (item == null) p.unmatched + UnmatchedTrack(track, playlistName) else p.unmatched,
                         )
                     }
-                    item
+                    item?.let { Matched(track, it) }
                 }
             }
         }.awaitAll().filterNotNull()

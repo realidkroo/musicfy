@@ -16,7 +16,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -96,7 +98,10 @@ class AccountImportSession(
                     loadPlaylists()
                     break
                 } catch (e: CancellationException) {
-                    throw e
+                    // only a real cancellation ends sign-in; a stray one from a request mustn't
+                    // leave the page waiting with nothing listening
+                    ensureActive()
+                    Timber.w(e, "${service.label} connect attempt was cut short")
                 } catch (e: AccountRetryLater) {
                     delay(e.seconds * 1000)
                     connectSignal.trySend(Unit)
@@ -180,7 +185,9 @@ class AccountImportSession(
             lastChoosing = choosing
             _state.value = choosing
         } catch (e: CancellationException) {
-            throw e
+            currentCoroutineContext().ensureActive()
+            Timber.w(e, "${service.label} library read was cut short")
+            _state.value = AccountImportState.Failed("Couldn't read your ${service.label} library.", signedOut = false)
         } catch (e: AccountImportException) {
             if (e.signedOut) library = null
             _state.value = AccountImportState.Failed(e.message ?: "Couldn't read your library.", e.signedOut)
@@ -215,6 +222,7 @@ class AccountImportSession(
             val liked = mutableListOf<ImportedTrack>()
             val librarySongs = mutableListOf<ImportedTrack>()
             val playlists = linkedMapOf<String, List<ImportedTrack>>()
+            val covers = mutableMapOf<String, String>()
             val failed = mutableListOf<String>()
             var signedOut = false
 
@@ -225,7 +233,11 @@ class AccountImportSession(
                     when {
                         playlist.isLiked -> liked += tracks
                         playlist.isLibrary -> librarySongs += tracks
-                        else -> playlists[uniqueName(playlist.name, playlists.keys)] = tracks
+                        else -> {
+                            val name = uniqueName(playlist.name, playlists.keys)
+                            playlists[name] = tracks
+                            playlist.coverUrl?.let { covers[name] = it }
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e
@@ -257,6 +269,7 @@ class AccountImportSession(
                 playlists = playlists,
                 warnings = if (failed.isEmpty()) emptyList() else listOf("Couldn't read: ${failed.joinToString(", ")}. The rest imports fine."),
                 provider = ImportSource.fromKey(service.route),
+                playlistCovers = covers,
             )
         }
     }

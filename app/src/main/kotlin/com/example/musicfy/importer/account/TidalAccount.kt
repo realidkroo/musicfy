@@ -5,6 +5,7 @@ package com.example.musicfy.importer.account
 import android.util.Base64
 import com.example.musicfy.importer.ImportedTrack
 import com.example.musicfy.importer.array
+import com.example.musicfy.importer.dateMs
 import com.example.musicfy.importer.idString
 import com.example.musicfy.importer.long
 import com.example.musicfy.importer.obj
@@ -92,6 +93,8 @@ private class TidalLibrary(
                     .ifEmpty { track["artist"].obj()?.string("name").orEmpty() },
                 album = track["album"].obj()?.string("title"),
                 durationMs = track.long("duration")?.times(1000),
+                // favorites say when they were added; playlist entries don't
+                addedAtMs = dateMs(entry.string("created")),
             )
         }
         return tracks
@@ -100,8 +103,8 @@ private class TidalLibrary(
     private fun JsonObject.toPlaylist(subtitle: String?): RemotePlaylist? {
         val id = string("uuid") ?: return null
         // Tidal image ids are UUIDs whose dashes become path separators
-        val cover = string("squareImage")?.let { "https://resources.tidal.com/images/${it.replace('-', '/')}/320x320.jpg" }
-            ?: string("image")?.let { "https://resources.tidal.com/images/${it.replace('-', '/')}/480x320.jpg" }
+        val cover = string("squareImage")?.let { "https://resources.tidal.com/images/${it.replace('-', '/')}/640x640.jpg" }
+            ?: string("image")?.let { "https://resources.tidal.com/images/${it.replace('-', '/')}/750x500.jpg" }
         return RemotePlaylist(
             id = id,
             name = string("title") ?: "Untitled playlist",

@@ -526,6 +526,7 @@ private fun SuggestionResultRow(
             url = item.thumbnail,
             size = 44.dp,
             circle = item is ArtistItem,
+            sharedElementKey = com.example.musicfy.ui.component.coverTransitionKey(item),
         )
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {

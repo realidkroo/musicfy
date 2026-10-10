@@ -137,6 +137,34 @@ private fun libraryExitTo(route: String?): androidx.compose.animation.ExitTransi
         null
     }
 
+/** coming back from a cover page: the same clock as Home; anything else keeps the default */
+private fun coverReturnFrom(route: String?): androidx.compose.animation.EnterTransition? =
+    if (route.opensFromCover()) {
+        scaleIn(HomeReturnEase, initialScale = 0.92f) + fadeIn(HomeReturnEase, initialAlpha = 0.45f)
+    } else {
+        null
+    }
+
+/**
+ * a screen an album or playlist can be opened from (the Library's pages, Search, an artist,
+ * Home's section pages): it hands its transition scope to its covers, so the page grows out of
+ * the one tapped, and it sinks back while the page is open, exactly as Home does
+ */
+private fun NavGraphBuilder.coverSourceComposable(
+    route: String,
+    arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
+    content: @Composable androidx.compose.animation.AnimatedContentScope.(androidx.navigation.NavBackStackEntry) -> Unit,
+) = composable(
+    route = route,
+    arguments = arguments,
+    exitTransition = { libraryExitTo(targetState.destination.route) },
+    popEnterTransition = { coverReturnFrom(initialState.destination.route) },
+) { entry ->
+    CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+        content(entry)
+    }
+}
+
 private fun libraryReturnFrom(route: String?): androidx.compose.animation.EnterTransition =
     if (route.opensFromCover()) {
         scaleIn(HomeReturnEase, initialScale = 0.92f) + fadeIn(HomeReturnEase, initialAlpha = 0.45f)
@@ -176,7 +204,7 @@ fun NavGraphBuilder.navigationBuilder(
         }
     }
 
-    composable(
+    coverSourceComposable(
         route = "section_detail/{sectionId}",
         arguments = listOf(
             navArgument("sectionId") {
@@ -184,7 +212,7 @@ fun NavGraphBuilder.navigationBuilder(
             },
         ),
     ) { backStackEntry ->
-        val sectionId = backStackEntry.arguments?.getString("sectionId") ?: return@composable
+        val sectionId = backStackEntry.arguments?.getString("sectionId") ?: return@coverSourceComposable
 
         val homeViewModel: HomeViewModel = hiltViewModel(navController.getBackStackEntry(Screens.Home.route))
         SectionDetailScreen(
@@ -194,17 +222,8 @@ fun NavGraphBuilder.navigationBuilder(
         )
     }
 
-    composable("history") {
+    coverSourceComposable("history") {
         HistoryScreen(navController = navController)
-    }
-
-    composable("artist_list_detail") {
-
-        val homeViewModel: HomeViewModel = hiltViewModel(navController.getBackStackEntry(Screens.Home.route))
-        ArtistListDetailScreen(
-            navController = navController,
-            homeViewModel = homeViewModel
-        )
     }
 
     composable(
@@ -219,7 +238,7 @@ fun NavGraphBuilder.navigationBuilder(
         ComingSoonScreen(navController = navController, sectionTitle = sectionTitle)
     }
 
-    composable(Screens.Search.route) {
+    coverSourceComposable(Screens.Search.route) {
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val useDarkTheme = ForceDarkTheme
         val pureBlack = remember(pureBlackEnabled, useDarkTheme) {
@@ -247,7 +266,7 @@ fun NavGraphBuilder.navigationBuilder(
         }
     }
 
-    composable("library/songs") {
+    coverSourceComposable("library/songs") {
         com.example.musicfy.ui.screens.library.LibrarySongsScreen(navController = navController)
     }
 
@@ -262,16 +281,16 @@ fun NavGraphBuilder.navigationBuilder(
         }
     }
 
-    composable("library/added") {
+    coverSourceComposable("library/added") {
         com.example.musicfy.ui.screens.library.LibraryRecentlyAddedScreen(navController = navController)
     }
 
-    composable("library/downloaded") {
+    coverSourceComposable("library/downloaded") {
         com.example.musicfy.ui.screens.library.LibraryDownloadedScreen(navController = navController)
     }
 
     // Everything one service brought in, whatever playlist it went into: Imported from Spotify.
-    composable(
+    coverSourceComposable(
         route = "library/imported/{source}",
         arguments = listOf(navArgument("source") { type = NavType.StringType }),
     ) {
@@ -399,24 +418,26 @@ fun NavGraphBuilder.navigationBuilder(
             fadeIn(tween(250))
         },
         exitTransition = {
-            if (targetState.destination.route?.startsWith("search/") == true) {
-                fadeOut(tween(200))
-            } else {
-                fadeOut(tween(200)) + slideOutHorizontally { -it / 2 }
+            when {
+                targetState.destination.route.opensFromCover() -> libraryExitTo(targetState.destination.route)
+                targetState.destination.route?.startsWith("search/") == true -> fadeOut(tween(200))
+                else -> fadeOut(tween(200)) + slideOutHorizontally { -it / 2 }
             }
         },
         popEnterTransition = {
-            if (initialState.destination.route?.startsWith("search/") == true) {
-                fadeIn(tween(250))
-            } else {
-                fadeIn(tween(250)) + slideInHorizontally { -it / 2 }
+            when {
+                initialState.destination.route.opensFromCover() -> coverReturnFrom(initialState.destination.route)
+                initialState.destination.route?.startsWith("search/") == true -> fadeIn(tween(250))
+                else -> fadeIn(tween(250)) + slideInHorizontally { -it / 2 }
             }
         },
         popExitTransition = {
             fadeOut(tween(200))
         },
     ) {
-        OnlineSearchResult(navController)
+        CompositionLocalProvider(LocalNavAnimatedContentScope provides this) {
+            OnlineSearchResult(navController)
+        }
     }
 
     composable(
@@ -428,8 +449,8 @@ fun NavGraphBuilder.navigationBuilder(
         ),
 
         enterTransition = { fadeIn(tween(300)) },
-        exitTransition = { fadeOut(tween(200)) },
-        popEnterTransition = { fadeIn(tween(300)) },
+        exitTransition = { libraryExitTo(targetState.destination.route) ?: fadeOut(tween(200)) },
+        popEnterTransition = { coverReturnFrom(initialState.destination.route) ?: fadeIn(tween(300)) },
 
         popExitTransition = {
             scaleOut(
@@ -444,7 +465,7 @@ fun NavGraphBuilder.navigationBuilder(
         }
     }
 
-    composable(
+    coverSourceComposable(
         route = "artist/{artistId}",
         arguments = listOf(
             navArgument("artistId") {
@@ -455,7 +476,7 @@ fun NavGraphBuilder.navigationBuilder(
         ArtistScreen(navController, scrollBehavior)
     }
 
-    composable(
+    coverSourceComposable(
         route = "artist/{artistId}/songs",
         arguments = listOf(
             navArgument("artistId") {
@@ -466,7 +487,7 @@ fun NavGraphBuilder.navigationBuilder(
         ArtistSongsScreen(navController, scrollBehavior)
     }
 
-    composable(
+    coverSourceComposable(
         route = "artist/{artistId}/albums",
         arguments = listOf(
             navArgument("artistId") {
@@ -477,7 +498,19 @@ fun NavGraphBuilder.navigationBuilder(
         ArtistAlbumsScreen(navController, scrollBehavior)
     }
 
-    composable(
+    // "similar to <artist>": the artists, playlists and songs around one artist, from its page
+    coverSourceComposable(
+        route = "artist/{artistId}/similar",
+        arguments = listOf(
+            navArgument("artistId") {
+                type = NavType.StringType
+            },
+        ),
+    ) {
+        com.example.musicfy.ui.screens.artist.ArtistSimilarScreen(navController)
+    }
+
+    coverSourceComposable(
         route = "artist/{artistId}/items?browseId={browseId}?params={params}",
         arguments = listOf(
             navArgument("artistId") {
@@ -504,8 +537,8 @@ fun NavGraphBuilder.navigationBuilder(
             },
         ),
         enterTransition = { fadeIn(tween(300)) },
-        exitTransition = { fadeOut(tween(200)) },
-        popEnterTransition = { fadeIn(tween(300)) },
+        exitTransition = { libraryExitTo(targetState.destination.route) ?: fadeOut(tween(200)) },
+        popEnterTransition = { coverReturnFrom(initialState.destination.route) ?: fadeIn(tween(300)) },
 
         popExitTransition = {
             scaleOut(
@@ -528,8 +561,8 @@ fun NavGraphBuilder.navigationBuilder(
             },
         ),
         enterTransition = { fadeIn(tween(300)) },
-        exitTransition = { fadeOut(tween(200)) },
-        popEnterTransition = { fadeIn(tween(300)) },
+        exitTransition = { libraryExitTo(targetState.destination.route) ?: fadeOut(tween(200)) },
+        popEnterTransition = { coverReturnFrom(initialState.destination.route) ?: fadeIn(tween(300)) },
 
         popExitTransition = {
             scaleOut(
@@ -552,8 +585,8 @@ fun NavGraphBuilder.navigationBuilder(
             },
         ),
         enterTransition = { fadeIn(tween(300)) },
-        exitTransition = { fadeOut(tween(200)) },
-        popEnterTransition = { fadeIn(tween(300)) },
+        exitTransition = { libraryExitTo(targetState.destination.route) ?: fadeOut(tween(200)) },
+        popEnterTransition = { coverReturnFrom(initialState.destination.route) ?: fadeIn(tween(300)) },
 
         popExitTransition = {
             scaleOut(
@@ -590,7 +623,7 @@ fun NavGraphBuilder.navigationBuilder(
         TopPlaylistScreen(navController, scrollBehavior)
     }
 
-    composable(
+    coverSourceComposable(
         route = "genre/{browseId}?params={params}",
         arguments = listOf(
             navArgument("browseId") {
@@ -628,11 +661,11 @@ fun NavGraphBuilder.navigationBuilder(
         YouTubeBrowseScreen(navController)
     }
 
-    composable("library/albums") {
+    coverSourceComposable("library/albums") {
         com.example.musicfy.ui.screens.library.LibraryAlbumsScreen(navController = navController)
     }
 
-    composable("library/artists") {
+    coverSourceComposable("library/artists") {
         com.example.musicfy.ui.screens.library.LibraryArtistsScreen(navController = navController)
     }
 }

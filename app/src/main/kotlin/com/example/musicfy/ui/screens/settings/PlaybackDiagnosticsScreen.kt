@@ -47,10 +47,7 @@ fun PlaybackDiagnosticsScreen(navController: NavController) {
 
     val recent = remember(logs) { logs.asReversed().take(VISIBLE_ENTRIES) }
 
-    // The line the whole 32-second saga turns on: was a stream ever turned down for being
-    // truncated, and did we hold a PoToken at the time.
     val lastValidated = remember(logs) { logs.lastOrNull { it.message == "Stream validated" } }
-    val truncationSeen = remember(logs) { logs.any { it.message == "Truncated stream rejected" } }
     val hasPoToken = YTPlayerUtils.hasPoToken
 
     SubSettingsScaffold(
@@ -76,21 +73,9 @@ fun PlaybackDiagnosticsScreen(navController: NavController) {
                     },
                 )
 
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    text = "Without a PoToken, YouTube serves only about the first 32 seconds of " +
-                        "a track and refuses everything after it. musicfy now rejects those " +
-                        "streams rather than playing a fragment.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(8.dp))
 
                 DiagnosticsRow("Last stream", lastValidated?.details ?: "—")
-                DiagnosticsRow("Truncation seen", if (truncationSeen) "Yes" else "No")
-                DiagnosticsRow("Entries", logs.size.toString())
             }
         }
 

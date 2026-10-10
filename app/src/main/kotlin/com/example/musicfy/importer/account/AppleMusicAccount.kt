@@ -4,6 +4,7 @@ package com.example.musicfy.importer.account
 
 import com.example.musicfy.importer.ImportedTrack
 import com.example.musicfy.importer.array
+import com.example.musicfy.importer.dateMs
 import com.example.musicfy.importer.long
 import com.example.musicfy.importer.obj
 import com.example.musicfy.importer.path
@@ -52,7 +53,7 @@ object AppleMusicConnector : AccountConnector {
 
 /** Apple artwork URLs are templates: {w}x{h}, and sometimes {c} (crop) and {f} (format). */
 private fun artworkUrl(template: String): String =
-    template.replace("{w}", "300").replace("{h}", "300").replace("{c}", "bb").replace("{f}", "jpg")
+    template.replace("{w}", "600").replace("{h}", "600").replace("{c}", "bb").replace("{f}", "jpg")
 
 private class AppleMusicLibrary(private val headers: Map<String, String>) : AccountLibrary {
     override val accountName: String? = null
@@ -101,6 +102,7 @@ private class AppleMusicLibrary(private val headers: Map<String, String>) : Acco
                 artist = attributes.string("artistName").orEmpty(),
                 album = attributes.string("albumName"),
                 durationMs = attributes.long("durationInMillis"),
+                addedAtMs = dateMs(attributes.string("dateAdded")),
             )
         }
         return tracks

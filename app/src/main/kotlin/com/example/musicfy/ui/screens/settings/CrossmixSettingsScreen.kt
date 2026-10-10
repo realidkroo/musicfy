@@ -56,8 +56,6 @@ fun CrossmixSettingsScreen(navController: NavController) {
         onCrossfadeEnabledChange(mode != CrossmixMode.OFF)
         if (mode == CrossmixMode.AUTO_CROSSFADE) {
             onCrossfadeDurationChange(AutoCrossfadeDurationSeconds)
-        } else if (mode == CrossmixMode.CROSSMIX && crossfadeDuration < 8f) {
-            onCrossfadeDurationChange(12f)
         }
     }
 
@@ -155,26 +153,19 @@ fun CrossmixSettingsScreen(navController: NavController) {
                 add(
                     SettingsItem(
                         title = { Text("Crossmix") },
-                        descriptionText = "Longer, lyric-aware blends that bring the next intro forward",
+                        descriptionText = "DJ-style transitions timed to each song's beat, energy and lyrics",
                         icon = painterResource(R.drawable.graphic_eq),
                         onClick = { selectMode(CrossmixMode.CROSSMIX) },
                         trailingContent = modeControl(CrossmixMode.CROSSMIX),
                     )
                 )
+                // Crossmix picks its own length in whole bars, starting at most 30 s before the
+                // end and entering the next song at most two minutes in, so it has no slider
                 add(
                     SettingsItem(
-                        title = { Text("Transition length · ${crossfadeDuration.toInt()}s") },
-                        description = {
-                            Column(Modifier.fillMaxWidth()) {
-                                DefaultPlayerSeekBarSlider(
-                                    value = crossfadeDuration.coerceIn(8f, 20f),
-                                    onValueChange = onCrossfadeDurationChange,
-                                    valueRange = 8f..20f,
-                                    steps = 11,
-                                )
-                            }
-                        },
-                        icon = painterResource(R.drawable.linear_scale),
+                        title = { Text("How it mixes") },
+                        descriptionText = "Reads each song's tempo, beats and energy, then picks one of 25 transitions: beat-matched blends, bass swaps, filter sweeps, echo outs, backspins, tape stops and more",
+                        icon = painterResource(R.drawable.graphic_eq),
                         isSubOption = true,
                         isVisible = selectedMode == CrossmixMode.CROSSMIX,
                     )

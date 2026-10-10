@@ -2,6 +2,7 @@
 
 package com.example.musicfy.ui.screens.settings
 
+import com.example.musicfy.ui.component.navigateToTab
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -79,7 +80,10 @@ fun GeneralSettingsScreen(navController: NavController) {
                 descriptionText = "edit profilee",
                 icon = painterResource(R.drawable.person),
                 iconShape = CircleShape,
-                onClick = { navController.navigate("settings") },
+                onClick = {
+                    // back to the profile page these were opened from, not a second copy of it on top
+                    if (!navController.popBackStack("settings", inclusive = false)) navController.navigateToTab("settings")
+                },
             ),
         ).filter {
             query.isBlank() || it.highlightKey?.contains(query, ignoreCase = true) == true ||

@@ -29,6 +29,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.example.musicfy.ui.component.GlassPillBackground
 import com.example.musicfy.ui.component.GlassState
+import com.example.musicfy.ui.component.rememberCoverBlurAvailable
 import com.example.musicfy.ui.player.models.TrackInfo
 import com.example.musicfy.ui.theme.PlayerColorExtractor
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +50,9 @@ fun SeamBlur(
     if (!shouldExist) return
 
     val context = LocalContext.current
+    // Without blur the glass below has nothing to draw, yet still ran its mask effect (and an
+    // offscreen layer below Android 12). The cover fades its own bottom edge instead then.
+    val blurAvailable = rememberCoverBlurAvailable()
 
     val bandTop = maxHeight * 0.52f
     val bandBottom = maxHeight * 0.74f
@@ -100,7 +104,7 @@ fun SeamBlur(
                 alpha = ((p - 0.5f) / 0.45f).coerceIn(0f, 1f) * fadeProvider().coerceIn(0f, 1f)
             }
     ) {
-        GlassPillBackground(
+        if (blurAvailable) GlassPillBackground(
             state = glassState,
             blurRadius = { 130f },
             tileMode = android.graphics.Shader.TileMode.CLAMP,
